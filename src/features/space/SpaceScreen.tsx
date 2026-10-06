@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
-import { useSpace } from "../../lib/queries";
+import { qk, queryClient, useSpace } from "../../lib/queries";
 import { api } from "../../lib/ipc";
 import { s } from "../../lib/strings";
 import { useUi } from "../../stores/ui";
@@ -10,7 +10,7 @@ import { SourcesPane } from "../sources/SourcesPane";
 import { ChatPane } from "../chat/ChatPane";
 import { StudioPane } from "./StudioPane";
 import { SourceViewer } from "../sources/SourceViewer";
-import { cn } from "../../lib/utils";
+import { cn, relativeTime } from "../../lib/utils";
 
 export function Pane({
   title,
@@ -53,6 +53,24 @@ function CollapsedRail({ label, onExpand, side }: { label: string; onExpand: () 
   );
 }
 
+/** One line for the home card: where the learner left off. */
+async function writeRecap(spaceId: string) {
+  const [threads, journal] = await Promise.all([api.listThreads(spaceId), api.listJournal(spaceId)]);
+  const lastThread = threads[0];
+  const lastJournal = journal[0];
+  let recap: string | null = null;
+  if (lastJournal && (!lastThread || lastJournal.createdAt >= lastThread.updatedAt)) {
+    const line = lastJournal.content.split("\n").find((l) => /^[-*] /.test(l.trim()));
+    recap = line ? `Last session: ${line.trim().replace(/^[-*] /, "")}` : `Last session ${relativeTime(lastJournal.createdAt)}`;
+  } else if (lastThread && lastThread.title !== "New chat") {
+    recap = `Last chat: “${lastThread.title}” · ${relativeTime(lastThread.updatedAt)}`;
+  }
+  if (recap) {
+    await api.updateSpace(spaceId, { recap });
+    queryClient.invalidateQueries({ queryKey: qk.spaces });
+  }
+}
+
 export function SpaceScreen({ spaceId }: { spaceId: string }) {
   const { data: space, isLoading, error, refetch } = useSpace(spaceId);
   const panes = useUi((st) => st.panes);
@@ -61,6 +79,9 @@ export function SpaceScreen({ spaceId }: { spaceId: string }) {
 
   useEffect(() => {
     api.touchSpace(spaceId).catch(() => {});
+    return () => {
+      writeRecap(spaceId).catch(() => {});
+    };
   }, [spaceId]);
 
   if (isLoading)
