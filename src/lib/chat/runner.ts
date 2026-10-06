@@ -4,7 +4,7 @@ import { queryClient, qk } from "../queries";
 import type { Citation, FocusState, Message, MessageMeta, SearchHit, Space, TutorStyle } from "../types";
 import { useChatStream } from "../../stores/chatStream";
 import { hitsToCitations } from "./citations";
-import { extractMemories } from "./memory";
+import { extractMemories, isKnownFact } from "./memory";
 import { buildSystemPrompt, historyMessages, threadTitleFrom, type Passage } from "./context";
 import { resolveChatModel, type ResolvedModel } from "./llm";
 
@@ -140,7 +140,9 @@ export async function runTurn(input: TurnInput): Promise<Message> {
   if (!error && content) {
     const ex = extractMemories(content);
     content = ex.clean;
+    const known = memory.map((m) => m.text);
     for (const fact of ex.memories) {
+      if (isKnownFact(fact, known)) continue;
       try {
         await api.addMemory(fact, "tutor", space.id);
         remembered.push(fact);

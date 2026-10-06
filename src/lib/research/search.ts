@@ -58,18 +58,7 @@ export const engines: Record<SearchResult["engine"], (http: HttpFn, q: string) =
     if (r.status >= 400) throw new Error(`HTTP ${r.status}`);
     return parseDuckDuckGo(r.body).slice(0, 6);
   },
-  wikipedia: async (http, q) => {
-    const d = await json<{ query?: { search?: { title: string; snippet: string }[] } }>(
-      http,
-      `https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&srlimit=3&srsearch=${encodeURIComponent(q)}`,
-    );
-    return (d.query?.search ?? []).map((x) => ({
-      title: x.title,
-      url: `https://en.wikipedia.org/wiki/${encodeURIComponent(x.title.replace(/ /g, "_"))}`,
-      snippet: strip(x.snippet),
-      engine: "wikipedia" as const,
-    }));
-  },
+  wikipedia: (http, q) => wikipediaIn("en")(http, q),
   arxiv: async (http, q) => {
     const r = await http(
       `https://export.arxiv.org/api/query?max_results=3&search_query=all:${encodeURIComponent(q)}`,
@@ -93,6 +82,22 @@ export const engines: Record<SearchResult["engine"], (http: HttpFn, q: string) =
       .filter((r) => !!r.url);
   },
 };
+
+export function wikipediaIn(lang: string) {
+  const host = `https://${/^[a-z]{2,3}$/.test(lang) ? lang : "en"}.wikipedia.org`;
+  return async (http: HttpFn, q: string): Promise<SearchResult[]> => {
+    const d = await json<{ query?: { search?: { title: string; snippet: string }[] } }>(
+      http,
+      `${host}/w/api.php?action=query&list=search&format=json&srlimit=3&srsearch=${encodeURIComponent(q)}`,
+    );
+    return (d.query?.search ?? []).map((x) => ({
+      title: x.title,
+      url: `${host}/wiki/${encodeURIComponent(x.title.replace(/ /g, "_"))}`,
+      snippet: strip(x.snippet),
+      engine: "wikipedia" as const,
+    }));
+  };
+}
 
 export function normalizeForDedupe(url: string): string {
   try {

@@ -80,7 +80,8 @@ export const catalog: Record<ProviderType, CatalogEntry> = {
     baseUrlEditable: false,
     needsKey: true,
     docsUrl: "https://openrouter.ai/keys",
-    capabilities: cloud({ webSearch: "builtin" }),
+    // OpenRouter accepts reasoning_effort "none" for reasoning models and ignores it elsewhere
+    capabilities: cloud({ webSearch: "builtin", reasoningToggle: true }),
   },
   xai: {
     type: "xai",

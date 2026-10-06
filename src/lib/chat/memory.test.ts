@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractMemories, hideMemoryMarkers } from "./memory";
+import { extractMemories, hideMemoryMarkers, isKnownFact } from "./memory";
 
 describe("learner memory markers", () => {
   it("extracts facts and removes markers", () => {
@@ -18,5 +18,13 @@ describe("learner memory markers", () => {
     expect(hideMemoryMarkers("Answer.\n\n{{remember: likes mine")).toBe("Answer.");
     expect(hideMemoryMarkers("Answer. {{remember: x}} more")).toBe("Answer.  more");
     expect(hideMemoryMarkers("a {b} c")).toBe("a {b} c");
+  });
+});
+
+describe("memory dedupe", () => {
+  it("skips facts that repeat a known one", () => {
+    const known = ["Preparing for the GED science test in March; gets confused easily"];
+    expect(isKnownFact("Learner is preparing for GED science test in March and gets confused easily", known)).toBe(true);
+    expect(isKnownFact("Likes Minecraft analogies", known)).toBe(false);
   });
 });

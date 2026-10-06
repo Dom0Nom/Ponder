@@ -3,7 +3,7 @@ import { extractJson } from "../chat/json";
 import type { ResolvedModel } from "../chat/llm";
 import { fetchReadable } from "../importers/web";
 import type { HttpFn } from "../importers/youtube";
-import { engines, normalizeForDedupe, type SearchResult } from "./search";
+import { engines, normalizeForDedupe, wikipediaIn, type SearchResult } from "./search";
 
 export type ResearchStage = "planning" | "searching" | "fetching" | "ranking" | "done";
 
@@ -36,23 +36,31 @@ async function ask(llm: ResolvedModel, prompt: string, signal?: AbortSignal): Pr
   return r.text;
 }
 
-export async function planQueries(question: string, deps: ResearchDeps): Promise<string[]> {
+export interface Plan {
+  queries: string[];
+  /** ISO 639-1 language of the learner's question */
+  language: string;
+}
+
+export async function planQueries(question: string, deps: ResearchDeps): Promise<Plan> {
   const text = await ask(
     deps.llm,
-    `A learner wants study sources about: "${question}".\nWrite 3 to 5 short web search queries that would find trustworthy, free learning material (textbooks, encyclopedias, university pages, papers). Mix general and specific queries, in English unless the topic is language-specific.\nReturn JSON only: {"queries": ["...", "..."]}`,
+    `A learner wants study sources about: "${question}".\nWrite 3 to 5 short web search queries that would find trustworthy, free learning material (textbooks, encyclopedias, university pages, papers). Mix general and specific queries. If the question isn't in English, write about half the queries in the learner's language and half in English.\nAlso give the ISO 639-1 code of the language the question is written in.\nReturn JSON only: {"language": "en", "queries": ["...", "..."]}`,
     deps.signal,
   );
-  const parsed = extractJson<{ queries?: unknown }>(text);
+  const parsed = extractJson<{ queries?: unknown; language?: unknown }>(text);
   const queries = Array.isArray(parsed?.queries)
     ? parsed!.queries.filter((q): q is string => typeof q === "string" && q.trim().length > 0).slice(0, 5)
     : [];
-  return queries.length ? queries : [question];
+  const language = typeof parsed?.language === "string" && /^[a-z]{2}$/.test(parsed.language) ? parsed.language : "en";
+  return { queries: queries.length ? queries : [question], language };
 }
 
-export async function searchAll(queries: string[], deps: ResearchDeps): Promise<SearchResult[]> {
+export async function searchAll(queries: string[], deps: ResearchDeps, language = "en"): Promise<SearchResult[]> {
   const jobs: Promise<SearchResult[]>[] = [];
   for (const q of queries) jobs.push(engines.duckduckgo(deps.http, q));
   jobs.push(engines.wikipedia(deps.http, queries[0]), engines.arxiv(deps.http, queries[0]), engines.openalex(deps.http, queries[0]));
+  if (language !== "en") jobs.push(wikipediaIn(language)(deps.http, queries[0]));
   const settled = await Promise.allSettled(jobs);
   const ok = settled.filter((s): s is PromiseFulfilledResult<SearchResult[]> => s.status === "fulfilled");
   if (!ok.length) throw new Error("Every search engine failed. Check your internet connection.");
@@ -108,7 +116,7 @@ export async function rank(question: string, pages: (SearchResult & { markdown: 
     });
   }
   return found
-    .filter((f) => f.relevance >= 30)
+    .filter((f) => f.relevance >= 40)
     .sort((a, b) => b.relevance * b.credibility - a.relevance * a.credibility);
 }
 
@@ -118,9 +126,9 @@ const clamp = (n: unknown, fallback: number) =>
 export async function deepResearch(question: string, deps: ResearchDeps): Promise<FoundSource[]> {
   const fetchPage = deps.fetchPage ?? fetchReadable;
   deps.onStage?.("planning");
-  const queries = await planQueries(question, deps);
+  const { queries, language } = await planQueries(question, deps);
   deps.onStage?.("searching", queries.join(" · "));
-  const results = await searchAll(queries, deps);
+  const results = await searchAll(queries, deps, language);
   deps.onStage?.("fetching", `${results.length}`);
   const pages: (SearchResult & { markdown: string; title: string })[] = [];
   let next = 0;

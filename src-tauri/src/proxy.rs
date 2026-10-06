@@ -631,4 +631,50 @@ mod tests {
         assert!(!content.trim().is_empty());
         assert!(reasoning.is_empty());
     }
+
+    /// Real cloud provider through the proxy: the key is injected from the secret store and the JS
+    /// side's fake Authorization header is dropped. Needs OPENROUTER_API_KEY.
+    #[tokio::test]
+    #[ignore]
+    async fn live_openrouter_stream() {
+        let Ok(key) = std::env::var("OPENROUTER_API_KEY") else {
+            eprintln!("OPENROUTER_API_KEY not set");
+            return;
+        };
+        let p = provider("openrouter", "apiKey", Some("https://openrouter.ai/api/v1"));
+        let secrets = MemoryStore::default();
+        secrets.set(&p.id, &key).unwrap();
+        let body = serde_json::json!({
+            "model": "deepseek/deepseek-v4.1-flash",
+            "stream": true,
+            "reasoning_effort": "none",
+            "messages": [{"role": "user", "content": "Say hi in three words."}],
+        });
+        let mut r = req(
+            "https://openrouter.ai/api/v1/chat/completions",
+            &[("content-type", "application/json"), ("authorization", "Bearer managed-by-backend")],
+        );
+        r.body = Some(body.to_string());
+        let prepared = prepare(&r, Some(&p), &secrets, &OAuth::new(Arc::new(MemoryStore::default()))).await.unwrap();
+        let (_tx, rx) = oneshot::channel();
+        let mut events = vec![];
+        run(&stream_client(), prepared, rx, |e| events.push(e)).await;
+        let body: String = events
+            .iter()
+            .filter_map(|e| match e {
+                ProxyEvent::Chunk { data } => Some(data.as_str()),
+                _ => None,
+            })
+            .collect();
+        let content: String = body
+            .lines()
+            .filter_map(|l| l.strip_prefix("data: "))
+            .filter_map(|l| serde_json::from_str::<serde_json::Value>(l).ok())
+            .filter_map(|v| v["choices"][0]["delta"]["content"].as_str().map(str::to_string))
+            .collect();
+        println!("events: {}, content: {content:?}", events.len());
+        assert!(matches!(events[0], ProxyEvent::Head { status: 200, .. }), "{:?}", events.first());
+        assert_eq!(events.last(), Some(&ProxyEvent::End));
+        assert!(!content.trim().is_empty());
+    }
 }

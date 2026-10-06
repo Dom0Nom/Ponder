@@ -1,13 +1,12 @@
 /**
  * Live check of YouTube transcripts and deep research with real network + LM Studio.
- * Run: bun scripts/e2e-research.ts ["question"]
+ * Run: [OPENROUTER_API_KEY=…] bun scripts/e2e-research.ts ["question"]
  */
 import { JSDOM } from "jsdom";
-import { callOptions, createLanguageModel } from "../src/lib/providers/model";
 import { extractReadable } from "../src/lib/importers/web";
 import { fetchTranscript, type HttpFn } from "../src/lib/importers/youtube";
 import { deepResearch } from "../src/lib/research/deepResearch";
-import type { Provider } from "../src/lib/types";
+import { liveModel } from "./lib/liveModel";
 
 const g = globalThis as unknown as { DOMParser: unknown };
 g.DOMParser = new JSDOM().window.DOMParser;
@@ -18,16 +17,6 @@ const http: HttpFn = async (url, init) => {
   return { status: r.status, body: await r.text() };
 };
 
-const provider: Provider = {
-  id: "e2e",
-  type: "lmstudio",
-  kind: "local",
-  name: "LM Studio",
-  baseUrl: process.env.LMSTUDIO_URL ?? "http://192.168.1.20:1234/v1",
-  config: {},
-  createdAt: 0,
-};
-const modelId = process.env.LMSTUDIO_MODEL ?? "qwen3.5-9b";
 
 const t0 = Date.now();
 const yt = await fetchTranscript("aircAruvnKk", http, ["en"]);
@@ -37,12 +26,7 @@ console.log(yt.markdown.split("\n").slice(4, 6).join("\n").slice(0, 200));
 const question = process.argv[2] ?? "How does the electron transport chain make ATP?";
 const t1 = Date.now();
 const found = await deepResearch(question, {
-  llm: {
-    provider,
-    modelId,
-    model: createLanguageModel(provider, modelId, { fetch: globalThis.fetch }),
-    options: (o) => callOptions(provider, o),
-  },
+  llm: liveModel(),
   http,
   fetchPage: async (url) => {
     const r = await fetch(url, { headers: { "User-Agent": UA } });
