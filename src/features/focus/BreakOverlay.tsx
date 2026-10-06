@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { Coffee, Lightbulb } from "lucide-react";
+import { Check, Coffee, Lightbulb } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../components/ui/button";
+import { cn } from "../../lib/utils";
 import { Spinner } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
+import { useFocusPrefs } from "../../lib/focusPrefs";
 import { api } from "../../lib/ipc";
 import { qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
@@ -61,6 +63,9 @@ function LockedBreak({ state }: { state: FocusState }) {
   const setState = useFocusStore((st) => st.setState);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
+  const { prefs } = useFocusPrefs();
+  const menu = prefs.breakMenu;
   useKeyboardLock(ref);
 
   const parking = useQuery({
@@ -111,6 +116,36 @@ function LockedBreak({ state }: { state: FocusState }) {
         <p id="break-body" className="mt-2 max-w-md text-[0.9375rem] text-muted">
           {s.focus.breakBody}
         </p>
+        {menu.length > 0 ? (
+          <section aria-labelledby="break-pick" className="mt-8 w-full max-w-md text-left">
+            <h2 id="break-pick" className="mb-3 text-center text-sm font-medium text-muted">
+              {s.breakMenu.pick}
+            </h2>
+            <div className="flex flex-col gap-2">
+              {menu.map((item) => {
+                const on = picked === item;
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setPicked(item)}
+                    className={cn(
+                      "flex min-h-14 w-full items-center justify-between gap-3 rounded-[var(--radius-card)] border-2 px-5 py-3 text-left text-base shadow-card transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                      on ? "border-accent bg-accent-soft text-accent-text" : "border-transparent bg-surface hover:bg-surface-2",
+                    )}
+                  >
+                    <span>{item}</span>
+                    {on && <Check size={18} aria-hidden />}
+                  </button>
+                );
+              })}
+            </div>
+            <p role="status" className="mt-3 min-h-5 text-center text-sm text-muted">
+              {picked ? s.breakMenu.picked(picked) : ""}
+            </p>
+          </section>
+        ) : (
         <div className="mt-8 flex w-full max-w-md items-start gap-3 rounded-[var(--radius-card)] bg-surface p-4 text-left shadow-card">
           <Lightbulb size={18} className="mt-0.5 shrink-0 text-timer-break" />
           <div>
@@ -118,6 +153,7 @@ function LockedBreak({ state }: { state: FocusState }) {
             <p className="mt-0.5 text-[0.9375rem]">{tip}</p>
           </div>
         </div>
+        )}
         {parking.isError && <p className="mt-6 text-xs text-danger">{s.focus.parkingLoadFailed}</p>}
         {open.length > 0 && (
           <div className="mt-4 w-full max-w-md rounded-[var(--radius-card)] bg-surface p-4 text-left shadow-card">

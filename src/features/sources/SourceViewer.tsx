@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAddCard } from "../cards/FlashcardsCard";
 import { clozeFromSelection } from "../../lib/srs/cloze";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, BookOpenCheck, ExternalLink, Layers } from "lucide-react";
+import { ArrowLeft, Bold, BookOpenCheck, ExternalLink, Layers, ScanLine } from "lucide-react";
+import { useFocusPrefs, useSetFocusPref } from "../../lib/focusPrefs";
 import { api } from "../../lib/ipc";
 import { qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
@@ -13,6 +14,8 @@ import { toast, toastError } from "../../components/ui/toast";
 import { detectChapters } from "../../lib/placement/logic";
 import type { Source } from "../../lib/types";
 import { KIND_ICON } from "./SourcesPane";
+import { BionicText } from "./BionicText";
+import { ReadingRuler } from "./ReadingRuler";
 
 export function SourceViewer({ target }: { target: { sourceId: string; start?: number; end?: number } }) {
   const openViewer = useUi((st) => st.openViewer);
@@ -26,6 +29,11 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
     if (markRef.current) markRef.current.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [pieces]);
 
+  const { prefs } = useFocusPrefs();
+  const setPref = useSetFocusPref();
+  const reading = prefs.reading;
+  const toggleReading = (key: "bionic" | "ruler") =>
+    setPref("reading", { ...reading, [key]: !reading[key] }).catch((e) => toastError(s.reading.saveFailed, e));
   const Icon = source.data ? KIND_ICON[source.data.kind] : null;
   let firstMark = true;
 
@@ -41,6 +49,25 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
         </button>
         {Icon && <Icon size={16} className="shrink-0 text-muted" />}
         <p className="min-w-0 flex-1 truncate text-sm font-medium">{source.data?.title ?? s.sources.viewerLoading}</p>
+        <div role="group" aria-label={s.reading.toolbarGroup} className="flex items-center gap-0.5">
+          {(
+            [
+              ["bionic", s.reading.bionic, Bold],
+              ["ruler", s.reading.ruler, ScanLine],
+            ] as const
+          ).map(([key, label, Glyph]) => (
+            <Tooltip key={key} content={label}>
+              <button
+                aria-label={label}
+                aria-pressed={reading[key]}
+                onClick={() => toggleReading(key)}
+                className={`rounded-full p-1.5 hover:bg-surface-2 ${reading[key] ? "bg-accent-soft text-accent-text" : "text-muted hover:text-fg"}`}
+              >
+                <Glyph size={16} />
+              </button>
+            </Tooltip>
+          ))}
+        </div>
         {source.data && text.data && <MakeCourseButton source={source.data} text={text.data.text} />}
         {source.data?.origin && /^https?:/.test(source.data.origin) && (
           <a
@@ -54,7 +81,8 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
           </a>
         )}
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <ReadingRuler enabled={reading.ruler}>
+      <div className="h-full overflow-y-auto">
         {(source.isLoading || text.isLoading) && (
           <div className="space-y-3 p-5">
             <Skeleton className="h-16" />
@@ -98,8 +126,10 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
                         return isFirst ? markRef : undefined;
                       })()}
                     >
-                      {p.text}
+                      {reading.bionic ? <BionicText text={p.text} /> : p.text}
                     </mark>
+                  ) : reading.bionic ? (
+                    <BionicText text={p.text} />
                   ) : (
                     p.text
                   )}
@@ -109,6 +139,7 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
           </div>
         )}
       </div>
+      </ReadingRuler>
     </div>
   );
 }
