@@ -11,6 +11,7 @@ import { generateCards, hitsToPassages } from "../../lib/srs/generate";
 import { addGap, clozeFront, clozeNumbers, expandCloze } from "../../lib/srs/cloze";
 import { quizSpace } from "../../lib/srs/quizSpace";
 import { useUi } from "../../stores/ui";
+import { useLowEnergy } from "../focus/useLowEnergy";
 import { Button } from "../../components/ui/button";
 import { Dialog } from "../../components/ui/dialog";
 import { Input, Label, Textarea } from "../../components/ui/input";
@@ -48,6 +49,7 @@ export function FlashcardsCard({ space }: { space: Space }) {
   const [generating, setGenerating] = useState(false);
   const [browsing, setBrowsing] = useState(false);
   const [quizzing, setQuizzing] = useState(false);
+  const low = useLowEnergy(space.id);
   const c = counts.data?.find((x) => x.spaceId === space.id);
 
   const quiz = async () => {
@@ -84,16 +86,16 @@ export function FlashcardsCard({ space }: { space: Space }) {
         >
           <GraduationCap size={15} /> {s.cards.review}
         </Button>
-        <Button size="sm" variant="secondary" className={BTN} disabled={quizzing} onClick={quiz}>
+        <Button size="sm" variant="secondary" className={BTN} disabled={quizzing || low.active} title={low.reason} onClick={quiz}>
           {quizzing ? <Spinner size={14} /> : <ListChecks size={15} />} {s.cards.quiz}
         </Button>
-        <Button size="sm" variant="secondary" className={cn(BTN, "basis-full")} onClick={() => setGenerating(true)}>
+        <Button size="sm" variant="secondary" className={cn(BTN, "basis-full")} disabled={low.active} title={low.reason} onClick={() => setGenerating(true)}>
           <Sparkles size={15} /> {s.cards.generate}
         </Button>
-        <Button size="sm" variant="ghost" className={BTN} onClick={() => openAdd({ spaceId: space.id })}>
+        <Button size="sm" variant="ghost" className={BTN} disabled={low.active} title={low.reason} onClick={() => openAdd({ spaceId: space.id })}>
           <Plus size={15} /> {s.cards.add}
         </Button>
-        <OcclusionButtonSlot spaceId={space.id} className={BTN} />
+        {!low.active && <OcclusionButtonSlot spaceId={space.id} className={BTN} />}
       </div>
       <div className="mt-2 flex gap-3 text-xs">
         {c?.total ? (
@@ -105,6 +107,7 @@ export function FlashcardsCard({ space }: { space: Space }) {
           {s.cards.mistakes}
         </button>
       </div>
+      {low.active && <p className="mt-2 text-xs text-faint">{low.reason}</p>}
       <GenerateCardsDialog space={space} open={generating} onOpenChange={setGenerating} />
       {browsing && <BrowseCardsDialog space={space} onClose={() => setBrowsing(false)} />}
     </div>

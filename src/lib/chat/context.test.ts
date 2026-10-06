@@ -89,6 +89,15 @@ describe("context assembly", () => {
     ]);
   });
 
+  it("tells the tutor about low-energy review mode", () => {
+    const now = new Date("2026-10-06T14:00:00").getTime();
+    expect(describeFocus(focus, now)).not.toContain("LOW-ENERGY");
+    const d = describeFocus({ ...focus, energy: "low" }, now)!;
+    expect(d).toContain("LOW-ENERGY review session");
+    expect(d).toContain("Do not introduce new material");
+    expect(d).toContain("short");
+  });
+
   it("makes short thread titles", () => {
     expect(threadTitleFrom("  What   is photosynthesis?  ")).toBe("What is photosynthesis?");
     expect(threadTitleFrom("x".repeat(100)).length).toBe(58);

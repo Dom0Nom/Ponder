@@ -16,9 +16,31 @@ export interface BuddyState {
   /** check-ins already fired in the current block */
   checkIns: number;
   recallDone: boolean;
+  /** hyperfocus nudges already fired in the current block */
+  hyperfocus: number;
 }
 
-export const initialBuddyState: BuddyState = { initialized: false, last: null, checkIns: 0, recallDone: false };
+export interface BuddyOptions {
+  /** minutes of continuous work per hyperfocus nudge; 0/undefined disables it */
+  hyperfocusMins?: number;
+}
+
+export const initialBuddyState: BuddyState = {
+  initialized: false,
+  last: null,
+  checkIns: 0,
+  recallDone: false,
+  hyperfocus: 0,
+};
+
+const DISABLED = Number.MAX_SAFE_INTEGER;
+
+function hyperfocusDue(s: FocusState, mins: number | undefined): number {
+  if (!mins || mins <= 0) return DISABLED;
+  if (s.technique !== "flowtime" && s.technique !== "timebox") return DISABLED;
+  if (s.phase !== "work") return DISABLED;
+  return Math.floor(s.elapsedMs / (mins * 60_000));
+}
 
 export const RECALL_LEAD_MS = 3 * 60_000;
 const MIN_BLOCK_FOR_RECALL_MS = 8 * 60_000;
@@ -50,7 +72,11 @@ function recallDue(s: FocusState): boolean {
  * tick (or null when no session runs) and posts the returned events. The first snapshot after a
  * UI reload only initializes state, so nothing is re-announced.
  */
-export function stepBuddy(state: BuddyState, next: FocusState | null): { state: BuddyState; events: BuddyEvent[] } {
+export function stepBuddy(
+  state: BuddyState,
+  next: FocusState | null,
+  opts: BuddyOptions = {},
+): { state: BuddyState; events: BuddyEvent[] } {
   if (!state.initialized) {
     return {
       state: {
@@ -58,6 +84,7 @@ export function stepBuddy(state: BuddyState, next: FocusState | null): { state: 
         last: next,
         checkIns: next && isWork(next) ? checkInsDue(next) : 0,
         recallDone: !!next && isWork(next) && next.remainingMs != null && next.remainingMs <= RECALL_LEAD_MS,
+        hyperfocus: next ? hyperfocusDue(next, opts.hyperfocusMins) : 0,
       },
       events: [],
     };
@@ -75,6 +102,7 @@ export function stepBuddy(state: BuddyState, next: FocusState | null): { state: 
   });
   let checkIns = state.checkIns;
   let recallDone = state.recallDone;
+  let hyperfocus = state.hyperfocus;
 
   const sameSession = !!prev && !!next && prev.sessionId === next.sessionId;
 
@@ -87,16 +115,28 @@ export function stepBuddy(state: BuddyState, next: FocusState | null): { state: 
       events.push(ev("session-start", next, next));
       checkIns = 0;
       recallDone = false;
+      hyperfocus = 0;
     } else if (prev && prev.phase !== next.phase) {
       if (isWork(prev) && isBreak(next)) events.push(ev("block-quiz", next, prev));
       if (isBreak(prev) && isWork(next)) events.push(ev("post-break", next, next));
       if (isWork(next)) {
         checkIns = 0;
         recallDone = false;
+        hyperfocus = 0;
       }
     } else if (prev && prev.block !== next.block && isWork(next)) {
       checkIns = 0;
       recallDone = false;
+      hyperfocus = 0;
+    }
+
+    if (isWork(next) && !next.paused) {
+      const due = hyperfocusDue(next, opts.hyperfocusMins);
+      if (due === DISABLED) hyperfocus = DISABLED;
+      else if (due > hyperfocus) {
+        if (sameSession) events.push(ev("hyperfocus", next, next));
+        hyperfocus = due;
+      }
     }
 
     if (isWork(next) && !next.paused) {
@@ -115,7 +155,7 @@ export function stepBuddy(state: BuddyState, next: FocusState | null): { state: 
   }
 
   return {
-    state: { initialized: true, last: next && next.phase !== "done" ? next : null, checkIns, recallDone },
+    state: { initialized: true, last: next && next.phase !== "done" ? next : null, checkIns, recallDone, hyperfocus },
     events,
   };
 }

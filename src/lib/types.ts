@@ -371,7 +371,8 @@ export type BuddyEventKind =
   | "block-quiz"
   | "break-start"
   | "post-break"
-  | "session-summary";
+  | "session-summary"
+  | "hyperfocus";
 
 // ---------- http proxy ----------
 
