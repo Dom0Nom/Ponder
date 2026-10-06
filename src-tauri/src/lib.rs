@@ -27,6 +27,7 @@ pub fn run() {
         )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .manage(commands::providers::ProviderServices::new())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
@@ -64,6 +65,20 @@ pub fn run() {
             ingest::commands::import_text,
             ingest::commands::reindex_source,
             ingest::commands::search_chunks,
+            commands::providers::list_providers,
+            commands::providers::save_provider,
+            commands::providers::delete_provider,
+            commands::providers::secret_set,
+            commands::providers::secret_has,
+            commands::providers::secret_delete,
+            commands::providers::lan_scan,
+            commands::providers::oauth_chatgpt_start,
+            commands::providers::oauth_xai_device_start,
+            commands::providers::oauth_status,
+            commands::providers::oauth_sign_out,
+            commands::providers::http_stream,
+            commands::providers::http_abort,
+            commands::providers::http_get_text,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
