@@ -61,6 +61,7 @@ mod tests {
             total_focus_ms: 0,
             total_break_ms: 0,
             check_in_mins: 0,
+            energy: Default::default(),
             now: 0,
         }
     }
