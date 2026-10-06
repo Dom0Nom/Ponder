@@ -1,6 +1,6 @@
 import { Command } from "cmdk";
 import * as D from "@radix-ui/react-dialog";
-import { Brain, FilePlus2, FolderSync, Home, MessageSquarePlus, Moon, NotebookPen, Plus, Settings, Timer } from "lucide-react";
+import { Brain, FilePlus2, FolderSync, GraduationCap, Home, ListX, MessageSquarePlus, Moon, NotebookPen, Plus, Settings, Timer } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces, qk, useCaptureStatus } from "../../lib/queries";
 import { formatShortcut } from "../../lib/capture/shortcut";
@@ -71,6 +71,12 @@ export function CommandPalette() {
                 <Command.Item className={item} onSelect={() => run(() => ui.setFocusDialogOpen(true))}>
                   <Timer size={17} className="text-muted" /> {s.palette.startFocus}
                   <span className="ml-auto text-xs text-faint">⌘⇧F</span>
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "review" }))} keywords={["flashcards", "cards", "fsrs", "due"]}>
+                  <GraduationCap size={17} className="text-muted" /> {s.palette.review}
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "review", tab: "mistakes" }))} keywords={["mistakes", "wrong"]}>
+                  <ListX size={17} className="text-muted" /> {s.palette.mistakes}
                 </Command.Item>
                 <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "home" }))}>
                   <Home size={17} className="text-muted" /> {s.palette.goHome}

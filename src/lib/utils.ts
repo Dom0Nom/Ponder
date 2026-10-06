@@ -22,6 +22,14 @@ export function formatMinutes(ms: number): string {
 }
 
 export function relativeTime(ts: number, now = Date.now()): string {
+  if (ts - now > 60_000) {
+    const m = Math.round((ts - now) / 60_000);
+    if (m < 60) return `in ${m} min`;
+    const h = Math.round(m / 60);
+    if (h < 24) return `in ${h} h`;
+    const d = Math.round(h / 24);
+    return d === 1 ? "tomorrow" : `in ${d} days`;
+  }
   const diff = now - ts;
   const min = 60_000;
   if (diff < min) return "just now";

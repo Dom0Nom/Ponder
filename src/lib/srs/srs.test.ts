@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Rating } from "ts-fsrs";
 import { formatInterval, previewIntervals, schedule, toFsrs } from "./scheduler";
-import { addGap, clozeBack, clozeFront, clozeNumbers } from "./cloze";
+import { addGap, clozeBack, clozeFront, clozeFromSelection, clozeNumbers, expandCloze } from "./cloze";
 
 const now = new Date("2026-10-06T10:00:00Z");
 
@@ -55,5 +55,18 @@ describe("cloze", () => {
     const s = t.indexOf("thylakoid");
     expect(addGap(t, s, s + 9)).toBe("Water splits in the {{c1::thylakoid}}.");
     expect(addGap(note, 0, 3)).toContain("{{c3::The}}");
+  });
+});
+
+describe("cloze cards", () => {
+  it("expands one note into one card per gap", () => {
+    const cards = expandCloze<{ kind: string; front: string; data: { cloze?: number } | null }>({ kind: "cloze", front: "{{c1::A}} and {{c2::B}}", data: null });
+    expect(cards.map((c) => c.data?.cloze)).toEqual([1, 2]);
+    expect(expandCloze({ kind: "basic", front: "Q", data: null })).toHaveLength(1);
+  });
+  it("turns a selection into a cloze sentence", () => {
+    const text = "Plants need light. Chlorophyll absorbs red and blue light. Leaves look green.";
+    const s = text.indexOf("Chlorophyll");
+    expect(clozeFromSelection(text, s, s + 11)).toBe("{{c1::Chlorophyll}} absorbs red and blue light.");
   });
 });

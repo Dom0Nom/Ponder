@@ -10,6 +10,7 @@ import { SourcesPane } from "../sources/SourcesPane";
 import { ChatPane } from "../chat/ChatPane";
 import { StudioPane } from "./StudioPane";
 import { SourceViewer } from "../sources/SourceViewer";
+import { AddCardDialog } from "../cards/FlashcardsCard";
 import { cn, relativeTime } from "../../lib/utils";
 
 export function Pane({
@@ -104,6 +105,7 @@ export function SpaceScreen({ spaceId }: { spaceId: string }) {
 
   return (
     <div className="flex h-full gap-3 px-3 pb-3">
+      <AddCardDialog space={space} />
       {panes.sources ? (
         <Pane
           title={s.panes.sources}

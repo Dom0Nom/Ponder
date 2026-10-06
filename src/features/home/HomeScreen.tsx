@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { MoreVertical, Plus, LayoutGrid } from "lucide-react";
+import { GraduationCap, MoreVertical, Plus, LayoutGrid } from "lucide-react";
 import * as DM from "@radix-ui/react-dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
-import { useSpaces, qk } from "../../lib/queries";
+import { useDueCounts, useSpaces, qk } from "../../lib/queries";
 import { api } from "../../lib/ipc";
 import { s } from "../../lib/strings";
 import { relativeTime } from "../../lib/utils";
@@ -47,6 +47,7 @@ export function HomeScreen() {
           )}
         </div>
 
+        <DueBanner />
         {isLoading && (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -143,6 +144,22 @@ function SpaceCard({ space, onEdit, onDelete }: { space: Space; onEdit: () => vo
         {space.recap ?? (space.lastOpenedAt ? `${s.home.lastOpened} ${relativeTime(space.lastOpenedAt)}` : s.home.never)}
       </p>
       <p className="mt-auto text-xs text-faint">{s.home.sources(space.sourceCount)}</p>
+    </div>
+  );
+}
+
+function DueBanner() {
+  const { data } = useDueCounts();
+  const navigate = useUi((st) => st.navigate);
+  const due = (data ?? []).reduce((n, c) => n + c.due + c.new, 0);
+  if (!due) return null;
+  return (
+    <div className="mb-6 flex items-center gap-3 rounded-[var(--radius-card)] bg-accent-soft px-5 py-3.5 text-accent-text" data-testid="due-banner">
+      <GraduationCap size={18} />
+      <p className="flex-1 text-sm font-medium">{s.review.dueBanner(due)}</p>
+      <Button size="sm" variant="primary" onClick={() => navigate({ name: "review" })}>
+        {s.review.start}
+      </Button>
     </div>
   );
 }

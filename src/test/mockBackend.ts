@@ -151,6 +151,16 @@ const defaultScript: Script = ({ messages, body }) => {
   const sysText = typeof sys?.content === "string" ? sys.content : JSON.stringify(sys?.content ?? "");
   const last = messages[messages.length - 1];
   const lastText = typeof last?.content === "string" ? last.content : JSON.stringify(last?.content ?? "");
+  if (/Make \d+ flashcards/i.test(lastText)) {
+    const passage = lastText.match(/\[1\] \([^)]*\)\n([^\n]+)/)?.[1] ?? "Photosynthesis happens in the chloroplasts.";
+    const quote = passage.split(" ").slice(0, 6).join(" ");
+    return {
+      content: JSON.stringify([
+        { type: "basic", front: "Where does photosynthesis happen?", back: "In the chloroplasts", passage: 1, quote },
+        { type: "cloze", text: "Photosynthesis happens in the {{c1::chloroplasts}}.", passage: 1, quote },
+      ]),
+    };
+  }
   if (/multiple-choice quiz/i.test(lastText)) {
     const ids = [...lastText.matchAll(/id \\?"([^"\\]+)\\?"/g)].map((m) => m[1]);
     const per = Number(lastText.match(/write (\d+) question/)?.[1] ?? 1);

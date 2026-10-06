@@ -1,7 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type Route = { name: "home" } | { name: "space"; spaceId: string } | { name: "settings"; section?: string };
+export type Route =
+  | { name: "home" }
+  | { name: "space"; spaceId: string }
+  | { name: "settings"; section?: string }
+  | { name: "review"; spaceId?: string; tab?: "cards" | "mistakes" };
 export type ThemePref = "system" | "light" | "dark";
 export type FontPref = "inter" | "dyslexic";
 

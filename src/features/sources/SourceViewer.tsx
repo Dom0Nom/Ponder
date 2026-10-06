@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useAddCard } from "../cards/FlashcardsCard";
+import { clozeFromSelection } from "../../lib/srs/cloze";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, BookOpenCheck, ExternalLink } from "lucide-react";
+import { ArrowLeft, BookOpenCheck, ExternalLink, Layers } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
@@ -77,6 +79,7 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
               <p className="text-xs font-medium text-muted">{s.sources.summary}</p>
               <p className="mt-1 text-[0.8125rem] leading-relaxed">{source.data.summary ?? s.sources.noSummary}</p>
             </div>
+            <SelectionToCard source={source.data} text={text.data.text} />
             <div className="whitespace-pre-wrap break-words text-[0.875rem] leading-[1.75]" data-testid="source-text">
               {pieces.map((p, i) => (
                 <span key={i}>
@@ -134,5 +137,51 @@ function MakeCourseButton({ source, text }: { source: Source; text: string }) {
         <BookOpenCheck size={14} /> {s.course.make}
       </button>
     </Tooltip>
+  );
+}
+
+/** Floating "Make card" button for text selected in the viewer. */
+function SelectionToCard({ source, text }: { source: Source; text: string }) {
+  const [sel, setSel] = useState<{ text: string; top: number; left: number } | null>(null);
+  const openAdd = useAddCard((st) => st.open);
+  useEffect(() => {
+    const onUp = () => {
+      const s2 = window.getSelection();
+      const str = s2?.toString().trim() ?? "";
+      const container = document.querySelector('[data-testid="source-text"]');
+      if (!s2 || !str || str.length < 2 || str.length > 300 || !container || !s2.anchorNode || !container.contains(s2.anchorNode)) {
+        setSel(null);
+        return;
+      }
+      const rect = s2.getRangeAt(0).getBoundingClientRect();
+      setSel({ text: str, top: rect.top - 40, left: rect.left + rect.width / 2 });
+    };
+    document.addEventListener("mouseup", onUp);
+    return () => document.removeEventListener("mouseup", onUp);
+  }, []);
+  if (!sel) return null;
+  return (
+    <button
+      style={{ position: "fixed", top: Math.max(8, sel.top), left: sel.left, transform: "translateX(-50%)" }}
+      className="z-40 inline-flex items-center gap-1.5 rounded-full bg-fg px-3 py-1.5 text-xs font-medium text-bg shadow-lg"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => {
+        const i = text.indexOf(sel.text);
+        const start = i === -1 ? 0 : i;
+        const end = i === -1 ? 0 : i + sel.text.length;
+        openAdd({
+          spaceId: source.spaceId,
+          kind: "cloze",
+          front: i === -1 ? `{{c1::${sel.text}}}` : clozeFromSelection(text, start, end),
+          sourceId: source.id,
+          chunkStart: i === -1 ? null : start,
+          chunkEnd: i === -1 ? null : end,
+        });
+        window.getSelection()?.removeAllRanges();
+        setSel(null);
+      }}
+    >
+      <Layers size={13} /> {s.cards.makeFromSelection}
+    </button>
   );
 }

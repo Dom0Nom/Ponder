@@ -8,6 +8,7 @@ import { Header } from "./Header";
 import { HomeScreen } from "../features/home/HomeScreen";
 import { SpaceScreen } from "../features/space/SpaceScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
+import { ReviewScreen } from "../features/review/ReviewScreen";
 import { CommandPalette } from "../features/palette/CommandPalette";
 import { FocusLayer } from "../features/focus/FocusLayer";
 import { QuizLayer } from "../features/placement/QuizDialog";
@@ -20,6 +21,7 @@ function Routes() {
   const route = useUi((st) => st.route);
   if (route.name === "space") return <SpaceScreen key={route.spaceId} spaceId={route.spaceId} />;
   if (route.name === "settings") return <SettingsScreen />;
+  if (route.name === "review") return <ReviewScreen spaceId={route.spaceId} tab={route.tab} />;
   return <HomeScreen />;
 }
 

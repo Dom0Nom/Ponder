@@ -8,6 +8,7 @@ import { useUi } from "../../stores/ui";
 import { useFocusStore } from "../../features/focus/focusStore";
 import { generateQuiz, gradeQuiz, pickPlacementTopics, type TopicResult } from "./logic";
 import { curriculumById } from "./curricula";
+import { recordQuizMistakes } from "../srs/mistakes";
 
 const lang = (c: SpaceCurriculum) => curriculumById(c.curriculumId)?.language ?? "en";
 
@@ -58,6 +59,7 @@ export async function runPlacement(space: Space, curriculum: SpaceCurriculum): P
     if (!answers) return null;
     const { score, byTopic } = gradeQuiz(questions, answers);
     await api.assessmentComplete(assessment.id, answers.map((a) => a ?? -1), score);
+    await recordQuizMistakes(space.id, "placement", questions, answers, curriculum.topics);
     for (const r of byTopic) await api.topicLevelSet(space.id, r.topicId, r.level, `${r.correct}/${r.total} in placement`);
     const { strong, weak } = summarizeLevels(byTopic, curriculum.topics);
     const lines = [
@@ -102,6 +104,7 @@ export async function startTopic(space: Space, curriculum: SpaceCurriculum, topi
     if (!answers) return;
     const { score, byTopic } = gradeQuiz(questions, answers);
     await api.assessmentComplete(assessment.id, answers.map((a) => a ?? -1), score);
+    await recordQuizMistakes(space.id, "prerequisite check", questions, answers, curriculum.topics);
     for (const r of byTopic) if (prereqs.some((p) => p.id === r.topicId)) await api.topicLevelSet(space.id, r.topicId, r.level, `${r.correct}/${r.total} in prerequisite check`);
     const missed = questions.filter((q, i) => answers[i] !== q.answer);
     if (score < 2 / 3) teachFirst = missed.map((q) => q.question);
@@ -152,6 +155,7 @@ export async function checkLesson(space: Space, course: Course, lesson: Lesson):
     if (!answers) return null;
     const { score } = gradeQuiz(questions, answers);
     await api.assessmentComplete(assessment.id, answers.map((a) => a ?? -1), score);
+    await recordQuizMistakes(space.id, `lesson: ${lesson.title}`, questions, answers);
     await api.lessonSetStatus(lesson.id, score >= 2 / 3 ? "done" : "doing", score);
     invalidate(space.id);
     return score;
