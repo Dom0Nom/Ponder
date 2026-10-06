@@ -22,8 +22,8 @@ const STAGE_LABEL: Record<ResearchStage, string> = {
   done: "",
 };
 
-export function ResearchPanel({ space, done }: { space: Space; done: () => void }) {
-  const [q, setQ] = useState("");
+export function ResearchPanel({ space, done, initialQuery }: { space: Space; done: () => void; initialQuery?: string }) {
+  const [q, setQ] = useState(initialQuery ?? "");
   const [stage, setStage] = useState<ResearchStage | null>(null);
   const [detail, setDetail] = useState("");
   const [found, setFound] = useState<FoundSource[] | null>(null);

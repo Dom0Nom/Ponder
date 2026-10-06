@@ -154,6 +154,21 @@ impl Ingest {
     }
 }
 
+impl Ingest {
+    /// Blocking: embeds all topics in one batch when the model is ready. Call via spawn_blocking.
+    pub fn coverage(&self, space_id: &str, topics: &[retrieval::TopicInput]) -> AppResult<Vec<retrieval::TopicCoverage>> {
+        let vecs = match self.embedder.current() {
+            Some(m) if !topics.is_empty() => {
+                let texts: Vec<String> = topics.iter().map(|t| t.text.clone()).collect();
+                m.embed(&texts).map_err(|e| log::warn!("topic embedding failed, keyword coverage only: {e}")).ok()
+            }
+            _ => None,
+        };
+        let c = self.db.conn()?;
+        retrieval::coverage(&c, space_id, topics, vecs.as_deref())
+    }
+}
+
 pub fn start(app: &AppHandle, db: Db, data_dir: PathBuf) {
     let handle = app.clone();
     let emit: Emit = Arc::new(move |event: &str, payload: serde_json::Value| {

@@ -70,6 +70,28 @@ export const api = {
   getSettings: () => call<Record<string, unknown>>("get_settings"),
   setSetting: (key: string, value: unknown) => call<void>("set_setting", { key, value }),
 
+  // placement
+  topicCoverage: (spaceId: string, topics: { id: string; text: string }[]) =>
+    call<T.TopicCoverage[]>("topic_coverage", { spaceId, topics }),
+  curriculumGet: (spaceId: string) => call<T.SpaceCurriculum | null>("curriculum_get", { spaceId }),
+  curriculumSet: (spaceId: string, curriculumId: string, title: string, topics: T.TopicRef[]) =>
+    call<T.SpaceCurriculum>("curriculum_set", { spaceId, curriculumId, title, topics }),
+  curriculumClear: (spaceId: string) => call<void>("curriculum_clear", { spaceId }),
+  topicLevels: (spaceId: string) => call<T.TopicLevel[]>("topic_levels", { spaceId }),
+  topicLevelSet: (spaceId: string, topicId: string, level: T.TopicLevelValue, evidence?: string | null) =>
+    call<void>("topic_level_set", { spaceId, topicId, level, evidence: evidence ?? null }),
+  assessmentCreate: (spaceId: string, kind: T.AssessmentKind, topicId: string | null, title: string, questions: T.QuizQuestion[]) =>
+    call<T.Assessment>("assessment_create", { spaceId, kind, topicId, title, questions }),
+  assessmentComplete: (id: string, answers: number[], score: number) =>
+    call<T.Assessment>("assessment_complete", { id, answers, score }),
+  assessmentsList: (spaceId: string) => call<T.Assessment[]>("assessments_list", { spaceId }),
+  coursesList: (spaceId: string) => call<T.Course[]>("courses_list", { spaceId }),
+  courseCreate: (spaceId: string, sourceId: string, title: string, lessons: { title: string; startOffset: number; endOffset: number }[]) =>
+    call<T.Course>("course_create", { spaceId, sourceId, title, lessons }),
+  courseDelete: (id: string) => call<void>("course_delete", { id }),
+  lessonSetStatus: (id: string, status: T.Lesson["status"], score?: number | null) =>
+    call<void>("lesson_set_status", { id, status, score: score ?? null }),
+
   // learner memory
   listMemory: () => call<T.MemoryItem[]>("list_memory"),
   addMemory: (text: string, origin: "user" | "tutor", spaceId?: string | null) =>

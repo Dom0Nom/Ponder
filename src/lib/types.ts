@@ -345,3 +345,81 @@ export interface AppError {
   code: string;
   message: string;
 }
+
+// ---------- placement ----------
+
+export interface TopicRef {
+  id: string;
+  title: string;
+  description: string;
+  group: string;
+  prereqs?: string[];
+}
+
+export interface SpaceCurriculum {
+  spaceId: string;
+  curriculumId: string;
+  title: string;
+  topics: TopicRef[];
+  updatedAt: number;
+}
+
+export type TopicLevelValue = "unknown" | "weak" | "ok" | "strong";
+
+export interface TopicLevel {
+  topicId: string;
+  level: TopicLevelValue;
+  evidence: string | null;
+  updatedAt: number;
+}
+
+export interface TopicCoverage {
+  topicId: string;
+  similarity: number | null;
+  keywordHits: number;
+  best: SearchHit | null;
+}
+
+export interface QuizQuestion {
+  topicId: string | null;
+  question: string;
+  options: string[];
+  answer: number;
+  explanation: string;
+}
+
+export type AssessmentKind = "placement" | "prereq" | "lesson";
+
+export interface Assessment {
+  id: string;
+  spaceId: string;
+  kind: AssessmentKind;
+  topicId: string | null;
+  title: string;
+  questions: QuizQuestion[];
+  answers: number[] | null;
+  score: number | null;
+  createdAt: number;
+  completedAt: number | null;
+}
+
+export interface Lesson {
+  id: string;
+  courseId: string;
+  ord: number;
+  title: string;
+  startOffset: number;
+  endOffset: number;
+  status: "todo" | "doing" | "done";
+  score: number | null;
+  completedAt: number | null;
+}
+
+export interface Course {
+  id: string;
+  spaceId: string;
+  sourceId: string;
+  title: string;
+  createdAt: number;
+  lessons: Lesson[];
+}

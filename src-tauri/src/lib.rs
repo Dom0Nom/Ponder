@@ -5,6 +5,7 @@ mod focus;
 mod ingest;
 mod lan;
 mod oauth;
+mod placement;
 mod proxy;
 mod retrieval;
 mod secrets;
@@ -63,6 +64,18 @@ pub fn run() {
             commands::core::add_journal,
             commands::core::get_settings,
             commands::core::set_setting,
+            placement::curriculum_get,
+            placement::curriculum_set,
+            placement::curriculum_clear,
+            placement::topic_levels,
+            placement::topic_level_set,
+            placement::assessment_create,
+            placement::assessment_complete,
+            placement::assessments_list,
+            placement::courses_list,
+            placement::course_create,
+            placement::course_delete,
+            placement::lesson_set_status,
             commands::core::list_memory,
             commands::core::add_memory,
             commands::core::update_memory,
@@ -72,6 +85,7 @@ pub fn run() {
             ingest::commands::reindex_source,
             ingest::commands::search_chunks,
             ingest::commands::embedder_status,
+            ingest::commands::topic_coverage,
             focus::commands::focus_start,
             focus::commands::focus_state,
             focus::commands::focus_pause,

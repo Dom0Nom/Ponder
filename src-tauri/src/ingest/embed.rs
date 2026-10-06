@@ -342,4 +342,33 @@ mod tests {
         m.embed(&batch).unwrap();
         println!("batch of 16 (~150 tokens each) in {:?}", t.elapsed());
     }
+
+    /// Prints topic-vs-chunk similarities used to pick the coverage thresholds in the UI.
+    #[test]
+    #[ignore]
+    fn real_model_coverage_calibration() {
+        let dir = std::env::var("EMBED_MODEL_DIR").unwrap_or_else(|_| {
+            "/private/tmp/claude-501/-Users-dominic-ai-learning-app/eecc4610-edc5-48b9-b717-507ee1ed0547/scratchpad/probe/m".into()
+        });
+        let m = BertEmbedder::load(Path::new(&dir)).unwrap();
+        let topics = [
+            "Percents: percent of a number, percent change, interest, discounts",
+            "Life science: cells, human body systems, health, genetics and heredity, evolution, ecosystems",
+            "Datenbanken und SQL: ER-Modell, Normalisierung, SELECT, JOIN, GROUP BY, Transaktionen",
+        ];
+        let chunks = [
+            ("percents on-topic", "To find a percent of a number, change the percent to a decimal and multiply. For example, 15% of 80 is 0.15 x 80 = 12. Percent change compares the change to the original amount: if a price rises from $40 to $50, the increase is 10/40 = 25%. A store discount of 20% on a $60 jacket saves $12."),
+            ("geometry same-subject", "The area of a rectangle is length times width. The circumference of a circle is 2 pi r and its area is pi r squared. In a right triangle, the Pythagorean theorem says a squared plus b squared equals c squared."),
+            ("cells on-topic", "All living things are made of cells. The nucleus holds DNA, which carries the genes passed from parents to offspring. Organs such as the heart and lungs work together in body systems, and natural selection explains how populations evolve over generations."),
+            ("physics off-topic", "A force is a push or a pull. Newton's second law says force equals mass times acceleration. Kinetic energy depends on mass and speed, and energy is conserved in a closed system."),
+            ("sql on-topic", "Eine relationale Datenbank speichert Daten in Tabellen. Mit SELECT werden Spalten abgefragt, JOIN verknüpft Tabellen über Fremdschlüssel, und GROUP BY fasst Zeilen für Aggregatfunktionen zusammen. Die Normalisierung vermeidet Redundanzen."),
+            ("cooking unrelated", "Preheat the oven, whisk the eggs with sugar until fluffy, fold in the flour and bake the cake for thirty minutes until golden."),
+        ];
+        let tv = m.embed(&topics.iter().map(|s| s.to_string()).collect::<Vec<_>>()).unwrap();
+        let cv = m.embed(&chunks.iter().map(|c| c.1.to_string()).collect::<Vec<_>>()).unwrap();
+        for (i, t) in topics.iter().enumerate() {
+            let row: Vec<String> = chunks.iter().enumerate().map(|(j, c)| format!("{}={:.2}", c.0, cos(&tv[i], &cv[j]))).collect();
+            println!("{}\n   {}", &t[..t.find(':').unwrap()], row.join("  "));
+        }
+    }
 }

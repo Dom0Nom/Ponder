@@ -10,6 +10,7 @@ import { SpaceScreen } from "../features/space/SpaceScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { CommandPalette } from "../features/palette/CommandPalette";
 import { FocusLayer } from "../features/focus/FocusLayer";
+import { QuizLayer } from "../features/placement/QuizDialog";
 import { useGlobalShortcuts } from "./useGlobalShortcuts";
 import { useBackgroundSync } from "./useBackgroundSync";
 import { useStudyBuddy } from "../features/chat/useStudyBuddy";
@@ -34,6 +35,7 @@ function Shell() {
       </main>
       <CommandPalette />
       <FocusLayer />
+      <QuizLayer />
     </div>
   );
 }

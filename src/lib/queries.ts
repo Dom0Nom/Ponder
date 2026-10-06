@@ -19,6 +19,11 @@ export const qk = {
   providers: ["providers"] as const,
   settings: ["settings"] as const,
   memory: ["memory"] as const,
+  curriculum: (spaceId: string) => ["curriculum", spaceId] as const,
+  levels: (spaceId: string) => ["levels", spaceId] as const,
+  coverage: (spaceId: string) => ["coverage", spaceId] as const,
+  assessments: (spaceId: string) => ["assessments", spaceId] as const,
+  courses: (spaceId: string) => ["courses", spaceId] as const,
   focusHistory: (spaceId: string | null) => ["focusHistory", spaceId] as const,
   parking: (sessionId: string | null) => ["parking", sessionId] as const,
 };
@@ -60,3 +65,7 @@ export function useSetSetting() {
 }
 
 export const useMemory = () => useQuery({ queryKey: qk.memory, queryFn: api.listMemory });
+export const useCurriculum = (spaceId: string) =>
+  useQuery({ queryKey: qk.curriculum(spaceId), queryFn: () => api.curriculumGet(spaceId) });
+export const useLevels = (spaceId: string) => useQuery({ queryKey: qk.levels(spaceId), queryFn: () => api.topicLevels(spaceId) });
+export const useCourses = (spaceId: string) => useQuery({ queryKey: qk.courses(spaceId), queryFn: () => api.coursesList(spaceId) });

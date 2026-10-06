@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, BookOpenCheck, ExternalLink } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import { buildPieces } from "../../lib/sources/pieces";
 import { useUi } from "../../stores/ui";
-import { ErrorState, Skeleton } from "../../components/ui/misc";
+import { ErrorState, Skeleton, Tooltip } from "../../components/ui/misc";
+import { toast, toastError } from "../../components/ui/toast";
+import { detectChapters } from "../../lib/placement/logic";
+import type { Source } from "../../lib/types";
 import { KIND_ICON } from "./SourcesPane";
 
 export function SourceViewer({ target }: { target: { sourceId: string; start?: number; end?: number } }) {
@@ -36,6 +39,7 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
         </button>
         {Icon && <Icon size={16} className="shrink-0 text-muted" />}
         <p className="min-w-0 flex-1 truncate text-sm font-medium">{source.data?.title ?? s.sources.viewerLoading}</p>
+        {source.data && text.data && <MakeCourseButton source={source.data} text={text.data.text} />}
         {source.data?.origin && /^https?:/.test(source.data.origin) && (
           <a
             href={source.data.origin}
@@ -103,5 +107,32 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
         )}
       </div>
     </div>
+  );
+}
+
+function MakeCourseButton({ source, text }: { source: Source; text: string }) {
+  const qc = useQueryClient();
+  const chapters = useMemo(() => detectChapters(text), [text]);
+  if (chapters.length < 2) return null;
+  const make = async () => {
+    try {
+      const course = await api.courseCreate(
+        source.spaceId,
+        source.id,
+        source.title,
+        chapters.map((c) => ({ title: c.title, startOffset: c.start, endOffset: c.end })),
+      );
+      qc.invalidateQueries({ queryKey: qk.courses(source.spaceId) });
+      toast.success(s.course.created(course.lessons.length));
+    } catch (e) {
+      toastError(s.errors.generic, e, make);
+    }
+  };
+  return (
+    <Tooltip content={s.course.makeHelp}>
+      <button onClick={make} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-accent-text hover:bg-accent-soft">
+        <BookOpenCheck size={14} /> {s.course.make}
+      </button>
+    </Tooltip>
   );
 }

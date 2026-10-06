@@ -13,7 +13,7 @@ interface UiState {
   panes: { sources: boolean; studio: boolean };
   paletteOpen: boolean;
   focusDialogOpen: boolean;
-  importDialog: { open: boolean; tab?: string };
+  importDialog: { open: boolean; tab?: string; query?: string };
   /** active thread per space */
   activeThread: Record<string, string>;
   /** source viewer target */
@@ -28,7 +28,7 @@ interface UiState {
   togglePane: (p: "sources" | "studio") => void;
   setPaletteOpen: (o: boolean) => void;
   setFocusDialogOpen: (o: boolean) => void;
-  setImportDialog: (d: { open: boolean; tab?: string }) => void;
+  setImportDialog: (d: { open: boolean; tab?: string; query?: string }) => void;
   setActiveThread: (spaceId: string, threadId: string) => void;
   openViewer: (v: { sourceId: string; start?: number; end?: number } | null) => void;
 }

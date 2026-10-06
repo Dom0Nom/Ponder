@@ -47,3 +47,15 @@ pub async fn search_chunks(
 pub async fn embedder_status(state: State<'_, Ingest>) -> AppResult<EmbedderStatus> {
     Ok(state.embedder.status())
 }
+
+#[tauri::command]
+pub async fn topic_coverage(
+    state: State<'_, Ingest>,
+    space_id: String,
+    topics: Vec<crate::retrieval::TopicInput>,
+) -> AppResult<Vec<crate::retrieval::TopicCoverage>> {
+    let ingest = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || ingest.coverage(&space_id, &topics))
+        .await
+        .map_err(|e| crate::error::AppError::Other(e.to_string()))?
+}

@@ -1,6 +1,7 @@
 //! Hybrid search: FTS5 bm25 + sqlite-vec KNN, fused with Reciprocal Rank Fusion.
 
 use crate::error::AppResult;
+use rusqlite::OptionalExtension;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -133,6 +134,87 @@ pub fn search(
     Ok(hits)
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TopicInput {
+    pub id: String,
+    pub text: String,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TopicCoverage {
+    pub topic_id: String,
+    /// cosine similarity of the closest chunk (None without embeddings)
+    pub similarity: Option<f64>,
+    /// chunks containing every significant word of the topic
+    pub keyword_hits: i64,
+    pub best: Option<SearchHit>,
+}
+
+/// Every word token quoted and AND-ed, for "does the space mention all of these" counts.
+fn fts_all_words(q: &str) -> Option<String> {
+    let toks: Vec<String> = q
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|t| t.chars().count() >= 4)
+        .take(8)
+        .map(|t| format!("\"{t}\""))
+        .collect();
+    (!toks.is_empty()).then(|| toks.join(" AND "))
+}
+
+/// How well each topic is covered by the space's ready sources, regardless of "use in chat".
+pub fn coverage(
+    c: &Connection,
+    space_id: &str,
+    topics: &[TopicInput],
+    vectors: Option<&[Vec<f32>]>,
+) -> AppResult<Vec<TopicCoverage>> {
+    let mut knn = c.prepare_cached(
+        "SELECT chunk_id, distance FROM vec_chunks WHERE embedding MATCH ?1 AND k = 1 AND space_id = ?2",
+    )?;
+    let mut count = c.prepare_cached(
+        "SELECT count(*) FROM chunks_fts f JOIN chunks c ON c.id = f.rowid WHERE chunks_fts MATCH ?1 AND c.space_id = ?2",
+    )?;
+    let mut chunk = c.prepare_cached(
+        "SELECT c.source_id, s.title, c.text, c.start_offset, c.end_offset, c.page
+         FROM chunks c JOIN sources s ON s.id = c.source_id WHERE c.id = ?1",
+    )?;
+    let mut out = Vec::with_capacity(topics.len());
+    for (i, t) in topics.iter().enumerate() {
+        let keyword_hits: i64 = match fts_all_words(&t.text) {
+            Some(q) => count.query_row(params![q, space_id], |r| r.get(0)).unwrap_or(0),
+            None => 0,
+        };
+        let mut similarity = None;
+        let mut best = None;
+        if let Some(v) = vectors.and_then(|vs| vs.get(i)) {
+            let hit: Option<(i64, f64)> = knn
+                .query_row(params![vec_blob(v), space_id], |r| Ok((r.get(0)?, r.get(1)?)))
+                .optional()?;
+            if let Some((id, dist)) = hit {
+                similarity = Some(1.0 - dist);
+                best = chunk
+                    .query_row([id], |r| {
+                        Ok(SearchHit {
+                            chunk_id: id,
+                            source_id: r.get(0)?,
+                            source_title: r.get(1)?,
+                            text: r.get(2)?,
+                            start: r.get(3)?,
+                            end: r.get(4)?,
+                            page: r.get(5)?,
+                            score: 1.0 - dist,
+                        })
+                    })
+                    .optional()?;
+            }
+        }
+        out.push(TopicCoverage { topic_id: t.id.clone(), similarity, keyword_hits, best });
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -259,5 +341,28 @@ mod tests {
         assert_eq!(count(&c, "SELECT count(*) FROM chunks_fts WHERE chunks_fts MATCH 'chlorophyll'", []), 0);
         assert_eq!(count(&c, "SELECT count(*) FROM vec_chunks", []), 0);
         assert!(search(&c, &a, "chlorophyll", Some(&fake_vector("chlorophyll")), 8, None).unwrap().is_empty());
+    }
+
+    #[test]
+    fn coverage_scores_topics_against_the_space() {
+        let (db, _d, mut w) = setup();
+        let sp = space(&db, "Bio");
+        let other = space(&db, "Other");
+        add(&db, &mut w, &sp, "Notes", "Photosynthesis converts light energy in chloroplasts.\n\nGlycolysis splits glucose in the cytoplasm.");
+        add(&db, &mut w, &other, "Tax", "Income tax brackets and deductions.");
+        let topics = vec![
+            TopicInput { id: "photo".into(), text: "photosynthesis chloroplasts light".into() },
+            TopicInput { id: "tax".into(), text: "income tax deductions".into() },
+        ];
+        let vecs: Vec<Vec<f32>> = topics.iter().map(|t| fake_vector(&t.text)).collect();
+        let c = db.conn().unwrap();
+        let cov = coverage(&c, &sp, &topics, Some(&vecs)).unwrap();
+        assert_eq!(cov[0].topic_id, "photo");
+        assert!(cov[0].keyword_hits >= 1);
+        assert!(cov[0].similarity.unwrap() > cov[1].similarity.unwrap_or(0.0));
+        assert_eq!(cov[0].best.as_ref().unwrap().source_title, "Notes");
+        assert_eq!(cov[1].keyword_hits, 0, "other space's chunks must not count");
+        let no_vec = coverage(&c, &sp, &topics, None).unwrap();
+        assert!(no_vec[0].similarity.is_none() && no_vec[0].keyword_hits >= 1);
     }
 }

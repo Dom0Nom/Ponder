@@ -11,6 +11,8 @@ import { SPACE_COLORS, SPACE_ICONS } from "../../lib/spaceStyle";
 import type { Space } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
+import { CURRICULA, curriculumById } from "../../lib/placement/curricula";
+import { runPlacement } from "../../lib/placement/flows";
 
 export function SpaceDialog({
   open,
@@ -25,6 +27,7 @@ export function SpaceDialog({
   const [icon, setIcon] = useState(space?.icon ?? "book");
   const [color, setColor] = useState(space?.color ?? "blue");
   const [busy, setBusy] = useState(false);
+  const [curriculum, setCurriculum] = useState("");
   const qc = useQueryClient();
   const navigate = useUi((st) => st.navigate);
 
@@ -33,6 +36,7 @@ export function SpaceDialog({
       setName(space?.name ?? "");
       setIcon(space?.icon ?? "book");
       setColor(space?.color ?? "blue");
+      setCurriculum("");
     }
   }, [open, space]);
 
@@ -46,8 +50,19 @@ export function SpaceDialog({
         toast.success(s.space.saved);
       } else {
         const created = await api.createSpace({ name, icon, color });
-        toast.success(s.space.created);
         navigate({ name: "space", spaceId: created.id });
+        const cur = curriculumById(curriculum);
+        if (cur) {
+          const sc = await api.curriculumSet(created.id, cur.id, cur.title, cur.topics);
+          toast.success(s.space.created, {
+            description: s.plan.placementPrompt,
+            duration: 15000,
+            action: {
+              label: s.plan.placement,
+              onClick: () => runPlacement(created, sc).catch((e) => toastError(s.errors.generic, e)),
+            },
+          });
+        } else toast.success(s.space.created);
       }
       qc.invalidateQueries({ queryKey: qk.spaces });
       onOpenChange(false);
@@ -92,6 +107,24 @@ export function SpaceDialog({
             onChange={(e) => setName(e.target.value)}
           />
         </div>
+        {!space && (
+          <div>
+            <Label htmlFor="space-curriculum">{s.space.curriculum}</Label>
+            <select
+              id="space-curriculum"
+              value={curriculum}
+              onChange={(e) => setCurriculum(e.target.value)}
+              className="h-10 w-full rounded-xl border border-border bg-surface px-3 text-sm"
+            >
+              <option value="">{s.space.noCurriculum}</option>
+              {CURRICULA.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div>
           <Label>{s.space.icon}</Label>
           <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={s.space.icon}>

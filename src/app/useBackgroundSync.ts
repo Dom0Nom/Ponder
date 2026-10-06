@@ -14,7 +14,10 @@ export function useBackgroundSync() {
         qc.setQueryData<Source[]>(qk.sources(src.spaceId), (old) =>
           old ? (old.some((x) => x.id === src.id) ? old.map((x) => (x.id === src.id ? src : x)) : [src, ...old]) : old,
         );
-        if (src.status !== "processing") qc.invalidateQueries({ queryKey: qk.spaces });
+        if (src.status !== "processing") {
+          qc.invalidateQueries({ queryKey: qk.spaces });
+          qc.invalidateQueries({ queryKey: qk.coverage(src.spaceId) });
+        }
       }),
       events.focusRequest(() => useUi.getState().setFocusDialogOpen(true)),
     ];

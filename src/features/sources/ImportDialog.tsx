@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useUi } from "../../stores/ui";
 import * as Tabs from "@radix-ui/react-tabs";
 import { useQueryClient } from "@tanstack/react-query";
 import { FileUp, Globe, Sparkles, StickyNote, SquarePlay } from "lucide-react";
@@ -36,6 +37,10 @@ export function ImportDialog({
   initialTab?: string;
 }) {
   const [tab, setTab] = useState(initialTab ?? "file");
+  const query = useUi((st) => st.importDialog.query);
+  useEffect(() => {
+    if (open) setTab(initialTab ?? "file");
+  }, [open, initialTab]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title={s.sources.importTitle} className="w-[min(680px,calc(100vw-32px))]">
       <Tabs.Root value={tab} onValueChange={setTab}>
@@ -63,7 +68,7 @@ export function ImportDialog({
           <UrlTab space={space} kind="youtube" done={() => onOpenChange(false)} />
         </Tabs.Content>
         <Tabs.Content value="research">
-          <ResearchPanel space={space} done={() => onOpenChange(false)} />
+          <ResearchPanel key={query ?? ""} space={space} initialQuery={query} done={() => onOpenChange(false)} />
         </Tabs.Content>
       </Tabs.Root>
     </Dialog>

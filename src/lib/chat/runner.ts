@@ -22,6 +22,8 @@ export interface TurnInput {
   instruction?: string;
   meta?: MessageMeta;
   llm?: ResolvedModel;
+  /** extra system context, e.g. the chapter being studied */
+  systemExtra?: string;
   /** false when retrying: the user message is already saved */
   persistUser?: boolean;
 }
@@ -91,6 +93,7 @@ export async function runTurn(input: TurnInput): Promise<Message> {
   const memory = await api.listMemory().catch(() => []);
   const system = buildSystemPrompt({
     memory: memory.map((m) => m.text),
+    extraInstructions: input.systemExtra,
     space,
     tutorStyle: input.tutorStyle,
     passages: passagesFrom(hits),

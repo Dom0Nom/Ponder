@@ -36,6 +36,10 @@ interface DB {
   focusEvents: T.FocusEvent[];
   parking: Row<T.ParkingItem>;
   memory: Row<T.MemoryItem>;
+  curricula: Row<T.SpaceCurriculum>;
+  levels: Record<string, Row<T.TopicLevel>>;
+  assessments: Row<T.Assessment>;
+  courses: Row<T.Course>;
   nextId: number;
   clockOffset: number;
 }
@@ -85,6 +89,10 @@ function emptyDb(): DB {
     focusEvents: [],
     parking: {},
     memory: {},
+    curricula: {},
+    levels: {},
+    assessments: {},
+    courses: {},
     nextId: 1,
     clockOffset: 0,
   };
@@ -131,6 +139,20 @@ const defaultScript: Script = ({ messages, body }) => {
   const sysText = typeof sys?.content === "string" ? sys.content : JSON.stringify(sys?.content ?? "");
   const last = messages[messages.length - 1];
   const lastText = typeof last?.content === "string" ? last.content : JSON.stringify(last?.content ?? "");
+  if (/multiple-choice quiz/i.test(lastText)) {
+    const ids = [...lastText.matchAll(/id \\?"([^"\\]+)\\?"/g)].map((m) => m[1]);
+    const per = Number(lastText.match(/write (\d+) question/)?.[1] ?? 1);
+    const qs = ids.flatMap((tid) =>
+      Array.from({ length: per }, (_, k) => ({
+        topicId: tid,
+        question: `Question ${k + 1} about ${tid}?`,
+        options: ["Correct answer", "Wrong A", "Wrong B", "Wrong C"],
+        answer: 0,
+        explanation: "Because it's the correct one.",
+      })),
+    );
+    return { content: JSON.stringify(qs) };
+  }
   if (/strict fact-checker/i.test(lastText)) {
     return {
       content: JSON.stringify([
@@ -791,6 +813,96 @@ const handlers: Record<string, (a: Args) => unknown> = {
     db.journal[j.id] = j;
     save();
     return j;
+  },
+  topic_coverage: (a) => {
+    const topics = a.topics as { id: string; text: string }[];
+    return topics.map((tp) => {
+      const hits = search(a.spaceId as string, tp.text, 1, null);
+      const words = tp.text.toLowerCase().split(/\W+/).filter((w) => w.length > 3);
+      const best = hits[0] ?? null;
+      const matched = best ? words.filter((w) => best.text.toLowerCase().includes(w)).length : 0;
+      const similarity = best ? Math.min(0.9, 0.2 + matched * 0.12) : null;
+      return { topicId: tp.id, similarity, keywordHits: matched >= 2 ? 1 : 0, best };
+    });
+  },
+  curriculum_get: (a) => db.curricula[a.spaceId as string] ?? null,
+  curriculum_set: (a) => {
+    const topics = a.topics as T.TopicRef[];
+    if (!topics?.length) err("invalid", "A curriculum needs at least one topic");
+    const c: T.SpaceCurriculum = { spaceId: a.spaceId as string, curriculumId: a.curriculumId as string, title: a.title as string, topics, updatedAt: now() };
+    db.curricula[c.spaceId] = c;
+    save();
+    return c;
+  },
+  curriculum_clear: (a) => {
+    delete db.curricula[a.spaceId as string];
+    save();
+    return null;
+  },
+  topic_levels: (a) => Object.values(db.levels[a.spaceId as string] ?? {}),
+  topic_level_set: (a) => {
+    const sp = (db.levels[a.spaceId as string] ??= {});
+    sp[a.topicId as string] = { topicId: a.topicId as string, level: a.level as T.TopicLevelValue, evidence: (a.evidence as string) ?? null, updatedAt: now() };
+    save();
+    return null;
+  },
+  assessment_create: (a) => {
+    const x: T.Assessment = {
+      id: id(),
+      spaceId: a.spaceId as string,
+      kind: a.kind as T.AssessmentKind,
+      topicId: (a.topicId as string) ?? null,
+      title: a.title as string,
+      questions: a.questions as T.QuizQuestion[],
+      answers: null,
+      score: null,
+      createdAt: now(),
+      completedAt: null,
+    };
+    db.assessments[x.id] = x;
+    save();
+    return x;
+  },
+  assessment_complete: (a) => {
+    const x = db.assessments[a.id as string] ?? err("not_found", "assessment not found");
+    Object.assign(x, { answers: a.answers, score: a.score, completedAt: now() });
+    save();
+    return x;
+  },
+  assessments_list: (a) => Object.values(db.assessments).filter((x) => x.spaceId === a.spaceId),
+  courses_list: (a) => Object.values(db.courses).filter((c) => c.spaceId === a.spaceId),
+  course_create: (a) => {
+    const lessons = a.lessons as { title: string; startOffset: number; endOffset: number }[];
+    if (!lessons?.length) err("invalid", "No chapters found in this source");
+    const cid = id();
+    const c: T.Course = {
+      id: cid,
+      spaceId: a.spaceId as string,
+      sourceId: a.sourceId as string,
+      title: a.title as string,
+      createdAt: now(),
+      lessons: lessons.map((l, i) => ({ id: id(), courseId: cid, ord: i, title: l.title, startOffset: l.startOffset, endOffset: l.endOffset, status: "todo", score: null, completedAt: null })),
+    };
+    db.courses[cid] = c;
+    save();
+    return c;
+  },
+  course_delete: (a) => {
+    delete db.courses[a.id as string];
+    save();
+    return null;
+  },
+  lesson_set_status: (a) => {
+    for (const c of Object.values(db.courses)) {
+      const l = c.lessons.find((x) => x.id === a.id);
+      if (l) {
+        l.status = a.status as T.Lesson["status"];
+        if (a.score != null) l.score = a.score as number;
+        l.completedAt = l.status === "done" ? now() : null;
+      }
+    }
+    save();
+    return null;
   },
   list_memory: () => Object.values(db.memory).sort((a, b) => b.createdAt - a.createdAt),
   add_memory: (a) => {
