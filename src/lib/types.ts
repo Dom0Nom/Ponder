@@ -95,6 +95,8 @@ export interface MessageMeta {
   buddyKind?: BuddyEventKind;
   focus?: FocusState | null;
   thinking?: boolean;
+  stopped?: boolean;
+  retrievalError?: string;
 }
 
 export interface Message {

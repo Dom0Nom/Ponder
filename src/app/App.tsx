@@ -12,6 +12,7 @@ import { CommandPalette } from "../features/palette/CommandPalette";
 import { FocusLayer } from "../features/focus/FocusLayer";
 import { useGlobalShortcuts } from "./useGlobalShortcuts";
 import { useBackgroundSync } from "./useBackgroundSync";
+import { useStudyBuddy } from "../features/chat/useStudyBuddy";
 
 function Routes() {
   const route = useUi((st) => st.route);
@@ -24,6 +25,7 @@ function Shell() {
   useApplyAppearance();
   useGlobalShortcuts();
   useBackgroundSync();
+  useStudyBuddy();
   return (
     <div className="flex h-full flex-col">
       <Header />

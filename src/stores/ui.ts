@@ -18,6 +18,9 @@ interface UiState {
   activeThread: Record<string, string>;
   /** source viewer target */
   viewer: { sourceId: string; start?: number; end?: number } | null;
+  /** model "thinking" in chat; off by default because local reasoning models get slow */
+  thinking: boolean;
+  setThinking: (t: boolean) => void;
   navigate: (r: Route) => void;
   setTheme: (t: ThemePref) => void;
   setFont: (f: FontPref) => void;
@@ -43,6 +46,8 @@ export const useUi = create<UiState>()(
       importDialog: { open: false },
       activeThread: {},
       viewer: null,
+      thinking: false,
+      setThinking: (thinking) => set({ thinking }),
       navigate: (route) => set({ route, viewer: null }),
       setTheme: (theme) => set({ theme }),
       setFont: (font) => set({ font }),
@@ -53,7 +58,8 @@ export const useUi = create<UiState>()(
       setImportDialog: (importDialog) => set({ importDialog }),
       setActiveThread: (spaceId, threadId) =>
         set((st) => ({ activeThread: { ...st.activeThread, [spaceId]: threadId } })),
-      openViewer: (viewer) => set({ viewer }),
+      openViewer: (viewer) =>
+        set((st) => ({ viewer, panes: viewer ? { ...st.panes, sources: true } : st.panes })),
     }),
     {
       name: "ui",
@@ -64,6 +70,7 @@ export const useUi = create<UiState>()(
         textScale: st.textScale,
         panes: st.panes,
         activeThread: st.activeThread,
+        thinking: st.thinking,
       }),
     },
   ),
