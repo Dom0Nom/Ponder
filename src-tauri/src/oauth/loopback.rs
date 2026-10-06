@@ -36,6 +36,14 @@ impl Loopback {
         Ok(Self { listener, port })
     }
 
+    /// Fixed port, for services that only accept a pre-registered exact redirect URI.
+    pub async fn bind_port(port: u16) -> AppResult<Self> {
+        let listener = TcpListener::bind(("127.0.0.1", port)).await.map_err(|e| {
+            AppError::Other(format!("Couldn't listen on 127.0.0.1:{port} for the sign-in redirect ({e}). Close the app using it and try again."))
+        })?;
+        Ok(Self { listener, port })
+    }
+
     pub fn redirect_uri(&self) -> String {
         format!("http://127.0.0.1:{}{}", self.port, CALLBACK_PATH)
     }
@@ -174,6 +182,13 @@ mod tests {
         assert_eq!(resp.status(), 200);
         assert!(resp.text().await.unwrap().contains("You can close this window"));
         assert_eq!(task.await.unwrap().unwrap().code, "c0de");
+    }
+
+    #[tokio::test]
+    async fn fixed_port_reports_busy_port() {
+        let lb = Loopback::bind().await.unwrap();
+        let e = Loopback::bind_port(lb.port).await.err().unwrap();
+        assert!(e.to_string().contains(&lb.port.to_string()));
     }
 
     #[tokio::test]

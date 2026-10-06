@@ -1,4 +1,5 @@
 mod capture;
+mod cloud;
 mod commands;
 mod db;
 mod error;
@@ -34,6 +35,7 @@ pub fn run() {
         .plugin(capture::plugin())
         .on_window_event(focus::on_window_event)
         .manage(commands::providers::ProviderServices::new())
+        .manage(std::sync::Arc::new(cloud::CloudServices::new(std::sync::Arc::new(secrets::Keychain))))
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
@@ -123,6 +125,12 @@ pub fn run() {
             commands::providers::http_stream,
             commands::providers::http_abort,
             commands::providers::http_get_text,
+            cloud::commands::cloud_status,
+            cloud::commands::cloud_set_client,
+            cloud::commands::cloud_connect,
+            cloud::commands::cloud_disconnect,
+            cloud::commands::cloud_list,
+            cloud::commands::cloud_import,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

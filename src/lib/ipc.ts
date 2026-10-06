@@ -128,6 +128,17 @@ export const api = {
   oauthStatus: (providerId: string) => call<T.OAuthStatus>("oauth_status", { providerId }),
   oauthSignOut: (providerId: string) => call<void>("oauth_sign_out", { providerId }),
 
+  // cloud imports
+  cloudStatus: (service: T.CloudService) => call<T.CloudStatus>("cloud_status", { service }),
+  cloudSetClient: (service: T.CloudService, clientId: string, clientSecret?: string | null) =>
+    call<T.CloudStatus>("cloud_set_client", { service, clientId, clientSecret: clientSecret ?? null }),
+  cloudConnect: (service: T.CloudService) => call<{ authUrl: string }>("cloud_connect", { service }),
+  cloudDisconnect: (service: T.CloudService) => call<T.CloudStatus>("cloud_disconnect", { service }),
+  cloudList: (service: T.CloudService, folder: string | null, query?: string | null, pageToken?: string | null) =>
+    call<T.CloudPage>("cloud_list", { service, folder, query: query ?? null, pageToken: pageToken ?? null }),
+  cloudImport: (service: T.CloudService, spaceId: string, items: T.CloudItem[]) =>
+    call<T.CloudImportResult>("cloud_import", { service, spaceId, items }),
+
   // http proxy
   httpStream: (request: T.ProxyRequest, onEvent: Channel<T.ProxyEvent>) =>
     call<void>("http_stream", { request, onEvent }),
@@ -164,6 +175,8 @@ export const events = {
     listen<T.FocusTransition>("focus://transition", (e) => cb(e.payload)),
   oauthStatus: (cb: (s: T.OAuthStatus) => void) =>
     listen<T.OAuthStatus>("oauth://status", (e) => cb(e.payload)),
+  cloudStatus: (cb: (s: T.CloudStatus) => void) =>
+    listen<T.CloudStatus>("cloud://status", (e) => cb(e.payload)),
   /** tray menu "Start focus session" */
   focusRequest: (cb: () => void) => listen("focus://request-start", () => cb()),
   watchUpdated: (cb: (e: { id: string; spaceId: string }) => void) =>

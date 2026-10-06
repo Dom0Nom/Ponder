@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useUi } from "../../stores/ui";
 import * as Tabs from "@radix-ui/react-tabs";
 import { useQueryClient } from "@tanstack/react-query";
-import { FileUp, Globe, Sparkles, StickyNote, SquarePlay } from "lucide-react";
+import { Cloud, FileUp, Globe, HardDrive, Sparkles, StickyNote, SquarePlay } from "lucide-react";
 import { qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Space } from "../../lib/types";
@@ -16,12 +16,15 @@ import { normalizeUrl, webImporter } from "../../lib/importers/web";
 import { isYouTubeUrl, youtubeImporter } from "../../lib/importers/youtube";
 import { proxyHttp } from "../../lib/importers/http";
 import { ResearchPanel } from "./ResearchPanel";
+import { CloudTab } from "./CloudTab";
 
 const TABS = [
   { id: "file", label: s.sources.tabs.file, icon: FileUp },
   { id: "paste", label: s.sources.tabs.paste, icon: StickyNote },
   { id: "url", label: s.sources.tabs.url, icon: Globe },
   { id: "youtube", label: s.sources.tabs.youtube, icon: SquarePlay },
+  { id: "gdrive", label: s.sources.tabs.gdrive, icon: HardDrive },
+  { id: "dropbox", label: s.sources.tabs.dropbox, icon: Cloud },
   { id: "research", label: s.sources.tabs.research, icon: Sparkles },
 ] as const;
 
@@ -66,6 +69,12 @@ export function ImportDialog({
         </Tabs.Content>
         <Tabs.Content value="youtube">
           <UrlTab space={space} kind="youtube" done={() => onOpenChange(false)} />
+        </Tabs.Content>
+        <Tabs.Content value="gdrive">
+          <CloudTab service="google" space={space} done={() => onOpenChange(false)} />
+        </Tabs.Content>
+        <Tabs.Content value="dropbox">
+          <CloudTab service="dropbox" space={space} done={() => onOpenChange(false)} />
         </Tabs.Content>
         <Tabs.Content value="research">
           <ResearchPanel key={query ?? ""} space={space} initialQuery={query} done={() => onOpenChange(false)} />

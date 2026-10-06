@@ -5,6 +5,7 @@ import { ProvidersSection } from "./ProvidersSection";
 import { ModelPicker } from "./ModelPicker";
 import { MemorySection } from "./MemorySection";
 import { CaptureSection } from "./CaptureSection";
+import { CloudSection } from "./CloudSection";
 import { useEffect } from "react";
 import { useSettings, useSetSetting } from "../../lib/queries";
 import type { ModelRef } from "../../lib/types";
@@ -90,6 +91,9 @@ export function SettingsScreen() {
         </Section>
         <Section title={s.settings.providers} body={s.settings.providersBody}>
           <ProvidersSection />
+        </Section>
+        <Section id="settings-cloud" title={s.cloud.sectionTitle} body={s.cloud.sectionBody}>
+          <CloudSection />
         </Section>
       </div>
     </div>

@@ -225,6 +225,44 @@ export interface DeviceCodeStart {
   expiresIn: number;
 }
 
+// ---------- cloud imports ----------
+
+export type CloudService = "google" | "dropbox";
+
+export interface CloudStatus {
+  service: CloudService;
+  configured: boolean;
+  clientId: string | null;
+  hasSecret: boolean;
+  state: "signedOut" | "pending" | "signedIn" | "error";
+  account: string | null;
+  error: string | null;
+  /** exact redirect URI to register (Dropbox) */
+  redirectUri: string | null;
+}
+
+/** `id` is the Drive file id or the Dropbox path. */
+export interface CloudItem {
+  id: string;
+  name: string;
+  folder: boolean;
+  mimeType: string | null;
+  size: number | null;
+  /** RFC 3339 */
+  modified: string | null;
+  supported: boolean;
+}
+
+export interface CloudPage {
+  items: CloudItem[];
+  nextPageToken: string | null;
+}
+
+export interface CloudImportResult {
+  sources: Source[];
+  failures: { name: string; error: string }[];
+}
+
 // ---------- focus ----------
 
 export type FocusTechnique = "pomodoro" | "52-17" | "flowtime" | "timebox" | "custom";
