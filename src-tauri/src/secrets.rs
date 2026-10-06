@@ -105,4 +105,18 @@ mod tests {
         assert!(s.get("oauth:p").unwrap().is_none());
         assert!(s.get("q").unwrap().is_some());
     }
+
+    /// Touches the real OS keychain; run with `cargo test -- --ignored keychain`.
+    #[test]
+    #[ignore]
+    fn real_keychain_roundtrip() {
+        let kc = Keychain;
+        let account = "test:keychain-roundtrip";
+        kc.delete(account).unwrap();
+        assert_eq!(kc.get(account).unwrap(), None);
+        kc.set(account, "sk-test-value").unwrap();
+        assert_eq!(kc.get(account).unwrap().as_deref(), Some("sk-test-value"));
+        kc.delete(account).unwrap();
+        assert_eq!(kc.get(account).unwrap(), None);
+    }
 }

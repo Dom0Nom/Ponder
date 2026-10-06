@@ -11,7 +11,12 @@ Local-first AI learning desktop app (Tauri 2 + React + TS). Specs: `docs/SPEC.md
 - `bun run typecheck` — `tsc --noEmit`
 - `bun run test` — Vitest (TS logic)
 - `bun run e2e` — Playwright against Vite + mocked IPC (starts the dev server itself)
-- `cd src-tauri && cargo test` — Rust logic. Some tests hit the network/model and are `#[ignore]`; run with `cargo test -- --ignored`.
+- `cd src-tauri && cargo test` — Rust logic. Some tests hit the network/model/keychain and are `#[ignore]`; run with `cargo test -- --ignored`.
+- `bun scripts/e2e-lmstudio.ts`, `bun scripts/e2e-research.ts` — live checks against LM Studio and real web services (no app needed).
+
+## Checking the real app
+
+Tauri WebDriver doesn't work on macOS. Run `bun run tauri dev`, then screenshot the native window (`screencapture -l <windowId>`; window id via CGWindowList). For clicks use real mouse events (CGEvent), not AppleScript `click at` (it doesn't focus web inputs). Don't drive the UI while the user may be using the Mac.
 
 ## Layout
 
@@ -19,7 +24,8 @@ Local-first AI learning desktop app (Tauri 2 + React + TS). Specs: `docs/SPEC.md
 - `src/features/<area>/` — screens and components per area; `src/components/ui/` — restyled Radix primitives
 - `src/stores/ui.ts` — Zustand UI state (route, theme, panes, dialogs)
 - `src/test/mockBackend.ts` — in-memory implementation of all commands; used automatically when not running inside Tauri. `window.__mock` has test hooks (`advance(ms)`, `setScript`, `seedProvider`, `reset`).
-- `src-tauri/src/` — `db/` (schema + models), `commands/`, `ingest/`, `retrieval`, `focus/`, `proxy.rs`, `secrets.rs`, `oauth/`, `lan.rs`
+- `src-tauri/src/` — `db/` (schema + numbered migrations + models), `commands/`, `ingest/`, `retrieval.rs`, `focus/`, `proxy.rs`, `secrets.rs`, `oauth/`, `lan.rs`
+- New DB tables: add a numbered `.sql` file in `src-tauri/src/db/` and append it to `MIGRATIONS`; never edit an existing migration.
 
 ## Conventions
 
