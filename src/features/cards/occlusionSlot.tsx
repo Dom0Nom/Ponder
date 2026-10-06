@@ -6,6 +6,6 @@ export function OcclusionSlot({ card, revealed }: { card: Card; revealed: boolea
   return <OcclusionCardView card={card} revealed={revealed} />;
 }
 
-export function OcclusionButtonSlot({ spaceId }: { spaceId: string }) {
-  return <OcclusionEditorButton spaceId={spaceId} variant="ghost" size="sm" />;
+export function OcclusionButtonSlot({ spaceId, className }: { spaceId: string; className?: string }) {
+  return <OcclusionEditorButton spaceId={spaceId} variant="ghost" size="sm" className={className} />;
 }

@@ -83,41 +83,65 @@ export async function searchAll(queries: string[], deps: ResearchDeps, language 
 
 interface Rating {
   i: number;
+  about?: string;
+  answers?: boolean;
   summary?: string;
   credibility?: number;
   relevance?: number;
 }
 
-export async function rank(question: string, pages: (SearchResult & { markdown: string; title: string })[], deps: ResearchDeps): Promise<FoundSource[]> {
+export const MIN_RELEVANCE = 55;
+
+type Page = SearchResult & { markdown: string; title: string };
+
+export function rankPrompt(question: string, batch: Page[]): string {
+  const listing = batch
+    .map((p, i) => `### ${i}\nTitle: ${p.title}\nURL: ${p.url}\nText:\n${p.markdown.slice(0, 1500)}`)
+    .join("\n\n");
+  return `The learner's question: "${question}".
+Judge each page against this exact question, using the page text only (ignore which search query found it).
+- about: a few words naming what the page is actually about.
+- answers: true only if someone asking the question would learn the answer, or a direct building block of it, from this page.
+- relevance (0-100): 90-100 directly teaches what the question asks; 60-85 covers the question's topic well but less directly; 30-55 same broad field, different topic; 0-25 a different subject that only shares words (e.g. a physics paper for a biology question, or a paper using the same term in another sense). A rigorous paper on a different topic is still low relevance.
+- credibility (0-100): trustworthiness of publisher and content (encyclopedias, universities, textbooks, peer-reviewed papers high; content farms, forums, ads low).
+- summary: one or two sentences on what the page teaches.
+
+${listing}
+
+Return JSON only: [{"i": 0, "about": "...", "answers": true, "relevance": 70, "credibility": 80, "summary": "..."}, ...]`;
+}
+
+export function applyRatings(batch: Page[], ratings: Rating[]): FoundSource[] {
+  return batch.map((p, i) => {
+    const r = ratings.find((x) => x?.i === i);
+    let relevance = clamp(r?.relevance, 0);
+    if (r?.answers === false) relevance = Math.min(relevance, MIN_RELEVANCE - 1);
+    return {
+      id: normalizeForDedupe(p.url),
+      title: p.title,
+      url: p.url,
+      engine: p.engine,
+      summary: r?.summary?.trim() || p.snippet || p.markdown.slice(0, 200),
+      credibility: clamp(r?.credibility, 50),
+      relevance,
+      markdown: p.markdown,
+    };
+  });
+}
+
+export function filterAndSort(found: FoundSource[]): FoundSource[] {
+  const score = (f: FoundSource) => 0.7 * f.relevance + 0.3 * f.credibility;
+  return found.filter((f) => f.relevance >= MIN_RELEVANCE).sort((a, b) => score(b) - score(a));
+}
+
+export async function rank(question: string, pages: Page[], deps: ResearchDeps): Promise<FoundSource[]> {
   const found: FoundSource[] = [];
   for (let b = 0; b < pages.length; b += 4) {
     const batch = pages.slice(b, b + 4);
-    const listing = batch
-      .map((p, i) => `### ${i}\nTitle: ${p.title}\nURL: ${p.url}\nText:\n${p.markdown.slice(0, 1500)}`)
-      .join("\n\n");
-    const text = await ask(
-      deps.llm,
-      `The learner's research question: "${question}".\nRate each page for a learner. credibility (0-100): how trustworthy the publisher and content are (encyclopedias, universities, textbooks, peer-reviewed papers high; content farms, forums, ads low). relevance (0-100): how well it covers the question. summary: one or two sentences on what the page teaches.\n\n${listing}\n\nReturn JSON only: [{"i": 0, "summary": "...", "credibility": 80, "relevance": 70}, ...]`,
-      deps.signal,
-    );
-    const ratings = extractJson<Rating[]>(text) ?? [];
-    batch.forEach((p, i) => {
-      const r = ratings.find((x) => x?.i === i);
-      found.push({
-        id: normalizeForDedupe(p.url),
-        title: p.title,
-        url: p.url,
-        engine: p.engine,
-        summary: r?.summary?.trim() || p.snippet || p.markdown.slice(0, 200),
-        credibility: clamp(r?.credibility, 50),
-        relevance: clamp(r?.relevance, 50),
-        markdown: p.markdown,
-      });
-    });
+    const text = await ask(deps.llm, rankPrompt(question, batch), deps.signal);
+    found.push(...applyRatings(batch, extractJson<Rating[]>(text) ?? []));
   }
-  return found
-    .filter((f) => f.relevance >= 40)
-    .sort((a, b) => b.relevance * b.credibility - a.relevance * a.credibility);
+  return filterAndSort(found);
 }
 
 const clamp = (n: unknown, fallback: number) =>

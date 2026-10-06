@@ -39,6 +39,8 @@ export const useAddCard = create<{ req: AddCardRequest; open: (r: Omit<AddCardRe
   close: () => set({ req: { open: false } }),
 }));
 
+const BTN = "min-w-[7.5rem] flex-1 whitespace-nowrap";
+
 export function FlashcardsCard({ space }: { space: Space }) {
   const counts = useDueCounts();
   const navigate = useUi((st) => st.navigate);
@@ -72,25 +74,26 @@ export function FlashcardsCard({ space }: { space: Space }) {
           {c ? s.cards.counts(c.due, c.new, c.total) : s.cards.none}
         </p>
       )}
-      <div className="mt-3 grid grid-cols-2 gap-1.5">
+      <div className="mt-3 flex flex-wrap gap-1.5" data-testid="card-actions">
         <Button
           size="sm"
+          className={BTN}
           variant={c && c.due + c.new > 0 ? "primary" : "secondary"}
           disabled={!c?.total}
           onClick={() => navigate({ name: "review", spaceId: space.id })}
         >
           <GraduationCap size={15} /> {s.cards.review}
         </Button>
-        <Button size="sm" variant="secondary" disabled={quizzing} onClick={quiz}>
+        <Button size="sm" variant="secondary" className={BTN} disabled={quizzing} onClick={quiz}>
           {quizzing ? <Spinner size={14} /> : <ListChecks size={15} />} {s.cards.quiz}
         </Button>
-        <Button size="sm" variant="secondary" className="col-span-2" onClick={() => setGenerating(true)}>
+        <Button size="sm" variant="secondary" className={cn(BTN, "basis-full")} onClick={() => setGenerating(true)}>
           <Sparkles size={15} /> {s.cards.generate}
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => openAdd({ spaceId: space.id })}>
+        <Button size="sm" variant="ghost" className={BTN} onClick={() => openAdd({ spaceId: space.id })}>
           <Plus size={15} /> {s.cards.add}
         </Button>
-        <OcclusionButtonSlot spaceId={space.id} />
+        <OcclusionButtonSlot spaceId={space.id} className={BTN} />
       </div>
       <div className="mt-2 flex gap-3 text-xs">
         {c?.total ? (

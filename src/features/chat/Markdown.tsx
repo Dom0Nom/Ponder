@@ -5,6 +5,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import rehypeHighlight from "rehype-highlight";
 import { remarkCitations } from "./remarkCitations";
+import { remarkHtmlBreaks } from "./remarkHtmlBreaks";
 
 export const Markdown = memo(function Markdown({
   text,
@@ -27,7 +28,7 @@ export const Markdown = memo(function Markdown({
   return (
     <div className="prose-chat">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath, [remarkCitations, { known: knownCitations }]]}
+        remarkPlugins={[remarkGfm, remarkMath, remarkHtmlBreaks, [remarkCitations, { known: knownCitations }]]}
         rehypePlugins={[rehypeKatex, [rehypeHighlight, { detect: true, ignoreMissing: true }]]}
         components={components}
       >

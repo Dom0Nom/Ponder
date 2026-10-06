@@ -36,18 +36,55 @@ turndown.addRule("plainLinks", {
   replacement: (content) => content,
 });
 
+const BOILERPLATE_SELECTORS = [
+  "[role=navigation]", "[role=contentinfo]", "[role=complementary]", "aside", "header nav",
+  ".navbox", ".vertical-navbox", ".sidebar", ".navigation-not-searchable", ".toc", "#toc", ".mw-editsection",
+  ".mw-jump-link", ".catlinks", ".printfooter", ".noprint", ".metadata", ".ambox", ".hatnote", ".portalbox",
+  ".sistersitebox", ".authority-control", ".reflist", ".references", ".mw-references-wrap", "sup.reference",
+  ".mw-cite-backlink", ".breadcrumb", ".breadcrumbs", ".share", ".social", ".related", ".comments", "#comments",
+  ".cookie", ".newsletter", ".advert", ".ad",
+].join(",");
+
+/** Headings that start reference/link lists rather than study text (English, German, French, Spanish). */
+const TRAILER_HEADING_RE =
+  /^(references?|notes?|footnotes|citations|bibliography|sources|works cited|further reading|external links|see also|notes and references|einzelnachweise|anmerkungen|quellen|literatur|weblinks|siehe auch|références|notes et références|liens externes|voir aussi|bibliographie|referencias|notas|enlaces externos|véase también|bibliografía)$/i;
+
+/** Drops reference/link-list sections and leftover citation markers from extracted Markdown. */
+export function trimBoilerplate(markdown: string): string {
+  const lines = markdown.split("\n");
+  const out: string[] = [];
+  let skipLevel = 0;
+  for (const line of lines) {
+    const h = /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line);
+    if (h) {
+      const level = h[1].length;
+      if (skipLevel && level > skipLevel) continue;
+      skipLevel = 0;
+      if (TRAILER_HEADING_RE.test(h[2].replace(/[*_:]/g, "").trim())) {
+        skipLevel = level;
+        continue;
+      }
+    }
+    if (!skipLevel) out.push(line);
+  }
+  return out
+    .join("\n")
+    // turndown escapes brackets in prose (`\[12\]`) but not in code, so code like `a[0]` is untouched
+    .replace(/\\\[(?:\d{1,3}|[a-z]|citation needed|edit|bearbeiten|Quelltext bearbeiten)\\\]/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 /** HTML → readable Markdown, the same way for imports and deep research. */
 export function extractReadable(html: string, url: string): ExtractedPage | null {
   const doc = new DOMParser().parseFromString(html, "text/html");
   const base = doc.createElement("base");
   base.href = url;
   doc.head.prepend(base);
+  doc.querySelectorAll(BOILERPLATE_SELECTORS).forEach((el) => el.remove());
   const article = new Readability(doc).parse();
   if (!article?.content) return null;
-  const markdown = turndown
-    .turndown(article.content)
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  const markdown = trimBoilerplate(turndown.turndown(article.content));
   if (markdown.length < 200) return null;
   return {
     title: (article.title || doc.title || url).trim(),
