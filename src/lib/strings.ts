@@ -597,7 +597,7 @@ export const s = {
     selectItem: (name: string) => `Select ${name}`,
   },
   occlusion: {
-    open: "Image occlusion",
+    open: "Image card",
     title: "Image occlusion",
     editTitle: "Edit image occlusion",
     description: "Draw boxes over the parts of the image you want to learn. Each box becomes a card.",

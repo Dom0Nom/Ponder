@@ -39,4 +39,4 @@ Tauri WebDriver doesn't work on macOS. Run `bun run tauri dev`, then screenshot 
 
 ## Dev LLM
 
-LM Studio on the LAN PC: `http://192.168.1.20:1234/v1`, model `qwen3.5-9b`. Qwen reasons by default and burns thousands of tokens; `reasoning_effort: "none"` (AI SDK `reasoning: "none"`) turns it off. Don't run models on this Mac.
+Use OpenRouter with cheap models for live checks: `OPENROUTER_API_KEY=… bun scripts/e2e-*.ts` (default `deepseek/deepseek-v4.1-flash`; `anthropic/claude-haiku-4.5` for comparisons). The key is never stored in the repo. LM Studio on the LAN PC (`http://192.168.1.20:1234/v1`, `qwen3.5-9b`) is also a gaming PC: only use it when the user says it's free, and `lms unload --all` afterwards. Qwen reasons by default; `reasoning_effort: "none"` (AI SDK `reasoning: "none"`) turns it off. Don't run models on this Mac.
