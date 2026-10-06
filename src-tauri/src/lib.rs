@@ -1,4 +1,5 @@
 mod capture;
+mod cards;
 mod cloud;
 mod commands;
 mod db;
@@ -71,6 +72,19 @@ pub fn run() {
             commands::core::add_journal,
             commands::core::get_settings,
             commands::core::set_setting,
+            cards::cards_add,
+            cards::card_update,
+            cards::card_delete,
+            cards::cards_list,
+            cards::cards_due,
+            cards::cards_due_counts,
+            cards::card_review,
+            cards::mistakes_add,
+            cards::mistakes_list,
+            cards::mistake_set_resolved,
+            cards::mistake_delete,
+            cards::image_store,
+            cards::image_read,
             placement::curriculum_get,
             placement::curriculum_set,
             placement::curriculum_clear,

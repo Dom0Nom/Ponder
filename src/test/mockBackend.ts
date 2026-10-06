@@ -39,6 +39,9 @@ interface DB {
   focusEvents: T.FocusEvent[];
   parking: Row<T.ParkingItem>;
   memory: Row<T.MemoryItem>;
+  cards: Row<T.Card>;
+  mistakes: Row<T.Mistake>;
+  images: Record<string, string>;
   curricula: Row<T.SpaceCurriculum>;
   levels: Record<string, Row<T.TopicLevel>>;
   assessments: Row<T.Assessment>;
@@ -94,6 +97,9 @@ function emptyDb(): DB {
     focusEvents: [],
     parking: {},
     memory: {},
+    cards: {},
+    mistakes: {},
+    images: {},
     curricula: {},
     levels: {},
     assessments: {},
@@ -1140,6 +1146,140 @@ const handlers: Record<string, (a: Args) => unknown> = {
     save();
     return null;
   },
+  cards_add: (a) => {
+    const sp = db.spaces[a.spaceId as string] ?? err("not_found", "space not found");
+    const cards = a.cards as T.NewCard[];
+    for (const c of cards) {
+      if (!["basic", "cloze", "occlusion", "mcq"].includes(c.kind)) err("invalid", `Unknown card type: ${c.kind}`);
+      if (!c.front?.trim() && c.kind !== "occlusion") err("invalid", "A card needs a front");
+      if (c.kind === "basic" && !c.back?.trim()) err("invalid", "A card needs a back");
+      if (c.kind === "cloze" && !c.front.includes("{{c")) err("invalid", "A cloze card needs at least one {{c1::…}} gap");
+    }
+    const out = cards.map((c) => {
+      const card: T.Card = {
+        id: id(),
+        spaceId: sp.id,
+        kind: c.kind,
+        front: c.front.trim(),
+        back: (c.back ?? "").trim(),
+        data: c.data ?? null,
+        sourceId: c.sourceId ?? null,
+        chunkStart: c.chunkStart ?? null,
+        chunkEnd: c.chunkEnd ?? null,
+        origin: c.origin ?? "manual",
+        suspended: false,
+        createdAt: now(),
+        updatedAt: now(),
+        due: now(),
+        state: 0,
+        fsrs: null,
+        spaceName: sp.name,
+      };
+      db.cards[card.id] = card;
+      return card;
+    });
+    save();
+    return out;
+  },
+  card_update: (a) => {
+    const c = db.cards[a.id as string] ?? err("not_found", "card not found");
+    Object.assign(c, Object.fromEntries(Object.entries(a.patch as object).filter(([, v]) => v !== undefined)), { updatedAt: now() });
+    save();
+    return c;
+  },
+  card_delete: (a) => {
+    delete db.cards[a.id as string];
+    save();
+    return null;
+  },
+  cards_list: (a) => Object.values(db.cards).filter((c) => c.spaceId === a.spaceId).sort((x, y) => y.createdAt - x.createdAt),
+  cards_due: (a) =>
+    Object.values(db.cards)
+      .filter((c) => !c.suspended && c.due <= now() && (!a.spaceId || c.spaceId === a.spaceId))
+      .sort((x, y) => (x.state === 0 ? 1 : 0) - (y.state === 0 ? 1 : 0) || x.due - y.due)
+      .slice(0, (a.limit as number) ?? 200),
+  cards_due_counts: () => {
+    const by = new Map<string, T.DueCount>();
+    for (const c of Object.values(db.cards)) {
+      const e = by.get(c.spaceId) ?? { spaceId: c.spaceId, spaceName: c.spaceName, due: 0, new: 0, total: 0 };
+      e.total++;
+      if (!c.suspended && c.state === 0) e.new++;
+      else if (!c.suspended && c.due <= now()) e.due++;
+      by.set(c.spaceId, e);
+    }
+    return [...by.values()];
+  },
+  card_review: (a) => {
+    const c = db.cards[a.id as string] ?? err("not_found", "card not found");
+    const rating = a.rating as number;
+    if (rating < 1 || rating > 4) err("invalid", "Rating must be 1–4");
+    Object.assign(c, { fsrs: a.fsrs, due: a.due, state: a.cardState });
+    const logs = ((db as unknown as { reviewLogs?: Record<string, number[]> }).reviewLogs ??= {});
+    (logs[c.id] ??= []).push(rating);
+    const last = logs[c.id].slice(-2);
+    if (last.length === 2 && last.every((r) => r >= 3)) for (const m of Object.values(db.mistakes)) if (m.cardId === c.id) m.resolved = true;
+    save();
+    return c;
+  },
+  mistakes_add: (a) => {
+    const items = a.items as T.NewMistake[];
+    return items.map((m) => {
+      const opts = m.options && m.options.length >= 2 && m.options.includes(m.correct) ? m.options : null;
+      const [card] = handlers.cards_add({
+        spaceId: a.spaceId,
+        cards: [
+          {
+            kind: opts ? "mcq" : "basic",
+            front: m.question,
+            back: m.explanation ? `${m.correct}\n\n${m.explanation}` : m.correct,
+            data: opts ? { options: opts, answer: opts.indexOf(m.correct) } : null,
+            origin: "mistake",
+          },
+        ],
+      }) as T.Card[];
+      const mk: T.Mistake = {
+        id: id(),
+        spaceId: a.spaceId as string,
+        origin: m.origin,
+        question: m.question,
+        given: m.given ?? null,
+        correct: m.correct,
+        explanation: m.explanation ?? null,
+        topic: m.topic ?? null,
+        cardId: card.id,
+        resolved: false,
+        createdAt: now(),
+      };
+      db.mistakes[mk.id] = mk;
+      save();
+      return mk;
+    });
+  },
+  mistakes_list: (a) =>
+    Object.values(db.mistakes)
+      .filter((m) => !a.spaceId || m.spaceId === a.spaceId)
+      .sort((x, y) => Number(x.resolved) - Number(y.resolved) || y.createdAt - x.createdAt),
+  mistake_set_resolved: (a) => {
+    const m = db.mistakes[a.id as string];
+    if (m) m.resolved = a.resolved as boolean;
+    save();
+    return null;
+  },
+  mistake_delete: (a) => {
+    delete db.mistakes[a.id as string];
+    save();
+    return null;
+  },
+  image_store: (a) => {
+    const name = `${id()}.svg`;
+    const label = String(a.path).split("/").pop();
+    db.images[name] =
+      "data:image/svg+xml;base64," +
+      btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="#eef"/><text x="20" y="40">${label}</text><text x="60" y="150">Nucleus</text><text x="250" y="220">Membrane</text></svg>`);
+    save();
+    return name;
+  },
+  image_read: (a) => db.images[a.name as string] ?? err("not_found", "image not found"),
   list_memory: () => Object.values(db.memory).sort((a, b) => b.createdAt - a.createdAt),
   add_memory: (a) => {
     const text = String(a.text ?? "").trim();

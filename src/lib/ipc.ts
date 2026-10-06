@@ -103,6 +103,24 @@ export const api = {
   lessonSetStatus: (id: string, status: T.Lesson["status"], score?: number | null) =>
     call<void>("lesson_set_status", { id, status, score: score ?? null }),
 
+  // flashcards
+  cardsAdd: (spaceId: string, cards: T.NewCard[]) => call<T.Card[]>("cards_add", { spaceId, cards }),
+  cardUpdate: (id: string, patch: { front?: string; back?: string; data?: T.CardData; suspended?: boolean }) =>
+    call<T.Card>("card_update", { id, patch }),
+  cardDelete: (id: string) => call<void>("card_delete", { id }),
+  cardsList: (spaceId: string) => call<T.Card[]>("cards_list", { spaceId }),
+  cardsDue: (spaceId?: string | null, limit?: number) =>
+    call<T.Card[]>("cards_due", { spaceId: spaceId ?? null, limit: limit ?? null }),
+  cardsDueCounts: () => call<T.DueCount[]>("cards_due_counts"),
+  cardReview: (id: string, rating: number, fsrs: Record<string, unknown>, due: number, cardState: number, durationMs?: number, log?: unknown) =>
+    call<T.Card>("card_review", { id, rating, fsrs, due, cardState, durationMs: durationMs ?? null, log: log ?? null }),
+  mistakesAdd: (spaceId: string, items: T.NewMistake[]) => call<T.Mistake[]>("mistakes_add", { spaceId, items }),
+  mistakesList: (spaceId?: string | null) => call<T.Mistake[]>("mistakes_list", { spaceId: spaceId ?? null }),
+  mistakeSetResolved: (id: string, resolved: boolean) => call<void>("mistake_set_resolved", { id, resolved }),
+  mistakeDelete: (id: string) => call<void>("mistake_delete", { id }),
+  imageStore: (path: string) => call<string>("image_store", { path }),
+  imageRead: (name: string) => call<string>("image_read", { name }),
+
   // learner memory
   listMemory: () => call<T.MemoryItem[]>("list_memory"),
   addMemory: (text: string, origin: "user" | "tutor", spaceId?: string | null) =>

@@ -19,6 +19,10 @@ export const qk = {
   providers: ["providers"] as const,
   settings: ["settings"] as const,
   memory: ["memory"] as const,
+  cards: (spaceId: string) => ["cards", spaceId] as const,
+  due: (spaceId: string | null) => ["due", spaceId] as const,
+  dueCounts: ["dueCounts"] as const,
+  mistakes: (spaceId: string | null) => ["mistakes", spaceId] as const,
   curriculum: (spaceId: string) => ["curriculum", spaceId] as const,
   levels: (spaceId: string) => ["levels", spaceId] as const,
   coverage: (spaceId: string) => ["coverage", spaceId] as const,
@@ -74,3 +78,12 @@ export const useCourses = (spaceId: string) => useQuery({ queryKey: qk.courses(s
 export const useWatchedFolders = (spaceId: string) =>
   useQuery({ queryKey: qk.watched(spaceId), queryFn: () => api.watchList(spaceId) });
 export const useCaptureStatus = () => useQuery({ queryKey: qk.capture, queryFn: api.captureStatus });
+export const useCards = (spaceId: string) => useQuery({ queryKey: qk.cards(spaceId), queryFn: () => api.cardsList(spaceId) });
+export const useDueCounts = () => useQuery({ queryKey: qk.dueCounts, queryFn: api.cardsDueCounts, refetchInterval: 60_000 });
+export const useMistakes = (spaceId: string | null) =>
+  useQuery({ queryKey: qk.mistakes(spaceId), queryFn: () => api.mistakesList(spaceId) });
+
+export function invalidateCards(spaceId?: string) {
+  for (const k of [qk.dueCounts, ["due"], ["mistakes"]]) queryClient.invalidateQueries({ queryKey: k });
+  if (spaceId) queryClient.invalidateQueries({ queryKey: qk.cards(spaceId) });
+}

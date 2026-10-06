@@ -10,6 +10,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("002_learner_memory.sql"),
     include_str!("003_placement.sql"),
     include_str!("004_watched_folders.sql"),
+    include_str!("005_cards.sql"),
 ];
 
 static VEC_INIT: Once = Once::new();

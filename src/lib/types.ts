@@ -483,3 +483,93 @@ export interface CaptureStatus {
   registered: boolean;
   error: string | null;
 }
+
+// ---------- flashcards ----------
+
+export type CardKind = "basic" | "cloze" | "occlusion" | "mcq";
+
+export interface OcclusionMask {
+  id: string;
+  /** fractions of the image size, 0..1 */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  label?: string;
+}
+
+export interface CardData {
+  /** cloze: which gap number this card tests */
+  cloze?: number;
+  /** occlusion: stored image name and the masks; `mask` is the one this card tests */
+  image?: string;
+  masks?: OcclusionMask[];
+  mask?: string;
+  /** mcq */
+  options?: string[];
+  answer?: number;
+}
+
+export interface Card {
+  id: string;
+  spaceId: string;
+  kind: CardKind;
+  front: string;
+  back: string;
+  data: CardData | null;
+  sourceId: string | null;
+  chunkStart: number | null;
+  chunkEnd: number | null;
+  origin: string;
+  suspended: boolean;
+  createdAt: number;
+  updatedAt: number;
+  due: number;
+  /** ts-fsrs State: 0 new, 1 learning, 2 review, 3 relearning */
+  state: number;
+  fsrs: Record<string, unknown> | null;
+  spaceName: string;
+}
+
+export interface NewCard {
+  kind: CardKind;
+  front: string;
+  back?: string;
+  data?: CardData | null;
+  sourceId?: string | null;
+  chunkStart?: number | null;
+  chunkEnd?: number | null;
+  origin?: string;
+}
+
+export interface DueCount {
+  spaceId: string;
+  spaceName: string;
+  due: number;
+  new: number;
+  total: number;
+}
+
+export interface Mistake {
+  id: string;
+  spaceId: string;
+  origin: string;
+  question: string;
+  given: string | null;
+  correct: string;
+  explanation: string | null;
+  topic: string | null;
+  cardId: string | null;
+  resolved: boolean;
+  createdAt: number;
+}
+
+export interface NewMistake {
+  origin: string;
+  question: string;
+  given?: string | null;
+  correct: string;
+  explanation?: string | null;
+  topic?: string | null;
+  options?: string[] | null;
+}
