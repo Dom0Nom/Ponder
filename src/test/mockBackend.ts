@@ -48,6 +48,7 @@ interface MockFocus {
   longBreakMs: number;
   cyclesBeforeLong: number;
   checkInMins: number;
+  startedAt: number;
   phase: T.FocusPhase;
   block: number;
   phaseStartedAt: number;
@@ -57,8 +58,9 @@ interface MockFocus {
   pauseReason: "user" | "needApp" | null;
   pauseCount: number;
   needAppCount: number;
-  totalFocusMs: number;
-  totalBreakMs: number;
+  /** totals of completed phases */
+  focusDoneMs: number;
+  breakDoneMs: number;
 }
 
 const STORAGE_KEY = "mock-backend-db";
@@ -277,35 +279,74 @@ function search(spaceId: string, query: string, limit: number, sourceIds: string
     }));
 }
 
-// ---------- focus ----------
+// ---------- focus (mirrors src-tauri/src/focus/machine.rs + service.rs) ----------
 
-function focusDefaults(cfg: T.FocusConfig) {
+const MIN = 60_000;
+const SLEEP_GRACE_MS = 10_000;
+
+interface MockTransition {
+  from: T.FocusPhase;
+  to: T.FocusPhase;
+  state: T.FocusState;
+  at: number;
+  autoPaused: boolean;
+}
+
+interface FocusOutcome {
+  state: T.FocusState | null;
+  transitions: MockTransition[];
+}
+
+const isBreak = (p: T.FocusPhase) => p === "break" || p === "longBreak";
+
+function minsToMs(v: number | null | undefined, dflt: number, what: string): number {
+  const m = v ?? dflt;
+  const ms = Math.round(m * MIN);
+  if (!Number.isFinite(m) || m <= 0 || m > 24 * 60 || ms < 1000) {
+    err("invalid", `${what} must be between 1 second and 24 hours`);
+  }
+  return ms;
+}
+
+function focusDefaults(cfg: T.FocusConfig): { work: number | null; brk: number; long: number } {
   switch (cfg.technique) {
     case "pomodoro":
-      return { work: cfg.workMins ?? 25, brk: cfg.breakMins ?? 5, long: cfg.longBreakMins ?? 15 };
+      return {
+        work: minsToMs(cfg.workMins, 25, "Focus length"),
+        brk: minsToMs(cfg.breakMins, 5, "Break length"),
+        long: minsToMs(cfg.longBreakMins, 15, "Long break length"),
+      };
     case "52-17":
-      return { work: 52, brk: 17, long: 17 };
+      return { work: 52 * MIN, brk: 17 * MIN, long: 17 * MIN };
     case "flowtime":
       return { work: null, brk: 0, long: 0 };
-    default:
-      return { work: cfg.workMins ?? 30, brk: cfg.breakMins ?? 5, long: cfg.longBreakMins ?? cfg.breakMins ?? 5 };
+    default: {
+      const brk = minsToMs(cfg.breakMins, 5, "Break length");
+      const long = cfg.longBreakMins != null ? minsToMs(cfg.longBreakMins, 5, "Long break length") : brk;
+      return { work: minsToMs(cfg.workMins, 30, "Focus length"), brk, long };
+    }
   }
 }
 
-function logFocus(kind: string, data: Record<string, unknown> | null = null) {
-  if (!db.focus) return;
-  db.focusEvents.push({ id: db.nextId++, sessionId: db.focus.sessionId, kind, at: now(), data });
+const clampRound = (v: number | null | undefined, dflt: number, lo: number, hi: number, bad: number) => {
+  const x = v ?? dflt;
+  return Number.isFinite(x) ? Math.min(hi, Math.max(lo, Math.round(x))) : bad;
+};
+const cleanText = (v: string | null | undefined) => (v ?? "").trim() || null;
+
+function rawElapsed(f: MockFocus, t: number): number {
+  if (f.phase === "done") return 0;
+  const end = f.pausedAt ?? t;
+  return Math.max(0, end - f.phaseStartedAt - f.pausedTotal);
 }
 
-function elapsed(f: MockFocus, t = now()): number {
-  const pausedNow = f.pausedAt ? t - f.pausedAt : 0;
-  return Math.max(0, t - f.phaseStartedAt - f.pausedTotal - pausedNow);
+function elapsed(f: MockFocus, t: number): number {
+  const el = rawElapsed(f, t);
+  return f.phaseDurationMs == null ? el : Math.min(el, f.phaseDurationMs);
 }
 
-function focusSnapshot(): T.FocusState | null {
-  const f = db.focus;
-  if (!f) return null;
-  const el = elapsed(f);
+function snapshotOf(f: MockFocus, t: number): T.FocusState {
+  const el = elapsed(f, t);
   return {
     sessionId: f.sessionId,
     spaceId: f.spaceId,
@@ -321,62 +362,187 @@ function focusSnapshot(): T.FocusState | null {
     pauseReason: f.pauseReason,
     pauseCount: f.pauseCount,
     needAppCount: f.needAppCount,
-    totalFocusMs: f.totalFocusMs + (f.phase === "work" ? el : 0),
-    totalBreakMs: f.totalBreakMs + (f.phase !== "work" ? el : 0),
+    totalFocusMs: f.focusDoneMs + (f.phase === "work" ? el : 0),
+    totalBreakMs: f.breakDoneMs + (isBreak(f.phase) ? el : 0),
     checkInMins: f.checkInMins,
-    now: now(),
+    now: t,
   };
 }
 
-function startPhase(f: MockFocus, phase: T.FocusPhase, durationMs: number | null) {
-  const from = f.phase;
-  const el = elapsed(f);
-  if (from === "work") f.totalFocusMs += el;
-  else f.totalBreakMs += el;
+function focusSnapshot(t = now()): T.FocusState | null {
+  return db.focus ? snapshotOf(db.focus, t) : null;
+}
+
+function enter(f: MockFocus, phase: T.FocusPhase, at: number, durationMs: number | null) {
   f.phase = phase;
-  f.phaseStartedAt = now();
+  f.phaseStartedAt = at;
   f.phaseDurationMs = durationMs;
   f.pausedAt = null;
   f.pausedTotal = 0;
   f.pauseReason = null;
-  logFocus("phase", { from, to: phase });
-  save();
-  const st = focusSnapshot()!;
-  emit("focus://transition", { from, to: phase, state: st });
 }
 
-function focusTick() {
-  const f = db.focus;
-  if (f && f.phaseDurationMs != null && f.pausedAt == null && elapsed(f) >= f.phaseDurationMs) {
-    if (f.phase === "work") {
-      const long = f.technique === "pomodoro" && f.block % f.cyclesBeforeLong === 0;
-      startPhase(f, long ? "longBreak" : "break", long ? f.longBreakMs : f.breakMs);
-    } else {
+function nextBreak(f: MockFocus, worked: number): [T.FocusPhase, number] {
+  if (f.technique === "flowtime") return ["break", Math.max(MIN, Math.round(worked / 5))];
+  if ((f.technique === "pomodoro" || f.technique === "custom") && f.block % f.cyclesBeforeLong === 0) {
+    return ["longBreak", f.longBreakMs];
+  }
+  return ["break", f.breakMs];
+}
+
+function completePhase(f: MockFocus, at: number, spent: number) {
+  if (f.phase === "work") {
+    f.focusDoneMs += spent;
+    const [p, d] = nextBreak(f, spent);
+    enter(f, p, at, d);
+  } else {
+    f.breakDoneMs += spent;
+    if (f.technique === "timebox") enter(f, "done", at, null);
+    else {
       f.block += 1;
-      startPhase(f, "work", f.workMs);
+      enter(f, "work", at, f.workMs);
     }
   }
-  emit("focus://tick", focusSnapshot());
 }
 
-function endSession(): T.FocusSessionSummary {
-  const f = db.focus;
-  if (!f) err("invalid", "No focus session is running");
-  const st = focusSnapshot()!;
-  logFocus("end");
-  const summary: T.FocusSessionSummary = {
-    ...db.sessions[f.sessionId],
-    endedAt: now(),
+function machineTick(f: MockFocus, t: number): MockTransition[] {
+  const out: MockTransition[] = [];
+  while (f.pausedAt == null && f.phase !== "done" && f.phaseDurationMs != null) {
+    const boundary = f.phaseStartedAt + f.pausedTotal + f.phaseDurationMs;
+    if (t < boundary) break;
+    const from = f.phase;
+    completePhase(f, boundary, f.phaseDurationMs);
+    let autoPaused = false;
+    if (f.phase === "work" && t - boundary > SLEEP_GRACE_MS) {
+      f.pausedAt = boundary;
+      f.pauseReason = "user";
+      autoPaused = true;
+    }
+    out.push({ from, to: f.phase, state: snapshotOf(f, boundary), at: boundary, autoPaused });
+  }
+  if (out.length) out[out.length - 1].state = snapshotOf(f, t);
+  return out;
+}
+
+function requireActive(f: MockFocus) {
+  if (f.phase === "done") err("invalid", "No focus session is running");
+}
+
+function machinePause(f: MockFocus, t: number): boolean {
+  requireActive(f);
+  if (f.phase !== "work") err("invalid", "Breaks can only be paused with “I need the app”");
+  if (f.pausedAt != null) return false;
+  f.pausedAt = t;
+  f.pauseReason = "user";
+  f.pauseCount++;
+  return true;
+}
+
+function machineResume(f: MockFocus, t: number): boolean {
+  requireActive(f);
+  if (f.pausedAt == null) return false;
+  f.pausedTotal += Math.max(0, t - f.pausedAt);
+  f.pausedAt = null;
+  f.pauseReason = null;
+  return true;
+}
+
+function machineNeedApp(f: MockFocus, t: number): boolean {
+  requireActive(f);
+  if (!isBreak(f.phase)) err("invalid", "Not on a break");
+  if (f.pausedAt != null) return false;
+  f.pausedAt = t;
+  f.pauseReason = "needApp";
+  f.pauseCount++;
+  f.needAppCount++;
+  return true;
+}
+
+function machineEndWork(f: MockFocus, t: number): MockTransition {
+  requireActive(f);
+  if (f.phase !== "work") err("invalid", "Not in a focus block");
+  if (f.pausedAt != null) {
+    f.pausedTotal += Math.max(0, t - f.pausedAt);
+    f.pausedAt = null;
+  }
+  completePhase(f, t, elapsed(f, t));
+  return { from: "work", to: f.phase, state: snapshotOf(f, t), at: t, autoPaused: false };
+}
+
+function logFocus(f: MockFocus, kind: string, at: number, data: Record<string, unknown> | null = null) {
+  db.focusEvents.push({ id: db.nextId++, sessionId: f.sessionId, kind, at, data });
+}
+
+function logTransitions(f: MockFocus, trans: MockTransition[], t: number) {
+  for (const tr of trans) {
+    logFocus(f, "phase", tr.at, { from: tr.from, to: tr.to, block: tr.state.block });
+    if (tr.autoPaused) logFocus(f, "auto_pause_sleep", tr.at, { gapMs: t - tr.at });
+  }
+}
+
+function persistFocus(f: MockFocus, t: number) {
+  const st = snapshotOf(f, t);
+  Object.assign(db.sessions[f.sessionId], { focusMs: st.totalFocusMs, breakMs: st.totalBreakMs, pauses: f.pauseCount });
+}
+
+function finalizeFocus(f: MockFocus, t: number) {
+  const st = snapshotOf(f, t);
+  f.focusDoneMs = st.totalFocusMs;
+  f.breakDoneMs = st.totalBreakMs;
+  enter(f, "done", t, null);
+  logFocus(f, "end", t);
+  Object.assign(db.sessions[f.sessionId], {
+    endedAt: t,
     focusMs: st.totalFocusMs,
     breakMs: st.totalBreakMs,
     pauses: f.pauseCount,
-  };
-  db.sessions[f.sessionId] = summary;
-  db.focus = null;
-  save();
-  emit("focus://transition", { from: st.phase, to: "done", state: { ...st, phase: "done" } });
-  emit("focus://tick", null);
-  return summary;
+  });
+}
+
+/** Runs `op` on a copy of the active session after catching it up; commits only if nothing throws. */
+function withActive(t: number, op?: (f: MockFocus, trans: MockTransition[]) => void): FocusOutcome {
+  if (!db.focus) err("invalid", "No focus session is running");
+  const f: MockFocus = structuredClone(db.focus);
+  const evLen = db.focusEvents.length;
+  const nextId = db.nextId;
+  try {
+    const trans = machineTick(f, t);
+    logTransitions(f, trans, t);
+    if (f.phase !== "done") op?.(f, trans);
+    if (f.phase === "done") finalizeFocus(f, t);
+    else persistFocus(f, t);
+    db.focus = f.phase === "done" ? null : f;
+    save();
+    return { state: focusSnapshot(t), transitions: trans };
+  } catch (e) {
+    db.focusEvents.length = evLen;
+    db.nextId = nextId;
+    throw e;
+  }
+}
+
+function emitOutcome(out: FocusOutcome) {
+  for (const tr of out.transitions) emit("focus://transition", { from: tr.from, to: tr.to, state: tr.state });
+  emit("focus://tick", out.state);
+}
+
+function finishFocus(out: FocusOutcome): T.FocusState {
+  emitOutcome(out);
+  if (!out.state) err("invalid", "No focus session is running");
+  return out.state;
+}
+
+function focusTick() {
+  const t = now();
+  let out: FocusOutcome = { state: null, transitions: [] };
+  if (db.focus) {
+    const probe: MockFocus = structuredClone(db.focus);
+    out =
+      machineTick(probe, t).length === 0 && db.focus.phase !== "done"
+        ? { state: snapshotOf(db.focus, t), transitions: [] }
+        : withActive(t);
+  }
+  emitOutcome(out);
 }
 
 // ---------- command router ----------
@@ -629,96 +795,99 @@ const handlers: Record<string, (a: Args) => unknown> = {
   focus_start: (a) => {
     if (db.focus) err("invalid", "A focus session is already running");
     const cfg = a.config as T.FocusConfig;
+    const t = now();
     const d = focusDefaults(cfg);
     const sessionId = id();
-    db.focus = {
+    const f: MockFocus = {
       sessionId,
-      spaceId: cfg.spaceId ?? null,
+      spaceId: cleanText(cfg.spaceId),
       technique: cfg.technique,
-      goal: cfg.goal ?? null,
-      workMs: d.work == null ? null : d.work * 60_000,
-      breakMs: d.brk * 60_000,
-      longBreakMs: d.long * 60_000,
-      cyclesBeforeLong: cfg.cyclesBeforeLong ?? 4,
-      checkInMins: cfg.checkInMins ?? 0,
+      goal: cleanText(cfg.goal),
+      workMs: d.work,
+      breakMs: d.brk,
+      longBreakMs: d.long,
+      cyclesBeforeLong: clampRound(cfg.cyclesBeforeLong, 4, 1, 100, 4),
+      checkInMins: clampRound(cfg.checkInMins, 0, 0, 600, 0),
+      startedAt: t,
       phase: "work",
       block: 1,
-      phaseStartedAt: now(),
-      phaseDurationMs: d.work == null ? null : d.work * 60_000,
+      phaseStartedAt: t,
+      phaseDurationMs: d.work,
       pausedAt: null,
       pausedTotal: 0,
       pauseReason: null,
       pauseCount: 0,
       needAppCount: 0,
-      totalFocusMs: 0,
-      totalBreakMs: 0,
+      focusDoneMs: 0,
+      breakDoneMs: 0,
     };
     db.sessions[sessionId] = {
       id: sessionId,
-      spaceId: cfg.spaceId ?? null,
-      technique: cfg.technique,
-      goal: cfg.goal ?? null,
-      startedAt: now(),
+      spaceId: f.spaceId,
+      technique: f.technique,
+      goal: f.goal,
+      startedAt: t,
       endedAt: null,
       focusMs: 0,
       breakMs: 0,
       pauses: 0,
       summary: null,
     };
-    logFocus("start", { technique: cfg.technique, goal: cfg.goal ?? null });
+    logFocus(f, "start", t, { technique: f.technique, goal: f.goal });
+    db.focus = f;
     save();
-    const st = focusSnapshot()!;
-    emit("focus://transition", { from: "done", to: "work", state: st });
-    return st;
+    const state = snapshotOf(f, t);
+    return finishFocus({ state, transitions: [{ from: "done", to: "work", state, at: t, autoPaused: false }] });
   },
   focus_state: () => focusSnapshot(),
   focus_pause: () => {
-    const f = db.focus ?? err("invalid", "No focus session is running");
-    if (f.phase !== "work") err("invalid", "Breaks can only be paused with “I need the app”");
-    if (!f.pausedAt) {
-      f.pausedAt = now();
-      f.pauseReason = "user";
-      f.pauseCount++;
-      logFocus("pause", { reason: "user" });
-    }
-    save();
-    return focusSnapshot();
+    const t = now();
+    return finishFocus(
+      withActive(t, (f) => {
+        if (machinePause(f, t)) logFocus(f, "pause", t, { reason: "user" });
+      }),
+    );
   },
   focus_resume: () => {
-    const f = db.focus ?? err("invalid", "No focus session is running");
-    if (f.pausedAt) {
-      f.pausedTotal += now() - f.pausedAt;
-      f.pausedAt = null;
-      f.pauseReason = null;
-      logFocus("resume");
-    }
-    save();
-    return focusSnapshot();
+    const t = now();
+    return finishFocus(
+      withActive(t, (f) => {
+        if (machineResume(f, t)) logFocus(f, "resume", t);
+      }),
+    );
   },
   focus_need_app: (a) => {
-    const f = db.focus ?? err("invalid", "No focus session is running");
-    if (f.phase === "work") err("invalid", "Not on a break");
-    if (!f.pausedAt) {
-      f.pausedAt = now();
-      f.pauseReason = "needApp";
-      f.pauseCount++;
-      f.needAppCount++;
-      logFocus("need_app_pause", { reason: a.reason ?? null });
-    }
-    save();
-    const st = focusSnapshot();
-    emit("focus://tick", st);
-    return st;
+    const t = now();
+    return finishFocus(
+      withActive(t, (f) => {
+        if (machineNeedApp(f, t)) logFocus(f, "need_app_pause", t, { reason: a.reason ?? null });
+      }),
+    );
   },
   focus_end_work: () => {
-    const f = db.focus ?? err("invalid", "No focus session is running");
-    if (f.phase !== "work") err("invalid", "Not in a focus block");
-    const el = elapsed(f);
-    const brk = f.technique === "flowtime" ? Math.max(60_000, Math.round(el / 5)) : f.breakMs;
-    startPhase(f, "break", brk);
-    return focusSnapshot();
+    const t = now();
+    return finishFocus(
+      withActive(t, (f, trans) => {
+        const tr = machineEndWork(f, t);
+        logTransitions(f, [tr], t);
+        trans.push(tr);
+      }),
+    );
   },
-  focus_stop: () => endSession(),
+  focus_stop: () => {
+    if (!db.focus) err("invalid", "No focus session is running");
+    const t = now();
+    const f: MockFocus = structuredClone(db.focus);
+    const trans = machineTick(f, t);
+    logTransitions(f, trans, t);
+    const from = f.phase;
+    finalizeFocus(f, t);
+    if (from !== "done") trans.push({ from, to: "done", state: snapshotOf(f, t), at: t, autoPaused: false });
+    db.focus = null;
+    save();
+    emitOutcome({ state: null, transitions: trans });
+    return db.sessions[f.sessionId];
+  },
   focus_set_summary: (a) => {
     const sess = db.sessions[a.sessionId as string];
     if (sess) sess.summary = a.summary as string;
@@ -728,21 +897,23 @@ const handlers: Record<string, (a: Args) => unknown> = {
   focus_history: (a) =>
     Object.values(db.sessions)
       .filter((x) => !a.spaceId || x.spaceId === a.spaceId)
-      .sort((x, y) => y.startedAt - x.startedAt),
+      .sort((x, y) => y.startedAt - x.startedAt)
+      .slice(0, 500),
   focus_events: (a) => db.focusEvents.filter((e) => e.sessionId === a.sessionId),
   parking_add: (a) => {
-    const text = (a.text as string).trim();
+    const text = String(a.text ?? "").trim();
     if (!text) err("invalid", "Nothing to park");
+    const t = now();
     const item: T.ParkingItem = {
       id: id(),
       sessionId: db.focus?.sessionId ?? null,
       spaceId: db.focus?.spaceId ?? null,
       text,
       resolved: false,
-      createdAt: now(),
+      createdAt: t,
     };
     db.parking[item.id] = item;
-    logFocus("parking", { text });
+    if (db.focus) logFocus(db.focus, "parking", t, { text });
     save();
     return item;
   },
