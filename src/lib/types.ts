@@ -505,6 +505,8 @@ export interface CardData {
   image?: string;
   masks?: OcclusionMask[];
   mask?: string;
+  /** occlusion: every mask covered on the question side, not only the tested one */
+  hideAll?: boolean;
   /** mcq */
   options?: string[];
   answer?: number;
