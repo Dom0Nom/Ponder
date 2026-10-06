@@ -20,11 +20,12 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     let start = MenuItem::with_id(app, "focus-start", "Start focus session", true, None::<&str>)?;
     let pause = MenuItem::with_id(app, "focus-pause", "Pause", false, None::<&str>)?;
     let end = MenuItem::with_id(app, "focus-end", "End session", false, None::<&str>)?;
+    let capture = MenuItem::with_id(app, "capture-open", "Quick capture", true, None::<&str>)?;
     let show = MenuItem::with_id(app, "focus-show", "Show app", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "focus-quit", "Quit", true, None::<&str>)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
-    let menu = Menu::with_items(app, &[&start, &pause, &end, &sep1, &show, &sep2, &quit])?;
+    let menu = Menu::with_items(app, &[&start, &pause, &end, &sep1, &capture, &show, &sep2, &quit])?;
 
     let mut builder = TrayIconBuilder::with_id(TRAY_ID)
         .menu(&menu)
@@ -65,6 +66,10 @@ fn on_menu(app: &AppHandle, id: &str) {
         "focus-start" => {
             show_main(app);
             let _ = app.emit("focus://request-start", ());
+            return;
+        }
+        "capture-open" => {
+            crate::capture::open(app);
             return;
         }
         "focus-show" => {

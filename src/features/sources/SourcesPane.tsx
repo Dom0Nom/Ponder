@@ -19,6 +19,7 @@ import { toast, toastError } from "../../components/ui/toast";
 import { fileImporter } from "../../lib/importers/files";
 import { ImportDialog } from "./ImportDialog";
 import { useAutoSummaries } from "./useAutoSummaries";
+import { WatchedFolders } from "./WatchedFolders";
 
 export const KIND_ICON: Record<SourceKind, LucideIcon> = {
   pdf: FileType2,
@@ -86,6 +87,7 @@ export function SourcesPane({ space }: { space: Space }) {
           <Plus size={17} /> {s.sources.add}
         </Button>
       </div>
+      <WatchedFolders space={space} />
       <EmbedderBanner />
       {isLoading && (
         <div className="space-y-2 px-3">

@@ -423,3 +423,25 @@ export interface Course {
   createdAt: number;
   lessons: Lesson[];
 }
+
+export type WatchStatus = "watching" | "scanning" | "missing" | "error";
+
+export interface WatchedFolder {
+  id: string;
+  spaceId: string;
+  path: string;
+  recursive: boolean;
+  createdAt: number;
+  /** files from this folder currently imported as sources */
+  fileCount: number;
+  status: WatchStatus;
+  error: string | null;
+}
+
+export interface CaptureStatus {
+  enabled: boolean;
+  /** Tauri accelerator, e.g. Alt+CommandOrControl+N */
+  shortcut: string;
+  registered: boolean;
+  error: string | null;
+}

@@ -20,6 +20,11 @@ export function useBackgroundSync() {
         }
       }),
       events.focusRequest(() => useUi.getState().setFocusDialogOpen(true)),
+      events.watchUpdated(({ spaceId }) => {
+        qc.invalidateQueries({ queryKey: qk.watched(spaceId) });
+      }),
+      events.captureOpen(() => useUi.getState().setCaptureOpen(true)),
+      events.captureStatus((st) => qc.setQueryData(qk.capture, st)),
     ];
     return () => {
       unsubs.forEach((p) => p.then((f) => f()).catch(() => {}));

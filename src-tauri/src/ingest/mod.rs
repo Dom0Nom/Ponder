@@ -131,6 +131,18 @@ impl Ingest {
         Ok(src)
     }
 
+    /// Re-reads the file from disk into an existing source (its text, chunks and vectors are replaced).
+    pub fn reimport_file(&self, id: &str, path: &Path) -> AppResult<models::Source> {
+        let kind = extract::kind_for_path(path).ok_or_else(|| invalid("Unsupported file type"))?;
+        let c = self.db.conn()?;
+        models::get_source(&c, id)?;
+        models::set_source_status(&c, id, "processing", None, 0.0)?;
+        let src = models::get_source(&c, id)?;
+        self.emit_source(&src);
+        self.enqueue(id, Input::File(path.to_path_buf(), kind.into()))?;
+        Ok(src)
+    }
+
     /// Blocking: embeds the query with the shared model when it's ready. Call via spawn_blocking.
     pub fn search(
         &self,

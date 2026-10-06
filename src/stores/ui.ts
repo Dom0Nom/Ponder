@@ -13,6 +13,8 @@ interface UiState {
   panes: { sources: boolean; studio: boolean };
   paletteOpen: boolean;
   focusDialogOpen: boolean;
+  captureOpen: boolean;
+  watchDialogOpen: boolean;
   importDialog: { open: boolean; tab?: string; query?: string };
   /** active thread per space */
   activeThread: Record<string, string>;
@@ -28,6 +30,8 @@ interface UiState {
   togglePane: (p: "sources" | "studio") => void;
   setPaletteOpen: (o: boolean) => void;
   setFocusDialogOpen: (o: boolean) => void;
+  setCaptureOpen: (o: boolean) => void;
+  setWatchDialogOpen: (o: boolean) => void;
   setImportDialog: (d: { open: boolean; tab?: string; query?: string }) => void;
   setActiveThread: (spaceId: string, threadId: string) => void;
   openViewer: (v: { sourceId: string; start?: number; end?: number } | null) => void;
@@ -43,6 +47,8 @@ export const useUi = create<UiState>()(
       panes: { sources: true, studio: true },
       paletteOpen: false,
       focusDialogOpen: false,
+      captureOpen: false,
+      watchDialogOpen: false,
       importDialog: { open: false },
       activeThread: {},
       viewer: null,
@@ -55,6 +61,8 @@ export const useUi = create<UiState>()(
       togglePane: (p) => set((st) => ({ panes: { ...st.panes, [p]: !st.panes[p] } })),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
       setFocusDialogOpen: (focusDialogOpen) => set({ focusDialogOpen }),
+      setCaptureOpen: (captureOpen) => set({ captureOpen }),
+      setWatchDialogOpen: (watchDialogOpen) => set({ watchDialogOpen }),
       setImportDialog: (importDialog) => set({ importDialog }),
       setActiveThread: (spaceId, threadId) =>
         set((st) => ({ activeThread: { ...st.activeThread, [spaceId]: threadId } })),

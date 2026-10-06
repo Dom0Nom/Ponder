@@ -50,6 +50,17 @@ export const api = {
     call<T.SearchHit[]>("search_chunks", { spaceId, query, limit: limit ?? null, sourceIds: sourceIds ?? null }),
   embedderStatus: () => call<T.EmbedderStatus>("embedder_status"),
 
+  // watched folders
+  watchList: (spaceId: string) => call<T.WatchedFolder[]>("watch_list", { spaceId }),
+  watchAdd: (spaceId: string, path: string, recursive: boolean) =>
+    call<T.WatchedFolder>("watch_add", { spaceId, path, recursive }),
+  watchRemove: (id: string) => call<void>("watch_remove", { id }),
+
+  // quick capture hotkey
+  captureStatus: () => call<T.CaptureStatus>("capture_status"),
+  captureConfigure: (enabled: boolean, shortcut: string) =>
+    call<T.CaptureStatus>("capture_configure", { enabled, shortcut }),
+
   // threads + messages
   listThreads: (spaceId: string) => call<T.Thread[]>("list_threads", { spaceId }),
   createThread: (spaceId: string, title?: string) =>
@@ -155,6 +166,12 @@ export const events = {
     listen<T.OAuthStatus>("oauth://status", (e) => cb(e.payload)),
   /** tray menu "Start focus session" */
   focusRequest: (cb: () => void) => listen("focus://request-start", () => cb()),
+  watchUpdated: (cb: (e: { id: string; spaceId: string }) => void) =>
+    listen<{ id: string; spaceId: string }>("watch://updated", (e) => cb(e.payload)),
+  /** global hotkey or tray "Quick capture" */
+  captureOpen: (cb: () => void) => listen("capture://open", () => cb()),
+  captureStatus: (cb: (s: T.CaptureStatus) => void) =>
+    listen<T.CaptureStatus>("capture://status", (e) => cb(e.payload)),
 };
 
 export type { UnlistenFn };

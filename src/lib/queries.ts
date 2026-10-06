@@ -26,6 +26,8 @@ export const qk = {
   courses: (spaceId: string) => ["courses", spaceId] as const,
   focusHistory: (spaceId: string | null) => ["focusHistory", spaceId] as const,
   parking: (sessionId: string | null) => ["parking", sessionId] as const,
+  watched: (spaceId: string) => ["watched", spaceId] as const,
+  capture: ["capture"] as const,
 };
 
 export const useSpaces = () => useQuery({ queryKey: qk.spaces, queryFn: api.listSpaces });
@@ -69,3 +71,6 @@ export const useCurriculum = (spaceId: string) =>
   useQuery({ queryKey: qk.curriculum(spaceId), queryFn: () => api.curriculumGet(spaceId) });
 export const useLevels = (spaceId: string) => useQuery({ queryKey: qk.levels(spaceId), queryFn: () => api.topicLevels(spaceId) });
 export const useCourses = (spaceId: string) => useQuery({ queryKey: qk.courses(spaceId), queryFn: () => api.coursesList(spaceId) });
+export const useWatchedFolders = (spaceId: string) =>
+  useQuery({ queryKey: qk.watched(spaceId), queryFn: () => api.watchList(spaceId) });
+export const useCaptureStatus = () => useQuery({ queryKey: qk.capture, queryFn: api.captureStatus });

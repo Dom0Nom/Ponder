@@ -6,6 +6,7 @@
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { emit } from "@tauri-apps/api/event";
 import type * as T from "../lib/types";
+import { DEFAULT_SHORTCUT, validateShortcut } from "../lib/capture/shortcut";
 
 type Row<T> = Record<string, T>;
 
@@ -40,6 +41,7 @@ interface DB {
   levels: Record<string, Row<T.TopicLevel>>;
   assessments: Row<T.Assessment>;
   courses: Row<T.Course>;
+  watched: Row<T.WatchedFolder>;
   nextId: number;
   clockOffset: number;
 }
@@ -93,6 +95,7 @@ function emptyDb(): DB {
     levels: {},
     assessments: {},
     courses: {},
+    watched: {},
     nextId: 1,
     clockOffset: 0,
   };
@@ -280,6 +283,16 @@ function ingest(src: T.Source, text: string) {
   db.sources[src.id] = done;
   save();
   setTimeout(() => emit("source://updated", done), 50);
+}
+
+function captureStatus(): T.CaptureStatus {
+  const enabled = (db.settings.quickCaptureEnabled as boolean | undefined) ?? true;
+  return {
+    enabled,
+    shortcut: (db.settings.quickCaptureShortcut as string | undefined) ?? DEFAULT_SHORTCUT,
+    registered: enabled,
+    error: null,
+  };
 }
 
 function newSource(spaceId: string, title: string, kind: T.SourceKind, origin: string | null): T.Source {
@@ -685,6 +698,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
     for (const src of Object.values(db.sources)) if (src.spaceId === sid) delete db.sources[src.id];
     db.chunks = db.chunks.filter((c) => c.spaceId !== sid);
     for (const t of Object.values(db.threads)) if (t.spaceId === sid) delete db.threads[t.id];
+    for (const w of Object.values(db.watched)) if (w.spaceId === sid) delete db.watched[w.id];
     save();
     return null;
   },
@@ -738,6 +752,67 @@ const handlers: Record<string, (a: Args) => unknown> = {
   search_chunks: (a) =>
     search(a.spaceId as string, a.query as string, (a.limit as number) ?? 8, (a.sourceIds as string[]) ?? null),
   embedder_status: () => ({ state: "ready", progress: 1, error: null }),
+
+  watch_list: (a) =>
+    Object.values(db.watched)
+      .filter((w) => w.spaceId === a.spaceId)
+      .sort((x, y) => x.createdAt - y.createdAt),
+  watch_add: (a) => {
+    const spaceId = a.spaceId as string;
+    const path = a.path as string;
+    if (!db.spaces[spaceId]) err("not_found", "space not found");
+    if (!path.startsWith("/")) err("invalid", `Folder not found: ${path}`);
+    if (Object.values(db.watched).some((w) => w.spaceId === spaceId && w.path === path))
+      err("invalid", "This folder is already watched in this space.");
+    const folder: T.WatchedFolder = {
+      id: id(),
+      spaceId,
+      path,
+      recursive: (a.recursive as boolean) ?? true,
+      createdAt: now(),
+      fileCount: 0,
+      status: "scanning",
+      error: null,
+    };
+    db.watched[folder.id] = folder;
+    save();
+    // pretend the folder holds two lecture files
+    setTimeout(() => {
+      const f = db.watched[folder.id];
+      if (!f) return;
+      for (const name of ["Lecture 1.pdf", "Week 2 notes.md"]) {
+        const src = newSource(spaceId, name.replace(/\.[^.]+$/, ""), name.endsWith(".pdf") ? "pdf" : "markdown", `${path}/${name}`);
+        emit("source://updated", src);
+        setTimeout(() => ingest(src, `Mock content of ${name}.\n\nMitosis has four phases.`), 200);
+      }
+      f.fileCount = 2;
+      f.status = "watching";
+      save();
+      emit("watch://updated", { id: f.id, spaceId });
+    }, 300);
+    return folder;
+  },
+  watch_remove: (a) => {
+    const f = db.watched[a.id as string] ?? err("not_found", "watched folder not found");
+    delete db.watched[f.id];
+    save();
+    emit("watch://updated", { id: f.id, spaceId: f.spaceId });
+    return null;
+  },
+
+  capture_status: () => captureStatus(),
+  capture_configure: (a) => {
+    const shortcut = String(a.shortcut ?? "").trim();
+    const invalid = validateShortcut(shortcut);
+    if (invalid) err("invalid", invalid);
+    // Spotlight's shortcut stands in for one that another app already owns
+    if (a.enabled && /^(CommandOrControl|Command|Super)\+Space$/i.test(shortcut))
+      err("invalid", "This shortcut is already used by another app or by macOS. Choose a different one.");
+    db.settings.quickCaptureEnabled = !!a.enabled;
+    db.settings.quickCaptureShortcut = shortcut;
+    save();
+    return captureStatus();
+  },
 
   list_threads: (a) =>
     Object.values(db.threads)
@@ -1179,7 +1254,10 @@ export function installMockBackend() {
   mockIPC(
     async (cmd, args) => {
       if (cmd.startsWith("plugin:")) {
-        if (cmd === "plugin:dialog|open") return ["/Users/me/Documents/biology-notes.md"];
+        if (cmd === "plugin:dialog|open") {
+          const opts = (args as { options?: { directory?: boolean } } | undefined)?.options;
+          return opts?.directory ? "/Users/me/Documents/Lecture notes" : ["/Users/me/Documents/biology-notes.md"];
+        }
         return null;
       }
       const h = handlers[cmd];

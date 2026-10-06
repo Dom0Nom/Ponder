@@ -42,6 +42,8 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 quick-xml = "0.37"
 scraper = "0.22"
 if-addrs = "0.13"
+notify = "8"
+tauri-plugin-global-shortcut = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 candle-core = { version = "0.11", features = ["accelerate"] }

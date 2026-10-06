@@ -4,6 +4,7 @@ import { Segmented } from "../../components/ui/misc";
 import { ProvidersSection } from "./ProvidersSection";
 import { ModelPicker } from "./ModelPicker";
 import { MemorySection } from "./MemorySection";
+import { CaptureSection } from "./CaptureSection";
 import { useEffect } from "react";
 import { useSettings, useSetSetting } from "../../lib/queries";
 import type { ModelRef } from "../../lib/types";
@@ -72,6 +73,9 @@ export function SettingsScreen() {
               <span className="w-10 text-right text-sm tabular-nums text-muted">{Math.round(ui.textScale * 100)}%</span>
             </div>
           </Row>
+        </Section>
+        <Section id="settings-capture" title={s.capture.settingsTitle} body={s.capture.settingsBody}>
+          <CaptureSection />
         </Section>
         <Section id="settings-memory" title={s.memory.title} body={s.memory.body}>
           <MemorySection />

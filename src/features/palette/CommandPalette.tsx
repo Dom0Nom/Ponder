@@ -1,8 +1,9 @@
 import { Command } from "cmdk";
 import * as D from "@radix-ui/react-dialog";
-import { Brain, FilePlus2, Home, MessageSquarePlus, Moon, Plus, Settings, Timer } from "lucide-react";
+import { Brain, FilePlus2, FolderSync, Home, MessageSquarePlus, Moon, NotebookPen, Plus, Settings, Timer } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useSpaces, qk } from "../../lib/queries";
+import { useSpaces, qk, useCaptureStatus } from "../../lib/queries";
+import { formatShortcut } from "../../lib/capture/shortcut";
 import { api } from "../../lib/ipc";
 import { s } from "../../lib/strings";
 import { SpaceIcon } from "../../lib/spaceStyle";
@@ -19,6 +20,7 @@ export function CommandPalette() {
   const { data: spaces } = useSpaces();
   const qc = useQueryClient();
   const spaceId = ui.route.name === "space" ? ui.route.spaceId : null;
+  const { data: capture } = useCaptureStatus();
 
   const run = (fn: () => void | Promise<void>) => {
     setOpen(false);
@@ -57,8 +59,15 @@ export function CommandPalette() {
                     <Command.Item className={item} onSelect={() => run(() => ui.setImportDialog({ open: true }))}>
                       <FilePlus2 size={17} className="text-muted" /> {s.palette.addSource}
                     </Command.Item>
+                    <Command.Item className={item} onSelect={() => run(() => ui.setWatchDialogOpen(true))} keywords={["folder", "watch", "sync"]}>
+                      <FolderSync size={17} className="text-muted" /> {s.palette.watchedFolders}
+                    </Command.Item>
                   </>
                 )}
+                <Command.Item className={item} onSelect={() => run(() => ui.setCaptureOpen(true))} keywords={["note", "capture", "jot"]}>
+                  <NotebookPen size={17} className="text-muted" /> {s.palette.quickCapture}
+                  {capture?.enabled && <span className="ml-auto text-xs text-faint">{formatShortcut(capture.shortcut)}</span>}
+                </Command.Item>
                 <Command.Item className={item} onSelect={() => run(() => ui.setFocusDialogOpen(true))}>
                   <Timer size={17} className="text-muted" /> {s.palette.startFocus}
                   <span className="ml-auto text-xs text-faint">⌘⇧F</span>

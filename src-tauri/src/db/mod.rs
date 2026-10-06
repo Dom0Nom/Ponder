@@ -5,7 +5,12 @@ use rusqlite::Connection;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
 
-const MIGRATIONS: &[&str] = &[include_str!("schema.sql"), include_str!("002_learner_memory.sql"), include_str!("003_placement.sql")];
+const MIGRATIONS: &[&str] = &[
+    include_str!("schema.sql"),
+    include_str!("002_learner_memory.sql"),
+    include_str!("003_placement.sql"),
+    include_str!("004_watched_folders.sql"),
+];
 
 static VEC_INIT: Once = Once::new();
 

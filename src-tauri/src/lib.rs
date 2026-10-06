@@ -1,3 +1,4 @@
+mod capture;
 mod commands;
 mod db;
 mod error;
@@ -9,6 +10,7 @@ mod placement;
 mod proxy;
 mod retrieval;
 mod secrets;
+mod watch;
 
 use db::Db;
 use std::path::PathBuf;
@@ -29,6 +31,7 @@ pub fn run() {
         )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(capture::plugin())
         .on_window_event(focus::on_window_event)
         .manage(commands::providers::ProviderServices::new())
         .setup(|app| {
@@ -37,6 +40,8 @@ pub fn run() {
             let db = Db::open(data_dir.join("app.db"))?;
             ingest::start(app.handle(), db.clone(), data_dir.clone());
             focus::start(app.handle(), db.clone());
+            watch::start(app.handle(), db.clone());
+            capture::init(app.handle(), &db);
             app.manage(AppState { db, data_dir });
             Ok(())
         })
@@ -86,6 +91,11 @@ pub fn run() {
             ingest::commands::search_chunks,
             ingest::commands::embedder_status,
             ingest::commands::topic_coverage,
+            watch::commands::watch_list,
+            watch::commands::watch_add,
+            watch::commands::watch_remove,
+            capture::capture_status,
+            capture::capture_configure,
             focus::commands::focus_start,
             focus::commands::focus_state,
             focus::commands::focus_pause,

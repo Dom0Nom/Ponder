@@ -11,6 +11,7 @@ import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { CommandPalette } from "../features/palette/CommandPalette";
 import { FocusLayer } from "../features/focus/FocusLayer";
 import { QuizLayer } from "../features/placement/QuizDialog";
+import { QuickCaptureDialog } from "../features/capture/QuickCaptureDialog";
 import { useGlobalShortcuts } from "./useGlobalShortcuts";
 import { useBackgroundSync } from "./useBackgroundSync";
 import { useStudyBuddy } from "../features/chat/useStudyBuddy";
@@ -36,6 +37,7 @@ function Shell() {
       <CommandPalette />
       <FocusLayer />
       <QuizLayer />
+      <QuickCaptureDialog />
     </div>
   );
 }
