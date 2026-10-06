@@ -6,6 +6,7 @@ import { buddyInstruction, buddyNote, hyperfocusNote } from "../../lib/buddy/pro
 import { readPrefs, type FocusPrefs } from "../../lib/focusPrefs";
 import { s as strings } from "../../lib/strings";
 import { runTurn } from "../../lib/chat/runner";
+import { currentStepText } from "../../lib/focus/microSteps";
 import { NoModelError } from "../../lib/chat/llm";
 import { formatMinutes } from "../../lib/utils";
 import { CITE_RE } from "../../lib/chat/citations";
@@ -105,6 +106,7 @@ async function handle(ev: BuddyEvent, prefs: FocusPrefs) {
         previous: ev.previous,
         parking: parking.filter((p) => !p.resolved),
         needAppPauses: ref?.needAppCount ?? 0,
+        currentStep: ev.kind === "check-in" ? await currentStepText(spaceId).catch(() => null) : null,
       }),
       meta: { buddyKind: ev.kind },
     });

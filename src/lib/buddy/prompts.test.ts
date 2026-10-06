@@ -61,3 +61,10 @@ describe("hyperfocus note", () => {
     expect(buddyNote("hyperfocus", s, null)).toContain("90 min of focus");
   });
 });
+
+describe("check-in with a micro-step", () => {
+  it("mentions the current micro-step", () => {
+    const text = buddyInstruction("check-in", { state: null, previous: null, parking: [], needAppPauses: 0, currentStep: "Open chapter 3" });
+    expect(text).toContain('"Open chapter 3"');
+  });
+});

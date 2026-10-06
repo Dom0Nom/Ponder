@@ -34,7 +34,14 @@ export function buddyNote(kind: BuddyEventKind, s: FocusState | null, prev: Focu
 /** Instruction for the AI turn that follows a buddy note. */
 export function buddyInstruction(
   kind: BuddyEventKind,
-  ctx: { state: FocusState | null; previous: FocusState | null; parking: ParkingItem[]; needAppPauses: number },
+  ctx: {
+    state: FocusState | null;
+    previous: FocusState | null;
+    parking: ParkingItem[];
+    needAppPauses: number;
+    /** first unchecked "Where do I start" micro-step */
+    currentStep?: string | null;
+  },
 ): string {
   const s = ctx.state;
   const low = (ctx.state ?? ctx.previous)?.energy === "low";
@@ -59,7 +66,12 @@ export function buddyInstruction(
       if (low) {
         return "Low-energy session: a gentle check-in in one short sentence. Ask how they're doing, and say it's fine to stop or take a break whenever. No new material, no pressure.";
       }
-      return "Body-doubling check-in. In one or two sentences, ask how it's going and whether they're stuck, referring to what they were working on in this chat. No lecture, no new material.";
+      return [
+        "Body-doubling check-in. In one or two sentences, ask how it's going and whether they're stuck, referring to what they were working on in this chat. No lecture, no new material.",
+        ctx.currentStep ? `Their current micro-step is "${ctx.currentStep}"; ask whether it's done or what's blocking it.` : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
     case "recall":
       return `About ${mins(s?.remainingMs)} minutes are left before the break. Ask 1–2 quick recall questions about what was covered in this block (answerable in under a minute). Don't start anything long.`;
     case "block-quiz":
