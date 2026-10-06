@@ -1567,7 +1567,8 @@ export function installMockBackend() {
     async (cmd, args) => {
       if (cmd.startsWith("plugin:")) {
         if (cmd === "plugin:dialog|open") {
-          const opts = (args as { options?: { directory?: boolean } } | undefined)?.options;
+          const opts = (args as { options?: { directory?: boolean; filters?: { extensions: string[] }[] } } | undefined)?.options;
+          if (opts?.filters?.some((f) => f.extensions.includes("png"))) return "/Users/me/Pictures/cell-diagram.png";
           return opts?.directory ? "/Users/me/Documents/Lecture notes" : ["/Users/me/Documents/biology-notes.md"];
         }
         return null;
