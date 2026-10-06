@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { AlertCircle, Brain, Check, ChevronRight, Copy, Globe2, RotateCcw, Timer } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { splitSegments, citedNumbers, inferCitations } from "../../lib/chat/citations";
+import { hideMemoryMarkers } from "../../lib/chat/memory";
+import { CheckButton, CheckResults, RememberedChips, SecondOpinionButton, SecondOpinions } from "./AnswerTools";
 import { runTurn } from "../../lib/chat/runner";
 import { NoModelError } from "../../lib/chat/llm";
 import { queryClient, qk } from "../../lib/queries";
@@ -18,10 +20,14 @@ export function MessageView({
   message,
   space,
   live,
+  seconds = [],
+  allLive = {},
 }: {
   message: Message;
   space: Space;
   live?: { content: string; reasoning: string };
+  seconds?: Message[];
+  allLive?: Record<string, { content: string; reasoning: string }>;
 }) {
   if (message.role === "user") {
     return (
@@ -42,30 +48,72 @@ export function MessageView({
     );
   }
   if (message.role === "system") return null;
-  return <AssistantMessage message={message} space={space} live={live} />;
+  return <AssistantMessage message={message} space={space} live={live} seconds={seconds} allLive={allLive} />;
 }
 
-function AssistantMessage({ message, space, live }: { message: Message; space: Space; live?: { content: string; reasoning: string } }) {
+/** Answer text with general/uncited segments and citation chips. */
+export function AnswerBody({ content, citations, streaming }: { content: string; citations: Citation[]; streaming: boolean }) {
+  const byN = new Map(citations.map((c) => [c.n, c]));
+  const shown = useMemo(
+    () =>
+      streaming
+        ? hideMemoryMarkers(content)
+        : inferCitations(content, citations.map((c) => ({ n: c.n, text: c.text ?? c.snippet }))),
+    [streaming, content, citations],
+  );
+  const segments = splitSegments(shown, { hadSources: citations.length > 0, known: citations.length });
+  const renderCite = (n: number, inferred: boolean) => {
+    const c = byN.get(n);
+    return c ? <CiteChip citation={c} inferred={inferred} /> : null;
+  };
+  return (
+    <div className="space-y-3">
+      {segments.map((seg, i) =>
+        seg.kind === "uncited" ? (
+          <div key={i} className="relative pl-3" data-testid="uncited-block">
+            <span aria-hidden className="absolute bottom-1 left-0 top-1 w-[2px] rounded-full bg-surface-3" />
+            <Markdown text={seg.text} knownCitations={citations.length} renderCite={renderCite} />
+            <p className="mt-0.5 text-[0.6875rem] text-faint">{s.chat.noSourceCited}</p>
+          </div>
+        ) : seg.kind === "general" ? (
+          <div key={i} className="rounded-2xl border border-dashed border-border px-4 pb-3 pt-2" data-testid="general-block">
+            <p className="mb-1 flex items-center gap-1.5 text-[0.6875rem] font-medium text-muted">
+              <Globe2 size={12} /> {s.chat.notFromSources}
+            </p>
+            <Markdown text={seg.text} knownCitations={citations.length} renderCite={renderCite} />
+          </div>
+        ) : (
+          <Markdown key={i} text={seg.text} knownCitations={citations.length} renderCite={renderCite} />
+        ),
+      )}
+    </div>
+  );
+}
+
+function AssistantMessage({
+  message,
+  space,
+  live,
+  seconds,
+  allLive,
+}: {
+  message: Message;
+  space: Space;
+  live?: { content: string; reasoning: string };
+  seconds: Message[];
+  allLive: Record<string, { content: string; reasoning: string }>;
+}) {
   const content = live?.content ?? message.content;
   const reasoning = live?.reasoning ?? message.reasoning ?? "";
   const streaming = message.status === "streaming" && !!live;
   const citations = message.citations ?? [];
   const byN = new Map(citations.map((c) => [c.n, c]));
-  const shown = useMemo(
-    () => (streaming ? content : inferCitations(content, citations.map((c) => ({ n: c.n, text: c.text ?? c.snippet })))),
-    [streaming, content, citations],
-  );
-  const segments = splitSegments(shown, { hadSources: citations.length > 0, known: citations.length });
-  const cited = citedNumbers(shown, citations.length)
+  const cited = citedNumbers(content, citations.length)
     .map((n) => byN.get(n))
     .filter((c): c is Citation => !!c);
   const [copied, setCopied] = useState(false);
   const interrupted = message.status === "streaming" && !live;
 
-  const renderCite = (n: number, inferred: boolean) => {
-    const c = byN.get(n);
-    return c ? <CiteChip citation={c} inferred={inferred} /> : null;
-  };
 
   return (
     <div className="group" data-testid="msg-assistant">
@@ -75,26 +123,7 @@ function AssistantMessage({ message, space, live }: { message: Message; space: S
           <Spinner size={14} /> {s.chat.thinking}…
         </div>
       )}
-      <div className="space-y-3">
-        {segments.map((seg, i) =>
-          seg.kind === "uncited" ? (
-            <div key={i} className="relative pl-3" data-testid="uncited-block">
-              <span aria-hidden className="absolute bottom-1 left-0 top-1 w-[2px] rounded-full bg-surface-3" />
-              <Markdown text={seg.text} knownCitations={citations.length} renderCite={renderCite} />
-              <p className="mt-0.5 text-[0.6875rem] text-faint">{s.chat.noSourceCited}</p>
-            </div>
-          ) : seg.kind === "general" ? (
-            <div key={i} className="rounded-2xl border border-dashed border-border px-4 pb-3 pt-2" data-testid="general-block">
-              <p className="mb-1 flex items-center gap-1.5 text-[0.6875rem] font-medium text-muted">
-                <Globe2 size={12} /> {s.chat.notFromSources}
-              </p>
-              <Markdown text={seg.text} knownCitations={citations.length} renderCite={renderCite} />
-            </div>
-          ) : (
-            <Markdown key={i} text={seg.text} knownCitations={citations.length} renderCite={renderCite} />
-          ),
-        )}
-      </div>
+      <AnswerBody content={content} citations={citations} streaming={streaming} />
       {message.meta?.stopped && <p className="mt-2 text-xs text-faint">{s.chat.stopped}</p>}
       {(message.status === "error" || interrupted) && (
         <div role="alert" className="mt-3 flex items-start gap-2 rounded-2xl bg-danger-soft px-4 py-3 text-sm">
@@ -130,9 +159,19 @@ function AssistantMessage({ message, space, live }: { message: Message; space: S
             {copied ? <Check size={15} /> : <Copy size={15} />}
           </button>
           <RetryButton message={message} space={space} subtle />
+          <CheckButton message={message} space={space} />
+          <SecondOpinionButton message={message} space={space} />
           {message.meta?.model && <span className="ml-1 text-[0.6875rem] text-faint">{message.meta.model.model}</span>}
         </div>
       )}
+      <CheckResults message={message} />
+      <RememberedChips message={message} />
+      <SecondOpinions
+        original={message}
+        seconds={seconds}
+        live={allLive}
+        renderAnswer={(m, c) => <AnswerBody content={c} citations={m.citations ?? []} streaming={m.status === "streaming"} />}
+      />
     </div>
   );
 }
@@ -215,11 +254,13 @@ function RetryButton({ message, space, subtle }: { message: Message; space: Spac
       const all = await api.listMessages(message.threadId);
       const idx = all.findIndex((m) => m.id === message.id);
       const prevUser = [...all.slice(0, idx)].reverse().find((m) => m.role === "user");
-      const after = all.slice(idx + 1);
+      const seconds = all.slice(idx + 1).filter((m) => m.meta?.secondOpinionOf === message.id);
+      const after = all.slice(idx + 1).filter((m) => m.meta?.secondOpinionOf !== message.id);
       if (after.length) {
         toast.info("Only the latest answer can be regenerated.");
         return;
       }
+      for (const m of seconds) await api.deleteMessage(m.id);
       await api.deleteMessage(message.id);
       queryClient.invalidateQueries({ queryKey: qk.messages(message.threadId) });
       await runTurn({

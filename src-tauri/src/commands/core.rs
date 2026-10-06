@@ -126,3 +126,28 @@ pub async fn get_settings(state: State<'_, AppState>) -> AppResult<serde_json::M
 pub async fn set_setting(state: State<'_, AppState>, key: String, value: Value) -> AppResult<()> {
     m::set_setting(&state.db.conn()?, &key, &value)
 }
+
+#[tauri::command]
+pub async fn list_memory(state: State<'_, AppState>) -> AppResult<Vec<MemoryItem>> {
+    m::list_memory(&state.db.conn()?)
+}
+
+#[tauri::command]
+pub async fn add_memory(
+    state: State<'_, AppState>,
+    text: String,
+    origin: String,
+    space_id: Option<String>,
+) -> AppResult<MemoryItem> {
+    m::add_memory(&state.db.conn()?, &text, &origin, space_id.as_deref())
+}
+
+#[tauri::command]
+pub async fn update_memory(state: State<'_, AppState>, id: String, text: String) -> AppResult<MemoryItem> {
+    m::update_memory(&state.db.conn()?, &id, &text)
+}
+
+#[tauri::command]
+pub async fn delete_memory(state: State<'_, AppState>, id: String) -> AppResult<()> {
+    m::delete_memory(&state.db.conn()?, &id)
+}

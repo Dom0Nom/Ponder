@@ -18,6 +18,7 @@ export const qk = {
   journal: (spaceId: string) => ["journal", spaceId] as const,
   providers: ["providers"] as const,
   settings: ["settings"] as const,
+  memory: ["memory"] as const,
   focusHistory: (spaceId: string | null) => ["focusHistory", spaceId] as const,
   parking: (sessionId: string | null) => ["parking", sessionId] as const,
 };
@@ -57,3 +58,5 @@ export function useSetSetting() {
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.settings }),
   });
 }
+
+export const useMemory = () => useQuery({ queryKey: qk.memory, queryFn: api.listMemory });

@@ -236,9 +236,18 @@ function ThreadView({ space, thread, ensureThread }: { space: Space; thread?: Th
             />
           )}
           <div className="space-y-6">
-            {list.map((m) => (
-              <MessageView key={m.id} message={m} space={space} live={live[m.id]} />
-            ))}
+            {list
+              .filter((m) => !m.meta?.secondOpinionOf)
+              .map((m) => (
+                <MessageView
+                  key={m.id}
+                  message={m}
+                  space={space}
+                  live={live[m.id]}
+                  seconds={list.filter((x) => x.meta?.secondOpinionOf === m.id)}
+                  allLive={live}
+                />
+              ))}
           </div>
         </div>
       </div>

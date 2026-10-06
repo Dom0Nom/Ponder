@@ -35,6 +35,7 @@ interface DB {
   sessions: Row<T.FocusSessionSummary>;
   focusEvents: T.FocusEvent[];
   parking: Row<T.ParkingItem>;
+  memory: Row<T.MemoryItem>;
   nextId: number;
   clockOffset: number;
 }
@@ -83,6 +84,7 @@ function emptyDb(): DB {
     sessions: {},
     focusEvents: [],
     parking: {},
+    memory: {},
     nextId: 1,
     clockOffset: 0,
   };
@@ -129,6 +131,14 @@ const defaultScript: Script = ({ messages, body }) => {
   const sysText = typeof sys?.content === "string" ? sys.content : JSON.stringify(sys?.content ?? "");
   const last = messages[messages.length - 1];
   const lastText = typeof last?.content === "string" ? last.content : JSON.stringify(last?.content ?? "");
+  if (/strict fact-checker/i.test(lastText)) {
+    return {
+      content: JSON.stringify([
+        { claim: "Photosynthesis happens in the chloroplasts", verdict: "supported", passages: [1] },
+        { claim: "Plants release oxygen", verdict: "unsupported", passages: [], note: "Not in the passages" },
+      ]),
+    };
+  }
   if (body.response_format || /Respond with JSON|Return JSON/i.test(sysText + lastText)) {
     return { content: "{}" };
   }
@@ -781,6 +791,38 @@ const handlers: Record<string, (a: Args) => unknown> = {
     db.journal[j.id] = j;
     save();
     return j;
+  },
+  list_memory: () => Object.values(db.memory).sort((a, b) => b.createdAt - a.createdAt),
+  add_memory: (a) => {
+    const text = String(a.text ?? "").trim();
+    if (!text) err("invalid", "Memory text can't be empty");
+    const dup = Object.values(db.memory).find((m) => m.text.toLowerCase() === text.toLowerCase());
+    if (dup) return dup;
+    const m: T.MemoryItem = {
+      id: id(),
+      text,
+      origin: a.origin as "user" | "tutor",
+      spaceId: (a.spaceId as string) ?? null,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    db.memory[m.id] = m;
+    save();
+    return m;
+  },
+  update_memory: (a) => {
+    const m = db.memory[a.id as string] ?? err("not_found", "memory not found");
+    const text = String(a.text ?? "").trim();
+    if (!text) err("invalid", "Memory text can't be empty");
+    m.text = text;
+    m.updatedAt = now();
+    save();
+    return m;
+  },
+  delete_memory: (a) => {
+    delete db.memory[a.id as string];
+    save();
+    return null;
   },
   get_settings: () => db.settings,
   set_setting: (a) => {

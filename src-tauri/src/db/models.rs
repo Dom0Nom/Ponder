@@ -579,6 +579,85 @@ pub fn delete_provider(c: &Connection, id: &str) -> AppResult<()> {
     Ok(())
 }
 
+// ---------- learner memory ----------
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct MemoryItem {
+    pub id: String,
+    pub text: String,
+    /// user | tutor
+    pub origin: String,
+    pub space_id: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+fn memory_from_row(r: &Row) -> rusqlite::Result<MemoryItem> {
+    Ok(MemoryItem {
+        id: r.get("id")?,
+        text: r.get("text")?,
+        origin: r.get("origin")?,
+        space_id: r.get("space_id")?,
+        created_at: r.get("created_at")?,
+        updated_at: r.get("updated_at")?,
+    })
+}
+
+pub fn list_memory(c: &Connection) -> AppResult<Vec<MemoryItem>> {
+    let mut st = c.prepare("SELECT * FROM learner_memory ORDER BY created_at DESC")?;
+    let rows = st.query_map([], memory_from_row)?;
+    Ok(rows.collect::<Result<_, _>>()?)
+}
+
+pub fn add_memory(c: &Connection, text: &str, origin: &str, space_id: Option<&str>) -> AppResult<MemoryItem> {
+    let text = text.trim();
+    if text.is_empty() {
+        return Err(invalid("Memory text can't be empty"));
+    }
+    if text.chars().count() > 500 {
+        return Err(invalid("Keep a memory under 500 characters"));
+    }
+    if origin != "user" && origin != "tutor" {
+        return Err(invalid(format!("Unknown memory origin: {origin}")));
+    }
+    let existing: Option<String> = c
+        .query_row("SELECT id FROM learner_memory WHERE lower(text) = lower(?1)", [text], |r| r.get(0))
+        .optional()?;
+    if let Some(id) = existing {
+        return c
+            .query_row("SELECT * FROM learner_memory WHERE id=?1", [id], memory_from_row)
+            .map_err(Into::into);
+    }
+    let id = new_id();
+    let now = now_ms();
+    c.execute(
+        "INSERT INTO learner_memory (id, text, origin, space_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
+        params![id, text, origin, space_id, now],
+    )?;
+    Ok(c.query_row("SELECT * FROM learner_memory WHERE id=?1", [id], memory_from_row)?)
+}
+
+pub fn update_memory(c: &Connection, id: &str, text: &str) -> AppResult<MemoryItem> {
+    let text = text.trim();
+    if text.is_empty() {
+        return Err(invalid("Memory text can't be empty"));
+    }
+    let n = c.execute(
+        "UPDATE learner_memory SET text=?2, updated_at=?3 WHERE id=?1",
+        params![id, text, now_ms()],
+    )?;
+    if n == 0 {
+        return Err(AppError::NotFound("memory".into()));
+    }
+    Ok(c.query_row("SELECT * FROM learner_memory WHERE id=?1", [id], memory_from_row)?)
+}
+
+pub fn delete_memory(c: &Connection, id: &str) -> AppResult<()> {
+    c.execute("DELETE FROM learner_memory WHERE id=?1", [id])?;
+    Ok(())
+}
+
 // ---------- settings ----------
 
 pub fn get_settings(c: &Connection) -> AppResult<serde_json::Map<String, Value>> {
@@ -664,6 +743,23 @@ mod tests {
         delete_space(&c, &s.id).unwrap();
         assert!(list_messages(&c, &t.id).unwrap().is_empty());
         assert!(get_source(&c, &src.id).is_err());
+    }
+
+    #[test]
+    fn learner_memory_crud_dedupes() {
+        let (db, _d) = test_db();
+        let c = db.conn().unwrap();
+        let a = add_memory(&c, " Likes Minecraft analogies ", "tutor", None).unwrap();
+        assert_eq!(a.text, "Likes Minecraft analogies");
+        let b = add_memory(&c, "likes minecraft analogies", "user", None).unwrap();
+        assert_eq!(a.id, b.id);
+        assert!(add_memory(&c, "  ", "user", None).is_err());
+        assert!(add_memory(&c, "x", "robot", None).is_err());
+        let u = update_memory(&c, &a.id, "Prefers short answers").unwrap();
+        assert_eq!(u.text, "Prefers short answers");
+        assert_eq!(list_memory(&c).unwrap().len(), 1);
+        delete_memory(&c, &a.id).unwrap();
+        assert!(list_memory(&c).unwrap().is_empty());
     }
 
     #[test]

@@ -70,6 +70,13 @@ export const api = {
   getSettings: () => call<Record<string, unknown>>("get_settings"),
   setSetting: (key: string, value: unknown) => call<void>("set_setting", { key, value }),
 
+  // learner memory
+  listMemory: () => call<T.MemoryItem[]>("list_memory"),
+  addMemory: (text: string, origin: "user" | "tutor", spaceId?: string | null) =>
+    call<T.MemoryItem>("add_memory", { text, origin, spaceId: spaceId ?? null }),
+  updateMemory: (id: string, text: string) => call<T.MemoryItem>("update_memory", { id, text }),
+  deleteMemory: (id: string) => call<void>("delete_memory", { id }),
+
   // providers + secrets
   listProviders: () => call<T.Provider[]>("list_providers"),
   saveProvider: (provider: Partial<T.Provider> & Pick<T.Provider, "type" | "kind" | "name">) =>

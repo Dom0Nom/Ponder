@@ -1,4 +1,5 @@
 import type { FocusState, Message, Space, TutorStyle } from "../types";
+import { MEMORY_INSTRUCTION } from "./memory";
 
 export interface Passage {
   n: number;
@@ -25,6 +26,8 @@ export interface ContextInput {
   /** total ready sources in the space, to tell "no sources" from "nothing matched" */
   sourceCount: number;
   extraInstructions?: string;
+  /** learner memory, shared across spaces */
+  memory?: string[];
 }
 
 export function describeFocus(f: FocusState | null, now: number): string | null {
@@ -62,6 +65,15 @@ export function buildSystemPrompt(input: ContextInput): string {
     `You are a patient, encouraging study tutor inside a learning app. The learner is studying in the space "${space.name}". Reply in the language the learner writes in. Use Markdown; use LaTeX ($...$, $$...$$) for math.`,
   );
   parts.push(TUTOR[input.tutorStyle]);
+  if (input.memory?.length) {
+    parts.push(
+      [
+        "What you know about this learner from earlier sessions (they can see and edit this list). Use it to adapt explanations, examples and difficulty; don't recite it back:",
+        ...input.memory.slice(0, 30).map((m) => `- ${m}`),
+      ].join("\n"),
+    );
+  }
+  parts.push(MEMORY_INSTRUCTION);
 
   if (passages.length > 0) {
     parts.push(
@@ -103,7 +115,11 @@ export function historyMessages(
   maxTurns = 12,
 ): { role: "user" | "assistant"; content: string }[] {
   const usable = messages.filter(
-    (m) => (m.role === "user" || m.role === "assistant" || m.role === "buddy") && m.status !== "error" && m.content.trim(),
+    (m) =>
+      (m.role === "user" || m.role === "assistant" || m.role === "buddy") &&
+      m.status !== "error" &&
+      !m.meta?.secondOpinionOf &&
+      m.content.trim(),
   );
   return usable.slice(-maxTurns * 2).map((m) => ({
     role: m.role === "user" ? "user" : "assistant",

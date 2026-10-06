@@ -99,6 +99,29 @@ export interface MessageMeta {
   thinking?: boolean;
   stopped?: boolean;
   retrievalError?: string;
+  /** facts the tutor saved to learner memory during this reply */
+  remembered?: string[];
+  /** this message is a second opinion on another assistant message */
+  secondOpinionOf?: string;
+  check?: SelfCheck;
+}
+
+export type ClaimVerdict = "supported" | "partly" | "unsupported" | "contradicted";
+
+export interface SelfCheck {
+  at: number;
+  model: ModelRef;
+  items: { claim: string; verdict: ClaimVerdict; passages: number[]; note?: string }[];
+  error?: string;
+}
+
+export interface MemoryItem {
+  id: string;
+  text: string;
+  origin: "user" | "tutor";
+  spaceId: string | null;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface Message {

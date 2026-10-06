@@ -4,6 +4,7 @@ import { queryClient, qk } from "../queries";
 import type { Citation, FocusState, Message, MessageMeta, SearchHit, Space, TutorStyle } from "../types";
 import { useChatStream } from "../../stores/chatStream";
 import { hitsToCitations } from "./citations";
+import { extractMemories } from "./memory";
 import { buildSystemPrompt, historyMessages, threadTitleFrom, type Passage } from "./context";
 import { resolveChatModel, type ResolvedModel } from "./llm";
 
@@ -87,7 +88,9 @@ export async function runTurn(input: TurnInput): Promise<Message> {
   const stream = useChatStream.getState();
   stream.start(threadId, assistant.id, controller);
 
+  const memory = await api.listMemory().catch(() => []);
   const system = buildSystemPrompt({
+    memory: memory.map((m) => m.text),
     space,
     tutorStyle: input.tutorStyle,
     passages: passagesFrom(hits),
@@ -133,12 +136,31 @@ export async function runTurn(input: TurnInput): Promise<Message> {
   }
 
   const stopped = controller.signal.aborted;
+  const remembered: string[] = [];
+  if (!error && content) {
+    const ex = extractMemories(content);
+    content = ex.clean;
+    for (const fact of ex.memories) {
+      try {
+        await api.addMemory(fact, "tutor", space.id);
+        remembered.push(fact);
+      } catch {
+        // a rejected memory (too long, empty) just isn't saved
+      }
+    }
+    if (remembered.length) queryClient.invalidateQueries({ queryKey: qk.memory });
+  }
   const final = await api.updateMessage(assistant.id, {
     content,
     reasoning,
     status: error ? "error" : "complete",
     error: error ?? undefined,
-    meta: { ...assistant.meta, ...(stopped ? { stopped: true } : {}), ...(retrievalError ? { retrievalError } : {}) },
+    meta: {
+      ...assistant.meta,
+      ...(stopped ? { stopped: true } : {}),
+      ...(retrievalError ? { retrievalError } : {}),
+      ...(remembered.length ? { remembered } : {}),
+    },
   });
   useChatStream.getState().finish(threadId, assistant.id);
   invalidate();

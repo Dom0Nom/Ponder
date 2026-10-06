@@ -3,13 +3,15 @@ import { useUi, type FontPref, type ThemePref } from "../../stores/ui";
 import { Segmented } from "../../components/ui/misc";
 import { ProvidersSection } from "./ProvidersSection";
 import { ModelPicker } from "./ModelPicker";
+import { MemorySection } from "./MemorySection";
+import { useEffect } from "react";
 import { useSettings, useSetSetting } from "../../lib/queries";
 import type { ModelRef } from "../../lib/types";
 import { toastError } from "../../components/ui/toast";
 
-function Section({ title, body, children }: { title: string; body?: string; children: React.ReactNode }) {
+function Section({ title, body, children, id }: { title: string; body?: string; children: React.ReactNode; id?: string }) {
   return (
-    <section className="rounded-[var(--radius-pane)] bg-surface p-6 shadow-card">
+    <section id={id} className="scroll-mt-4 rounded-[var(--radius-pane)] bg-surface p-6 shadow-card">
       <h2 className="text-[1.0625rem] font-semibold">{title}</h2>
       {body && <p className="mt-1 text-sm text-muted">{body}</p>}
       <div className="mt-5">{children}</div>
@@ -30,6 +32,10 @@ export function SettingsScreen() {
   const ui = useUi();
   const { data: settings } = useSettings();
   const setSetting = useSetSetting();
+  const section = ui.route.name === "settings" ? ui.route.section : undefined;
+  useEffect(() => {
+    if (section) document.getElementById(`settings-${section}`)?.scrollIntoView({ behavior: "smooth" });
+  }, [section]);
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl space-y-4 px-8 pb-16 pt-6">
@@ -66,6 +72,9 @@ export function SettingsScreen() {
               <span className="w-10 text-right text-sm tabular-nums text-muted">{Math.round(ui.textScale * 100)}%</span>
             </div>
           </Row>
+        </Section>
+        <Section id="settings-memory" title={s.memory.title} body={s.memory.body}>
+          <MemorySection />
         </Section>
         <Section title={s.settings.defaultModel}>
           <ModelPicker

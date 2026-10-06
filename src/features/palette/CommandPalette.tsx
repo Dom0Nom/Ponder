@@ -1,6 +1,6 @@
 import { Command } from "cmdk";
 import * as D from "@radix-ui/react-dialog";
-import { FilePlus2, Home, MessageSquarePlus, Moon, Plus, Settings, Timer } from "lucide-react";
+import { Brain, FilePlus2, Home, MessageSquarePlus, Moon, Plus, Settings, Timer } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces, qk } from "../../lib/queries";
 import { api } from "../../lib/ipc";
@@ -72,6 +72,9 @@ export function CommandPalette() {
                 <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "settings" }))}>
                   <Settings size={17} className="text-muted" /> {s.palette.openSettings}
                   <span className="ml-auto text-xs text-faint">⌘,</span>
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "settings", section: "memory" }))} keywords={["memory", "profile", "about me"]}>
+                  <Brain size={17} className="text-muted" /> {s.memory.title}
                 </Command.Item>
                 <Command.Item
                   className={item}
