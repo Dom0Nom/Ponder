@@ -41,6 +41,9 @@ interface DB {
   memory: Row<T.MemoryItem>;
   cards: Row<T.Card>;
   mistakes: Row<T.Mistake>;
+  abilities: Record<string, Row<T.Ability>>;
+  practiceItems: Row<T.PracticeItem & { spaceId: string }>;
+  attempts: (T.NewAttempt & { spaceId: string; at: number })[];
   images: Record<string, string>;
   curricula: Row<T.SpaceCurriculum>;
   levels: Record<string, Row<T.TopicLevel>>;
@@ -99,6 +102,9 @@ function emptyDb(): DB {
     memory: {},
     cards: {},
     mistakes: {},
+    abilities: {},
+    practiceItems: {},
+    attempts: [],
     images: {},
     curricula: {},
     levels: {},
@@ -151,6 +157,20 @@ const defaultScript: Script = ({ messages, body }) => {
   const sysText = typeof sys?.content === "string" ? sys.content : JSON.stringify(sys?.content ?? "");
   const last = messages[messages.length - 1];
   const lastText = typeof last?.content === "string" ? last.content : JSON.stringify(last?.content ?? "");
+  if (/^Solve this problem carefully/.test(lastText)) {
+    const n = Number(lastText.match(/10% of (\d+)/)?.[1] ?? 0);
+    return { content: `$0.1 \\cdot ${n} = ${n / 10}$\n{"answer": ${n / 10}}` };
+  }
+  if (/Write ONE (practice|new) problem/i.test(lastText)) {
+    const level = Number(lastText.match(/difficulty (\d)\/5/)?.[1] ?? 3);
+    const n = 10 + level * 5 + (/new problem/.test(lastText) ? 1 : 0);
+    return {
+      content: JSON.stringify({ kind: "numeric", question: `What is 10% of ${n * 10}?`, answer: String(n), solution: `$0.1 \\cdot ${n * 10} = ${n}$`, level }),
+    };
+  }
+  if (/Classify the most likely mistake/i.test(lastText)) {
+    return { content: JSON.stringify({ errorType: "arithmetic", note: "Calculation slip." }) };
+  }
   if (/Make \d+ flashcards/i.test(lastText)) {
     const passage = lastText.match(/\[1\] \([^)]*\)\n([^\n]+)/)?.[1] ?? "Photosynthesis happens in the chloroplasts.";
     const quote = passage.split(" ").slice(0, 6).join(" ");
@@ -1277,6 +1297,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
         cardId: card.id,
         resolved: false,
         createdAt: now(),
+        errorType: null,
       };
       db.mistakes[mk.id] = mk;
       save();
@@ -1308,6 +1329,52 @@ const handlers: Record<string, (a: Args) => unknown> = {
     return name;
   },
   image_read: (a) => db.images[a.name as string] ?? err("not_found", "image not found"),
+  abilities_list: (a) => Object.values(db.abilities[a.spaceId as string] ?? {}),
+  ability_get: (a) => db.abilities[a.spaceId as string]?.[a.topicKey as string] ?? null,
+  practice_item_add: (a) => {
+    const it = a.item as T.PracticeItem;
+    if (!["mcq", "numeric", "short"].includes(it.kind)) err("invalid", `Unknown item kind: ${it.kind}`);
+    const item = { ...it, id: id(), createdAt: now(), spaceId: a.spaceId as string };
+    db.practiceItems[item.id] = item;
+    save();
+    return item;
+  },
+  practice_recent: (a) =>
+    Object.values(db.practiceItems)
+      .filter((i) => i.spaceId === a.spaceId && i.topicKey === a.topicKey)
+      .sort((x, y) => y.createdAt - x.createdAt)
+      .slice(0, (a.limit as number) ?? 15)
+      .map((i) => i.question),
+  practice_attempt: (a) => {
+    const at = a.attempt as T.NewAttempt;
+    const sp = (db.abilities[a.spaceId as string] ??= {});
+    const prev = sp[at.topicKey];
+    sp[at.topicKey] = { topicKey: at.topicKey, topicTitle: at.topicTitle, theta: at.thetaAfter, n: (prev?.n ?? 0) + 1, updatedAt: now() };
+    db.attempts.push({ ...at, spaceId: a.spaceId as string, at: now() });
+    save();
+    return sp[at.topicKey];
+  },
+  mistake_set_error_type: (a) => {
+    const m = db.mistakes[a.id as string];
+    if (m) m.errorType = a.errorType as T.ErrorType;
+    save();
+    return null;
+  },
+  error_patterns_list: (a) => {
+    const rows = [
+      ...db.attempts.filter((x) => x.errorType && (!a.spaceId || x.spaceId === a.spaceId)).map((x) => ({ et: x.errorType!, at: x.at, topic: x.topicTitle })),
+      ...Object.values(db.mistakes).filter((m) => m.errorType && m.origin !== "practice" && (!a.spaceId || m.spaceId === a.spaceId)).map((m) => ({ et: m.errorType!, at: m.createdAt, topic: m.topic ?? m.origin })),
+    ];
+    const by = new Map<string, { count: number; lastAt: number; topics: string[] }>();
+    for (const r of rows) {
+      const e = by.get(r.et) ?? { count: 0, lastAt: 0, topics: [] };
+      e.count++;
+      e.lastAt = Math.max(e.lastAt, r.at);
+      if (!e.topics.includes(r.topic)) e.topics.push(r.topic);
+      by.set(r.et, e);
+    }
+    return [...by.entries()].map(([errorType, e]) => ({ errorType, ...e, topics: e.topics.slice(0, 3) })).sort((x, y) => y.count - x.count);
+  },
   list_memory: () => Object.values(db.memory).sort((a, b) => b.createdAt - a.createdAt),
   add_memory: (a) => {
     const text = String(a.text ?? "").trim();

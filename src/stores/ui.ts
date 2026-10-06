@@ -5,7 +5,8 @@ export type Route =
   | { name: "home" }
   | { name: "space"; spaceId: string }
   | { name: "settings"; section?: string }
-  | { name: "review"; spaceId?: string; tab?: "cards" | "mistakes" };
+  | { name: "review"; spaceId?: string; tab?: "cards" | "mistakes" }
+  | { name: "practice"; spaceId: string; topicKey?: string };
 export type ThemePref = "system" | "light" | "dark";
 export type FontPref = "inter" | "dyslexic";
 

@@ -564,6 +564,7 @@ export interface Mistake {
   cardId: string | null;
   resolved: boolean;
   createdAt: number;
+  errorType: ErrorType | null;
 }
 
 export interface NewMistake {
@@ -574,4 +575,49 @@ export interface NewMistake {
   explanation?: string | null;
   topic?: string | null;
   options?: string[] | null;
+}
+
+// ---------- adaptive practice ----------
+
+export type ErrorType = "concept" | "procedure" | "arithmetic" | "sign" | "misread" | "units" | "careless" | "vocabulary" | "other";
+export type PracticeKind = "mcq" | "numeric" | "short";
+
+export interface Ability {
+  topicKey: string;
+  topicTitle: string;
+  theta: number;
+  n: number;
+  updatedAt: number;
+}
+
+export interface PracticeItem {
+  id: string;
+  topicKey: string;
+  kind: PracticeKind;
+  question: string;
+  options: string[] | null;
+  answer: string;
+  solution: string;
+  /** Rasch difficulty on the logit scale */
+  difficulty: number;
+  parentId: string | null;
+  createdAt: number;
+}
+
+export interface NewAttempt {
+  itemId: string;
+  topicKey: string;
+  topicTitle: string;
+  response: string;
+  correct: boolean;
+  thetaBefore: number;
+  thetaAfter: number;
+  errorType?: ErrorType | null;
+}
+
+export interface ErrorPattern {
+  errorType: ErrorType;
+  count: number;
+  lastAt: number;
+  topics: string[];
 }

@@ -14,6 +14,7 @@ import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, Kbd, Skeleton } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
 import { CardFace } from "../cards/CardFace";
+import { ErrorPatterns } from "../practice/ErrorPatterns";
 
 export function ReviewScreen({ spaceId, tab }: { spaceId?: string; tab?: "cards" | "mistakes" }) {
   const navigate = useUi((st) => st.navigate);
@@ -215,6 +216,9 @@ function MistakeNotebook({ spaceId }: { spaceId?: string }) {
     );
   return (
     <div data-testid="mistake-notebook">
+      <div className="mb-4 rounded-2xl bg-surface p-4 shadow-card">
+        <ErrorPatterns spaceId={spaceId ?? null} />
+      </div>
       <div className="mb-3 flex items-center justify-between text-xs text-muted">
         <span>{s.mistakes.summary(open.length, resolved.length)}</span>
         {resolved.length > 0 && (
@@ -241,7 +245,7 @@ function MistakeNotebook({ spaceId }: { spaceId?: string }) {
                 </p>
                 {m.explanation && <p className="mt-1 text-xs text-muted">{m.explanation}</p>}
                 <p className="mt-1.5 text-[0.6875rem] text-faint">
-                  {[m.origin, m.topic, relativeTime(m.createdAt)].filter(Boolean).join(" · ")}
+                  {[m.origin, m.topic, m.errorType && s.errorTypes[m.errorType], relativeTime(m.createdAt)].filter(Boolean).join(" · ")}
                   {m.resolved && ` · ${s.mistakes.fixed}`}
                 </p>
               </div>

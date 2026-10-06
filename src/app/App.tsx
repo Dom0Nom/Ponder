@@ -9,6 +9,7 @@ import { HomeScreen } from "../features/home/HomeScreen";
 import { SpaceScreen } from "../features/space/SpaceScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { ReviewScreen } from "../features/review/ReviewScreen";
+import { PracticeScreen } from "../features/practice/PracticeScreen";
 import { CommandPalette } from "../features/palette/CommandPalette";
 import { FocusLayer } from "../features/focus/FocusLayer";
 import { QuizLayer } from "../features/placement/QuizDialog";
@@ -22,6 +23,7 @@ function Routes() {
   if (route.name === "space") return <SpaceScreen key={route.spaceId} spaceId={route.spaceId} />;
   if (route.name === "settings") return <SettingsScreen />;
   if (route.name === "review") return <ReviewScreen spaceId={route.spaceId} tab={route.tab} />;
+  if (route.name === "practice") return <PracticeScreen key={route.spaceId} spaceId={route.spaceId} topicKey={route.topicKey} />;
   return <HomeScreen />;
 }
 

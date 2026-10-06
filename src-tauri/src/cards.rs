@@ -81,6 +81,7 @@ pub struct Mistake {
     pub card_id: Option<String>,
     pub resolved: bool,
     pub created_at: i64,
+    pub error_type: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -286,6 +287,7 @@ fn mistake_from_row(r: &Row) -> rusqlite::Result<Mistake> {
         card_id: r.get("card_id")?,
         resolved: r.get::<_, i64>("resolved")? != 0,
         created_at: r.get("created_at")?,
+        error_type: r.get("error_type")?,
     })
 }
 

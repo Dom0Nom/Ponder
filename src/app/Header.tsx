@@ -42,6 +42,15 @@ export function Header() {
           <span className="text-[0.9375rem] font-semibold">{s.appName}</span>
         </button>
         {route.name === "space" && <SpaceCrumb spaceId={route.spaceId} />}
+        {route.name === "practice" && (
+          <>
+            <button onClick={() => navigate({ name: "space", spaceId: route.spaceId })} className="flex min-w-0 items-center gap-2 rounded-full pr-1 hover:text-accent-text">
+              <SpaceCrumb spaceId={route.spaceId} />
+            </button>
+            <ChevronRight size={16} className="text-faint" />
+            <span className="font-medium">{s.practice.title}</span>
+          </>
+        )}
         {route.name === "settings" && (
           <>
             <ChevronRight size={16} className="text-faint" />

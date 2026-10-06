@@ -121,6 +121,17 @@ export const api = {
   imageStore: (path: string) => call<string>("image_store", { path }),
   imageRead: (name: string) => call<string>("image_read", { name }),
 
+  // adaptive practice
+  abilitiesList: (spaceId: string) => call<T.Ability[]>("abilities_list", { spaceId }),
+  abilityGet: (spaceId: string, topicKey: string) => call<T.Ability | null>("ability_get", { spaceId, topicKey }),
+  practiceItemAdd: (spaceId: string, item: Omit<T.PracticeItem, "id" | "createdAt">) =>
+    call<T.PracticeItem>("practice_item_add", { spaceId, item: { id: "", createdAt: 0, ...item } }),
+  practiceRecent: (spaceId: string, topicKey: string, limit?: number) =>
+    call<string[]>("practice_recent", { spaceId, topicKey, limit: limit ?? null }),
+  practiceAttempt: (spaceId: string, attempt: T.NewAttempt) => call<T.Ability>("practice_attempt", { spaceId, attempt }),
+  mistakeSetErrorType: (id: string, errorType: T.ErrorType) => call<void>("mistake_set_error_type", { id, errorType }),
+  errorPatterns: (spaceId?: string | null) => call<T.ErrorPattern[]>("error_patterns_list", { spaceId: spaceId ?? null }),
+
   // learner memory
   listMemory: () => call<T.MemoryItem[]>("list_memory"),
   addMemory: (text: string, origin: "user" | "tutor", spaceId?: string | null) =>

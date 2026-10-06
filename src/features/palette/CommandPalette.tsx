@@ -1,6 +1,6 @@
 import { Command } from "cmdk";
 import * as D from "@radix-ui/react-dialog";
-import { Brain, FilePlus2, FolderSync, GraduationCap, Home, ListX, MessageSquarePlus, Moon, NotebookPen, Plus, Settings, Timer } from "lucide-react";
+import { Brain, FilePlus2, Dumbbell, FolderSync, GraduationCap, Home, ListX, MessageSquarePlus, Moon, NotebookPen, Plus, Settings, Timer } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces, qk, useCaptureStatus } from "../../lib/queries";
 import { formatShortcut } from "../../lib/capture/shortcut";
@@ -61,6 +61,9 @@ export function CommandPalette() {
                     </Command.Item>
                     <Command.Item className={item} onSelect={() => run(() => ui.setWatchDialogOpen(true))} keywords={["folder", "watch", "sync"]}>
                       <FolderSync size={17} className="text-muted" /> {s.palette.watchedFolders}
+                    </Command.Item>
+                    <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "practice", spaceId }))} keywords={["practice", "problems", "exercises", "drill"]}>
+                      <Dumbbell size={17} className="text-muted" /> {s.practice.title}
                     </Command.Item>
                   </>
                 )}

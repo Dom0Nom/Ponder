@@ -9,6 +9,7 @@ mod ingest;
 mod lan;
 mod oauth;
 mod placement;
+mod practice;
 mod proxy;
 mod retrieval;
 mod secrets;
@@ -85,6 +86,13 @@ pub fn run() {
             cards::mistake_delete,
             cards::image_store,
             cards::image_read,
+            practice::abilities_list,
+            practice::ability_get,
+            practice::practice_item_add,
+            practice::practice_recent,
+            practice::practice_attempt,
+            practice::mistake_set_error_type,
+            practice::error_patterns_list,
             placement::curriculum_get,
             placement::curriculum_set,
             placement::curriculum_clear,

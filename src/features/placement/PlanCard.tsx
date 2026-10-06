@@ -184,6 +184,7 @@ function CoverageMap({ space, curriculum }: { space: Space; curriculum: SpaceCur
   const [removing, setRemoving] = useState(false);
   const [busy, setBusy] = useState(false);
   const setImport = useUi((st) => st.setImportDialog);
+  const navigate = useUi((st) => st.navigate);
 
   const covByTopic = useMemo(() => new Map((coverage.data ?? []).map((c) => [c.topicId, c])), [coverage.data]);
   const levelByTopic = useMemo(() => new Map((levels.data ?? []).map((l) => [l.topicId, l])), [levels.data]);
@@ -296,6 +297,12 @@ function CoverageMap({ space, curriculum }: { space: Space; curriculum: SpaceCur
                             className="cursor-pointer rounded-lg px-3 py-2 text-sm outline-none data-[highlighted]:bg-surface-2"
                           >
                             {s.plan.startTopic}
+                          </DM.Item>
+                          <DM.Item
+                            onSelect={() => navigate({ name: "practice", spaceId: space.id, topicKey: t.id })}
+                            className="cursor-pointer rounded-lg px-3 py-2 text-sm outline-none data-[highlighted]:bg-surface-2"
+                          >
+                            {s.practice.practiceTopic}
                           </DM.Item>
                           <DM.Item
                             onSelect={() => setImport({ open: true, tab: "research", query: `${t.title}: ${t.description}` })}

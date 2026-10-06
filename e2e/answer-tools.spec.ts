@@ -46,7 +46,8 @@ test("tutor saves a memory, shows it, and it can be edited in settings", async (
   await app.getByRole("button", { name: "Edit" }).first().click();
   const section = app.getByTestId("memory-section");
   await expect(section).toContainText("Is preparing for the GED science test in March");
-  await section.getByRole("button", { name: "Forget" }).click({ force: true });
+  await section.getByText("Is preparing for the GED science test in March").hover();
+  await section.getByRole("button", { name: "Forget" }).click();
   await expect(section).toContainText("Nothing yet");
 });
 
