@@ -6,6 +6,7 @@ mod ingest;
 mod lan;
 mod oauth;
 mod proxy;
+mod retrieval;
 mod secrets;
 
 use db::Db;
@@ -65,6 +66,7 @@ pub fn run() {
             ingest::commands::import_text,
             ingest::commands::reindex_source,
             ingest::commands::search_chunks,
+            ingest::commands::embedder_status,
             focus::commands::focus_start,
             focus::commands::focus_state,
             focus::commands::focus_pause,
