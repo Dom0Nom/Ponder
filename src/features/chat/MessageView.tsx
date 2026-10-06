@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AlertCircle, Brain, Check, ChevronRight, Copy, Globe2, RotateCcw, Timer } from "lucide-react";
 import { api } from "../../lib/ipc";
-import { splitSegments, citedNumbers } from "../../lib/chat/citations";
+import { splitSegments, citedNumbers, inferCitations } from "../../lib/chat/citations";
 import { runTurn } from "../../lib/chat/runner";
 import { NoModelError } from "../../lib/chat/llm";
 import { queryClient, qk } from "../../lib/queries";
@@ -51,16 +51,20 @@ function AssistantMessage({ message, space, live }: { message: Message; space: S
   const streaming = message.status === "streaming" && !!live;
   const citations = message.citations ?? [];
   const byN = new Map(citations.map((c) => [c.n, c]));
-  const segments = splitSegments(content, { hadSources: citations.length > 0, known: citations.length });
-  const cited = citedNumbers(content, citations.length)
+  const shown = useMemo(
+    () => (streaming ? content : inferCitations(content, citations.map((c) => ({ n: c.n, text: c.text ?? c.snippet })))),
+    [streaming, content, citations],
+  );
+  const segments = splitSegments(shown, { hadSources: citations.length > 0, known: citations.length });
+  const cited = citedNumbers(shown, citations.length)
     .map((n) => byN.get(n))
     .filter((c): c is Citation => !!c);
   const [copied, setCopied] = useState(false);
   const interrupted = message.status === "streaming" && !live;
 
-  const renderCite = (n: number) => {
+  const renderCite = (n: number, inferred: boolean) => {
     const c = byN.get(n);
-    return c ? <CiteChip citation={c} /> : null;
+    return c ? <CiteChip citation={c} inferred={inferred} /> : null;
   };
 
   return (
@@ -73,7 +77,13 @@ function AssistantMessage({ message, space, live }: { message: Message; space: S
       )}
       <div className="space-y-3">
         {segments.map((seg, i) =>
-          seg.kind === "general" ? (
+          seg.kind === "uncited" ? (
+            <div key={i} className="relative pl-3" data-testid="uncited-block">
+              <span aria-hidden className="absolute bottom-1 left-0 top-1 w-[2px] rounded-full bg-surface-3" />
+              <Markdown text={seg.text} knownCitations={citations.length} renderCite={renderCite} />
+              <p className="mt-0.5 text-[0.6875rem] text-faint">{s.chat.noSourceCited}</p>
+            </div>
+          ) : seg.kind === "general" ? (
             <div key={i} className="rounded-2xl border border-dashed border-border px-4 pb-3 pt-2" data-testid="general-block">
               <p className="mb-1 flex items-center gap-1.5 text-[0.6875rem] font-medium text-muted">
                 <Globe2 size={12} /> {s.chat.notFromSources}
@@ -149,7 +159,7 @@ function Thinking({ text, active }: { text: string; active: boolean }) {
   );
 }
 
-function CiteChip({ citation }: { citation: Citation }) {
+function CiteChip({ citation, inferred }: { citation: Citation; inferred: boolean }) {
   const openViewer = useUi((st) => st.openViewer);
   return (
     <Tooltip
@@ -161,14 +171,19 @@ function CiteChip({ citation }: { citation: Citation }) {
             {citation.page != null ? ` · p. ${citation.page}` : ""}
           </span>
           <span className="mt-1 block opacity-80">{citation.snippet}</span>
+          {inferred && <span className="mt-1 block opacity-70">{s.chat.inferredCitation}</span>}
         </span>
       }
     >
       <button
         data-testid="cite-chip"
-        aria-label={`Citation ${citation.n}: ${citation.sourceTitle}`}
+        data-inferred={inferred || undefined}
+        aria-label={`Citation ${citation.n}: ${citation.sourceTitle}${inferred ? " (matched by the app)" : ""}`}
         onClick={() => openViewer({ sourceId: citation.sourceId, start: citation.start, end: citation.end })}
-        className="mx-0.5 inline-flex h-[1.15rem] min-w-[1.15rem] -translate-y-px items-center justify-center rounded-full bg-accent-soft px-1 align-middle text-[0.6875rem] font-semibold text-accent-text hover:bg-accent hover:text-on-accent"
+        className={cn(
+          "mx-0.5 inline-flex h-[1.15rem] min-w-[1.15rem] -translate-y-px items-center justify-center rounded-full px-1 align-middle text-[0.6875rem] font-semibold text-accent-text hover:bg-accent hover:text-on-accent",
+          inferred ? "border border-dashed border-accent-text/60" : "bg-accent-soft",
+        )}
       >
         {citation.n}
       </button>

@@ -1,5 +1,21 @@
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useUi } from "../stores/ui";
+
+const mq = () => window.matchMedia("(prefers-color-scheme: dark)");
+
+/** Effective theme after resolving "system". */
+export function useIsDark(): boolean {
+  const theme = useUi((st) => st.theme);
+  const systemDark = useSyncExternalStore(
+    (cb) => {
+      const m = mq();
+      m.addEventListener("change", cb);
+      return () => m.removeEventListener("change", cb);
+    },
+    () => mq().matches,
+  );
+  return theme === "dark" || (theme === "system" && systemDark);
+}
 
 export function useApplyAppearance() {
   const theme = useUi((st) => st.theme);

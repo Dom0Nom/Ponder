@@ -6,6 +6,7 @@ import { buddyInstruction, buddyNote } from "../../lib/buddy/prompts";
 import { runTurn } from "../../lib/chat/runner";
 import { NoModelError } from "../../lib/chat/llm";
 import { formatMinutes } from "../../lib/utils";
+import { CITE_RE } from "../../lib/chat/citations";
 import { useUi } from "../../stores/ui";
 import { useChatStream } from "../../stores/chatStream";
 import { useFocusStore } from "../focus/focusStore";
@@ -79,7 +80,12 @@ async function handle(ev: BuddyEvent) {
     const stats = p
       ? `${formatMinutes(p.totalFocusMs)} focus · ${p.block} block(s) · ${p.pauseCount} pause(s) · ${p.needAppCount} break interruption(s)`
       : "";
-    const body = [stats, content.replaceAll("{{general}}", "").replaceAll("{{/general}}", "")].filter(Boolean).join("\n\n");
+    const clean = content
+      .replaceAll("{{general}}", "")
+      .replaceAll("{{/general}}", "")
+      .replace(CITE_RE, "")
+      .replace(/ +([.,;:!?])/g, "$1");
+    const body = [stats, clean].filter(Boolean).join("\n\n");
     const date = new Date().toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
     await api.addJournal(spaceId, "session-summary", `Focus session · ${date}`, body || "Session ended.");
     await api.focusSetSummary(ev.sessionId, body).catch(() => {});

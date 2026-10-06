@@ -57,7 +57,7 @@ describe("context assembly", () => {
   it("includes timer state, break time and need-app pauses", () => {
     const d = describeFocus(focus, new Date("2026-10-06T14:00:00").getTime())!;
     expect(d).toContain("focus block 2");
-    expect(d).toContain("4 min left until a break at 14:04");
+    expect(d).toContain("Time left until the break: 4 minutes (the break starts at 14:04 clock time)");
     expect(d).toContain("Fit your answer into the time left");
     expect(d).toContain("2 break(s)");
     expect(describeFocus(null, 0)).toBeNull();

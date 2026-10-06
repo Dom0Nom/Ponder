@@ -14,3 +14,4 @@ src-tauri/gen/schemas/
 !.vscode/extensions.json
 .playwright-mcp/
 .claude/worktrees/
+.shots/

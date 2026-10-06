@@ -13,7 +13,7 @@ export const Markdown = memo(function Markdown({
 }: {
   text: string;
   knownCitations?: number;
-  renderCite?: (n: number) => ReactNode;
+  renderCite?: (n: number, inferred: boolean) => ReactNode;
 }) {
   const components = {
     a: ({ href, children }: { href?: string; children?: ReactNode }) => (
@@ -21,7 +21,8 @@ export const Markdown = memo(function Markdown({
         {children}
       </a>
     ),
-    "cite-ref": (props: { "data-n"?: number | string }) => renderCite?.(Number(props["data-n"])) ?? null,
+    "cite-ref": (props: { "data-n"?: number | string; "data-inferred"?: string }) =>
+      renderCite?.(Number(props["data-n"]), props["data-inferred"] === "1") ?? null,
   } as unknown as Components;
   return (
     <div className="prose-chat">

@@ -6,6 +6,7 @@ import { s } from "../lib/strings";
 import { SpaceIcon } from "../lib/spaceStyle";
 import { useUi } from "../stores/ui";
 import { FocusHeaderTimer } from "../features/focus/FocusHeaderTimer";
+import { useIsDark } from "./useTheme";
 
 function SpaceCrumb({ spaceId }: { spaceId: string }) {
   const { data } = useSpace(spaceId);
@@ -24,10 +25,9 @@ function SpaceCrumb({ spaceId }: { spaceId: string }) {
 export function Header() {
   const route = useUi((st) => st.route);
   const navigate = useUi((st) => st.navigate);
-  useUi((st) => st.theme);
   const setTheme = useUi((st) => st.setTheme);
   const setPaletteOpen = useUi((st) => st.setPaletteOpen);
-  const isDark = document.documentElement.dataset.theme === "dark";
+  const isDark = useIsDark();
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 px-4" data-tauri-drag-region>

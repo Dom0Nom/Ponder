@@ -94,12 +94,15 @@ export async function runTurn(input: TurnInput): Promise<Message> {
     focus: input.focus,
     now: Date.now(),
     sourceCount: sources.filter((s) => s.status === "ready").length || space.sourceCount,
-    extraInstructions: input.instruction,
   });
   const history = historyMessages(prior) as ModelMessage[];
   const messages: ModelMessage[] = [...history];
   if (input.userText) messages.push({ role: "user", content: input.userText });
-  else messages.push({ role: "user", content: "[Study buddy event, not typed by the learner. Follow the system instructions for it.]" });
+  else
+    messages.push({
+      role: "user",
+      content: `[Study buddy event, not typed by the learner] ${input.instruction ?? ""}`.trim(),
+    });
 
   let content = "";
   let reasoning = "";

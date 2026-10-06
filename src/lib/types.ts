@@ -87,6 +87,8 @@ export interface Citation {
   end: number;
   page: number | null;
   snippet: string;
+  /** full passage text, used to match uncited paragraphs */
+  text?: string;
 }
 
 export interface MessageMeta {

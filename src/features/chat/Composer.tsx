@@ -89,7 +89,7 @@ export function Composer({
             send();
           }
         }}
-        className="block max-h-[220px] w-full resize-none bg-transparent px-5 pb-1 pt-3.5 text-[0.9375rem] leading-relaxed outline-none placeholder:text-faint"
+        className="block max-h-[220px] w-full resize-none bg-transparent px-5 pb-1 pt-3.5 text-[0.9375rem] leading-relaxed outline-none placeholder:text-faint focus-visible:outline-none"
       />
       <div className="flex items-center gap-2 px-3 pb-2.5 pt-1">
         <Segmented<TutorStyle>

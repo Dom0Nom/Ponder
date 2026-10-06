@@ -30,6 +30,7 @@ export function CommandPalette() {
       <D.Portal>
         <D.Overlay className="fixed inset-0 z-40 bg-black/25" />
         <D.Content
+          onFocusOutside={(e) => e.preventDefault()}
           aria-label={s.palette.placeholder}
           className="fixed left-1/2 top-[14vh] z-50 w-[min(600px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden rounded-[20px] bg-surface shadow-2xl"
         >

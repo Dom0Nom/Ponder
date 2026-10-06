@@ -123,6 +123,8 @@ export const s = {
     thoughtFor: "Thoughts",
     thinkingToggle: "Thinking",
     notFromSources: "Not from your sources",
+    noSourceCited: "No source cited",
+    inferredCitation: "Matched to this passage by the app; the model didn't cite it.",
     noModel: "No chat model set up yet.",
     noModelAction: "Add a provider",
     failed: "The answer couldn't be generated",

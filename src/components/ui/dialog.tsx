@@ -26,6 +26,8 @@ export function Dialog({
       <D.Portal>
         <D.Overlay className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px] data-[state=open]:animate-in" />
         <D.Content
+          // switching to another app and back must not dismiss a half-filled dialog
+          onFocusOutside={(e) => e.preventDefault()}
           className={cn(
             "fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[min(560px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-[24px] bg-surface shadow-2xl outline-none",
             className,

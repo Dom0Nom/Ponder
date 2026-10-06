@@ -191,6 +191,18 @@ function ThreadView({ space, thread, ensureThread }: { space: Space; thread?: Th
     if (el && stick.current) el.scrollTop = el.scrollHeight;
   }, [list.length, liveLen]);
 
+  // content keeps growing after a stream ends (citations, footer); stay pinned to the bottom
+  const content = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el || !content.current) return;
+    const ro = new ResizeObserver(() => {
+      if (stick.current) el.scrollTop = el.scrollHeight;
+    });
+    ro.observe(content.current);
+    return () => ro.disconnect();
+  }, []);
+
   const ready = (sources.data ?? []).filter((x) => x.status === "ready");
   const inChat = ready.filter((x) => x.useInChat);
 
@@ -205,7 +217,7 @@ function ThreadView({ space, thread, ensureThread }: { space: Space; thread?: Th
         className="min-h-0 flex-1 overflow-y-auto"
         data-testid="message-list"
       >
-        <div className="mx-auto max-w-[760px] px-6 py-6">
+        <div ref={content} className="mx-auto max-w-[760px] px-6 py-6">
           {messages.isLoading && thread && (
             <div className="space-y-4">
               <Skeleton className="ml-auto h-10 w-1/2" />

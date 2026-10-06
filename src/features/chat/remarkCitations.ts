@@ -7,7 +7,7 @@ interface Node {
   data?: { hName?: string; hProperties?: Record<string, unknown> };
 }
 
-/** Turns `[1]`, `[2][3]`, `[1, 4]` in text nodes into `<cite-ref data-n>` elements. */
+/** Turns `[1]`, `[2][3]`, `[1, 4]`, `[~2]` in text nodes into `<cite-ref data-n data-inferred>` elements. */
 export function remarkCitations(opts: { known: number }) {
   return (tree: Node) => {
     const walk = (node: Node) => {
@@ -18,11 +18,18 @@ export function remarkCitations(opts: { known: number }) {
           CITE_RE.lastIndex = 0;
           let last = 0;
           for (const m of child.value.matchAll(CITE_RE)) {
-            const nums = m[1].split(/[,;]/).map((x) => Number(x.trim())).filter((n) => n >= 1 && n <= opts.known);
-            if (!nums.length) continue;
+            const refs = m[1]
+              .split(/[,;]/)
+              .map((x) => ({ n: Number(x.trim().replace("~", "")), inferred: x.includes("~") }))
+              .filter((r) => r.n >= 1 && r.n <= opts.known);
+            if (!refs.length) continue;
             if (m.index! > last) next.push({ type: "text", value: child.value.slice(last, m.index) });
-            for (const n of nums) {
-              next.push({ type: "citeRef", data: { hName: "cite-ref", hProperties: { "data-n": n } }, children: [] });
+            for (const r of refs) {
+              next.push({
+                type: "citeRef",
+                data: { hName: "cite-ref", hProperties: { "data-n": r.n, "data-inferred": r.inferred ? "1" : "0" } },
+                children: [],
+              });
             }
             last = m.index! + m[0].length;
           }

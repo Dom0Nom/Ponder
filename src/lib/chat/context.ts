@@ -32,20 +32,22 @@ export function describeFocus(f: FocusState | null, now: number): string | null 
   const mins = (ms: number) => Math.max(0, Math.round(ms / 60000));
   const lines: string[] = [];
   const goal = f.goal ? ` Goal: "${f.goal}".` : "";
+  const minutes = (n: number) => (n === 1 ? "1 minute" : `${n} minutes`);
   if (f.phase === "work") {
     if (f.remainingMs != null) {
       const breakAt = new Date(now + f.remainingMs).toTimeString().slice(0, 5);
+      const left = Math.max(0, Math.round(f.remainingMs / 60000));
       lines.push(
-        `The learner is in focus block ${f.block} (${f.technique}), ${mins(f.elapsedMs)} min in, ${mins(f.remainingMs)} min left until a break at ${breakAt}.${goal}`,
+        `The learner is in focus block ${f.block} (${f.technique}), ${minutes(mins(f.elapsedMs))} in. Time left until the break: ${minutes(left)} (the break starts at ${breakAt} clock time).${goal}`,
       );
       lines.push(
         "Fit your answer into the time left. If a full explanation won't fit before the break, say so up front and give the short version or a first part.",
       );
     } else {
-      lines.push(`The learner is in an open-ended flowtime block, ${mins(f.elapsedMs)} min in.${goal}`);
+      lines.push(`The learner is in an open-ended flowtime block, ${minutes(mins(f.elapsedMs))} in.${goal}`);
     }
   } else if (f.phase === "break" || f.phase === "longBreak") {
-    lines.push(`The learner is on a break (${mins(f.remainingMs ?? 0)} min left).${goal}`);
+    lines.push(`The learner is on a break (${minutes(mins(f.remainingMs ?? 0))} left).${goal}`);
   }
   if (f.paused) lines.push(`The session is paused (${f.pauseReason === "needApp" ? "they paused a break because they needed the app" : "paused by the learner"}).`);
   if (f.needAppCount > 0) lines.push(`They have interrupted ${f.needAppCount} break(s) this session with "I need the app".`);
@@ -71,7 +73,7 @@ export function buildSystemPrompt(input: ContextInput): string {
       ].join("\n\n"),
     );
     parts.push(
-      "Ground your answer in these passages. Cite every claim that comes from them with its number in square brackets right after the claim, like [1] or [2][3]. Only cite a number if that passage actually supports the claim. Never invent citation numbers.",
+      "Ground your answer in these passages. Every sentence that uses information from a passage must end with that passage's number in square brackets, like [1] or [2][3] — including sentences in your direct answer, not only the first one. Only cite a number if that passage actually supports the sentence. Never invent citation numbers.",
     );
   } else if (input.sourceCount > 0) {
     parts.push("No passage in the learner's sources matched this question.");
