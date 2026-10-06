@@ -32,6 +32,7 @@ export const qk = {
   parking: (sessionId: string | null) => ["parking", sessionId] as const,
   watched: (spaceId: string) => ["watched", spaceId] as const,
   capture: ["capture"] as const,
+  music: ["music"] as const,
 };
 
 export const useSpaces = () => useQuery({ queryKey: qk.spaces, queryFn: api.listSpaces });
@@ -77,6 +78,7 @@ export const useLevels = (spaceId: string) => useQuery({ queryKey: qk.levels(spa
 export const useCourses = (spaceId: string) => useQuery({ queryKey: qk.courses(spaceId), queryFn: () => api.coursesList(spaceId) });
 export const useWatchedFolders = (spaceId: string) =>
   useQuery({ queryKey: qk.watched(spaceId), queryFn: () => api.watchList(spaceId) });
+export const useMusicStatus = () => useQuery({ queryKey: qk.music, queryFn: api.musicStatus });
 export const useCaptureStatus = () => useQuery({ queryKey: qk.capture, queryFn: api.captureStatus });
 export const useCards = (spaceId: string) => useQuery({ queryKey: qk.cards(spaceId), queryFn: () => api.cardsList(spaceId) });
 export const useDueCounts = () => useQuery({ queryKey: qk.dueCounts, queryFn: api.cardsDueCounts, refetchInterval: 60_000 });

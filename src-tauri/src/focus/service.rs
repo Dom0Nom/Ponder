@@ -393,6 +393,7 @@ pub fn apply(app: &AppHandle, out: &Outcome) {
     let _ = app.emit("focus://tick", &out.state);
     sync_window(app, out.state.as_ref());
     super::tray::update(app, out.state.as_ref());
+    crate::music::sync(app, out.state.as_ref());
 }
 
 fn locked(state: Option<&FocusState>) -> bool {

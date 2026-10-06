@@ -61,6 +61,11 @@ export const api = {
   captureConfigure: (enabled: boolean, shortcut: string) =>
     call<T.CaptureStatus>("capture_configure", { enabled, shortcut }),
 
+  // focus music
+  musicStatus: () => call<T.MusicStatus>("music_status"),
+  musicTest: (playlist: string) => call<void>("music_test", { playlist }),
+  musicPause: () => call<void>("music_pause"),
+
   // threads + messages
   listThreads: (spaceId: string) => call<T.Thread[]>("list_threads", { spaceId }),
   createThread: (spaceId: string, title?: string) =>
@@ -210,6 +215,7 @@ export const events = {
   focusRequest: (cb: () => void) => listen("focus://request-start", () => cb()),
   watchUpdated: (cb: (e: { id: string; spaceId: string }) => void) =>
     listen<{ id: string; spaceId: string }>("watch://updated", (e) => cb(e.payload)),
+  musicError: (cb: (error: string | null) => void) => listen<string | null>("music://error", (e) => cb(e.payload)),
   /** global hotkey or tray "Quick capture" */
   captureOpen: (cb: () => void) => listen("capture://open", () => cb()),
   captureStatus: (cb: (s: T.CaptureStatus) => void) =>

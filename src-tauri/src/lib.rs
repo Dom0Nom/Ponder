@@ -7,6 +7,7 @@ mod error;
 mod focus;
 mod ingest;
 mod lan;
+mod music;
 mod oauth;
 mod placement;
 mod practice;
@@ -36,6 +37,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(capture::plugin())
         .on_window_event(focus::on_window_event)
+        .manage(music::MusicService::new(music::default_backend()))
         .manage(commands::providers::ProviderServices::new())
         .manage(std::sync::Arc::new(cloud::CloudServices::new(secrets::default_store())))
         .setup(|app| {
@@ -74,6 +76,9 @@ pub fn run() {
             commands::core::add_journal,
             commands::core::get_settings,
             commands::core::set_setting,
+            music::music_status,
+            music::music_test,
+            music::music_pause,
             cards::cards_add,
             cards::card_update,
             cards::card_delete,

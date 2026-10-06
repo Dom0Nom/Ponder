@@ -7,6 +7,7 @@ import { mockIPC } from "@tauri-apps/api/mocks";
 import { emit } from "@tauri-apps/api/event";
 import type * as T from "../lib/types";
 import { DEFAULT_SHORTCUT, validateShortcut } from "../lib/capture/shortcut";
+import { parsePlaylistUri } from "../lib/music";
 import { importKind, originFor } from "../lib/importers/cloud";
 
 type Row<T> = Record<string, T>;
@@ -37,6 +38,7 @@ interface DB {
   focus: MockFocus | null;
   sessions: Row<T.FocusSessionSummary>;
   focusEvents: T.FocusEvent[];
+  musicCalls: string[];
   parking: Row<T.ParkingItem>;
   memory: Row<T.MemoryItem>;
   cards: Row<T.Card>;
@@ -98,6 +100,7 @@ function emptyDb(): DB {
     focus: null,
     sessions: {},
     focusEvents: [],
+    musicCalls: [],
     parking: {},
     memory: {},
     cards: {},
@@ -1012,6 +1015,20 @@ const handlers: Record<string, (a: Args) => unknown> = {
     delete db.watched[f.id];
     save();
     emit("watch://updated", { id: f.id, spaceId: f.spaceId });
+    return null;
+  },
+
+  music_status: () => ({ available: true, backend: "mock", running: false, lastError: null }),
+  music_test: (a) => {
+    const r = parsePlaylistUri(String(a.playlist ?? ""));
+    if (!r.ok) err("invalid", r.error);
+    db.musicCalls.push(`play ${r.uri}`);
+    save();
+    return null;
+  },
+  music_pause: () => {
+    db.musicCalls.push("pause");
+    save();
     return null;
   },
 

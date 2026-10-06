@@ -362,6 +362,8 @@ export interface MusicStatus {
   available: boolean;
   backend: string | null;
   running: boolean;
+  /** last failure when starting or pausing the player */
+  lastError: string | null;
 }
 
 export type BuddyEventKind =
