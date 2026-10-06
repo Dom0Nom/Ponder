@@ -29,6 +29,7 @@ interface DB {
   journal: Row<T.JournalEntry>;
   providers: Row<T.Provider>;
   secrets: Record<string, true>;
+  oauth: Record<string, T.OAuthStatus>;
   settings: Record<string, unknown>;
   focus: MockFocus | null;
   sessions: Row<T.FocusSessionSummary>;
@@ -74,6 +75,7 @@ function emptyDb(): DB {
     journal: {},
     providers: {},
     secrets: {},
+    oauth: {},
     settings: {},
     focus: null,
     sessions: {},
@@ -156,13 +158,25 @@ async function httpStream(request: T.ProxyRequest, channel: { id: number }) {
   let i = 0;
   const send = (m: T.ProxyEvent) => sendChannel(channel, i++, m);
   const url = new URL(request.url);
-  if (request.providerId && !db.providers[request.providerId]) {
-    send({ type: "error", message: "Unknown provider" });
+  const provider = request.providerId ? db.providers[request.providerId] : undefined;
+  if (request.providerId && !provider) {
+    send({ type: "error", message: "provider not found" });
+    return;
+  }
+  if (provider?.kind === "apiKey" && provider.type !== "openai-compatible" && !db.secrets[provider.id]) {
+    send({ type: "error", message: `No API key saved for ${provider.name}. Add one in Settings.` });
+    return;
+  }
+  if (provider?.kind === "oauth" && db.oauth[provider.id]?.state !== "signedIn") {
+    send({ type: "error", message: "Not signed in. Sign in again in Settings." });
     return;
   }
   if (url.pathname.endsWith("/models")) {
     send({ type: "head", status: 200, headers: { "content-type": "application/json" } });
-    send({ type: "chunk", data: JSON.stringify({ data: [{ id: "mock-model" }, { id: "mock-model-2" }] }) });
+    const list = url.hostname.startsWith("generativelanguage")
+      ? { models: [{ name: "models/mock-model", supportedGenerationMethods: ["generateContent"] }] }
+      : { data: [{ id: "mock-model" }, { id: "mock-model-2" }] };
+    send({ type: "chunk", data: JSON.stringify(list) });
     send({ type: "end" });
     return;
   }
@@ -379,6 +393,42 @@ function endSession(): T.FocusSessionSummary {
   return summary;
 }
 
+// ---------- providers / oauth ----------
+
+const PROVIDER_TYPES: T.ProviderType[] = [
+  "anthropic",
+  "openai",
+  "google",
+  "openrouter",
+  "xai",
+  "groq",
+  "mistral",
+  "deepseek",
+  "openai-compatible",
+  "lmstudio",
+  "ollama",
+  "llamacpp",
+  "chatgpt-oauth",
+  "xai-oauth",
+];
+
+function setOAuth(st: T.OAuthStatus) {
+  db.oauth[st.providerId] = st;
+  save();
+  emit("oauth://status", st);
+}
+
+/** Simulates the browser / device approval finishing after `ms`. */
+function mockSignIn(providerId: string, account: string, ms: number) {
+  setOAuth({ providerId, state: "pending" });
+  setTimeout(() => {
+    const p = db.providers[providerId];
+    if (!p || db.oauth[providerId]?.state !== "pending") return;
+    p.config = { ...p.config, account };
+    setOAuth({ providerId, state: "signedIn", account, expiresAt: now() + 3_600_000 });
+  }, ms);
+}
+
 // ---------- command router ----------
 
 type Args = Record<string, unknown>;
@@ -577,9 +627,13 @@ const handlers: Record<string, (a: Args) => unknown> = {
   list_providers: () => Object.values(db.providers).sort((a, b) => a.createdAt - b.createdAt),
   save_provider: (a) => {
     const p = { ...(a.provider as T.Provider) };
+    if (!PROVIDER_TYPES.includes(p.type)) err("invalid", `Unknown provider type ${p.type}`);
     if (!p.name?.trim()) err("invalid", "Provider name can't be empty");
+    p.baseUrl = p.baseUrl?.trim().replace(/\/+$/, "") || null;
+    if (p.baseUrl && !/^https?:\/\/[^/]+/.test(p.baseUrl)) err("invalid", "Base URL must start with http:// or https://");
     if (!p.id) p.id = id();
     if (!p.createdAt) p.createdAt = now();
+    p.config = p.config ?? {};
     db.providers[p.id] = p;
     save();
     return p;
@@ -587,6 +641,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
   delete_provider: (a) => {
     delete db.providers[a.id as string];
     delete db.secrets[a.id as string];
+    delete db.oauth[a.id as string];
     save();
     return null;
   },
@@ -602,11 +657,36 @@ const handlers: Record<string, (a: Args) => unknown> = {
     save();
     return null;
   },
-  lan_scan: () => [{ kind: "lmstudio", baseUrl: "http://192.168.1.50:1234/v1", models: ["mock-model"] }],
-  oauth_status: (a) => ({ providerId: a.providerId, state: "signedOut" }),
-  oauth_chatgpt_start: () => err("other", "OAuth isn't available in the browser preview"),
-  oauth_xai_device_start: () => err("other", "OAuth isn't available in the browser preview"),
-  oauth_sign_out: () => null,
+  lan_scan: async () => {
+    await new Promise((r) => setTimeout(r, 400));
+    return [{ kind: "lmstudio", baseUrl: "http://192.168.1.50:1234/v1", models: ["mock-model"] }];
+  },
+  oauth_status: (a) => db.oauth[a.providerId as string] ?? { providerId: a.providerId, state: "signedOut" },
+  oauth_chatgpt_start: (a) => {
+    const pid = a.providerId as string;
+    if (db.providers[pid]?.type !== "chatgpt-oauth") err("invalid", "This provider doesn't use that sign-in method");
+    mockSignIn(pid, "you@example.com", 1500);
+    return { authUrl: "https://auth.openai.com/api/accounts/authorize?client_id=dynamic_agent_client" };
+  },
+  oauth_xai_device_start: (a) => {
+    const pid = a.providerId as string;
+    if (db.providers[pid]?.type !== "xai-oauth") err("invalid", "This provider doesn't use that sign-in method");
+    mockSignIn(pid, "you@example.com", 3000);
+    return {
+      userCode: "MOCK-CODE",
+      verificationUri: "https://accounts.x.ai/device",
+      verificationUriComplete: "https://accounts.x.ai/device?user_code=MOCK-CODE",
+      expiresIn: 600,
+    };
+  },
+  oauth_sign_out: (a) => {
+    const pid = a.providerId as string;
+    setOAuth({ providerId: pid, state: "signedOut" });
+    const p = db.providers[pid];
+    if (p) p.config = { ...p.config, account: undefined };
+    save();
+    return null;
+  },
 
   http_stream: (a) => {
     httpStream(a.request as T.ProxyRequest, a.onEvent as { id: number });
@@ -778,7 +858,9 @@ export function installMockBackend() {
       }
       const h = handlers[cmd];
       if (!h) err("other", `Mock backend has no command “${cmd}”`);
-      return h((args ?? {}) as Args);
+      // clone so callers never hold live references into the mock DB (React Query would miss in-place updates)
+      const out = await h((args ?? {}) as Args);
+      return out === undefined ? out : structuredClone(out);
     },
     { shouldMockEvents: true },
   );
