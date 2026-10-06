@@ -36,8 +36,14 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
             // window calls from the menu callback would run re-entrantly on the main thread
             std::thread::spawn(move || on_menu(&app, &id));
         });
-    if let Some(icon) = app.default_window_icon() {
-        builder = builder.icon(icon.clone());
+    // monochrome template icon so macOS tints it for light/dark menu bars
+    match tauri::image::Image::from_bytes(include_bytes!("../../icons/tray-template.png")) {
+        Ok(icon) => builder = builder.icon(icon).icon_as_template(true),
+        Err(_) => {
+            if let Some(icon) = app.default_window_icon() {
+                builder = builder.icon(icon.clone());
+            }
+        }
     }
     builder.build(app)?;
     app.manage(TrayMenu { start, pause, end, key: Mutex::new(String::new()) });

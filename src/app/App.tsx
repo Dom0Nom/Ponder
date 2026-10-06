@@ -43,7 +43,7 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <Tip.Provider>
         <Shell />
-        <Toaster position="bottom-center" richColors closeButton theme="system" />
+        <Toaster position="bottom-right" richColors closeButton theme="system" />
       </Tip.Provider>
     </QueryClientProvider>
   );

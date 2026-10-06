@@ -28,6 +28,14 @@ export function Dialog({
         <D.Content
           // switching to another app and back must not dismiss a half-filled dialog
           onFocusOutside={(e) => e.preventDefault()}
+          onOpenAutoFocus={(e) => {
+            // focus the first field, not the close button
+            const el = (e.currentTarget as HTMLElement).querySelector<HTMLElement>(
+              "[autofocus], input:not([type=hidden]), textarea, select",
+            );
+            e.preventDefault();
+            (el ?? (e.currentTarget as HTMLElement)).focus();
+          }}
           className={cn(
             "fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[min(560px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-[24px] bg-surface shadow-2xl outline-none",
             className,
