@@ -88,3 +88,74 @@
 - ChatGPT sign-in (as Codex CLI does) and xAI/Grok OAuth: availability and terms for third-party apps must be verified before building.
 - Google Drive / Dropbox OAuth need registered app client IDs (free, but Google's verification process applies for public release).
 - Video overview and infographics need TTS + image generation providers; quality depends on which ones the user configures.
+
+## More ideas
+
+### Start where you actually are
+- Diagnostic placement test when a space is created (GED: level per subject), then the plan starts from there
+- Prerequisite check: before a new topic, a 3-question check; if you fail, it teaches the prerequisite first
+- Curriculum coverage map: load an official curriculum (GED, SAT, AP, IHK Fachinformatiker, ...) → see which official topics your sources cover, then deep research fills the gaps
+- Textbook mode: import a whole book, detect chapters/TOC, turn it into a chapter-by-chapter course
+
+### Practice that adapts
+- Adaptive difficulty: question selection based on estimated skill (IRT-style), not random
+- Math step checker: type or draw each step; the AI flags the exact wrong step instead of only the final answer
+- Photo of handwritten work (iPhone via Continuity Camera) → graded step by step
+- "More like this": generate 5 variations of any problem you got wrong
+- Error pattern analysis: spots recurring mistake types (sign errors, misreading the question, unit slips)
+- Image occlusion flashcards for diagrams (circuits, maps, anatomy)
+- Cloze cards auto-made from your own notes and highlights
+- Essay coach: live structure feedback while writing, rubric score, revision diff (GED RLA extended response)
+- Role reversal: the AI plays a confused student with a wrong idea; you have to correct it
+- Debate mode: the AI argues a position, you counter it (social studies, RLA argument analysis)
+- Interest-based analogies: explanations use your interests (games, Minecraft modding, robotics) from a learner profile
+
+### ADHD-first focus
+- "I don't know where to start" button: breaks the current task into 2–5 minute micro-steps
+- Parking lot: dump a distracting thought in one keystroke mid-session; it's shown at the break
+- Visual time bar (Time Timer style) and a subtle color shift as the break gets close, against time blindness
+- Hyperfocus guard: Flowtime warns after 90 minutes and pushes water + movement
+- Low-energy mode: review-only session (flashcards, light reading) instead of new material
+- Break menu: you pick from your own list of break activities
+- Bionic reading option and a reading ruler/focus line in the source viewer
+- Spotify control for a focus playlist that starts and stops with sessions
+
+### Smarter AI
+- Learner memory: the tutor remembers strengths, weaknesses and preferences across spaces, on an editable "what the tutor knows about me" page
+- Second opinion: ask a second model the same question and compare answers side by side
+- Answer check: the AI verifies its own answer against the sources and flags unsupported claims
+- LAN model discovery: auto-detect LM Studio / Ollama servers on the network (e.g. a gaming PC) and offer them as providers
+- Spotlight-style global hotkey: ask anything with the current space as context, from any app
+- Screenshot snip (region) → question or source
+
+### Reading and notes
+- Notes editor per space (blocks, backlinks, AI assist), and notes can become sources
+- PDF annotation: highlights and margin notes, plus AI margin comments on request
+- Reading level slider: rewrite a passage simpler or harder, side by side with the original
+- Bilingual view: source in English, explanation in German (or any language) side by side
+- Auto glossary: a space wiki of key terms with definitions, linked wherever they appear
+- Watch-along: play a YouTube video inside the app; the AI pauses at key points and asks a question
+- Lecture capture: record a class → transcript → notes → cards
+- Podcast RSS feeds as sources
+
+### More studio outputs
+- One-page cheat sheet (printable)
+- Timelines (history / social studies)
+- Editable diagrams (Mermaid / Excalidraw-style)
+- Printable worksheets with an answer key
+- Daily 5-minute audio briefing of today's reviews
+- Audio overview formats: deep dive, brief, debate, critique, lecture; optional voice clone via Fish Audio
+- Math animations in video overviews (Manim-style)
+
+### Insight
+- Retention curves and "you forget X fastest" insights
+- Best time of day to study, from your own session data
+- Review-before-sleep suggestion (sleep helps memory consolidation)
+
+### Platform
+- CLI + URL scheme (`learn add notes.pdf --space ged`), Apple Shortcuts actions
+- Automatic local backups (snapshots to a folder of your choice)
+- Encrypted spaces (password-protected)
+- Gentle macOS notifications driven by the plan ("12 cards due, 10 min")
+- Optional gamification (XP, chapter "boss" tests), off by default
+- Later: study rooms with friends (shared timer), teacher mode (share a space with students), phone companion for flashcard review
