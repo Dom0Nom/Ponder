@@ -1,0 +1,263 @@
+//! Hybrid search: FTS5 bm25 + sqlite-vec KNN, fused with Reciprocal Rank Fusion.
+
+use crate::error::AppResult;
+use rusqlite::{params, Connection};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+pub const CANDIDATES: usize = 40;
+const RRF_K: f64 = 60.0;
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchHit {
+    pub chunk_id: i64,
+    pub source_id: String,
+    pub source_title: String,
+    pub text: String,
+    pub start: i64,
+    pub end: i64,
+    pub page: Option<i64>,
+    pub score: f64,
+}
+
+/// Word tokens, each quoted, joined with OR. None when there are no tokens.
+pub fn fts_query(q: &str) -> Option<String> {
+    let toks: Vec<String> = q
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|t| !t.is_empty())
+        .take(32)
+        .map(|t| format!("\"{t}\""))
+        .collect();
+    if toks.is_empty() {
+        None
+    } else {
+        Some(toks.join(" OR "))
+    }
+}
+
+pub fn vec_blob(v: &[f32]) -> Vec<u8> {
+    v.iter().flat_map(|f| f.to_le_bytes()).collect()
+}
+
+fn source_filter_json(source_ids: Option<&[String]>) -> Option<String> {
+    source_ids.map(|ids| serde_json::to_string(ids).unwrap_or_else(|_| "[]".into()))
+}
+
+fn fts_ranked(c: &Connection, space_id: &str, q: &str, filter: &Option<String>) -> AppResult<Vec<i64>> {
+    let Some(m) = fts_query(q) else { return Ok(vec![]) };
+    let mut st = c.prepare_cached(
+        "SELECT c.id FROM chunks_fts f
+         JOIN chunks c ON c.id = f.rowid
+         JOIN sources s ON s.id = c.source_id
+         WHERE chunks_fts MATCH ?1 AND c.space_id = ?2 AND s.use_in_chat = 1
+           AND (?3 IS NULL OR c.source_id IN (SELECT value FROM json_each(?3)))
+         ORDER BY bm25(chunks_fts) LIMIT ?4",
+    )?;
+    let rows = st.query_map(params![m, space_id, filter, CANDIDATES as i64], |r| r.get(0))?;
+    Ok(rows.collect::<Result<_, _>>()?)
+}
+
+fn vec_ranked(c: &Connection, space_id: &str, qv: &[f32], filter: &Option<String>) -> AppResult<Vec<i64>> {
+    // over-fetch because use_in_chat / source filters are applied after the KNN
+    let k = if filter.is_some() { CANDIDATES * 5 } else { CANDIDATES * 2 };
+    let mut st = c.prepare_cached(
+        "SELECT v.chunk_id FROM (
+            SELECT chunk_id, distance FROM vec_chunks
+            WHERE embedding MATCH ?1 AND k = ?2 AND space_id = ?3
+         ) v
+         JOIN chunks c ON c.id = v.chunk_id
+         JOIN sources s ON s.id = c.source_id
+         WHERE s.use_in_chat = 1
+           AND (?4 IS NULL OR c.source_id IN (SELECT value FROM json_each(?4)))
+         ORDER BY v.distance LIMIT ?5",
+    )?;
+    let rows = st.query_map(params![vec_blob(qv), k as i64, space_id, filter, CANDIDATES as i64], |r| r.get(0))?;
+    Ok(rows.collect::<Result<_, _>>()?)
+}
+
+pub fn rrf(lists: &[Vec<i64>]) -> Vec<(i64, f64)> {
+    let mut scores: HashMap<i64, f64> = HashMap::new();
+    for list in lists {
+        for (rank, id) in list.iter().enumerate() {
+            *scores.entry(*id).or_default() += 1.0 / (RRF_K + rank as f64 + 1.0);
+        }
+    }
+    let mut out: Vec<(i64, f64)> = scores.into_iter().collect();
+    out.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+    out
+}
+
+/// `source_ids`: None = all sources in the space; Some(empty) = nothing.
+pub fn search(
+    c: &Connection,
+    space_id: &str,
+    query: &str,
+    query_vec: Option<&[f32]>,
+    limit: usize,
+    source_ids: Option<&[String]>,
+) -> AppResult<Vec<SearchHit>> {
+    if limit == 0 || source_ids.map(|s| s.is_empty()).unwrap_or(false) {
+        return Ok(vec![]);
+    }
+    let filter = source_filter_json(source_ids);
+    let mut lists = vec![fts_ranked(c, space_id, query, &filter)?];
+    if let Some(qv) = query_vec {
+        lists.push(vec_ranked(c, space_id, qv, &filter)?);
+    }
+    let fused = rrf(&lists);
+    let mut st = c.prepare_cached(
+        "SELECT c.source_id, s.title, c.text, c.start_offset, c.end_offset, c.page
+         FROM chunks c JOIN sources s ON s.id = c.source_id WHERE c.id = ?1",
+    )?;
+    let mut hits = Vec::new();
+    for (id, score) in fused.into_iter().take(limit) {
+        let hit = st.query_row([id], |r| {
+            Ok(SearchHit {
+                chunk_id: id,
+                source_id: r.get(0)?,
+                source_title: r.get(1)?,
+                text: r.get(2)?,
+                start: r.get(3)?,
+                end: r.get(4)?,
+                page: r.get(5)?,
+                score,
+            })
+        });
+        match hit {
+            Ok(h) => hits.push(h),
+            Err(rusqlite::Error::QueryReturnedNoRows) => {}
+            Err(e) => return Err(e.into()),
+        }
+    }
+    Ok(hits)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::{models, test_db, Db};
+    use crate::ingest::embed::{fake_vector, EmbedderService, FakeEmbedder};
+    use crate::ingest::worker::{Input, Worker};
+    use std::sync::Arc;
+
+    fn setup() -> (Db, tempfile::TempDir, Worker) {
+        let (db, dir) = test_db();
+        let emb = Arc::new(EmbedderService::ready(Arc::new(FakeEmbedder), Arc::new(|_, _| {})));
+        let w = Worker::new(db.clone(), emb, Arc::new(|_, _| {}));
+        (db, dir, w)
+    }
+
+    fn space(db: &Db, name: &str) -> String {
+        models::create_space(&db.conn().unwrap(), models::SpacePatch { name: Some(name.into()), ..Default::default() })
+            .unwrap()
+            .id
+    }
+
+    fn add(db: &Db, w: &mut Worker, space: &str, title: &str, text: &str) -> String {
+        let c = db.conn().unwrap();
+        let s = models::insert_source(&c, space, title, "text", None).unwrap();
+        w.process(&s.id, Input::Text(text.into()));
+        assert_eq!(models::get_source(&c, &s.id).unwrap().status, "ready");
+        s.id
+    }
+
+    fn count(c: &Connection, sql: &str, p: impl rusqlite::Params) -> i64 {
+        c.query_row(sql, p, |r| r.get(0)).unwrap()
+    }
+
+    #[test]
+    fn sanitizes_fts_queries() {
+        assert_eq!(fts_query("  "), None);
+        assert_eq!(fts_query("\"*()"), None);
+        assert_eq!(fts_query("what's NEAR(x) Grüße?").unwrap(), "\"what\" OR \"s\" OR \"NEAR\" OR \"x\" OR \"Grüße\"");
+    }
+
+    #[test]
+    fn rrf_prefers_items_in_both_lists() {
+        let fused = rrf(&[vec![1, 2, 3], vec![3, 4]]);
+        assert_eq!(fused[0].0, 3);
+        assert_eq!(fused.len(), 4);
+    }
+
+    #[test]
+    fn vec_partition_key_is_respected() {
+        let (db, _d) = test_db();
+        let c = db.conn().unwrap();
+        let ins = "INSERT INTO vec_chunks(chunk_id, space_id, embedding) VALUES (?1, ?2, ?3)";
+        c.execute(ins, params![1, "space-a", vec_blob(&fake_vector("apple"))]).unwrap();
+        c.execute(ins, params![2, "space-b", vec_blob(&fake_vector("apple"))]).unwrap();
+        c.execute(ins, params![3, "space-a", vec_blob(&fake_vector("tax law"))]).unwrap();
+        let mut st = c
+            .prepare("SELECT chunk_id FROM vec_chunks WHERE embedding MATCH ?1 AND k = 10 AND space_id = ?2 ORDER BY distance")
+            .unwrap();
+        let ids: Vec<i64> = st
+            .query_map(params![vec_blob(&fake_vector("apple")), "space-a"], |r| r.get(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect();
+        assert_eq!(ids, vec![1, 3]);
+    }
+
+    #[test]
+    fn hybrid_search_ranks_filters_and_isolates_spaces() {
+        let (db, _d, mut w) = setup();
+        let a = space(&db, "Bio");
+        let b = space(&db, "Other");
+        let bio = add(&db, &mut w, &a, "Plants", "Chlorophyll absorbs light in the chloroplasts of leaves.");
+        let tax = add(&db, &mut w, &a, "Taxes", "Capital gains are taxed at a reduced rate after one year.");
+        let _other = add(&db, &mut w, &b, "Elsewhere", "Chlorophyll chlorophyll chlorophyll everywhere.");
+        let c = db.conn().unwrap();
+        let qv = fake_vector("chlorophyll");
+
+        let hits = search(&c, &a, "chlorophyll?", Some(&qv), 8, None).unwrap();
+        assert_eq!(hits[0].source_id, bio);
+        assert_eq!(hits[0].source_title, "Plants");
+        assert!(hits.iter().all(|h| h.source_id == bio || h.source_id == tax));
+        assert!(hits[0].score > 0.0);
+
+        // FTS only
+        let hits = search(&c, &a, "chlorophyll", None, 8, None).unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].source_id, bio);
+
+        // vector only (no word tokens)
+        let hits = search(&c, &a, "", Some(&fake_vector("capital gains taxed")), 1, None).unwrap();
+        assert_eq!(hits[0].source_id, tax);
+
+        // source filter
+        let only_tax = vec![tax.clone()];
+        let hits = search(&c, &a, "chlorophyll", Some(&qv), 8, Some(&only_tax)).unwrap();
+        assert!(hits.iter().all(|h| h.source_id == tax));
+        assert!(search(&c, &a, "chlorophyll", Some(&qv), 8, Some(&[])).unwrap().is_empty());
+
+        // disabled sources are excluded
+        models::update_source(&c, &bio, models::SourcePatch { use_in_chat: Some(false), ..Default::default() }).unwrap();
+        let hits = search(&c, &a, "chlorophyll", Some(&qv), 8, None).unwrap();
+        assert!(hits.iter().all(|h| h.source_id != bio));
+    }
+
+    #[test]
+    fn deleting_a_source_removes_chunks_fts_and_vectors() {
+        let (db, _d, mut w) = setup();
+        let a = space(&db, "Bio");
+        let bio = add(&db, &mut w, &a, "Plants", "Chlorophyll absorbs light.\n\nMitochondria make energy.");
+        let c = db.conn().unwrap();
+        let ids: Vec<i64> = c
+            .prepare("SELECT id FROM chunks WHERE source_id = ?1")
+            .unwrap()
+            .query_map([&bio], |r| r.get(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect();
+        assert!(!ids.is_empty());
+        assert_eq!(count(&c, "SELECT count(*) FROM vec_chunks WHERE chunk_id = ?1", [ids[0]]), 1);
+        assert_eq!(count(&c, "SELECT count(*) FROM chunks_fts WHERE chunks_fts MATCH 'chlorophyll'", []), 1);
+
+        models::delete_source(&c, &bio).unwrap();
+        assert_eq!(count(&c, "SELECT count(*) FROM chunks WHERE source_id = ?1", [&bio]), 0);
+        assert_eq!(count(&c, "SELECT count(*) FROM chunks_fts WHERE chunks_fts MATCH 'chlorophyll'", []), 0);
+        assert_eq!(count(&c, "SELECT count(*) FROM vec_chunks", []), 0);
+        assert!(search(&c, &a, "chlorophyll", Some(&fake_vector("chlorophyll")), 8, None).unwrap().is_empty());
+    }
+}

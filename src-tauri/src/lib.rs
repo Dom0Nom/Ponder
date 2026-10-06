@@ -6,6 +6,7 @@ mod ingest;
 mod lan;
 mod oauth;
 mod proxy;
+mod retrieval;
 mod secrets;
 
 use db::Db;
@@ -64,6 +65,7 @@ pub fn run() {
             ingest::commands::import_text,
             ingest::commands::reindex_source,
             ingest::commands::search_chunks,
+            ingest::commands::embedder_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
