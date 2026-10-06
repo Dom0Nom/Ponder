@@ -9,7 +9,7 @@ import { api, events } from "../../lib/ipc";
 import { qk, useSources } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { EmbedderStatus, Source, SourceKind, Space } from "../../lib/types";
-import { cn } from "../../lib/utils";
+import { cn, isNativeApp } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
 import { Button } from "../../components/ui/button";
 import { ConfirmDialog, Dialog } from "../../components/ui/dialog";
@@ -39,7 +39,7 @@ export function SourcesPane({ space }: { space: Space }) {
   useAutoSummaries(space, data);
 
   useEffect(() => {
-    if (!("__TAURI_INTERNALS__" in window) || !getCurrentWebview) return;
+    if (!isNativeApp()) return;
     let unlisten: (() => void) | undefined;
     getCurrentWebview()
       .onDragDropEvent(async (e) => {

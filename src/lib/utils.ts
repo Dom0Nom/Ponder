@@ -36,3 +36,8 @@ export function relativeTime(ts: number, now = Date.now()): string {
 export function uid(): string {
   return crypto.randomUUID();
 }
+
+/** True inside the real Tauri app (false in the browser preview / Playwright mock). */
+export function isNativeApp(): boolean {
+  return "__TAURI_INTERNALS__" in window && !("__MOCK_BACKEND__" in window);
+}

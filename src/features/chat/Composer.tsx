@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { ArrowUp, Brain, Square } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { runTurn } from "../../lib/chat/runner";
-import { NoModelError } from "../../lib/chat/llm";
+import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
 import { useUpdateSpace } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Space, Thread, TutorStyle } from "../../lib/types";
@@ -40,9 +40,11 @@ export function Composer({
     if (!msg || busy || running) return;
     setBusy(true);
     try {
+      const llm = await resolveChatModel(space);
       const t = thread ?? (await ensureThread());
       setText("");
       await runTurn({
+        llm,
         space,
         threadId: t.id,
         tutorStyle: space.tutorStyle,

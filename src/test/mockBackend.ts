@@ -1020,6 +1020,7 @@ export interface MockControls {
 }
 
 export function installMockBackend() {
+  (window as unknown as { __MOCK_BACKEND__: boolean }).__MOCK_BACKEND__ = true;
   load();
   mockIPC(
     async (cmd, args) => {

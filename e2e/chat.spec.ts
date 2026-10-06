@@ -14,7 +14,7 @@ test("create space → import source → chat with citation → open cited passa
   await app.getByRole("button", { name: "Add source" }).click();
   await app.getByRole("tab", { name: "Paste text" }).click();
   await app.getByLabel("Title").fill("Photosynthesis notes");
-  await app.getByLabel("Text").fill(NOTES);
+  await app.getByRole("textbox", { name: "Text", exact: true }).fill(NOTES);
   await app.getByRole("button", { name: "Import" }).click();
   await expect(app.locator('[data-testid="source-row"][data-status="ready"]')).toHaveCount(1);
 
