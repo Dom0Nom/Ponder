@@ -17,9 +17,9 @@ import { NativeSelect } from "./NativeSelect";
 import { pk, storeModels, useHasSecret, useOAuthStatus } from "./providerQueries";
 import { XaiDeviceDialog } from "./XaiDeviceDialog";
 
-type Tone = "ok" | "warn" | "error" | "muted" | "pending";
+export type Tone = "ok" | "warn" | "error" | "muted" | "pending";
 
-function StatusPill({ tone, children }: { tone: Tone; children: React.ReactNode }) {
+export function StatusPill({ tone, children }: { tone: Tone; children: React.ReactNode }) {
   const Icon = tone === "ok" ? CheckCircle2 : tone === "error" || tone === "warn" ? CircleAlert : CircleDashed;
   return (
     <span

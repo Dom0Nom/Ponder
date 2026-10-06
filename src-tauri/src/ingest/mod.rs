@@ -71,7 +71,7 @@ impl Ingest {
 
     pub fn import_file(&self, space_id: &str, path: &str) -> AppResult<models::Source> {
         let p = Path::new(path);
-        let kind = extract::kind_for_path(p).ok_or_else(|| match p.extension().and_then(|e| e.to_str()) {
+        extract::kind_for_path(p).ok_or_else(|| match p.extension().and_then(|e| e.to_str()) {
             Some(ext) => invalid(format!("Unsupported file type: .{}", ext.to_lowercase())),
             None => invalid(format!(
                 "Unsupported file type: {}",
@@ -83,9 +83,17 @@ impl Ingest {
             .map(|s| s.to_string_lossy().into_owned())
             .filter(|s| !s.trim().is_empty())
             .unwrap_or_else(|| "Untitled".into());
+        self.import_file_as(space_id, path, &title, path)
+    }
+
+    /// Imports a local file but records a different title and origin (e.g. a downloaded cloud file).
+    pub fn import_file_as(&self, space_id: &str, path: &str, title: &str, origin: &str) -> AppResult<models::Source> {
+        let p = Path::new(path);
+        let kind = extract::kind_for_path(p).ok_or_else(|| invalid("Unsupported file type"))?;
+        let title = if title.trim().is_empty() { "Untitled" } else { title.trim() };
         let c = self.db.conn()?;
         models::get_space(&c, space_id)?;
-        let src = models::insert_source(&c, space_id, &title, kind, Some(path))?;
+        let src = models::insert_source(&c, space_id, title, kind, Some(origin))?;
         self.emit_source(&src);
         self.enqueue(&src.id, Input::File(PathBuf::from(path), kind.into()))?;
         Ok(src)
@@ -184,15 +192,15 @@ pub fn start(app: &AppHandle, db: Db, data_dir: PathBuf) {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::embed::FakeEmbedder;
     use super::*;
     use std::sync::Mutex;
     use std::time::{Duration, Instant};
 
-    type Events = Arc<Mutex<Vec<(String, serde_json::Value)>>>;
+    pub type Events = Arc<Mutex<Vec<(String, serde_json::Value)>>>;
 
-    fn setup(embedder: Option<Arc<dyn embed::Embedder>>) -> (Ingest, Db, tempfile::TempDir, Events, String) {
+    pub fn setup(embedder: Option<Arc<dyn embed::Embedder>>) -> (Ingest, Db, tempfile::TempDir, Events, String) {
         let (db, dir) = crate::db::test_db();
         let events: Events = Arc::new(Mutex::new(Vec::new()));
         let ev = events.clone();
@@ -211,7 +219,7 @@ mod tests {
         (ing, db, dir, events, space)
     }
 
-    fn wait_status(db: &Db, id: &str, status: &str) -> models::Source {
+    pub fn wait_status(db: &Db, id: &str, status: &str) -> models::Source {
         let t = Instant::now();
         loop {
             let s = models::get_source(&db.conn().unwrap(), id).unwrap();

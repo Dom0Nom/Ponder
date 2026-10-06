@@ -6,6 +6,7 @@
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { emit } from "@tauri-apps/api/event";
 import type * as T from "../lib/types";
+import { importKind, originFor } from "../lib/importers/cloud";
 
 type Row<T> = Record<string, T>;
 
@@ -30,6 +31,7 @@ interface DB {
   providers: Row<T.Provider>;
   secrets: Record<string, true>;
   oauth: Record<string, T.OAuthStatus>;
+  cloud: Partial<Record<T.CloudService, MockCloud>>;
   settings: Record<string, unknown>;
   focus: MockFocus | null;
   sessions: Row<T.FocusSessionSummary>;
@@ -83,6 +85,7 @@ function emptyDb(): DB {
     providers: {},
     secrets: {},
     oauth: {},
+    cloud: {},
     settings: {},
     focus: null,
     sessions: {},
@@ -627,6 +630,164 @@ function mockSignIn(providerId: string, account: string, ms: number) {
   }, ms);
 }
 
+// ---------- cloud imports ----------
+
+interface MockCloud {
+  clientId: string;
+  hasSecret: boolean;
+  state: T.CloudStatus["state"];
+  account: string | null;
+  error: string | null;
+}
+
+function cloudItem(id: string, name: string, opts: Partial<T.CloudItem> = {}): T.CloudItem {
+  const item: T.CloudItem = { id, name, folder: false, mimeType: null, size: 48_213, modified: "2026-09-14T09:30:00Z", supported: false, ...opts };
+  if (item.folder) item.size = null;
+  item.supported = importKind(item) !== null;
+  return item;
+}
+const cloudFolder = (id: string, name: string) => cloudItem(id, name, { folder: true, mimeType: "application/vnd.google-apps.folder" });
+const gdoc = (id: string, name: string) => cloudItem(id, name, { mimeType: "application/vnd.google-apps.document", size: null });
+
+/** folder id ("root" / "" for the top level) → children */
+const CLOUD_TREE: Record<T.CloudService, Record<string, T.CloudItem[]>> = {
+  google: {
+    root: [
+      cloudFolder("g-bio", "Biology"),
+      cloudFolder("g-math", "Math"),
+      gdoc("g-lecture", "Lecture notes"),
+      cloudItem("g-syllabus", "Syllabus.pdf", { mimeType: "application/pdf", size: 182_004 }),
+      cloudItem("g-photo", "Whiteboard.jpg", { mimeType: "image/jpeg", size: 2_401_337 }),
+    ],
+    "g-bio": [
+      cloudFolder("g-cells", "Cells"),
+      cloudItem("g-photosynthesis", "Photosynthesis.pdf", { mimeType: "application/pdf", size: 1_204_551 }),
+      gdoc("g-genetics", "Genetics summary"),
+      cloudItem("g-slides", "Respiration", { mimeType: "application/vnd.google-apps.presentation", size: null }),
+      cloudItem("g-form", "Quiz form", { mimeType: "application/vnd.google-apps.form", size: null }),
+    ],
+    "g-cells": [cloudItem("g-mito", "Mitochondria.md", { mimeType: "text/markdown", size: 3_120 })],
+    "g-math": [cloudItem("g-algebra", "Algebra.epub", { mimeType: "application/epub+zip", size: 830_220 })],
+  },
+  dropbox: {
+    "": [
+      cloudFolder("/Biology", "Biology"),
+      cloudItem("/Reading list.txt", "Reading list.txt", { size: 812 }),
+      cloudItem("/song.mp3", "song.mp3", { size: 4_022_100 }),
+    ],
+    "/Biology": [
+      cloudItem("/Biology/Photosynthesis.pdf", "Photosynthesis.pdf", { size: 1_204_551 }),
+      cloudItem("/Biology/Essay.docx", "Essay.docx", { size: 22_430 }),
+    ],
+  },
+};
+
+function cloudStatusOf(service: T.CloudService): T.CloudStatus {
+  const c = db.cloud[service];
+  return {
+    service,
+    configured: !!c,
+    clientId: c?.clientId ?? null,
+    hasSecret: c?.hasSecret ?? false,
+    state: c?.state ?? "signedOut",
+    account: c?.account ?? null,
+    error: c?.error ?? null,
+    redirectUri: service === "dropbox" ? "http://127.0.0.1:53789/auth/callback" : null,
+  };
+}
+
+function emitCloud(service: T.CloudService): T.CloudStatus {
+  save();
+  const st = cloudStatusOf(service);
+  emit("cloud://status", st);
+  return st;
+}
+
+function requireCloud(service: T.CloudService): MockCloud {
+  const c = db.cloud[service];
+  if (!c) err("invalid", service === "google" ? "Add a Google client ID in Settings first." : "Add a Dropbox app key in Settings first.");
+  if (c.state !== "signedIn") err("other", `Not signed in. Connect ${service === "google" ? "Google Drive" : "Dropbox"} in Settings.`);
+  return c;
+}
+
+const cloudHandlers: Record<string, (a: Args) => unknown> = {
+  cloud_status: (a) => cloudStatusOf(a.service as T.CloudService),
+  cloud_set_client: (a) => {
+    const service = a.service as T.CloudService;
+    const clientId = ((a.clientId as string) ?? "").trim();
+    const secret = ((a.clientSecret as string | null) ?? "").trim();
+    const old = db.cloud[service];
+    if (!clientId) {
+      delete db.cloud[service];
+      return emitCloud(service);
+    }
+    const sameId = old?.clientId === clientId;
+    db.cloud[service] = {
+      clientId,
+      hasSecret: service === "google" && (!!secret || (sameId && !!old?.hasSecret)),
+      state: sameId ? old!.state : "signedOut",
+      account: sameId ? old!.account : null,
+      error: null,
+    };
+    return emitCloud(service);
+  },
+  cloud_connect: (a) => {
+    const service = a.service as T.CloudService;
+    const c = db.cloud[service];
+    if (!c) err("invalid", service === "google" ? "Add a Google client ID in Settings first." : "Add a Dropbox app key in Settings first.");
+    if (service === "google" && !c.hasSecret) err("invalid", "Add the Google client secret in Settings first.");
+    Object.assign(c, { state: "pending", error: null });
+    emitCloud(service);
+    setTimeout(() => {
+      const cur = db.cloud[service];
+      if (cur?.state !== "pending") return;
+      Object.assign(cur, { state: "signedIn", account: "you@example.com" });
+      emitCloud(service);
+    }, 800);
+    return { authUrl: service === "google" ? "https://accounts.google.com/o/oauth2/v2/auth?mock" : "https://www.dropbox.com/oauth2/authorize?mock" };
+  },
+  cloud_disconnect: (a) => {
+    const service = a.service as T.CloudService;
+    const c = db.cloud[service];
+    if (c) Object.assign(c, { state: "signedOut", account: null, error: null });
+    return emitCloud(service);
+  },
+  cloud_list: async (a) => {
+    const service = a.service as T.CloudService;
+    requireCloud(service);
+    await new Promise((r) => setTimeout(r, 150));
+    const tree = CLOUD_TREE[service];
+    const query = ((a.query as string | null) ?? "").trim().toLowerCase();
+    const all = query
+      ? Object.values(tree).flat().filter((i) => i.name.toLowerCase().includes(query))
+      : (tree[(a.folder as string | null) ?? (service === "google" ? "root" : "")] ?? []);
+    const pageSize = 50;
+    const offset = Number((a.pageToken as string | null) ?? 0);
+    const items = all.slice(offset, offset + pageSize);
+    return { items, nextPageToken: offset + pageSize < all.length ? String(offset + pageSize) : null };
+  },
+  cloud_import: async (a) => {
+    const service = a.service as T.CloudService;
+    requireCloud(service);
+    const sources: T.Source[] = [];
+    const failures: { name: string; error: string }[] = [];
+    for (const item of a.items as T.CloudItem[]) {
+      const kind = importKind(item);
+      if (!kind) {
+        failures.push({ name: item.name, error: `${item.name} can't be imported (unsupported file type).` });
+        continue;
+      }
+      await new Promise((r) => setTimeout(r, 100));
+      const exported = item.mimeType?.startsWith("application/vnd.google-apps.");
+      const title = exported ? item.name : item.name.replace(/\.[^.]+$/, "");
+      const src = newSource(a.spaceId as string, title, kind, originFor(service, item.id));
+      setTimeout(() => ingest(src, `Mock content of ${item.name}.\n\nPhotosynthesis happens in chloroplasts.`), 300);
+      sources.push(src);
+    }
+    return { sources, failures };
+  },
+};
+
 // ---------- command router ----------
 
 type Args = Record<string, unknown>;
@@ -1161,6 +1322,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
     save();
     return null;
   },
+  ...cloudHandlers,
 };
 
 export interface MockControls {
