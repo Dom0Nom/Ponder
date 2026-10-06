@@ -6,6 +6,7 @@ import { ModelPicker } from "./ModelPicker";
 import { MemorySection } from "./MemorySection";
 import { CaptureSection } from "./CaptureSection";
 import { CloudSection } from "./CloudSection";
+import { FocusPackSection } from "./FocusPackSection";
 import { useEffect } from "react";
 import { useSettings, useSetSetting } from "../../lib/queries";
 import type { ModelRef } from "../../lib/types";
@@ -74,6 +75,9 @@ export function SettingsScreen() {
               <span className="w-10 text-right text-sm tabular-nums text-muted">{Math.round(ui.textScale * 100)}%</span>
             </div>
           </Row>
+        </Section>
+        <Section id="settings-focus" title={s.settings.focusPack} body={s.settings.focusPackBody}>
+          <FocusPackSection />
         </Section>
         <Section id="settings-capture" title={s.capture.settingsTitle} body={s.capture.settingsBody}>
           <CaptureSection />

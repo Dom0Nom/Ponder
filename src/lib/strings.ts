@@ -427,6 +427,8 @@ export const s = {
     sessionEnded: "Session ended",
   },
   settings: {
+    focusPack: "Focus and reading",
+    focusPackBody: "Gentle nudges, breaks that suit you, reading aids and focus music.",
     title: "Settings",
     appearance: "Appearance",
     theme: "Theme",

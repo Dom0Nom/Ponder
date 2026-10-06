@@ -279,7 +279,11 @@ export interface FocusConfig {
   cyclesBeforeLong?: number;
   /** body-doubling check-in interval; 0 = off */
   checkInMins?: number;
+  /** picked at the session check-in; "low" = review-only session */
+  energy?: Energy;
 }
+
+export type Energy = "normal" | "low";
 
 export interface FocusState {
   sessionId: string;
@@ -301,6 +305,7 @@ export interface FocusState {
   totalFocusMs: number;
   totalBreakMs: number;
   checkInMins: number;
+  energy?: Energy;
   now: number;
 }
 
@@ -338,6 +343,25 @@ export interface ParkingItem {
   text: string;
   resolved: boolean;
   createdAt: number;
+}
+
+/** 2–5 minute step from "Where do I start?" */
+export interface MicroStep {
+  id: string;
+  spaceId: string | null;
+  sessionId: string | null;
+  text: string;
+  minutes: number;
+  done: boolean;
+  position: number;
+  createdAt: number;
+}
+
+export interface MusicStatus {
+  /** a backend can control a player on this machine (e.g. Spotify desktop app installed) */
+  available: boolean;
+  backend: string | null;
+  running: boolean;
 }
 
 export type BuddyEventKind =
