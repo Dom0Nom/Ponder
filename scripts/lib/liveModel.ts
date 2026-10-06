@@ -24,3 +24,9 @@ export function liveModel(modelId?: string): ResolvedModel {
     options: (o) => callOptions(provider, o),
   };
 }
+
+/** A vision-capable model for live scripts. VISION_MODEL overrides; the OpenRouter default is a cheap Gemini. */
+export function liveVisionModel(modelId?: string): ResolvedModel {
+  const id = modelId ?? process.env.VISION_MODEL ?? (process.env.OPENROUTER_API_KEY ? "google/gemini-3.5-flash-lite" : undefined);
+  return liveModel(id);
+}

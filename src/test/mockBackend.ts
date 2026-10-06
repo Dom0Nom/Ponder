@@ -175,6 +175,24 @@ const defaultScript: Script = ({ messages, body }) => {
     );
     return { content: JSON.stringify(qs) };
   }
+  if (/Transcribe the handwritten math work/i.test(lastText)) {
+    return { content: JSON.stringify({ problem: "Solve -2(x-3)+4=10", steps: ["-2x-6+4=10", "-2x-2=10", "-2x=12", "x=-6"] }) };
+  }
+  if (/check a learner's worked math solution/i.test(lastText)) {
+    const steps = [...(lastText.split("STEPS:\n")[1]?.split("\n\n")[0] ?? "").matchAll(/^(\d+)\. (.*)$/gm)].map((m) => m[2]);
+    const flagged = new Set([...lastText.matchAll(/Step (\d+) is NOT equivalent/g)].map((m) => Number(m[1])));
+    return {
+      content: JSON.stringify({
+        steps: steps.map((t, i) =>
+          flagged.has(i + 1)
+            ? { step: i + 1, ok: false, issue: "The minus in front of the bracket wasn't applied to every term.", hint: "What is $-2 \\cdot (-3)$?", fix: t.replace("-6", "+6") }
+            : { step: i + 1, ok: true },
+        ),
+        finalCorrect: flagged.size ? false : null,
+        summary: flagged.size ? `Step ${Math.min(...flagged)} has a sign error.` : "Looks fine.",
+      }),
+    };
+  }
   if (/strict fact-checker/i.test(lastText)) {
     return {
       content: JSON.stringify([
