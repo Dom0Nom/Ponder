@@ -26,6 +26,9 @@
   --warn: #8a5a00;
   --warn-soft: #fff1d6;
   --highlight: #ffe58a;
+  --timer-warm: #e8710a;
+  --timer-break: #137333;
+  --timer-track: #e6eaf0;
   --shadow: 0 1px 2px rgb(16 24 40 / 0.06), 0 1px 3px rgb(16 24 40 / 0.04);
   --font-sans: "Inter Variable", "Inter", system-ui, -apple-system, sans-serif;
   --text-scale: 1;
@@ -52,6 +55,9 @@
   --warn: #f3c062;
   --warn-soft: #3d2e0e;
   --highlight: #6b5410;
+  --timer-warm: #fcad70;
+  --timer-break: #81c995;
+  --timer-track: #2e3236;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
   color-scheme: dark;
 }
@@ -80,6 +86,9 @@
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
   --color-highlight: var(--highlight);
+  --color-timer-warm: var(--timer-warm);
+  --color-timer-break: var(--timer-break);
+  --color-timer-track: var(--timer-track);
   --font-sans: var(--font-sans);
   --shadow-card: var(--shadow);
   --radius-pane: 20px;

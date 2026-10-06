@@ -27,6 +27,7 @@ pub fn run() {
         )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .on_window_event(focus::on_window_event)
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
@@ -64,7 +65,21 @@ pub fn run() {
             ingest::commands::import_text,
             ingest::commands::reindex_source,
             ingest::commands::search_chunks,
+            focus::commands::focus_start,
+            focus::commands::focus_state,
+            focus::commands::focus_pause,
+            focus::commands::focus_resume,
+            focus::commands::focus_need_app,
+            focus::commands::focus_end_work,
+            focus::commands::focus_stop,
+            focus::commands::focus_set_summary,
+            focus::commands::focus_history,
+            focus::commands::focus_events,
+            focus::commands::parking_add,
+            focus::commands::parking_list,
+            focus::commands::parking_resolve,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(focus::on_run_event);
 }
