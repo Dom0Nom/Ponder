@@ -175,6 +175,15 @@ export const api = {
   httpGetText: (url: string, headers?: Record<string, string>) =>
     call<T.FetchedPage>("http_get_text", { url, headers: headers ?? null }),
 
+  // micro-steps
+  microStepsList: (spaceId: string | null) => call<T.MicroStep[]>("micro_steps_list", { spaceId }),
+  microStepsReplace: (spaceId: string | null, sessionId: string | null, goal: string | null, steps: T.NewMicroStep[]) =>
+    call<T.MicroStep[]>("micro_steps_replace", { spaceId, sessionId, goal, steps }),
+  microStepSetDone: (id: string, done: boolean) => call<T.MicroStep>("micro_step_set_done", { id, done }),
+  microStepUpdate: (id: string, patch: { text?: string; minutes?: number }) =>
+    call<T.MicroStep>("micro_step_update", { id, text: patch.text ?? null, minutes: patch.minutes ?? null }),
+  microStepDelete: (id: string) => call<void>("micro_step_delete", { id }),
+  microStepsClear: (spaceId: string | null) => call<void>("micro_steps_clear", { spaceId }),
   // focus
   focusStart: (config: T.FocusConfig) => call<T.FocusState>("focus_start", { config }),
   focusState: () => call<T.FocusState | null>("focus_state"),

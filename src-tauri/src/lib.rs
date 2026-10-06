@@ -7,6 +7,7 @@ mod error;
 mod focus;
 mod ingest;
 mod lan;
+mod micro_steps;
 mod oauth;
 mod placement;
 mod practice;
@@ -87,6 +88,12 @@ pub fn run() {
             cards::mistake_delete,
             cards::image_store,
             cards::image_read,
+            micro_steps::micro_steps_list,
+            micro_steps::micro_steps_replace,
+            micro_steps::micro_step_set_done,
+            micro_steps::micro_step_update,
+            micro_steps::micro_step_delete,
+            micro_steps::micro_steps_clear,
             practice::abilities_list,
             practice::ability_get,
             practice::practice_item_add,

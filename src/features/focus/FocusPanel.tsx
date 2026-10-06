@@ -10,10 +10,11 @@ import { formatMinutes } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
 import { ParkingInput, ParkingList, SessionControls } from "./controls";
 import { loadFocusState, useFocusStore } from "./focusStore";
+import { CurrentStepLine, MicroStepsSection } from "./MicroSteps";
 import { TimeBar } from "./TimeBar";
 import { clockText, phaseLabel } from "./timer";
 
-function CurrentSession({ state }: { state: FocusState }) {
+function CurrentSession({ state, spaceId }: { state: FocusState; spaceId: string }) {
   return (
     <div className="flex flex-col items-center text-center">
       <TimeBar state={state} size={176}>
@@ -25,6 +26,7 @@ function CurrentSession({ state }: { state: FocusState }) {
       </p>
       <p className="text-xs text-muted">{s.focus.techniques[state.technique]}</p>
       {state.goal && <p className="mt-2 max-w-xs text-[0.8125rem]">{state.goal}</p>}
+      <CurrentStepLine spaceId={spaceId} />
       <div className="mt-4">
         <SessionControls state={state} />
       </div>
@@ -159,7 +161,8 @@ export function FocusPanel({ spaceId }: { spaceId: string }) {
           onRetry={() => loadFocusState().catch(() => {})}
         />
       )}
-      {loaded && loadError == null && (ours ? <CurrentSession state={state!} /> : <Idle elsewhere={!!state} />)}
+      {loaded && loadError == null && (ours ? <CurrentSession state={state!} spaceId={spaceId} /> : <Idle elsewhere={!!state} />)}
+      <MicroStepsSection spaceId={spaceId} state={ours ? state : null} />
       <ParkingSection spaceId={spaceId} state={ours ? state : null} />
       <HistorySection spaceId={spaceId} />
     </section>
