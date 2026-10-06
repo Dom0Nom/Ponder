@@ -27,7 +27,14 @@ export interface ExtractedPage {
 }
 
 const turndown = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced", bulletListMarker: "-" });
-turndown.remove(["script", "style", "noscript", "iframe", "form", "nav", "footer"]);
+turndown.remove(["script", "style", "noscript", "iframe", "form", "nav", "footer", "svg" as keyof HTMLElementTagNameMap]);
+// added rules win over turndown's built-in image rule; remove() would not
+turndown.addRule("noImages", { filter: ["img", "picture"], replacement: () => "" });
+// link targets are noise in study text and in search chunks; keep the words only
+turndown.addRule("plainLinks", {
+  filter: "a",
+  replacement: (content) => content,
+});
 
 /** HTML → readable Markdown, the same way for imports and deep research. */
 export function extractReadable(html: string, url: string): ExtractedPage | null {
