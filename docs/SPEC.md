@@ -51,6 +51,7 @@ Must work end-to-end and be verified:
 **Providers**
 - Settings screen: add/remove providers, test connection, pick default chat model, embedding model (default local), per-space override
 - API-key providers + Ollama/LM Studio/OpenAI-compatible
+- LAN discovery: scan the local network for LM Studio (:1234) and Ollama (:11434) servers and offer them as providers
 - OAuth provider plumbing (auth-code + PKCE with 127.0.0.1 callback, device code, rotating token refresh, keychain storage) with ChatGPT and xAI implemented per `docs/OAUTH.md`
 
 **Focus**
@@ -59,6 +60,8 @@ Must work end-to-end and be verified:
 - Break: fullscreen overlay with countdown, break tip, "I need the app" pause (logged)
 - Study-buddy events injected into the active chat (check-in, T-3 recall, block-end quiz, post-break recap, session summary)
 - Session history per space (duration, technique, pauses, summary)
+- Visual time bar (Time Timer style) with a subtle color shift as the break nears
+- Parking lot: one-keystroke capture of distracting thoughts mid-session, shown at the break
 
 **App shell**
 - 3-pane space layout, collapsible panes, ⌘K command palette, light/dark/system theme, dyslexia font + text size
@@ -66,10 +69,17 @@ Must work end-to-end and be verified:
 
 ## Roadmap after the first build (in order)
 
+- Learner memory (editable "what the tutor knows about me", shared across spaces) + second opinion (compare two models) + answer self-check against sources
+- Placement: diagnostic test on space creation, prerequisite checks, official curriculum coverage map (GED, IHK Fachinformatiker, SAT, AP, ...), textbook → chapter-by-chapter course
 - Cloud connectors: Google Drive, Dropbox (OneDrive, Box later), watched folders, global quick-capture hotkey
-- Flashcards + quizzes from sources, FSRS review queue across spaces, mistake notebook
+- Flashcards + quizzes from sources, FSRS review queue across spaces, mistake notebook, image occlusion and cloze cards from notes
+- Adaptive practice: IRT-style difficulty, math step checker (flags the exact wrong step), handwritten work via iPhone Continuity Camera, "more like this" variations, error pattern analysis
+- ADHD focus pack: "where do I start" micro-steps, hyperfocus guard, low-energy review mode, break menu, bionic reading + reading ruler, Spotify focus playlist control
+- Notes + reading: notes editor with backlinks (notes can become sources), PDF annotation, reading level slider, bilingual side-by-side view, auto glossary, YouTube watch-along with pauses and questions, lecture capture, podcast RSS sources
+- Global hotkey ask-anything overlay + screenshot snip to question/source
 - Study plans: goal + exam date + weekly hours → schedule, Today view, auto re-plan on missed days
-- Studio: reports, mind map, slide deck (PPTX/PDF export), data tables (CSV/XLSX), infographics, audio overview (interruptible), video overview
+- Studio: reports, mind map, slide deck (PPTX/PDF export), data tables (CSV/XLSX), infographics, audio overview (interruptible, multiple formats), video overview, cheat sheets, timelines, editable diagrams, printable worksheets, daily audio briefing
+- Insights: retention curves, best study time, review-before-sleep suggestions; automatic local backups; CLI + URL scheme
 - Simulated calculators: reference calculator-style (GED), TI-84-style graphing, scientific, plain graphing. Behavioral re-implementations, no TI ROMs or trademarks.
 - Mastery map (topic graph colored by mastery) + readiness score
 - Exam simulator: timed mocks in real formats (GED first: 4 subjects, calculator, RLA essay graded against the rubric)
@@ -80,7 +90,7 @@ Must work end-to-end and be verified:
 - Share study packs: export/import a space as one file
 - Windows and Linux builds, then web
 
-Cut: calendar sync.
+Cut: calendar sync, essay coach (separate from exam-simulator essay grading, which stays), debate mode, role reversal.
 
 ## Architecture
 
