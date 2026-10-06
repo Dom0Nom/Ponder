@@ -39,6 +39,7 @@ interface DB {
   sessions: Row<T.FocusSessionSummary>;
   focusEvents: T.FocusEvent[];
   musicCalls: string[];
+  microSteps: Row<T.MicroStep>;
   parking: Row<T.ParkingItem>;
   memory: Row<T.MemoryItem>;
   cards: Row<T.Card>;
@@ -102,6 +103,7 @@ function emptyDb(): DB {
     focusEvents: [],
     musicCalls: [],
     parking: {},
+    microSteps: {},
     memory: {},
     cards: {},
     mistakes: {},
@@ -148,6 +150,12 @@ function spaceOut(sp: Omit<T.Space, "sourceCount">): T.Space {
   return { ...sp, sourceCount: Object.values(db.sources).filter((x) => x.spaceId === sp.id).length };
 }
 
+function microList(spaceId: string | null): T.MicroStep[] {
+  return Object.values(db.microSteps)
+    .filter((m) => m.spaceId === spaceId)
+    .sort((x, y) => x.position - y.position);
+}
+
 // ---------- fake LLM ----------
 
 type Script = (req: { messages: { role: string; content: unknown }[]; body: Record<string, unknown> }) => {
@@ -173,6 +181,15 @@ const defaultScript: Script = ({ messages, body }) => {
   }
   if (/Classify the most likely mistake/i.test(lastText)) {
     return { content: JSON.stringify({ errorType: "arithmetic", note: "Calculation slip." }) };
+  }
+  if (/Break this goal into micro-steps/i.test(lastText)) {
+    return {
+      content: JSON.stringify([
+        { text: "Open your notes to the first page", minutes: 2 },
+        { text: "Read the first paragraph out loud", minutes: 3 },
+        { text: "Write one question about it", minutes: 4 },
+      ]),
+    };
   }
   if (/Make \d+ flashcards/i.test(lastText)) {
     const passage = lastText.match(/\[1\] \([^)]*\)\n([^\n]+)/)?.[1] ?? "Photosynthesis happens in the chloroplasts.";
@@ -917,6 +934,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
     db.chunks = db.chunks.filter((c) => c.spaceId !== sid);
     for (const t of Object.values(db.threads)) if (t.spaceId === sid) delete db.threads[t.id];
     for (const w of Object.values(db.watched)) if (w.spaceId === sid) delete db.watched[w.id];
+    for (const m of Object.values(db.microSteps)) if (m.spaceId === sid) delete db.microSteps[m.id];
     save();
     return null;
   },
@@ -1646,6 +1664,46 @@ const handlers: Record<string, (a: Args) => unknown> = {
   parking_resolve: (a) => {
     const p = db.parking[a.id as string];
     if (p) p.resolved = true;
+    save();
+    return null;
+  },
+  micro_steps_list: (a) => microList((a.spaceId as string | null) ?? null),
+  micro_steps_replace: (a) => {
+    const spaceId = (a.spaceId as string | null) ?? null;
+    const steps = ((a.steps as T.NewMicroStep[]) ?? []).map((x) => ({ text: String(x.text ?? "").trim(), minutes: Math.min(5, Math.max(2, Math.round(x.minutes))) }));
+    if (!steps.length || steps.some((x) => !x.text)) err("invalid", "A step needs some text");
+    for (const m of microList(spaceId)) delete db.microSteps[m.id];
+    const goal = cleanText(a.goal as string | null);
+    steps.slice(0, 12).forEach((x, position) => {
+      const m: T.MicroStep = { id: id(), spaceId, sessionId: (a.sessionId as string | null) ?? null, goal, text: x.text, minutes: x.minutes, done: false, position, createdAt: now() };
+      db.microSteps[m.id] = m;
+    });
+    save();
+    return microList(spaceId);
+  },
+  micro_step_set_done: (a) => {
+    const m = db.microSteps[a.id as string] ?? err("not_found", "step not found");
+    m.done = a.done as boolean;
+    save();
+    return m;
+  },
+  micro_step_update: (a) => {
+    const m = db.microSteps[a.id as string] ?? err("not_found", "step not found");
+    if (typeof a.text === "string") {
+      if (!a.text.trim()) err("invalid", "A step needs some text");
+      m.text = a.text.trim();
+    }
+    if (typeof a.minutes === "number") m.minutes = Math.min(5, Math.max(2, Math.round(a.minutes)));
+    save();
+    return m;
+  },
+  micro_step_delete: (a) => {
+    delete db.microSteps[a.id as string];
+    save();
+    return null;
+  },
+  micro_steps_clear: (a) => {
+    for (const m of microList((a.spaceId as string | null) ?? null)) delete db.microSteps[m.id];
     save();
     return null;
   },

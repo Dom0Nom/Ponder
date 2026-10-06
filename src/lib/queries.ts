@@ -29,6 +29,7 @@ export const qk = {
   assessments: (spaceId: string) => ["assessments", spaceId] as const,
   courses: (spaceId: string) => ["courses", spaceId] as const,
   focusHistory: (spaceId: string | null) => ["focusHistory", spaceId] as const,
+  microSteps: (spaceId: string | null) => ["microSteps", spaceId] as const,
   parking: (sessionId: string | null) => ["parking", sessionId] as const,
   watched: (spaceId: string) => ["watched", spaceId] as const,
   capture: ["capture"] as const,

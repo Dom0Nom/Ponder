@@ -350,11 +350,18 @@ export interface MicroStep {
   id: string;
   spaceId: string | null;
   sessionId: string | null;
+  /** the goal or topic the steps were generated for */
+  goal: string | null;
   text: string;
   minutes: number;
   done: boolean;
   position: number;
   createdAt: number;
+}
+
+export interface NewMicroStep {
+  text: string;
+  minutes: number;
 }
 
 export interface MusicStatus {
