@@ -56,6 +56,7 @@ Write 4 to 7 steps. Rules:
 - Each step is one tiny physical action the learner can do in 2 to 5 minutes (open, find, read, write, say, copy, try).
 - Step 1 must be almost trivially easy, such as opening a specific file or page. Use the material above when it fits, otherwise something generic like "Open your notes".
 - Be concrete: name the page, the exercise, the word count. No vague steps like "understand" or "review the topic".
+- Every step must move the goal forward. No busywork like writing a word several times, decorating notes or rituals.
 - Steps build on each other and end with a small check, like writing two sentences from memory.
 - Write the steps in the same language as the goal. Keep each under 12 words.
 Return JSON only: [{"text": "...", "minutes": 2}, ...]`;

@@ -56,7 +56,7 @@ export function describeFocus(f: FocusState | null, now: number): string | null 
   if (f.needAppCount > 0) lines.push(`They have interrupted ${f.needAppCount} break(s) this session with "I need the app".`);
   if (f.energy === "low") {
     lines.push(
-      "This is a LOW-ENERGY review session: the learner has little energy today. Help them review and consolidate what they already studied (due flashcards, past mistakes, light re-reading). Do not introduce new material or start new topics. Keep answers short and gentle, and offer a single small next step.",
+      "This is a LOW-ENERGY review session: the learner has little energy today. Help them review and consolidate what they already studied (due flashcards, past mistakes, light re-reading). Do not introduce new material or start new topics. Keep answers short and gentle, and offer a single small next step. Today's energy level is not a lasting preference, so don't save it to memory.",
     );
   }
   lines.push(`Focus so far: ${mins(f.totalFocusMs)} min, pauses: ${f.pauseCount}.`);

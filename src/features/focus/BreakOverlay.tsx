@@ -104,7 +104,7 @@ function LockedBreak({ state }: { state: FocusState }) {
         <p className="mb-8 flex items-center gap-2 text-sm font-medium text-muted">
           <Coffee size={16} /> {s.focus.block(state.block)}
         </p>
-        <TimeBar state={state} size={300}>
+        <TimeBar state={state} size={menu.length > 0 ? 240 : 300}>
           <span className="text-6xl font-semibold tabular-nums tracking-tight" aria-live="off">
             {clockText(state)}
           </span>
@@ -117,11 +117,11 @@ function LockedBreak({ state }: { state: FocusState }) {
           {s.focus.breakBody}
         </p>
         {menu.length > 0 ? (
-          <section aria-labelledby="break-pick" className="mt-8 w-full max-w-md text-left">
+          <section aria-labelledby="break-pick" className="mt-6 w-full text-left">
             <h2 id="break-pick" className="mb-3 text-center text-sm font-medium text-muted">
               {s.breakMenu.pick}
             </h2>
-            <div className="flex flex-col gap-2">
+            <div className="grid gap-2 sm:grid-cols-2">
               {menu.map((item) => {
                 const on = picked === item;
                 return (
@@ -131,7 +131,7 @@ function LockedBreak({ state }: { state: FocusState }) {
                     aria-pressed={on}
                     onClick={() => setPicked(item)}
                     className={cn(
-                      "flex min-h-14 w-full items-center justify-between gap-3 rounded-[var(--radius-card)] border-2 px-5 py-3 text-left text-base shadow-card transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                      "flex min-h-12 w-full items-center justify-between gap-3 rounded-[var(--radius-card)] border-2 px-4 py-2.5 text-left text-base shadow-card transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
                       on ? "border-accent bg-accent-soft text-accent-text" : "border-transparent bg-surface hover:bg-surface-2",
                     )}
                   >

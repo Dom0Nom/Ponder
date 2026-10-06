@@ -167,6 +167,8 @@ export async function runTurn(input: TurnInput): Promise<Message> {
       ...(remembered.length ? { remembered } : {}),
     },
   });
+  // swap in the final row before dropping live state, or the stale "streaming" row flashes as interrupted
+  queryClient.setQueryData<Message[]>(qk.messages(threadId), (msgs) => msgs?.map((m) => (m.id === final.id ? final : m)));
   useChatStream.getState().finish(threadId, assistant.id);
   invalidate();
   queryClient.invalidateQueries({ queryKey: qk.threads(space.id) });

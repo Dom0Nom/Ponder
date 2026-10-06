@@ -86,7 +86,7 @@ export function FlashcardsCard({ space }: { space: Space }) {
         >
           <GraduationCap size={15} /> {s.cards.review}
         </Button>
-        <Button size="sm" variant="secondary" className={BTN} disabled={quizzing || low.active} title={low.reason} onClick={quiz}>
+        <Button size="sm" variant="secondary" className={BTN} disabled={quizzing} onClick={quiz}>
           {quizzing ? <Spinner size={14} /> : <ListChecks size={15} />} {s.cards.quiz}
         </Button>
         <Button size="sm" variant="secondary" className={cn(BTN, "basis-full")} disabled={low.active} title={low.reason} onClick={() => setGenerating(true)}>
