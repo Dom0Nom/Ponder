@@ -16,7 +16,10 @@ async function drag(page: Page, from: [number, number], to: [number, number]) {
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
-  await page.goto("/?harness=occlusion");
+  await page.goto("/");
+  await page.getByRole("button", { name: "New space" }).first().click();
+  await page.getByLabel("Name").fill("Anatomy");
+  await page.getByRole("button", { name: "Create" }).click();
 });
 
 test("draws two masks on an image and creates one card per mask", async ({ page }) => {
@@ -45,11 +48,12 @@ test("draws two masks on an image and creates one card per mask", async ({ page 
   expect(new Set(saved.map((c) => c.data.mask)).size).toBe(2);
   expect(saved.map((c) => c.back).sort()).toEqual(["Membrane", "Nucleus"]);
 
-  // review view: tested mask covered, then revealed with its label
-  const view = page.getByTestId("occlusion-card");
+  // review: tested mask covered, then revealed with its label
+  await page.getByTestId("flashcards-card").getByRole("button", { name: "Review" }).click();
+  const view = page.getByTestId("review-session").getByTestId("occlusion-card");
   await expect(view.locator("[data-tested]")).toHaveCount(1);
   await expect(view.getByRole("img", { name: "Hidden area" })).toHaveCount(1);
-  await page.getByRole("button", { name: "Reveal" }).click();
+  await page.getByRole("button", { name: "Show answer" }).click();
   await expect(view.locator("[data-tested]")).toHaveText(/Nucleus|Membrane/);
 });
 
@@ -63,7 +67,8 @@ test("editing a group updates, adds and deletes cards", async ({ page }) => {
   await expect(create).toBeHidden();
   const before = await cards(page);
 
-  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByTestId("flashcards-card").getByRole("button", { name: "Browse cards" }).click();
+  await page.getByTestId("occlusion-group").getByRole("button", { name: "Edit" }).click();
   const edit = page.getByRole("dialog", { name: "Edit image occlusion" });
   await expect(edit.getByTestId("occlusion-mask")).toHaveCount(2);
   // keyboard: select box 1, delete it from the stage

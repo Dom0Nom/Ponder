@@ -1,11 +1,11 @@
 import type { Card } from "../../lib/types";
+import { OcclusionCardView } from "./OcclusionCardView";
+import { OcclusionEditorButton } from "./OcclusionEditorButton";
 
-/** Placeholder until the occlusion card view lands. */
-export function OcclusionSlot({ card }: { card: Card; revealed: boolean }) {
-  return <p className="text-sm text-muted">{card.back || "Image card"}</p>;
+export function OcclusionSlot({ card, revealed }: { card: Card; revealed: boolean }) {
+  return <OcclusionCardView card={card} revealed={revealed} />;
 }
 
-/** Placeholder until the occlusion editor lands. */
-export function OcclusionButtonSlot(_props: { spaceId: string }) {
-  return null;
+export function OcclusionButtonSlot({ spaceId }: { spaceId: string }) {
+  return <OcclusionEditorButton spaceId={spaceId} variant="ghost" size="sm" />;
 }

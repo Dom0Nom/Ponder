@@ -9,8 +9,7 @@ async function boot() {
     const { installMockBackend } = await import("./test/mockBackend");
     installMockBackend();
   }
-  const harness = mock && new URLSearchParams(location.search).get("harness") === "occlusion";
-  const { App } = harness ? await import("./test/OcclusionHarness") : await import("./app/App");
+  const { App } = await import("./app/App");
   ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <React.StrictMode>
       <App />

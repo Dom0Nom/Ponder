@@ -323,6 +323,7 @@ export const s = {
     unsuspend: "Unsuspend",
     suspended: "Suspended",
     makeFromSelection: "Make card",
+    imageGroup: (n: number) => `Image card · ${n} ${n === 1 ? "box" : "boxes"}`,
     due: (when: string) => `due ${when}`,
   },
   memory: {

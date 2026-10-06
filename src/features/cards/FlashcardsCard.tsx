@@ -17,6 +17,9 @@ import { Input, Label, Textarea } from "../../components/ui/input";
 import { EmptyState, Segmented, Skeleton, Spinner } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { OcclusionButtonSlot } from "./occlusionSlot";
+import { OcclusionEditor } from "./OcclusionEditor";
+import { OcclusionCardView } from "./OcclusionCardView";
+import { occlusionGroups } from "../../lib/srs/occlusion";
 
 interface AddCardRequest {
   open: boolean;
@@ -278,6 +281,9 @@ export function AddCardDialog({ space }: { space: Space }) {
 
 function BrowseCardsDialog({ space, onClose }: { space: Space; onClose: () => void }) {
   const { data, isLoading } = useCards(space.id);
+  const [editing, setEditing] = useState<Card[] | null>(null);
+  const groups = occlusionGroups(data ?? []);
+  const plain = (data ?? []).filter((c) => c.kind !== "occlusion");
   const act = async (fn: () => Promise<unknown>) => {
     try {
       await fn();
@@ -290,7 +296,19 @@ function BrowseCardsDialog({ space, onClose }: { space: Space; onClose: () => vo
     <Dialog open onOpenChange={(o) => !o && onClose()} title={s.cards.browseTitle} className="w-[min(720px,calc(100vw-32px))]">
       {isLoading && <Skeleton className="h-40" />}
       <ul className="divide-y divide-border pb-3" data-testid="card-browser">
-        {data?.map((c: Card) => (
+        {groups.map((g) => (
+          <li key={g[0].id} className="flex items-center gap-3 py-2.5" data-testid="occlusion-group">
+            <OcclusionCardView card={g[0]} revealed className="w-24 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm">{g.map((c) => c.back).filter(Boolean).join(", ") || s.occlusion.title}</p>
+              <p className="mt-0.5 text-[0.6875rem] text-faint">{s.cards.imageGroup(g.length)}</p>
+            </div>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(g)}>
+              {s.common.edit}
+            </Button>
+          </li>
+        ))}
+        {plain.map((c: Card) => (
           <li key={c.id} className={cn("flex items-start gap-3 py-2.5", c.suspended && "opacity-50")}>
             <div className="min-w-0 flex-1">
               <p className="line-clamp-2 text-sm">{c.kind === "cloze" ? clozeFront(c.front, c.data?.cloze ?? 1) : c.front || c.back}</p>
@@ -312,6 +330,7 @@ function BrowseCardsDialog({ space, onClose }: { space: Space; onClose: () => vo
           </li>
         ))}
       </ul>
+      {editing && <OcclusionEditor spaceId={space.id} open onOpenChange={(o) => !o && setEditing(null)} cards={editing} />}
     </Dialog>
   );
 }
