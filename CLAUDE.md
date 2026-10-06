@@ -33,7 +33,7 @@ Tauri WebDriver doesn't work on macOS. Run `bun run tauri dev`, then screenshot 
 - Commands are `async` so they never run on the main thread. CPU work (extraction, embeddings) runs on the ingest worker thread.
 - Errors: Rust returns `AppError` (serialized `{code, message}`); UI shows them via `toastError(title, err, retry?)` or `ErrorState`. Nothing fails silently.
 - Every screen/pane has empty, loading (Skeleton) and error states.
-- Secrets only via `secrets.rs` (OS keychain). Never log keys/tokens. AI HTTP goes through `http_stream`, which injects auth in Rust only for the provider's own base URL.
+- Secrets only via `secrets.rs`: OS keychain in release builds; debug builds use `dev-secrets.json` (0600) in the app data dir, since rebuilt binaries trigger keychain prompts. Never log keys/tokens. AI HTTP goes through `http_stream`, which injects auth in Rust only for the provider's own base URL.
 - UI strings go in `src/lib/strings.ts`. Colors via theme tokens (`bg-surface`, `text-muted`, `bg-accent`…), never raw hex in components.
 - Minimal comments. Commit messages: short list of what changed, no AI trailers.
 

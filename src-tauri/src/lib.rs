@@ -37,10 +37,11 @@ pub fn run() {
         .plugin(capture::plugin())
         .on_window_event(focus::on_window_event)
         .manage(commands::providers::ProviderServices::new())
-        .manage(std::sync::Arc::new(cloud::CloudServices::new(std::sync::Arc::new(secrets::Keychain))))
+        .manage(std::sync::Arc::new(cloud::CloudServices::new(secrets::default_store())))
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
+            secrets::init(&data_dir);
             let db = Db::open(data_dir.join("app.db"))?;
             ingest::start(app.handle(), db.clone(), data_dir.clone());
             focus::start(app.handle(), db.clone());

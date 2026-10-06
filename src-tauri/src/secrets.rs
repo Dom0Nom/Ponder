@@ -44,6 +44,74 @@ impl SecretStore for Keychain {
     }
 }
 
+static FILE_STORE_PATH: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
+
+/// Must run before any secret is read when `default_store` is the file store.
+pub fn init(data_dir: &std::path::Path) {
+    let _ = FILE_STORE_PATH.set(data_dir.join("dev-secrets.json"));
+}
+
+/// Debug builds keep secrets in a 0600 JSON file in the app data dir: every rebuild changes the
+/// binary's signature, so macOS would ask for keychain access again on each read.
+pub fn default_store() -> std::sync::Arc<dyn SecretStore> {
+    if cfg!(debug_assertions) {
+        std::sync::Arc::new(FileStore::default())
+    } else {
+        std::sync::Arc::new(Keychain)
+    }
+}
+
+#[derive(Default)]
+pub struct FileStore {
+    lock: std::sync::Mutex<()>,
+    path: Option<std::path::PathBuf>,
+}
+
+impl FileStore {
+    fn path(&self) -> AppResult<&std::path::Path> {
+        self.path.as_deref().or(FILE_STORE_PATH.get().map(|p| p.as_path())).ok_or_else(|| AppError::Keychain("Secret store isn't ready yet".into()))
+    }
+
+    fn read(&self) -> AppResult<std::collections::BTreeMap<String, String>> {
+        match std::fs::read_to_string(self.path()?) {
+            Ok(s) => serde_json::from_str(&s).map_err(|e| AppError::Keychain(format!("Secret file is unreadable: {e}"))),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Default::default()),
+            Err(e) => Err(AppError::Keychain(e.to_string())),
+        }
+    }
+
+    fn write(&self, map: &std::collections::BTreeMap<String, String>) -> AppResult<()> {
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        let path = self.path()?;
+        let tmp = path.with_extension("json.tmp");
+        let mut f = std::fs::OpenOptions::new().write(true).create(true).truncate(true).mode(0o600).open(&tmp).map_err(|e| AppError::Keychain(e.to_string()))?;
+        f.write_all(serde_json::to_string_pretty(map).unwrap_or_default().as_bytes()).map_err(|e| AppError::Keychain(e.to_string()))?;
+        std::fs::rename(&tmp, path).map_err(|e| AppError::Keychain(e.to_string()))
+    }
+}
+
+impl SecretStore for FileStore {
+    fn get(&self, account: &str) -> AppResult<Option<String>> {
+        let _g = self.lock.lock().unwrap();
+        Ok(self.read()?.get(account).cloned())
+    }
+    fn set(&self, account: &str, value: &str) -> AppResult<()> {
+        let _g = self.lock.lock().unwrap();
+        let mut map = self.read()?;
+        map.insert(account.to_string(), value.to_string());
+        self.write(&map)
+    }
+    fn delete(&self, account: &str) -> AppResult<()> {
+        let _g = self.lock.lock().unwrap();
+        let mut map = self.read()?;
+        if map.remove(account).is_some() {
+            self.write(&map)?;
+        }
+        Ok(())
+    }
+}
+
 /// In-memory store for tests.
 #[cfg(test)]
 #[derive(Default)]
@@ -104,6 +172,21 @@ mod tests {
         assert!(s.get("p").unwrap().is_none());
         assert!(s.get("oauth:p").unwrap().is_none());
         assert!(s.get("q").unwrap().is_some());
+    }
+
+    #[test]
+    fn file_store_roundtrip_is_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let s = FileStore { path: Some(dir.path().join("s.json")), ..Default::default() };
+        assert_eq!(s.get("p").unwrap(), None);
+        s.set("p", "sk-1").unwrap();
+        s.set("q", "sk-2").unwrap();
+        s.delete("p").unwrap();
+        assert_eq!(s.get("p").unwrap(), None);
+        assert_eq!(s.get("q").unwrap().as_deref(), Some("sk-2"));
+        let mode = std::fs::metadata(dir.path().join("s.json")).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o600);
     }
 
     /// Touches the real OS keychain; run with `cargo test -- --ignored keychain`.

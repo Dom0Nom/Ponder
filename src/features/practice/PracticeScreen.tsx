@@ -318,7 +318,7 @@ function Session({
                   <Button variant="primary" disabled={!response.trim() || busy === "grade"} onClick={submit}>
                     {busy === "grade" && <Spinner size={14} className="text-on-accent" />} {s.practice.check}
                   </Button>
-                  <StepCheckSlot spaceId={space.id} problem={item.question} expectedAnswer={item.kind === "mcq" ? item.options![Number(item.answer)] : item.answer} />
+                  {item.kind === "numeric" && <StepCheckSlot spaceId={space.id} problem={item.question} expectedAnswer={item.answer} />}
                   <Button variant="ghost" onClick={() => load()}>
                     {s.practice.skip}
                   </Button>

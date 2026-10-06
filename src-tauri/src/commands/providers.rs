@@ -3,7 +3,7 @@ use crate::error::{invalid, AppError, AppResult};
 use crate::lan::{self, LanServer};
 use crate::oauth::{chatgpt, loopback::Loopback, xai, OAuth, OAuthStatus};
 use crate::proxy::{self, FetchedPage, Inflight, ProxyEvent, ProxyRequest};
-use crate::secrets::{self, Keychain, SecretStore};
+use crate::secrets::{self, SecretStore};
 use crate::AppState;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -31,7 +31,7 @@ pub struct ProviderServices {
 
 impl ProviderServices {
     pub fn new() -> Self {
-        let secrets: Arc<dyn SecretStore> = Arc::new(Keychain);
+        let secrets: Arc<dyn SecretStore> = secrets::default_store();
         Self {
             oauth: Arc::new(OAuth::new(secrets.clone())),
             secrets,
