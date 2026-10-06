@@ -2,11 +2,11 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Button } from "../../components/ui/button";
 import { Dialog } from "../../components/ui/dialog";
 import { Input, Label } from "../../components/ui/input";
-import { Spinner } from "../../components/ui/misc";
+import { Segmented, Spinner } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
 import { api } from "../../lib/ipc";
 import { s } from "../../lib/strings";
-import type { FocusConfig, FocusTechnique } from "../../lib/types";
+import type { Energy, FocusConfig, FocusTechnique } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
 import { useFocusStore } from "./focusStore";
@@ -44,10 +44,14 @@ export function FocusStartDialog() {
   const [goal, setGoal] = useState("");
   const [values, setValues] = useState<Partial<Record<Field, string>>>(toText(FIELDS.pomodoro));
   const [checkIn, setCheckIn] = useState("15");
+  const [energy, setEnergy] = useState<Energy>("normal");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (open) setGoal("");
+    if (open) {
+      setGoal("");
+      setEnergy("normal");
+    }
   }, [open]);
 
   const pick = (t: FocusTechnique) => {
@@ -68,6 +72,7 @@ export function FocusStartDialog() {
       technique,
       goal: goal.trim() || null,
       checkInMins: Math.round(Number(checkIn)),
+      energy,
     };
     for (const f of fields) config[f] = Number(values[f]);
     setBusy(true);
@@ -105,6 +110,19 @@ export function FocusStartDialog() {
             {s.focus.alreadyRunning}
           </p>
         )}
+        <div>
+          <p className="mb-2 text-[0.8125rem] font-medium text-muted">{s.focus.energy}</p>
+          <Segmented<Energy>
+            label={s.focus.energy}
+            value={energy}
+            onChange={setEnergy}
+            options={[
+              { value: "normal", label: s.focus.energyNormal },
+              { value: "low", label: s.focus.energyLow },
+            ]}
+          />
+          {energy === "low" && <p className="mt-1.5 text-xs text-faint">{s.focus.energyLowHelp}</p>}
+        </div>
         <fieldset>
           <legend className="mb-2 text-[0.8125rem] font-medium text-muted">{s.focus.technique}</legend>
           <div role="radiogroup" aria-label={s.focus.technique} className="grid grid-cols-2 gap-2 sm:grid-cols-3">

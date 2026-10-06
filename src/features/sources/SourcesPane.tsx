@@ -11,6 +11,7 @@ import { s } from "../../lib/strings";
 import type { EmbedderStatus, Source, SourceKind, Space } from "../../lib/types";
 import { cn, isNativeApp } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
+import { useLowEnergy } from "../focus/useLowEnergy";
 import { Button } from "../../components/ui/button";
 import { ConfirmDialog, Dialog } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
@@ -37,6 +38,7 @@ export function SourcesPane({ space }: { space: Space }) {
   const setImportDialog = useUi((st) => st.setImportDialog);
   const [dragging, setDragging] = useState(false);
   const qc = useQueryClient();
+  const low = useLowEnergy(space.id);
   useAutoSummaries(space, data);
 
   useEffect(() => {
@@ -83,9 +85,16 @@ export function SourcesPane({ space }: { space: Space }) {
   return (
     <div className={cn("relative flex h-full flex-col", dragging && "ring-2 ring-inset ring-accent")}>
       <div className="p-3">
-        <Button variant="secondary" className="w-full" onClick={() => setImportDialog({ open: true })}>
+        <Button
+          variant="secondary"
+          className="w-full"
+          disabled={low.active}
+          title={low.reason}
+          onClick={() => setImportDialog({ open: true })}
+        >
           <Plus size={17} /> {s.sources.add}
         </Button>
+        {low.active && <p className="mt-1.5 text-center text-xs text-faint">{low.reason}</p>}
       </div>
       <WatchedFolders space={space} />
       <EmbedderBanner />

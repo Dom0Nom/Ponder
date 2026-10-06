@@ -67,6 +67,7 @@ interface MockFocus {
   longBreakMs: number;
   cyclesBeforeLong: number;
   checkInMins: number;
+  energy?: T.Energy;
   startedAt: number;
   phase: T.FocusPhase;
   block: number;
@@ -501,6 +502,7 @@ function snapshotOf(f: MockFocus, t: number): T.FocusState {
     totalFocusMs: f.focusDoneMs + (f.phase === "work" ? el : 0),
     totalBreakMs: f.breakDoneMs + (isBreak(f.phase) ? el : 0),
     checkInMins: f.checkInMins,
+    energy: f.energy ?? "normal",
     now: t,
   };
 }
@@ -1548,6 +1550,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
       longBreakMs: d.long,
       cyclesBeforeLong: clampRound(cfg.cyclesBeforeLong, 4, 1, 100, 4),
       checkInMins: clampRound(cfg.checkInMins, 0, 0, 600, 0),
+      energy: cfg.energy === "low" ? "low" : "normal",
       startedAt: t,
       phase: "work",
       block: 1,

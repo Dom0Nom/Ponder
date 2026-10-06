@@ -1,8 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { api } from "../../lib/ipc";
-import { queryClient, qk } from "../../lib/queries";
-import { initialBuddyState, stepBuddy, type BuddyEvent } from "../../lib/buddy/engine";
-import { buddyInstruction, buddyNote } from "../../lib/buddy/prompts";
+import { queryClient, qk, useSettings } from "../../lib/queries";
+import { initialBuddyState, stepBuddy, type BuddyEvent, type BuddyOptions } from "../../lib/buddy/engine";
+import { buddyInstruction, buddyNote, hyperfocusNote } from "../../lib/buddy/prompts";
+import { readPrefs, type FocusPrefs } from "../../lib/focusPrefs";
+import { s as strings } from "../../lib/strings";
 import { runTurn } from "../../lib/chat/runner";
 import { NoModelError } from "../../lib/chat/llm";
 import { formatMinutes } from "../../lib/utils";
@@ -10,7 +12,7 @@ import { CITE_RE } from "../../lib/chat/citations";
 import { useUi } from "../../stores/ui";
 import { useChatStream } from "../../stores/chatStream";
 import { useFocusStore } from "../focus/focusStore";
-import { toastError } from "../../components/ui/toast";
+import { toast, toastError } from "../../components/ui/toast";
 
 let chain: Promise<void> = Promise.resolve();
 
@@ -31,7 +33,43 @@ async function waitIdle(threadId: string) {
   }
 }
 
-async function handle(ev: BuddyEvent) {
+const optionsOf = (p: FocusPrefs): BuddyOptions => ({ hyperfocusMins: p.hyperfocus.enabled ? p.hyperfocus.minutes : 0 });
+
+async function handleHyperfocus(ev: BuddyEvent, prefs: FocusPrefs) {
+  const st = ev.state;
+  const idea = prefs.breakMenu.length ? prefs.breakMenu[Math.floor(Math.random() * prefs.breakMenu.length)] : "";
+  const text = hyperfocusNote(st, idea ? [idea] : []);
+  const canBreak = !!st && st.phase === "work" && (st.technique === "flowtime" || st.technique === "timebox");
+  toast(strings.focus.hyperfocus.toastTitle, {
+    description: text,
+    duration: 20000,
+    action: canBreak
+      ? {
+          label: strings.focus.hyperfocus.takeBreak,
+          onClick: () =>
+            api
+              .focusEndWork()
+              .then((next) => useFocusStore.getState().setState(next))
+              .catch((e) => toastError(strings.focus.actionFailed, e)),
+        }
+      : undefined,
+  });
+
+  const route = useUi.getState().route;
+  const spaceId = ev.spaceId ?? (route.name === "space" ? route.spaceId : null);
+  if (!spaceId) return;
+  const threadId = await threadFor(spaceId);
+  await api.addMessage({
+    threadId,
+    role: "buddy",
+    content: text,
+    meta: { buddyKind: ev.kind, focus: ev.state },
+  });
+  queryClient.invalidateQueries({ queryKey: qk.messages(threadId) });
+}
+
+async function handle(ev: BuddyEvent, prefs: FocusPrefs) {
+  if (ev.kind === "hyperfocus") return handleHyperfocus(ev, prefs);
   const route = useUi.getState().route;
   const spaceId = ev.spaceId ?? (route.name === "space" ? route.spaceId : null);
   if (!spaceId) return;
@@ -96,25 +134,29 @@ async function handle(ev: BuddyEvent) {
 
 /** Watches the focus timer and posts study-buddy turns into the session's chat. */
 export function useStudyBuddy() {
+  const { data: settings } = useSettings();
+  const prefsRef = useRef<FocusPrefs>(readPrefs(settings));
+  prefsRef.current = readPrefs(settings);
+
   useEffect(() => {
     let state = initialBuddyState;
     let ready = false;
     const unsub = useFocusStore.subscribe((s, prev) => {
       if (!ready || s.state === prev.state) return;
-      const r = stepBuddy(state, s.state);
+      const r = stepBuddy(state, s.state, optionsOf(prefsRef.current));
       state = r.state;
       for (const ev of r.events) {
-        chain = chain.then(() => handle(ev)).catch((e) => toastError("Study buddy couldn't post", e));
+        chain = chain.then(() => handle(ev, prefsRef.current)).catch((e) => toastError("Study buddy couldn't post", e));
       }
     });
     // initialize from the backend's current session so a UI reload doesn't re-announce anything
-    api
-      .focusState()
-      .catch(() => null)
-      .then((st) => {
-        state = stepBuddy(state, st).state;
+    Promise.all([api.focusState().catch(() => null), api.getSettings().catch(() => undefined)]).then(
+      ([st, settings]) => {
+        if (settings) prefsRef.current = readPrefs(settings);
+        state = stepBuddy(state, st, optionsOf(prefsRef.current)).state;
         ready = true;
-      });
+      },
+    );
     return unsub;
   }, []);
 }

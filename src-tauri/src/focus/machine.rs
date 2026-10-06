@@ -55,6 +55,14 @@ pub enum PauseReason {
     NeedApp,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Energy {
+    #[default]
+    Normal,
+    Low,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FocusConfig {
@@ -73,6 +81,8 @@ pub struct FocusConfig {
     pub cycles_before_long: Option<f64>,
     #[serde(default)]
     pub check_in_mins: Option<f64>,
+    #[serde(default)]
+    pub energy: Energy,
 }
 
 #[cfg(test)]
@@ -87,6 +97,7 @@ impl FocusConfig {
             long_break_mins: None,
             cycles_before_long: None,
             check_in_mins: None,
+            energy: Energy::Normal,
         }
     }
 }
@@ -112,6 +123,7 @@ pub struct FocusState {
     pub total_focus_ms: i64,
     pub total_break_ms: i64,
     pub check_in_mins: u32,
+    pub energy: Energy,
     pub now: i64,
 }
 
@@ -147,6 +159,8 @@ pub struct FocusMachine {
     pub long_break_ms: i64,
     pub cycles_before_long: u32,
     pub check_in_mins: u32,
+    #[serde(default)]
+    pub energy: Energy,
     pub started_at: i64,
     pub phase: Phase,
     pub block: u32,
@@ -208,6 +222,7 @@ impl FocusMachine {
             long_break_ms: long,
             cycles_before_long: cycles,
             check_in_mins: check_in,
+            energy: cfg.energy,
             started_at: now,
             phase: Phase::Work,
             block: 1,
@@ -407,6 +422,7 @@ impl FocusMachine {
             total_focus_ms: self.focus_done_ms + if self.phase == Phase::Work { el } else { 0 },
             total_break_ms: self.break_done_ms + if self.phase.is_break() { el } else { 0 },
             check_in_mins: self.check_in_mins,
+            energy: self.energy,
             now,
         }
     }
@@ -618,7 +634,7 @@ mod tests {
         for key in [
             "sessionId", "spaceId", "technique", "goal", "phase", "block", "phaseStartedAt", "phaseDurationMs",
             "elapsedMs", "remainingMs", "paused", "pauseReason", "pauseCount", "needAppCount", "totalFocusMs",
-            "totalBreakMs", "checkInMins", "now",
+            "totalBreakMs", "checkInMins", "energy", "now",
         ] {
             assert!(st.get(key).is_some(), "missing {key}");
         }
@@ -626,6 +642,27 @@ mod tests {
         assert_eq!(st["technique"], "custom");
         let tr = serde_json::to_value(&m.clone().tick(T0)).unwrap();
         assert_eq!(tr, serde_json::json!([]));
+    }
+
+    #[test]
+    fn energy_round_trips_from_config_to_state() {
+        let cfg: FocusConfig =
+            serde_json::from_value(serde_json::json!({ "technique": "flowtime", "energy": "low" })).unwrap();
+        let m = FocusMachine::start("x".into(), &cfg, T0).unwrap();
+        assert_eq!(m.energy, Energy::Low);
+        assert_eq!(serde_json::to_value(m.snapshot(T0)).unwrap()["energy"], "low");
+        let dflt: FocusConfig = serde_json::from_value(serde_json::json!({ "technique": "flowtime" })).unwrap();
+        assert_eq!(FocusMachine::start("y".into(), &dflt, T0).unwrap().energy, Energy::Normal);
+    }
+
+    #[test]
+    fn restores_persisted_machine_without_energy() {
+        let m = machine(custom(10.0, 2.0));
+        let mut json = serde_json::to_value(&m).unwrap();
+        json.as_object_mut().unwrap().remove("energy");
+        let back: FocusMachine = serde_json::from_value(json).unwrap();
+        assert_eq!(back.energy, Energy::Normal);
+        assert_eq!(back, m);
     }
 
     #[test]

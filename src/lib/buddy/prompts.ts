@@ -2,6 +2,13 @@ import type { BuddyEventKind, FocusState, ParkingItem } from "../types";
 
 const mins = (ms: number | null | undefined) => Math.max(0, Math.round((ms ?? 0) / 60000));
 
+/** Static hyperfocus nudge: no model call. Uses a break-menu idea when the learner has one. */
+export function hyperfocusNote(s: FocusState | null, breakMenu: string[], pick = Math.random): string {
+  const idea = breakMenu.length ? breakMenu[Math.floor(pick() * breakMenu.length)].trim() : "";
+  const head = `${mins(s?.elapsedMs)} min of focus.`;
+  return idea ? `${head} Time for a break? ${idea.replace(/[.!?]+$/, "")}.` : `${head} Time for water and a stretch?`;
+}
+
 /** Short visible note shown in the chat for each buddy event. */
 export function buddyNote(kind: BuddyEventKind, s: FocusState | null, prev: FocusState | null): string {
   switch (kind) {
@@ -17,6 +24,8 @@ export function buddyNote(kind: BuddyEventKind, s: FocusState | null, prev: Focu
       return "Break started";
     case "post-break":
       return `Back from your break · block ${s?.block ?? ""}`.trim();
+    case "hyperfocus":
+      return hyperfocusNote(s, []);
     case "session-summary":
       return "Session ended · summary saved to the journal";
   }
@@ -28,8 +37,18 @@ export function buddyInstruction(
   ctx: { state: FocusState | null; previous: FocusState | null; parking: ParkingItem[]; needAppPauses: number },
 ): string {
   const s = ctx.state;
+  const low = (ctx.state ?? ctx.previous)?.energy === "low";
   switch (kind) {
     case "session-start":
+      if (low) {
+        return [
+          "A low-energy focus session just started: the learner picked review-only because they have little energy today.",
+          s?.goal ? `Their goal: "${s.goal}".` : "",
+          "Do NOT ask the 3-question check-in. Say one warm sentence acknowledging the low-energy choice, then propose a short review-only plan in 2–3 bullets (review due flashcards, re-test a few past mistakes, re-read something light). No new material. Under 70 words.",
+        ]
+          .filter(Boolean)
+          .join(" ");
+      }
       return [
         "A focus session just started.",
         s?.goal ? `The learner's goal: "${s.goal}".` : "The learner didn't set a goal.",
@@ -37,10 +56,23 @@ export function buddyInstruction(
         "Do a 3-question check-in in one short message: energy level (1–5), how much time they have today, and what exactly they want to finish in this block. Then propose a concrete plan for this block in 2–4 bullet points sized to the time. Keep it under 120 words.",
       ].join(" ");
     case "check-in":
+      if (low) {
+        return "Low-energy session: a gentle check-in in one short sentence. Ask how they're doing, and say it's fine to stop or take a break whenever. No new material, no pressure.";
+      }
       return "Body-doubling check-in. In one or two sentences, ask how it's going and whether they're stuck, referring to what they were working on in this chat. No lecture, no new material.";
     case "recall":
       return `About ${mins(s?.remainingMs)} minutes are left before the break. Ask 1–2 quick recall questions about what was covered in this block (answerable in under a minute). Don't start anything long.`;
     case "block-quiz":
+      if (low) {
+        return [
+          "The low-energy review block just ended and the break starts now.",
+          "Write a 2-question mini quiz with two EASY recall questions on what was reviewed, answers hidden below a line '---'. Encouraging tone, no application or new-material questions.",
+          ctx.parking.length ? `List briefly under "Parked for later": ${ctx.parking.map((p) => `"${p.text}"`).join(", ")}.` : "",
+          "Keep it very short.",
+        ]
+          .filter(Boolean)
+          .join(" ");
+      }
       return [
         "The focus block just ended and the break starts now.",
         "Write a 3-question mini quiz on what this block covered (mix of recall and one application question), answers hidden below a line '---' so the learner can check after the break.",
@@ -60,6 +92,7 @@ export function buddyInstruction(
     case "session-summary":
       return [
         "The focus session ended.",
+        low ? "It was a low-energy review-only session; say so in the summary and praise showing up." : "",
         ctx.previous
           ? `Totals: ${mins(ctx.previous.totalFocusMs)} min focus over ${ctx.previous.block} block(s), ${ctx.previous.pauseCount} pause(s), ${ctx.needAppPauses} break interruption(s).`
           : "",
