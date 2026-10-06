@@ -2,5 +2,14 @@
 node_modules/
 target/
 dist/
+dist-ssr/
 .env
 *.local
+build.md
+*.log
+test-results/
+playwright-report/
+src-tauri/gen/schemas/
+.vscode/*
+!.vscode/extensions.json
+.playwright-mcp/

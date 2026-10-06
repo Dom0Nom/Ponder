@@ -1,0 +1,132 @@
+import { Channel, invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type * as T from "./types";
+
+/** Normalizes anything thrown by invoke into an Error with a readable message. */
+export function toError(e: unknown): Error {
+  if (e instanceof Error) return e;
+  if (e && typeof e === "object" && "message" in e) {
+    const err = new Error(String((e as T.AppError).message));
+    (err as Error & { code?: string }).code = (e as T.AppError).code;
+    return err;
+  }
+  return new Error(String(e));
+}
+
+async function call<R>(cmd: string, args?: Record<string, unknown>): Promise<R> {
+  try {
+    return await invoke<R>(cmd, args);
+  } catch (e) {
+    throw toError(e);
+  }
+}
+
+export const api = {
+  // spaces
+  listSpaces: () => call<T.Space[]>("list_spaces"),
+  getSpace: (id: string) => call<T.Space>("get_space", { id }),
+  createSpace: (input: T.SpacePatch) => call<T.Space>("create_space", { input }),
+  updateSpace: (id: string, patch: T.SpacePatch) => call<T.Space>("update_space", { id, patch }),
+  touchSpace: (id: string) => call<void>("touch_space", { id }),
+  deleteSpace: (id: string) => call<void>("delete_space", { id }),
+
+  // sources
+  listSources: (spaceId: string) => call<T.Source[]>("list_sources", { spaceId }),
+  getSource: (id: string) => call<T.Source>("get_source", { id }),
+  updateSource: (id: string, patch: { title?: string; useInChat?: boolean; summary?: string }) =>
+    call<T.Source>("update_source", { id, patch }),
+  deleteSource: (id: string) => call<void>("delete_source", { id }),
+  getSourceText: (id: string) => call<T.SourceText>("get_source_text", { id }),
+  importFile: (spaceId: string, path: string) => call<T.Source>("import_file", { spaceId, path }),
+  importText: (
+    spaceId: string,
+    title: string,
+    text: string,
+    kind: T.SourceKind,
+    origin?: string | null,
+  ) => call<T.Source>("import_text", { spaceId, title, text, kind, origin: origin ?? null }),
+  reindexSource: (id: string) => call<T.Source>("reindex_source", { id }),
+  searchChunks: (spaceId: string, query: string, limit?: number, sourceIds?: string[]) =>
+    call<T.SearchHit[]>("search_chunks", { spaceId, query, limit: limit ?? null, sourceIds: sourceIds ?? null }),
+  embedderStatus: () => call<T.EmbedderStatus>("embedder_status"),
+
+  // threads + messages
+  listThreads: (spaceId: string) => call<T.Thread[]>("list_threads", { spaceId }),
+  createThread: (spaceId: string, title?: string) =>
+    call<T.Thread>("create_thread", { spaceId, title: title ?? null }),
+  renameThread: (id: string, title: string) => call<T.Thread>("rename_thread", { id, title }),
+  deleteThread: (id: string) => call<void>("delete_thread", { id }),
+  listMessages: (threadId: string) => call<T.Message[]>("list_messages", { threadId }),
+  addMessage: (message: T.NewMessage) => call<T.Message>("add_message", { message }),
+  updateMessage: (id: string, patch: T.MessagePatch) => call<T.Message>("update_message", { id, patch }),
+  deleteMessage: (id: string) => call<void>("delete_message", { id }),
+
+  // journal
+  listJournal: (spaceId: string) => call<T.JournalEntry[]>("list_journal", { spaceId }),
+  addJournal: (spaceId: string, kind: string, title: string, content: string) =>
+    call<T.JournalEntry>("add_journal", { spaceId, kind, title, content }),
+
+  // settings
+  getSettings: () => call<Record<string, unknown>>("get_settings"),
+  setSetting: (key: string, value: unknown) => call<void>("set_setting", { key, value }),
+
+  // providers + secrets
+  listProviders: () => call<T.Provider[]>("list_providers"),
+  saveProvider: (provider: Partial<T.Provider> & Pick<T.Provider, "type" | "kind" | "name">) =>
+    call<T.Provider>("save_provider", {
+      provider: { id: "", baseUrl: null, config: {}, createdAt: 0, ...provider },
+    }),
+  deleteProvider: (id: string) => call<void>("delete_provider", { id }),
+  setSecret: (providerId: string, value: string) => call<void>("secret_set", { providerId, value }),
+  hasSecret: (providerId: string) => call<boolean>("secret_has", { providerId }),
+  deleteSecret: (providerId: string) => call<void>("secret_delete", { providerId }),
+  lanScan: () => call<T.LanServer[]>("lan_scan"),
+
+  // oauth
+  oauthChatgptStart: (providerId: string) => call<{ authUrl: string }>("oauth_chatgpt_start", { providerId }),
+  oauthXaiDeviceStart: (providerId: string) => call<T.DeviceCodeStart>("oauth_xai_device_start", { providerId }),
+  oauthStatus: (providerId: string) => call<T.OAuthStatus>("oauth_status", { providerId }),
+  oauthSignOut: (providerId: string) => call<void>("oauth_sign_out", { providerId }),
+
+  // http proxy
+  httpStream: (request: T.ProxyRequest, onEvent: Channel<T.ProxyEvent>) =>
+    call<void>("http_stream", { request, onEvent }),
+  httpAbort: (id: string) => call<void>("http_abort", { id }),
+  httpGetText: (url: string, headers?: Record<string, string>) =>
+    call<T.FetchedPage>("http_get_text", { url, headers: headers ?? null }),
+
+  // focus
+  focusStart: (config: T.FocusConfig) => call<T.FocusState>("focus_start", { config }),
+  focusState: () => call<T.FocusState | null>("focus_state"),
+  focusPause: () => call<T.FocusState>("focus_pause"),
+  focusResume: () => call<T.FocusState>("focus_resume"),
+  focusNeedApp: (reason?: string) => call<T.FocusState>("focus_need_app", { reason: reason ?? null }),
+  focusEndWork: () => call<T.FocusState>("focus_end_work"),
+  focusStop: () => call<T.FocusSessionSummary>("focus_stop"),
+  focusSetSummary: (sessionId: string, summary: string) =>
+    call<void>("focus_set_summary", { sessionId, summary }),
+  focusHistory: (spaceId?: string | null) =>
+    call<T.FocusSessionSummary[]>("focus_history", { spaceId: spaceId ?? null }),
+  focusEvents: (sessionId: string) => call<T.FocusEvent[]>("focus_events", { sessionId }),
+  parkingAdd: (text: string) => call<T.ParkingItem>("parking_add", { text }),
+  parkingList: (sessionId?: string | null) =>
+    call<T.ParkingItem[]>("parking_list", { sessionId: sessionId ?? null }),
+  parkingResolve: (id: string) => call<void>("parking_resolve", { id }),
+};
+
+export const events = {
+  sourceUpdated: (cb: (s: T.Source) => void) => listen<T.Source>("source://updated", (e) => cb(e.payload)),
+  embedderStatus: (cb: (s: T.EmbedderStatus) => void) =>
+    listen<T.EmbedderStatus>("embedder://status", (e) => cb(e.payload)),
+  focusTick: (cb: (s: T.FocusState | null) => void) =>
+    listen<T.FocusState | null>("focus://tick", (e) => cb(e.payload)),
+  focusTransition: (cb: (t: T.FocusTransition) => void) =>
+    listen<T.FocusTransition>("focus://transition", (e) => cb(e.payload)),
+  oauthStatus: (cb: (s: T.OAuthStatus) => void) =>
+    listen<T.OAuthStatus>("oauth://status", (e) => cb(e.payload)),
+  /** tray menu "Start focus session" */
+  focusRequest: (cb: () => void) => listen("focus://request-start", () => cb()),
+};
+
+export type { UnlistenFn };
+export { Channel };
