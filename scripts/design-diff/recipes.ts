@@ -107,6 +107,7 @@ interface Screen {
 
 const home = (p: Page) => nav(p, { name: "home" });
 
+
 /** Masks covering everything in the 1280x800 frame except `box`. */
 const outside = (box: { x: number; y: number; w: number; h: number }, reason: string): Mask[] => [
   { x: 0, y: 0, w: 1280, h: box.y, reason },
@@ -129,14 +130,8 @@ export const SCREENS: Record<number, Screen> = {
   2: {
     title: "Space (chat, Studio main view, focus running)",
     source: "space-v2",
-    query: "chat=v2&focus=work",
+    query: "chat=v2&focus=work&cards=review&sources=many&course=62",
     native: true,
-    masks: [
-      { x: 1121, y: 252, w: 143, h: 90, reason: "tile reads 'Learning plan' + the real curriculum, not 'Study plan / Week 3 of 8' (DECISIONS #14, 02 §10.2: no schedule exists)" },
-      { x: 978, y: 410, w: 80, h: 20, reason: "Course progress is computed from the fixture's lessons; the design's 62% has no matching rows" },
-      { x: 1130, y: 410, w: 110, h: 20, reason: "Journal tile shows the real entry count, 'Reflect on today' is removed placeholder copy (02 §10.2)" },
-      { x: 954, y: 488, w: 326, h: 160, reason: "Recent lists the fixture's real items; the design's three rows are sample data" },
-    ],
     setup: async (p) => {
       await space(p);
       await p.evaluate(() => document.querySelector("[data-testid=message-list]")?.scrollTo(0, 0));
@@ -213,7 +208,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   7: {
     title: "Start a focus session",
-    masks: outside({ x: 380, y: 170, w: 520, h: 460 }, "the design draws 7a over a reduced static copy of the space (no Sources row, thread list or Studio), not the real screen 2"),
+    region: { x: 395, y: 183, w: 490, h: 434, reason: "the artboard draws an older space screen behind the dialog; the backdrop follows 2a and is gated by screen 2" },
     setup: async (p) => {
       await space(p, { sources: false, studio: false });
       await setUi(p, { focusDialogOpen: true });
@@ -231,11 +226,8 @@ export const SCREENS: Record<number, Screen> = {
   },
   9: {
     title: "Command palette",
-    query: "cards=review",
-    masks: [
-      ...outside({ x: 339, y: 96, w: 602, h: 504 }, BACKDROP),
-      { x: 340, y: 150, w: 600, h: 450, reason: "design lists 2 of the 6 fixture spaces, so the rows below shift (sample data)" },
-    ],
+    region: { x: 339, y: 96, w: 602, h: 488, reason: "the artboard draws an older Home (no New space button) behind the palette" },
+    query: "cards=review&capture=off",
     setup: async (p) => {
       await home(p);
       await setUi(p, { paletteOpen: true });
@@ -244,11 +236,8 @@ export const SCREENS: Record<number, Screen> = {
   },
   10: {
     title: "Quick capture",
+    region: { x: 395, y: 229, w: 490, h: 342, reason: "the artboard draws an older Home (no New space button) behind the capture dialog" },
     query: "cards=review",
-    masks: [
-      ...outside({ x: 399, y: 233, w: 482, h: 334 }, BACKDROP),
-      { x: 798, y: 516, w: 66, h: 38, reason: "Save is disabled while the note is empty (real behavior); the design draws it enabled" },
-    ],
     setup: async (p) => {
       await home(p);
       await setUi(p, { captureOpen: true });
@@ -376,7 +365,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   22: {
     title: "Journal",
-    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the artboard draws an older space screen with the Studio inside the chat card (340px); DECISIONS #2 keeps the app's Studio at 328px, so the recipe lays the real panel into the artboard's box" },
     setup: async (p) => {
       await space(p);
       await studio(p, "journal", "Journal");
@@ -385,13 +374,8 @@ export const SCREENS: Record<number, Screen> = {
   },
   23: {
     title: "Space settings",
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the artboard draws an older space screen with the Studio inside the chat card (340px); DECISIONS #2 keeps the app's Studio at 328px, so the recipe lays the real panel into the artboard's box" },
     native: true,
-    masks: [
-      ...outside(STUDIO_BOX, STUDIO_IN_CARD),
-      { x: 947, y: 210, w: 310, h: 38, reason: "the fixture's curriculum has no matching option in the Exam select, so it reads None" },
-      { x: 947, y: 326, w: 310, h: 20, reason: "tutor style help copy is the app's own string (s.space.tutorStyleHelp), the design words it differently" },
-      { x: 1197, y: 745, w: 60, h: 36, reason: "Save is disabled until something changes (real behavior); the design draws it enabled" },
-    ],
     setup: async (p) => {
       await space(p);
       await studio(p, "settings", "Space settings");
@@ -400,12 +384,9 @@ export const SCREENS: Record<number, Screen> = {
   },
   24: {
     title: "Focus session running",
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the artboard draws an older space screen with the Studio inside the chat card (340px); DECISIONS #2 keeps the app's Studio at 328px, so the recipe lays the real panel into the artboard's box" },
     query: "focus=work",
     native: true,
-    masks: [
-      ...outside(STUDIO_BOX, STUDIO_IN_CARD),
-      { x: 931, y: 736, w: 341, h: 57, reason: "the Where do I start? entry row stays reachable from the Focus view (02 §13); 24a doesn't draw it" },
-    ],
     setup: async (p) => {
       await space(p);
       await studio(p, "focus", "Focus");
@@ -414,10 +395,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   25: {
     title: "Where do I start?",
-    masks: [
-      ...outside(STUDIO_BOX, STUDIO_IN_CARD),
-      { x: 956, y: 296, w: 300, h: 146, reason: "25a draws unchecked boxes as thin bars (collapsed wrapper) that push the text left; the app draws 16x16 boxes (02 §14.1 #8)" },
-    ],
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the artboard draws an older space screen with the Studio inside the chat card (340px); DECISIONS #2 keeps the app's Studio at 328px, so the recipe lays the real panel into the artboard's box" },
     setup: async (p) => {
       await space(p);
       await studio(p, "microsteps", "Where do I start");
@@ -426,7 +404,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   26: {
     title: "Low-energy session",
-    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the artboard draws an older space screen with the Studio inside the chat card (340px); DECISIONS #2 keeps the app's Studio at 328px, so the recipe lays the real panel into the artboard's box" },
     setup: async (p) => {
       await space(p);
       await studio(p, "lowEnergy", "Low-energy");
@@ -486,9 +464,6 @@ export const SCREENS: Record<number, Screen> = {
   },
   32: {
     title: "Add an AI provider",
-    masks: [
-      { x: 380, y: 500, w: 560, h: 260, reason: "provider tiles the design omits stay reachable, DECISIONS #14" },
-    ],
     setup: async (p) => {
       await nav(p, { name: "settings" });
       await click(p, /add provider/i);
@@ -539,9 +514,6 @@ export const SCREENS: Record<number, Screen> = {
     title: "Empty space",
     query: "chat=none&sources=empty",
     native: true,
-    masks: [
-      { x: 700, y: 250, w: 110, h: 90, reason: "Ponder mark replaces the chat-icon tile, 05-brand.md" },
-    ],
     setup: async (p) => {
       await setUi(p, { studioOpen: false, sourcesOpen: {}, modelControls: { "prov-anthropic:Sonnet 5.5": { reasoning: "high" } } });
       await nav(p, { name: "space", spaceId: SPACE });
@@ -563,7 +535,7 @@ export function buildRecipes(): Recipe[] {
         query: o.query ?? "",
         source: o.source ?? "app-screens",
         pending: o.pending,
-        masks: o.masks ?? [],
+        masks: process.env.NOMASK ? [] : (o.masks ?? []),
         region: o.region,
         native: !!o.native,
         setup: o.setup,
