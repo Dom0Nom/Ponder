@@ -381,3 +381,35 @@ input[type="range"].slider { -webkit-appearance: none; appearance: none; height:
 .practice-question p { margin: 0; }
 .practice-question .katex-display { margin: 18px 0 0; padding: 22px 22px 19px; border-radius: 8px; background: var(--fill-subtle); font-size: 1.125rem; line-height: 1.6; }
 .practice-question .katex-display > .katex { font-size: 1.07em; }
+
+/* Calculator (GED test layout): device colors, identical in light and dark (a physical-object simulation). */
+:root {
+  --calc-body: #434e54;
+  --calc-lcd: #ffffff;
+  --calc-lcd-ink: #000000;
+  --calc-key-border: #000000;
+  --calc-key-fn: #546168;
+  --calc-key-op: #32373d;
+  --calc-key-num: #ffffff;
+  --calc-key-2nd: #aacc7a;
+  --calc-legend-light: #ffffff;
+  --calc-legend-dark: #3b3c3d;
+  --calc-legend-2nd-key: #414344;
+  --calc-second-on-dark: #dbf78d;
+  --calc-second-on-light: #64820a;
+  --calc-highlight-dark: #7d878c;
+  --calc-highlight-light: #d0d0d0;
+  --calc-highlight-pad: #9da5aa;
+}
+.calc-key {
+  transition: transform 80ms ease-out, filter 80ms ease-out;
+}
+.calc-key[data-pressed] {
+  transform: translateY(2px);
+  filter: brightness(0.92);
+  transition-duration: 0ms;
+}
+[data-motion="reduce"] .calc-key[data-pressed] { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .calc-key[data-pressed] { transform: none; }
+}
