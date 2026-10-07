@@ -72,6 +72,7 @@
   --sh-float: 0 6px 16px rgba(0, 0, 0, 0.18);
   --sh-panel: 8px 0 24px rgba(0, 0, 0, 0.06);
   --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-math-stack: "STIX Two Text", "Times New Roman", serif;
   --font-kbd-stack: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
   --text-scale: 1;
   /* transitional aliases: delete when `grep -rn "accent\|surface-2\|surface-3\|bg-bg" src` is empty */
@@ -191,7 +192,7 @@
   --color-timer-warm: var(--timer-warm);
   --color-timer-break: var(--timer-break);
   --color-timer-track: var(--timer-track);
-  --color-kbd: var(--kbd-bg);
+  --color-keycap: var(--kbd-bg);
   --color-tooltip-muted: var(--tooltip-muted);
   --color-scrim: var(--scrim);
   --color-ring: var(--ring);
@@ -200,6 +201,7 @@
   --font-sans: var(--font-ui);
   --ease-smooth: var(--motion-ease-smooth);
   --font-kbd: var(--font-kbd-stack);
+  --font-math: var(--font-math-stack);
   --shadow-menu: var(--sh-menu);
   --shadow-popover: var(--sh-popover);
   --shadow-dialog: var(--sh-dialog);
