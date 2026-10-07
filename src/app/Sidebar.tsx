@@ -180,8 +180,8 @@ export function Sidebar() {
             role="img"
             aria-label={s.appName}
             className={cn(
-              "pointer-events-none absolute inset-y-0 right-0 flex items-center justify-center gap-[7px]",
-              fullscreen ? "left-0" : "left-[76px]",
+              "pointer-events-none absolute inset-0 flex items-center justify-center gap-[7px] transition-transform duration-[var(--motion-slow)] ease-[var(--motion-ease-smooth)]",
+              fullscreen ? "translate-x-0" : "translate-x-[38px]",
             )}
           >
             <img src={dark ? markDark : markLight} alt="" draggable={false} className="h-[22px] w-auto" />
