@@ -4,7 +4,7 @@ import { s } from "../../lib/strings";
 import { Dialog } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
 import { ChoiceOption } from "../../components/ui/choice";
-import { Spinner } from "../../components/ui/misc";
+import { PonderMark } from "../../components/brand/PonderMark";
 
 /** Global quiz runner: one question at a time, answer feedback, then a score screen. */
 export function QuizLayer() {
@@ -24,7 +24,7 @@ export function QuizLayer() {
   if (!current) {
     return preparing ? (
       <div role="status" className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2.5 rounded-pane border border-border bg-surface px-4 py-2.5 shadow-menu">
-        <Spinner /> {preparing}
+        <PonderMark size={20} state="generating" /> {preparing}
       </div>
     ) : null;
   }

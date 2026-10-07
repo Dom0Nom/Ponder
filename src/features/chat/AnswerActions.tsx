@@ -8,7 +8,8 @@ import { useMessages, useSources, useThreads } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Citation, Message, Space } from "../../lib/types";
 import { useUi } from "../../stores/ui";
-import { Spinner, Tooltip } from "../../components/ui/misc";
+import { Tooltip } from "../../components/ui/misc";
+import { PonderMark } from "../../components/brand/PonderMark";
 import { toastError } from "../../components/ui/toast";
 import { useAddCard } from "../cards/FlashcardsCard";
 import { useLowEnergy } from "../focus/useLowEnergy";
@@ -131,7 +132,7 @@ export function AnswerActions({ message, space, content }: { message: Message; s
         <Layers size={13} /> {s.chat.makeCard}
       </button>
       <button className={actionTextBtn} disabled={low.active || quizzing} title={low.reason} onClick={quiz}>
-        {quizzing ? <Spinner size={13} /> : <PencilLine size={13} />} {s.chat.quizMe}
+        {quizzing ? <PonderMark size={20} state="generating" /> : <PencilLine size={13} />} {s.chat.quizMe}
       </button>
       <SourcesPopover citations={cited} spaceId={space.id} />
     </div>

@@ -10,7 +10,9 @@ import type { Citation, Message, Space } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
 import { useComposer } from "../../stores/composer";
-import { Spinner, Tooltip } from "../../components/ui/misc";
+import { Tooltip } from "../../components/ui/misc";
+import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
+import { PonderMark } from "../../components/brand/PonderMark";
 import { KIND_ICON } from "../sources/kinds";
 import { CheckResults, RememberedChips, SecondOpinions } from "./AnswerTools";
 import { AnswerActions } from "./AnswerActions";
@@ -132,11 +134,10 @@ function AssistantMessage({
     <div className="flex flex-col gap-2.5 text-input leading-[1.65]" data-testid="msg-assistant">
       {reasoning && <Thinking text={reasoning} active={streaming && !content} ms={message.meta?.thinkingMs} />}
       {streaming && !content && !reasoning && (
-        <div className="flex items-center gap-2 text-label font-medium text-fg-secondary">
-          <Spinner size={13} /> {s.chat.thinking}…
-        </div>
+        <GeneratingStatus label={`${s.chat.thinking}…`} />
       )}
       <AnswerBody content={content} citations={citations} streaming={streaming} spaceId={space.id} />
+      {streaming && content && <GeneratingStatus label={`${s.chat.writing}…`} />}
       {message.meta?.stopped && <p className="text-xs text-faint">{s.chat.stopped}</p>}
       {(message.status === "error" || interrupted) && (
         <div role="alert" className="flex items-start gap-2 rounded-pane bg-danger-hover px-4 py-3 text-body leading-[1.45]">
@@ -171,9 +172,9 @@ function Thinking({ text, active, ms }: { text: string; active: boolean; ms?: nu
       <button
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="group/think inline-flex h-[21px] items-center gap-1.5 self-start text-label font-medium leading-[1.65] text-fg-secondary hover:text-fg"
+        className="group/think inline-flex h-5 items-center gap-1.5 self-start text-label font-medium leading-[1.65] text-fg-secondary hover:text-fg"
       >
-        {active ? <Spinner size={13} className="text-current" /> : <Brain size={13} />}
+        {active ? <PonderMark size={20} state="generating" /> : <Brain size={13} />}
         {label}
         <ChevronRight
           size={12}

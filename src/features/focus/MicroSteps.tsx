@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Checkbox16 } from "../../components/ui/checkbox";
 import { Input } from "../../components/ui/input";
-import { ErrorState, Skeleton, Spinner } from "../../components/ui/misc";
+import { ErrorState, Skeleton } from "../../components/ui/misc";
+import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { toastError } from "../../components/ui/toast";
 import { useGenerateMicroSteps } from "../../lib/focus/useGenerateMicroSteps";
 import { api } from "../../lib/ipc";
@@ -202,7 +203,7 @@ export function MicroStepsView({ space, onBack }: { space: Space; onBack: () => 
           </Button>
         )}
         <Button variant="ghost" size="sm" className="self-center" disabled={busy || !regenGoal} onClick={() => regenGoal && void generate(regenGoal, state?.sessionId ?? null)}>
-          {busy && <Spinner size={13} />} {busy ? s.focus.micro.generating : s.focus.micro.regenerate}
+          {s.focus.micro.regenerate}
         </Button>
         <Button variant="ghost" size="sm" className="self-center" disabled={busy} onClick={() => void clear()}>
           {s.focus.micro.clear}
@@ -212,12 +213,12 @@ export function MicroStepsView({ space, onBack }: { space: Space; onBack: () => 
 
   return (
     <StudioSubpanel title={s.focus.micro.title} onBack={onBack} footer={footer} testId="micro-steps">
+      {busy && <GeneratingStatus label={s.focus.micro.generating} className="text-muted" />}
       {isLoading && <Skeleton className="h-40 rounded-card" />}
       {error && <ErrorState className="py-4" title={s.focus.micro.loadFailed} error={error} onRetry={() => refetch()} />}
       {data && total === 0 && sessionGoal && (
         <Button variant="primary" className="self-start" disabled={busy} onClick={() => void generate(sessionGoal, state?.sessionId ?? null)}>
-          {busy ? <Spinner size={14} className="text-on-primary" /> : <Sparkles size={15} />}{" "}
-          {busy ? s.focus.micro.generating : s.focus.micro.button}
+          <Sparkles size={15} /> {s.focus.micro.button}
         </Button>
       )}
       {data && total === 0 && !sessionGoal && (
@@ -237,8 +238,7 @@ export function MicroStepsView({ space, onBack }: { space: Space; onBack: () => 
             disabled={busy}
           />
           <Button type="submit" variant="primary" className="self-start" disabled={!topic.trim() || busy}>
-            {busy ? <Spinner size={14} className="text-on-primary" /> : <Sparkles size={15} />}{" "}
-            {busy ? s.focus.micro.generating : s.focus.micro.go}
+            <Sparkles size={15} /> {s.focus.micro.go}
           </Button>
         </form>
       )}

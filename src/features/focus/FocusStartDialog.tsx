@@ -1,9 +1,11 @@
 import { ListChecks, Play } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { lazy, useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "../../components/ui/button";
 import { Dialog } from "../../components/ui/dialog";
 import { Input, Label } from "../../components/ui/input";
 import { Segmented, Spinner } from "../../components/ui/misc";
+import { PonderMark } from "../../components/brand/PonderMark";
+import { Fx } from "../../components/fx/Fx";
 import { toastError } from "../../components/ui/toast";
 import { useFocusPrefs } from "../../lib/focusPrefs";
 import { useGenerateMicroSteps } from "../../lib/focus/useGenerateMicroSteps";
@@ -64,13 +66,15 @@ function StepsButton({
         }}
         className="-ml-2.25 flex h-7.5 items-center gap-1.5 self-start rounded-btn px-2.25 font-medium hover:bg-fill disabled:opacity-60"
       >
-        {busy ? <Spinner size={14} /> : <ListChecks size={14} />}
+        {busy ? <PonderMark size={20} state="generating" /> : <ListChecks size={14} />}
         {busy ? s.focus.micro.generating : s.focus.micro.button}
       </button>
       {ready != null && <p className="text-caption text-muted">{s.focus.micro.readyLine(ready)}</p>}
     </div>
   );
 }
+
+const MetalButton = lazy(() => import("../../components/fx/MetalButton"));
 
 export function FocusStartDialog() {
   const open = useUi((st) => st.focusDialogOpen);
@@ -138,6 +142,13 @@ export function FocusStartDialog() {
     }
   };
 
+  const startButton = (
+    <Button variant="primary" disabled={hasErrors || busy || !!active} onClick={() => void submit()}>
+      {busy ? <Spinner size={14} className="text-on-primary" /> : <Play size={15} />}
+      {busy ? s.focus.starting : s.focus.begin}
+    </Button>
+  );
+
   return (
     <Dialog
       open={open}
@@ -149,10 +160,7 @@ export function FocusStartDialog() {
           <Button variant="secondary" onClick={() => setOpen(false)}>
             {s.common.cancel}
           </Button>
-          <Button variant="primary" disabled={hasErrors || busy || !!active} onClick={() => void submit()}>
-            {busy ? <Spinner size={14} className="text-on-primary" /> : <Play size={15} />}
-            {busy ? s.focus.starting : s.focus.begin}
-          </Button>
+          <Fx needsWebGL2 fallback={startButton} render={() => <MetalButton>{startButton}</MetalButton>} />
         </>
       }
     >

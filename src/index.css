@@ -80,6 +80,8 @@
   --accent-soft: var(--fill-active);
   --accent-text: var(--text);
   --on-accent: var(--on-primary);
+  --mark-tint-light: #ffffff;
+  --mark-tint-dark: #d9d9d9;
   color-scheme: light;
 }
 

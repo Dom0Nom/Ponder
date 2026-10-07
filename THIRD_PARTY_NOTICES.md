@@ -53,3 +53,18 @@ This product includes software developed by Paper Design, Inc.
 
 The `liquidMetal` fragment shader and the sizing vertex shader are included unmodified
 in the metal-fx bundle.
+
+## Paper Shaders (Apache-2.0)
+
+`@paper-design/shaders-react` and `@paper-design/shaders` 0.0.81 (the `LiquidMetal` shader
+that animates the Ponder mark).
+
+Copyright (c) Paper Design, Inc.
+Licensed under the Apache License, Version 2.0
+http://www.apache.org/licenses/LICENSE-2.0
+
+## Ponder logo and font (not MIT)
+
+The Ponder logo (`src/assets/brand/`, `design/brand/`) and the "ponder" display font belong to
+the project owner. They are not covered by this repository's MIT license, and they are not to
+be reused in forks without permission.

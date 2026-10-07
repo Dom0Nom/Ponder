@@ -18,6 +18,7 @@ import { Dialog, ConfirmDialog } from "../../components/ui/dialog";
 import { fieldLabel, Textarea } from "../../components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuTrigger } from "../../components/ui/menu";
 import { ErrorState, Skeleton } from "../../components/ui/misc";
+import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { toast, toastError } from "../../components/ui/toast";
 import { PanelList, panelRow } from "../space/PanelList";
 import { StudioSubpanel } from "../space/StudioSubpanel";
@@ -147,7 +148,7 @@ function CustomCurriculumDialog({
             {s.common.cancel}
           </Button>
           <Button variant="primary" disabled={text.trim().length < 20 || busy} onClick={submit}>
-            {busy ? s.plan.reading : s.plan.makeCurriculum}
+            {s.plan.makeCurriculum}
           </Button>
         </>
       }
@@ -156,6 +157,7 @@ function CustomCurriculumDialog({
         <span className={fieldLabel}>{s.plan.syllabus}</span>
         <Textarea id="syllabus" rows={10} value={text} onChange={(e) => setText(e.target.value)} placeholder={s.plan.syllabusPlaceholder} />
       </label>
+      {busy && <GeneratingStatus label={s.plan.reading} className="mt-3.5 text-muted" />}
     </Dialog>
   );
 }

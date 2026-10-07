@@ -12,6 +12,7 @@ import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
 import { Dialog } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
 import { Spinner, Tooltip } from "../../components/ui/misc";
+import { PonderMark } from "../../components/brand/PonderMark";
 import { toast, toastError } from "../../components/ui/toast";
 import { actionIconBtn } from "./actionButton";
 import { ModelPicker } from "../settings/ModelPicker";
@@ -184,7 +185,7 @@ export function SecondOpinions({
           <div key={m.id} className="rounded-pane bg-fill px-4 py-3" data-testid="second-opinion">
             <div className="mb-1.5 flex items-center gap-2 text-xs font-medium text-muted">
               <Scale size={13} /> {s.secondOpinion.label(m.meta?.model?.model ?? "")}
-              {streaming && <Spinner size={12} />}
+              {streaming && <PonderMark size={20} state="generating" />}
               {!streaming && m.status === "complete" && (
                 <button
                   onClick={() => setCompare(m)}

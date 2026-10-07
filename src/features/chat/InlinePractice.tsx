@@ -11,7 +11,8 @@ import { s } from "../../lib/strings";
 import type { InlinePracticeMeta, Message, PracticeItem, Space } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
-import { Skeleton, Spinner } from "../../components/ui/misc";
+import { Skeleton } from "../../components/ui/misc";
+import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { toastError } from "../../components/ui/toast";
 import { StepCheckerDialog } from "../steps/StepChecker";
 import { Markdown } from "./Markdown";
@@ -193,9 +194,7 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
       </div>
       {!item || busy === "next" ? (
         <div className="flex flex-col gap-3 px-4 py-3.5" aria-live="polite">
-          <p className="flex items-center gap-2 text-muted">
-            <Spinner size={14} /> {s.practice.writing}
-          </p>
+          <GeneratingStatus label={s.practice.writing} className="text-muted" />
           <Skeleton className="h-5 w-3/4" />
         </div>
       ) : (
@@ -269,7 +268,6 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
                 disabled={!response.trim() || busy === "grade"}
                 className="flex h-9 items-center gap-2.5 rounded-btn bg-primary px-3.5 font-medium text-on-primary hover:bg-primary-hover disabled:cursor-default"
               >
-                {busy === "grade" && <Spinner size={14} className="text-on-primary" />}
                 {s.practice.check}
                 <span className="text-kbd text-on-primary-muted">↵</span>
               </button>
@@ -284,6 +282,7 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
               <Camera size={15} />
             </button>
           </form>
+          {busy === "grade" && <GeneratingStatus label={s.practice.grading} className="text-muted" />}
         </div>
       )}
       {checked && item && (

@@ -14,7 +14,8 @@ import { useUi } from "../../stores/ui";
 import { Button } from "../../components/ui/button";
 import { ChoiceOption } from "../../components/ui/choice";
 import { Input } from "../../components/ui/input";
-import { ErrorState, Skeleton, Spinner } from "../../components/ui/misc";
+import { ErrorState, Skeleton } from "../../components/ui/misc";
+import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { toastError } from "../../components/ui/toast";
 import { Markdown } from "../chat/Markdown";
 import { StepCheckerPanel } from "../steps/StepChecker";
@@ -218,9 +219,7 @@ function Session({
           </div>
           {busy === "new" && (
             <div className="flex flex-col gap-3" aria-live="polite">
-              <p className="flex items-center gap-2 text-muted">
-                <Spinner size={14} /> {s.practice.writing}
-              </p>
+              <GeneratingStatus label={s.practice.writing} className="text-muted" />
               <Skeleton className="h-6 w-3/4 rounded-btn" />
               <Skeleton className="h-[72px] rounded-pane" />
               <Skeleton className="h-9 rounded-control" />
@@ -247,7 +246,6 @@ function Session({
                     ))}
                   </div>
                   <Button variant="primary" className="self-start" disabled={!response.trim() || !!result || busy === "grade"} onClick={submit}>
-                    {busy === "grade" && <Spinner size={14} className="text-on-primary" />}
                     {s.practice.check}
                   </Button>
                 </>
@@ -269,7 +267,6 @@ function Session({
                     className={cn("min-w-0 flex-1 disabled:opacity-100", result && (ok ? "border-success" : "border-danger"))}
                   />
                   <Button type="submit" variant="primary" disabled={!response.trim() || !!result || busy === "grade"}>
-                    {busy === "grade" && <Spinner size={14} className="text-on-primary" />}
                     {s.practice.check}
                   </Button>
                   {item.kind === "numeric" && (
@@ -292,6 +289,7 @@ function Session({
                   )}
                 </div>
               )}
+              {busy === "grade" && <GeneratingStatus label={s.practice.grading} className="text-muted" />}
               {result && (
                 <>
                   <div

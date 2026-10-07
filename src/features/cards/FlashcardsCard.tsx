@@ -15,7 +15,9 @@ import { useLowEnergy } from "../focus/useLowEnergy";
 import { Button } from "../../components/ui/button";
 import { Dialog } from "../../components/ui/dialog";
 import { fieldLabel, Input, Textarea } from "../../components/ui/input";
-import { EmptyState, Segmented, Skeleton, Spinner } from "../../components/ui/misc";
+import { EmptyState, Segmented, Skeleton } from "../../components/ui/misc";
+import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
+import { PonderMark } from "../../components/brand/PonderMark";
 import { toast, toastError } from "../../components/ui/toast";
 import { PanelList, panelRow } from "../space/PanelList";
 import { StudioSubpanel } from "../space/StudioSubpanel";
@@ -101,7 +103,7 @@ export function FlashcardsPanel({ space, onBack }: { space: Space; onBack: () =>
           <button className={ROW} disabled={quizzing} onClick={quiz}>
             <PencilLine size={15} />
             <span className="flex-1 font-medium">{s.cards.quiz}</span>
-            {quizzing ? <Spinner size={14} /> : <ChevronRight size={14} />}
+            {quizzing ? <PonderMark size={20} state="generating" /> : <ChevronRight size={14} />}
           </button>
           {c?.total ? (
             <button className={ROW} onClick={() => setBrowsing(true)}>
@@ -162,8 +164,8 @@ function GenerateCardsDialog({ space, open, onOpenChange }: { space: Space; open
             {s.common.cancel}
           </Button>
           <Button variant="primary" disabled={busy || !ready.length} onClick={run}>
-            {busy ? <Spinner size={15} className="text-on-primary" /> : <Sparkles size={15} />}
-            {busy ? s.cards.generating : s.cards.generateTitle}
+            <Sparkles size={15} />
+            {s.cards.generateTitle}
           </Button>
         </>
       }
@@ -184,6 +186,7 @@ function GenerateCardsDialog({ space, open, onOpenChange }: { space: Space; open
             options={(["5", "10", "20"] as const).map((v) => ({ value: v, label: v }))}
           />
         </div>
+        {busy && <GeneratingStatus label={s.cards.generating} className="text-muted" />}
       </div>
     </Dialog>
   );

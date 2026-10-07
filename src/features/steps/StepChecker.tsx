@@ -4,7 +4,8 @@ import { Calculator, Camera, Check, Eye, EyeOff, Lightbulb, Pencil, X } from "lu
 import * as D from "@radix-ui/react-dialog";
 import { Button } from "../../components/ui/button";
 import { Input, Textarea } from "../../components/ui/input";
-import { ErrorState, Skeleton, Spinner } from "../../components/ui/misc";
+import { ErrorState, Skeleton } from "../../components/ui/misc";
+import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { toast } from "../../components/ui/toast";
 import { Markdown } from "../chat/Markdown";
 import { StudioSubpanel } from "../space/StudioSubpanel";
@@ -228,8 +229,7 @@ export function StepCheckerPanel({
         footer={
           <>
             <Button variant="primary" disabled={busy || !lines.length} onClick={check}>
-              {busy && <Spinner size={14} className="text-on-primary" />}
-              {busy ? s.steps.checking : s.steps.check}
+              {s.steps.check}
             </Button>
             <Button
               variant="secondary"
@@ -279,6 +279,9 @@ export function StepCheckerPanel({
             </>
           ) : busy ? (
             <ol className="rounded-card border border-border" aria-live="polite">
+              <li className="px-3 pt-[9px]">
+                <GeneratingStatus label={s.steps.checking} className="text-muted" />
+              </li>
               {[0, 1, 2, 3].map((i) => (
                 <li key={i} className="px-3 py-[9px] [&+&]:border-t [&+&]:border-divider">
                   <Skeleton className="h-5 rounded-kbd" />

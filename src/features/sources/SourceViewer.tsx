@@ -14,13 +14,16 @@ import { ErrorState, Skeleton, Tooltip } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { detectChapters } from "../../lib/placement/logic";
 import type { Source } from "../../lib/types";
+import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { BionicText } from "./BionicText";
+import { useSummarizing } from "./useAutoSummaries";
 import { ReadingRuler } from "./ReadingRuler";
 
 export function SourceViewer({ target }: { target: { sourceId: string; start?: number; end?: number } }) {
   const openViewer = useUi((st) => st.openViewer);
   const source = useQuery({ queryKey: ["source", target.sourceId], queryFn: () => api.getSource(target.sourceId) });
   const text = useQuery({ queryKey: qk.sourceText(target.sourceId), queryFn: () => api.getSourceText(target.sourceId) });
+  const summarizing = useSummarizing((st) => !!st.ids[target.sourceId]);
   const markRef = useRef<HTMLElement>(null);
 
   const pieces = useMemo(() => (text.data ? buildPieces(text.data, target.start, target.end) : []), [text.data, target.start, target.end]);
@@ -109,7 +112,11 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
           <div className="mx-auto flex max-w-[760px] flex-col gap-4 px-10 py-9 text-base leading-[1.75]">
             <div className="flex flex-col gap-1 rounded-card border border-border px-3.5 py-3">
               <p className="text-label font-semibold leading-[1.75] text-muted">{s.sources.summary}</p>
-              <p className="text-[0.84375rem] leading-[1.55] text-fg-secondary">{source.data.summary ?? s.sources.noSummary}</p>
+              {!source.data.summary && summarizing ? (
+                <GeneratingStatus label={s.sources.summarizing} className="text-muted" />
+              ) : (
+                <p className="text-[0.84375rem] leading-[1.55] text-fg-secondary">{source.data.summary ?? s.sources.noSummary}</p>
+              )}
             </div>
             <SelectionToCard source={source.data} text={text.data.text} />
             <div className="whitespace-pre-wrap break-words" data-testid="source-text">

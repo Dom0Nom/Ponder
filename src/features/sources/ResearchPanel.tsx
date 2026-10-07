@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { lazy, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import { api } from "../../lib/ipc";
@@ -8,6 +8,8 @@ import type { Space } from "../../lib/types";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
 import { deepResearch, type FoundSource, type ResearchStage } from "../../lib/research/deepResearch";
 import { proxyHttp } from "../../lib/importers/http";
+import { PonderMark } from "../../components/brand/PonderMark";
+import { Fx } from "../../components/fx/Fx";
 import { ActivityOrb, type Activity } from "../../components/motion/ActivityOrb";
 import { Button } from "../../components/ui/button";
 import { Checkbox16 } from "../../components/ui/checkbox";
@@ -15,6 +17,8 @@ import { Input } from "../../components/ui/input";
 import { EmptyState } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { useImportFooter } from "./ImportDialog";
+
+const ResearchBeam = lazy(() => import("../../components/fx/ResearchBeam"));
 
 const STAGE_ORB: Record<ResearchStage, Activity> = {
   planning: "plan",
@@ -108,6 +112,30 @@ export function ResearchPanel({
     run: importSelected,
   });
 
+  const panel = stage && (
+    <div
+      data-testid="research-running"
+      data-stage={stage}
+      className="flex items-center gap-3 rounded-card border border-border px-4 py-3"
+      aria-live="polite"
+    >
+      {stage === "ranking" ? (
+        <span className="flex size-8 flex-none items-center justify-center">
+          <PonderMark size={20} state="generating" />
+        </span>
+      ) : (
+        <ActivityOrb activity={STAGE_ORB[stage]} size={32} />
+      )}
+      <div className="min-w-0">
+        <p className="font-medium">{STAGE_LABEL[stage]}</p>
+        {detail && <p className="truncate text-label text-muted">{detail}</p>}
+      </div>
+      <Button size="sm" variant="ghost" className="ml-auto" onClick={() => abort.current?.abort()}>
+        {s.common.cancel}
+      </Button>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-3.5">
       <form
@@ -129,23 +157,7 @@ export function ResearchPanel({
         </Button>
       </form>
 
-      {stage && (
-        <div
-          data-testid="research-running"
-          data-stage={stage}
-          className="flex items-center gap-3 rounded-card border border-border px-4 py-3"
-          aria-live="polite"
-        >
-          <ActivityOrb activity={STAGE_ORB[stage]} size={32} />
-          <div className="min-w-0">
-            <p className="font-medium">{STAGE_LABEL[stage]}</p>
-            {detail && <p className="truncate text-label text-muted">{detail}</p>}
-          </div>
-          <Button size="sm" variant="ghost" className="ml-auto" onClick={() => abort.current?.abort()}>
-            {s.common.cancel}
-          </Button>
-        </div>
-      )}
+      {panel && <Fx fallback={panel} render={() => <ResearchBeam active>{panel}</ResearchBeam>} />}
 
       {found && found.length === 0 && <EmptyState title={s.research.noResults} />}
       {found && found.length > 0 && (
