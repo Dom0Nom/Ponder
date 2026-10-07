@@ -1,5 +1,6 @@
 import { ArrowLeft, Files, House, Layers, PencilLine, Search, Settings } from "lucide-react";
 import { useRef, type ComponentType, type ReactNode } from "react";
+import { PonderMark } from "../components/brand/PonderMark";
 import { NumberPop } from "../components/motion/NumberPop";
 import { Button } from "../components/ui/button";
 import { Kbd, Tooltip } from "../components/ui/misc";
@@ -167,7 +168,12 @@ export function Sidebar() {
       className="relative z-[5] h-full shrink-0 overflow-hidden bg-chrome transition-[width] duration-[180ms] ease-[ease]"
     >
       <div className={cn("flex h-full w-[232px] flex-col transition-opacity duration-150", open ? "opacity-100" : "opacity-0")}>
-        <div className="h-[48px] shrink-0" data-tauri-drag-region />
+        <div className="flex h-[48px] shrink-0 items-center pl-[88px]" data-tauri-drag-region>
+          <div role="img" aria-label={s.appName} className="pointer-events-none flex items-center gap-1.5 text-fg">
+            <PonderMark size={18} />
+            <span aria-hidden className="font-brand text-[19px] leading-none">ponder</span>
+          </div>
+        </div>
         <SidebarBody />
       </div>
     </aside>

@@ -6,6 +6,12 @@
 @import "@fontsource/ibm-plex-sans/700.css";
 @import "@fontsource/opendyslexic/400.css";
 @import "@fontsource/opendyslexic/700.css";
+
+@font-face {
+  font-family: "Ponder Display";
+  src: url("./assets/fonts/ponder-display.woff2") format("woff2");
+  font-display: block;
+}
 @import "katex/dist/katex.min.css";
 @import "./styles/motion.css";
 
@@ -204,6 +210,7 @@
   --ease-smooth: var(--motion-ease-smooth);
   --font-kbd: var(--font-kbd-stack);
   --font-math: var(--font-math-stack);
+  --font-brand: "Ponder Display";
   --shadow-menu: var(--sh-menu);
   --shadow-popover: var(--sh-popover);
   --shadow-dialog: var(--sh-dialog);

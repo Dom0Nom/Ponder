@@ -178,6 +178,11 @@ function applyMasks(png: PNG, masks: Mask[]) {
   }
 }
 
+// Deliberate deviations the user asked for after the design was drawn; excluded from every full-frame compare.
+const USER_DEVIATIONS: Mask[] = [
+  { x: 84, y: 10, w: 96, h: 28, reason: "Ponder mark + wordmark in the sidebar top row, requested by the user 2026-10-07" },
+];
+
 function crop(png: PNG, r: Region): PNG {
   const x0 = Math.round(r.x * SCALE), y0 = Math.round(r.y * SCALE);
   const out = new PNG({ width: Math.round(r.w * SCALE), height: Math.round(r.h * SCALE) });
@@ -191,6 +196,8 @@ function compare(designPath: string, appBuf: Buffer, masks: Mask[], diffPath: st
   if (region) {
     a = crop(a, region);
     b = crop(b, region);
+  } else {
+    masks = [...masks, ...USER_DEVIATIONS];
   }
   if (a.width !== b.width || a.height !== b.height) {
     throw new Error(`size mismatch: design ${a.width}x${a.height}, app ${b.width}x${b.height}`);
