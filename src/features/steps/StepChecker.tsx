@@ -5,7 +5,7 @@ import * as D from "@radix-ui/react-dialog";
 import { Button } from "../../components/ui/button";
 import { Input, Textarea } from "../../components/ui/input";
 import { ErrorState, Skeleton } from "../../components/ui/misc";
-import { Collapse, Reveal } from "../../components/motion/Reveal";
+import { Reveal } from "../../components/motion/Reveal";
 import { TextSwap } from "../../components/motion/TextSwap";
 import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { toast } from "../../components/ui/toast";
@@ -107,8 +107,8 @@ function FirstWrong({ verdict, note }: { verdict: StepVerdict; note?: string }) 
           </Button>
         )}
       </div>
-      <Collapse open={showHint} noblur>
-        <div className="flex flex-col gap-1.5">
+      {showHint && (
+        <Reveal className="flex flex-col gap-1.5">
           {note && <p className="text-label text-muted">{note}</p>}
           {verdict.issue && (
             <div className="text-fg-secondary">
@@ -127,15 +127,13 @@ function FirstWrong({ verdict, note }: { verdict: StepVerdict; note?: string }) 
             </div>
           )}
           <p className="text-label text-muted">{s.steps.laterUnchecked}</p>
-        </div>
-      </Collapse>
-      {verdict.fix && (
-        <Collapse open={showFix} noblur>
-          <div className="flex flex-wrap items-center gap-2 rounded-pane bg-fill-subtle px-3 py-2" data-testid="step-fix">
-            <span className="text-label text-muted">{s.steps.fix}:</span>
-            <Tex tex={verdict.fix} />
-          </div>
-        </Collapse>
+        </Reveal>
+      )}
+      {showFix && verdict.fix && (
+        <Reveal className="flex flex-wrap items-center gap-2 rounded-pane bg-fill-subtle px-3 py-2" data-testid="step-fix">
+          <span className="text-label text-muted">{s.steps.fix}:</span>
+          <Tex tex={verdict.fix} />
+        </Reveal>
       )}
     </div>
   );

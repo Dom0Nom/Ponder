@@ -1,4 +1,4 @@
-import type { CSSProperties, ElementType, ReactNode } from "react";
+import type { CSSProperties, ElementType, HTMLAttributes, ReactNode } from "react";
 import { cn } from "../../lib/utils";
 
 /** In-flow reveal (Transitions.dev Panel reveal): children fade and rise on mount. `index` staggers siblings. */
@@ -10,15 +10,12 @@ export function Reveal({
   y,
   active = true,
   ...rest
-}: {
-  children?: ReactNode;
-  className?: string;
+}: Omit<HTMLAttributes<HTMLElement>, "style"> & {
   as?: ElementType;
   index?: number;
   y?: number;
   /** false renders the element without the enter animation (rows that were already there) */
   active?: boolean;
-  [key: string]: unknown;
 }) {
   const style = {
     "--panel-translate-y": `${y ?? 6}px`,

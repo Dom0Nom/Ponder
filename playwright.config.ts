@@ -14,8 +14,9 @@ export default defineConfig({
     baseURL,
     trace: "retain-on-failure",
     viewport: { width: 1360, height: 860 },
+    reducedMotion: "reduce",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1360, height: 860 } } }],
+  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1360, height: 860 }, reducedMotion: "reduce" } }],
   webServer: {
     command: port === 1420 ? "bun run dev" : `bunx vite --port ${port} --strictPort`,
     url: baseURL,

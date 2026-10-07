@@ -98,6 +98,9 @@ test("Visual effects off: no WebGL context anywhere", async ({ app }) => {
   await walk(app);
 });
 
+test.describe("motion allowed", () => {
+  test.use({ reducedMotion: "no-preference" });
+
 test("effects on: the new-chat mark creates exactly one context", async ({ app }) => {
   await countWebGL(app);
   await app.reload();
@@ -107,4 +110,5 @@ test("effects on: the new-chat mark creates exactly one context", async ({ app }
   await expect.poll(() => contexts(app)).toBe(1);
   await app.waitForTimeout(800);
   expect(await contexts(app)).toBe(1);
+});
 });

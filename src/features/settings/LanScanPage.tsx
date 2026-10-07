@@ -1,3 +1,5 @@
+import { ActivityOrb } from "../../components/motion/ActivityOrb";
+import { Reveal } from "../../components/motion/Reveal";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Radar, RefreshCw } from "lucide-react";
 import { useEffect } from "react";
@@ -60,7 +62,7 @@ export function LanScanPage() {
       footer={
         <>
           <Button variant="ghost" size="sm" onClick={() => scan.mutate()} disabled={scan.isPending}>
-            <RefreshCw size={14} aria-hidden />
+            <RefreshCw size={14} aria-hidden className={scan.isPending ? "m-spin" : undefined} />
             {s.providers.scanAgain}
           </Button>
           <Button variant="primary" onClick={() => navigate({ name: "settings", section: "providers" })}>
@@ -71,7 +73,7 @@ export function LanScanPage() {
     >
       {scan.isPending || scan.isIdle ? (
         <div className="flex items-center gap-3 py-4 text-body text-muted" role="status">
-          <Spinner />
+          <ActivityOrb activity="search" size={16} />
           {s.providers.scanning}
         </div>
       ) : scan.isError ? (
@@ -80,11 +82,11 @@ export function LanScanPage() {
         <EmptyState size="sm" icon={<Radar size={17} />} title={s.providers.scanEmpty} body={s.providers.scanEmptyBody} />
       ) : (
         <ul className="rounded-card border border-border px-4 [&>*+*]:border-t [&>*+*]:border-divider">
-          {scan.data.map((srv) => {
+          {scan.data.map((srv, i) => {
             const isAdded = added(srv);
             const adding = add.isPending && add.variables?.baseUrl === srv.baseUrl;
             return (
-              <li key={srv.baseUrl} className="flex min-h-11 items-center gap-3 py-2">
+              <Reveal as="li" index={i} key={srv.baseUrl} className="flex min-h-11 items-center gap-3 py-2">
                 <div className="flex min-w-0 flex-1 flex-col gap-px">
                   <span className="text-body-lg font-medium">{s.providers.kinds[srv.kind]}</span>
                   <span className="truncate text-label text-muted" title={srv.models.join(", ")}>
@@ -92,14 +94,16 @@ export function LanScanPage() {
                   </span>
                 </div>
                 {isAdded ? (
-                  <span className="font-medium text-muted">{s.providers.added}</span>
+                  <Reveal as="span" y={0} className="font-medium text-muted">
+                    {s.providers.added}
+                  </Reveal>
                 ) : (
                   <Button variant="secondary" disabled={adding} onClick={() => add.mutate(srv)}>
                     {adding && <Spinner size={14} />}
                     {s.common.add}
                   </Button>
                 )}
-              </li>
+              </Reveal>
             );
           })}
         </ul>

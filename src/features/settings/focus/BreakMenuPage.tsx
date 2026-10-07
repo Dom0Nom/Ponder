@@ -1,5 +1,9 @@
 import { ArrowDown, ArrowUp, X } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Reveal } from "../../../components/motion/Reveal";
+import { TextSwap } from "../../../components/motion/TextSwap";
+import { useFlip } from "../../../lib/useFlip";
+import { useFreshKeys } from "../../../lib/useFreshKeys";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Tooltip } from "../../../components/ui/misc";
@@ -18,10 +22,12 @@ function ItemRow({
   item,
   index,
   count,
+  fresh,
   onCommit,
   onMove,
   onRemove,
 }: {
+  fresh: boolean;
   item: string;
   index: number;
   count: number;
@@ -35,7 +41,7 @@ function ItemRow({
     if (!onCommit(draft)) setDraft(item);
   };
   return (
-    <li className="flex h-[42.5px] items-center gap-1.5">
+    <Reveal as="li" active={fresh} data-flip-key={item} className="flex h-[42.5px] items-center gap-1.5">
       <input
         value={draft}
         maxLength={MAX_BREAK_ITEM_LEN}
@@ -63,7 +69,7 @@ function ItemRow({
           <X size={15} />
         </Button>
       </Tooltip>
-    </li>
+    </Reveal>
   );
 }
 
@@ -74,6 +80,9 @@ export function BreakMenuPage() {
   const items = prefs.breakMenu;
   const [draft, setDraft] = useState("");
   const [hint, setHint] = useState<string | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const isFresh = useFreshKeys(items);
+  useFlip(listRef, [items]);
 
   const save = (next: string[]) => {
     setPref("breakMenu", next).catch((e) => toastError(s.breakMenu.saveFailed, e));
@@ -137,11 +146,12 @@ export function BreakMenuPage() {
         </>
       }
     >
-      <ul className="rounded-card border border-border pl-3.5 pr-2 [&>*+*]:border-t [&>*+*]:border-divider">
+      <ul ref={listRef} className="relative rounded-card border border-border pl-3.5 pr-2 [&>*+*]:border-t [&>*+*]:border-divider">
         {items.length === 0 && <li className="py-3 text-body text-faint">{s.breakMenu.empty}</li>}
         {items.map((item, i) => (
           <ItemRow
-            key={`${i}:${item}`}
+            key={item}
+            fresh={isFresh(item)}
             item={item}
             index={i}
             count={items.length}
@@ -165,7 +175,7 @@ export function BreakMenuPage() {
         />
         {hint && (
           <p role="status" className="mt-1.5 text-caption text-muted">
-            {hint}
+            <TextSwap text={hint} />
           </p>
         )}
       </div>

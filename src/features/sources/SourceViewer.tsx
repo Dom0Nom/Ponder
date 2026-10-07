@@ -1,3 +1,5 @@
+import { Reveal } from "../../components/motion/Reveal";
+import { motionReduced } from "../../app/useTheme";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAddCard } from "../cards/FlashcardsCard";
 import { clozeFromSelection } from "../../lib/srs/cloze";
@@ -29,7 +31,7 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
   const pieces = useMemo(() => (text.data ? buildPieces(text.data, target.start, target.end) : []), [text.data, target.start, target.end]);
 
   useEffect(() => {
-    if (markRef.current) markRef.current.scrollIntoView({ block: "center", behavior: "smooth" });
+    if (markRef.current) markRef.current.scrollIntoView({ block: "center", behavior: motionReduced() ? "auto" : "smooth" });
   }, [pieces]);
 
   const { prefs } = useFocusPrefs();
@@ -218,9 +220,11 @@ function SelectionToCard({ source, text }: { source: Source; text: string }) {
   }, []);
   if (!sel) return null;
   return (
-    <button
-      style={{ position: "fixed", top: Math.max(8, sel.top), left: sel.left, transform: "translateX(-50%)" }}
-      className="z-40 inline-flex h-7.5 items-center gap-1.5 rounded-control bg-primary px-2.5 text-[0.78125rem] font-semibold text-on-primary shadow-float"
+    <div style={{ position: "fixed", top: Math.max(8, sel.top), left: sel.left, transform: "translateX(-50%)" }} className="z-40">
+    <Reveal
+      as="button"
+      y={4}
+      className="inline-flex h-7.5 items-center gap-1.5 rounded-control bg-primary px-2.5 text-[0.78125rem] font-semibold text-on-primary shadow-float"
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => {
         const i = text.indexOf(sel.text);
@@ -239,6 +243,7 @@ function SelectionToCard({ source, text }: { source: Source; text: string }) {
       }}
     >
       <Layers size={13} /> {s.cards.makeFromSelection}
-    </button>
+    </Reveal>
+    </div>
   );
 }

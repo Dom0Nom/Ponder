@@ -73,7 +73,10 @@ export function GrokSignInPage({ providerId }: { providerId: string }) {
                     })
                   }
                 >
-                  {copied ? <Check size={15} /> : <Copy size={15} />}
+                  <span className="t-icon-swap" data-state={copied ? "b" : "a"}>
+                    <Copy size={15} data-icon="a" className="t-icon" />
+                    <Check size={15} data-icon="b" className="t-icon" />
+                  </span>
                 </Button>
               </Tooltip>
             </div>

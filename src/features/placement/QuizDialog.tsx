@@ -44,9 +44,7 @@ export function QuizLayer() {
     setRevealed(false);
   }, [current]);
 
-  const pill = (
-    <PreparingPill text={last.current} gone={!preparing || !!current} />
-  );
+  const pill = <PreparingPill text={last.current} gone={!preparing || !!current} />;
   if (!current) return pill;
 
   const qs = current.questions;
@@ -57,102 +55,73 @@ export function QuizLayer() {
 
   return (
     <>
-      {pill}
-      <Dialog
-        open
-        onOpenChange={(o) => !o && finish(null)}
-        title={current.title}
-        className="w-[min(562px,calc(100vw-32px))]"
-        footer={
-          done ? (
-            <Button variant="primary" onClick={() => finish(answers)}>
-              {s.common.done}
-            </Button>
-          ) : revealed ? (
+    {pill}
+    <Dialog
+      open
+      onOpenChange={(o) => !o && finish(null)}
+      title={current.title}
+      className="w-[min(562px,calc(100vw-32px))]"
+      footer={
+        done ? (
+          <Button variant="primary" onClick={() => finish(answers)}>
+            {s.common.done}
+          </Button>
+        ) : revealed ? (
+          <Button
+            variant="primary"
+            onClick={() => {
+              setRevealed(false);
+              setI(i + 1);
+            }}
+          >
+            {i + 1 < qs.length ? s.quiz.next : s.quiz.seeResult}
+          </Button>
+        ) : (
+          <>
             <Button
-              variant="primary"
+              variant="ghost"
+              size="sm"
+              className="mr-auto"
               onClick={() => {
-                setRevealed(false);
-                setI(i + 1);
+                setRevealed(true);
               }}
             >
-              {i + 1 < qs.length ? s.quiz.next : s.quiz.seeResult}
+              {s.quiz.dontKnow}
             </Button>
-          ) : (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mr-auto"
-                onClick={() => {
-                  setRevealed(true);
-                }}
-              >
-                {s.quiz.dontKnow}
-              </Button>
-              <Button
-                variant="primary"
-                disabled={picked == null}
-                onClick={() => setRevealed(true)}
-              >
-                {s.quiz.check}
-              </Button>
-            </>
-          )
-        }
-      >
-        {done ? (
-          <div className="py-6 text-center" data-testid="quiz-result">
-            <p className="text-timer font-semibold tabular-nums">
-              <NumberPop text={String(correct)} popKey={correct} onMount /> /{" "}
-              {qs.length}
-            </p>
-            <p className="mt-3 text-muted">
-              {s.quiz.resultBody(correct, qs.length)}
-            </p>
+            <Button variant="primary" disabled={picked == null} onClick={() => setRevealed(true)}>
+              {s.quiz.check}
+            </Button>
+          </>
+        )
+      }
+    >
+      {done ? (
+        <div className="py-6 text-center" data-testid="quiz-result">
+          <p className="text-timer font-semibold tabular-nums">
+            <NumberPop text={String(correct)} popKey={correct} onMount /> / {qs.length}
+          </p>
+          <p className="mt-3 text-muted">{s.quiz.resultBody(correct, qs.length)}</p>
+        </div>
+      ) : (
+        <div key={i} className="t-page-enter flex flex-col gap-3" data-testid="quiz-question">
+          <p className="text-label font-semibold text-muted">{s.quiz.progress(i + 1, qs.length)}</p>
+          <p className="text-title font-medium">{q.question}</p>
+          <div role="radiogroup" aria-label={q.question} className="flex flex-col gap-3">
+            {q.options.map((opt, k) => (
+              <ChoiceOption
+                key={k}
+                label={opt}
+                selected={picked === k}
+                state={revealed && k === q.answer ? "correct" : revealed && picked === k ? "wrong" : "idle"}
+                disabled={revealed}
+                onClick={() => setAnswers(answers.map((a, n) => (n === i ? k : a)))}
+              />
+            ))}
           </div>
-        ) : (
-          <div
-            key={i}
-            className="t-page-enter flex flex-col gap-3"
-            data-testid="quiz-question"
-          >
-            <p className="text-label font-semibold text-muted">
-              {s.quiz.progress(i + 1, qs.length)}
-            </p>
-            <p className="text-title font-medium">{q.question}</p>
-            <div
-              role="radiogroup"
-              aria-label={q.question}
-              className="flex flex-col gap-3"
-            >
-              {q.options.map((opt, k) => (
-                <ChoiceOption
-                  key={k}
-                  label={opt}
-                  selected={picked === k}
-                  state={
-                    revealed && k === q.answer
-                      ? "correct"
-                      : revealed && picked === k
-                        ? "wrong"
-                        : "idle"
-                  }
-                  disabled={revealed}
-                  onClick={() =>
-                    setAnswers(answers.map((a, n) => (n === i ? k : a)))
-                  }
-                />
-              ))}
-            </div>
-            {revealed && q.explanation && (
-              <Reveal className="rounded-pane bg-fill-subtle px-3 py-2.5 text-fg-secondary">
-                {q.explanation}
-              </Reveal>
-            )}
-          </div>
-        )}
-      </Dialog>
+          {revealed && q.explanation && <Reveal className="rounded-pane bg-fill-subtle px-3 py-2.5 text-fg-secondary">{q.explanation}</Reveal>}
+        </div>
+      )}
+    </Dialog>
     </>
   );
 }

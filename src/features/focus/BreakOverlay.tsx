@@ -104,7 +104,7 @@ function LockedBreak({ state }: { state: FocusState }) {
       <div />
       <div className="flex flex-col items-center text-center">
         <p className="mt-3.5 text-timer-xl font-medium tabular-nums" aria-live="off">
-          <NumberPop text={clockText(state)} popKey={popKeyOf(state)} />
+          <NumberPop text={clockText(state)} popKey={popKeyOf(state)} onMount />
         </p>
         <h1 id="break-title" className="mt-9 text-[1.5rem] font-semibold">
           {title}

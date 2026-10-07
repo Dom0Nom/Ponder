@@ -6,7 +6,7 @@ export function NumberPop({ text, popKey, className, onMount }: { text: string; 
   const animate = onMount || first.current !== popKey;
   const chars = [...text];
   return (
-    <span className={className} style={{ position: "relative", display: "inline-flex" }}>
+    <span className={className} style={{ position: "relative", display: "inline-block" }}>
       <span key={popKey} className={animate ? "t-digit-group is-animating" : "t-digit-group"}>
         {chars.map((ch, i) => (
           <span key={i} className="t-digit" data-stagger={i === chars.length - 2 ? "1" : i === chars.length - 1 ? "2" : undefined}>

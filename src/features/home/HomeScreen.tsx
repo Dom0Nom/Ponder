@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Reveal } from "../../components/motion/Reveal";
+import { useFlip } from "../../lib/useFlip";
+import { useFreshKeys } from "../../lib/useFreshKeys";
 import { Ellipsis, LayoutGrid, Pencil, Plus, Trash2 } from "lucide-react";
 import { useDeleteSpace, useSpaces } from "../../lib/queries";
 import { s } from "../../lib/strings";
@@ -19,6 +22,9 @@ export function HomeScreen() {
   const [editing, setEditing] = useState<Space | null>(null);
   const [deleting, setDeleting] = useState<Space | null>(null);
   const deleteSpace = useDeleteSpace();
+  const gridRef = useRef<HTMLDivElement>(null);
+  const isFresh = useFreshKeys(data?.map((x) => x.id));
+  useFlip(gridRef, [data]);
 
   const remove = async (sp: Space) => {
     try {
@@ -63,9 +69,11 @@ export function HomeScreen() {
         )}
         {error && <ErrorState title={s.home.loadError} error={error} onRetry={() => refetch()} />}
         {data && data.length > 0 && (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3" data-testid="space-grid">
+          <div ref={gridRef} className="relative grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3" data-testid="space-grid">
             {data.map((sp) => (
-              <SpaceCard key={sp.id} space={sp} onEdit={() => setEditing(sp)} onDelete={() => setDeleting(sp)} />
+              <Reveal key={sp.id} active={isFresh(sp.id)} data-flip-key={sp.id}>
+                <SpaceCard space={sp} onEdit={() => setEditing(sp)} onDelete={() => setDeleting(sp)} />
+              </Reveal>
             ))}
           </div>
         )}
@@ -104,7 +112,7 @@ function SpaceCard({ space, onEdit, onDelete }: { space: Space; onEdit: () => vo
               size="icon-sm"
               aria-label={s.home.spaceOptions}
               onClick={(e) => e.stopPropagation()}
-              className="-mr-1.5 -mt-1 opacity-0 focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+              className="-mr-1.5 -mt-1 opacity-0 transition-opacity duration-(--motion-quick) focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
             >
               <Ellipsis size={16} />
             </Button>

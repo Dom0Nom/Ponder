@@ -44,6 +44,7 @@ export function CommandPalette() {
         <D.Content
           onFocusOutside={(e) => e.preventDefault()}
           aria-label={s.palette.placeholder}
+          style={{ transformOrigin: "top center" }}
           className="t-modal fixed left-1/2 top-[96px] z-50 w-[min(602px,calc(100vw-30px))] -translate-x-1/2 overflow-hidden rounded-dialog border border-border bg-surface text-body shadow-dialog outline-none"
         >
           <D.Title className="sr-only">{s.palette.placeholder}</D.Title>

@@ -37,3 +37,6 @@
 /* Inactive pages of a page slide are hidden after the exit so they leave the accessibility tree and hit tests */
 .t-page-slide .t-page { visibility: hidden; transition-property: opacity, transform, filter, visibility; transition-duration: var(--page-fade-dur), var(--page-slide-dur), var(--page-slide-dur), 0s; transition-delay: 0s, 0s, 0s, var(--page-fade-dur); }
 .t-page-slide[data-page="1"] .t-page[data-page-id="1"], .t-page-slide[data-page="2"] .t-page[data-page-id="2"] { visibility: visible; transition-delay: 0s; }
+
+/* Digit groups stay inline so innerText and copy keep the number on one line */
+.t-digit-group { display: inline; }
