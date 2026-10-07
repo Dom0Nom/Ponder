@@ -1780,24 +1780,27 @@ export function installMockBackend() {
     save();
   } else load();
   void import("../stores/ui").then((m) => ((window as unknown as { __ui: unknown }).__ui = m.useUi));
-  mockIPC(
-    async (cmd, args) => {
-      if (cmd.startsWith("plugin:")) {
-        if (cmd === "plugin:dialog|open") {
-          const opts = (args as { options?: { directory?: boolean; filters?: { extensions: string[] }[] } } | undefined)?.options;
-          if (opts?.filters?.some((f) => f.extensions.includes("png"))) return "/Users/me/Pictures/cell-diagram.png";
-          return opts?.directory ? "/Users/me/Documents/Lecture notes" : ["/Users/me/Documents/biology-notes.md"];
-        }
-        return null;
+  const handle = async (cmd: string, args?: unknown) => {
+    if (cmd.startsWith("plugin:")) {
+      if (cmd === "plugin:dialog|open") {
+        const opts = (args as { options?: { directory?: boolean; filters?: { extensions: string[] }[] } } | undefined)?.options;
+        if (opts?.filters?.some((f) => f.extensions.includes("png"))) return "/Users/me/Pictures/cell-diagram.png";
+        return opts?.directory ? "/Users/me/Documents/Lecture notes" : ["/Users/me/Documents/biology-notes.md"];
       }
-      const h = (fixture && fixture[cmd]) || handlers[cmd];
-      if (!h) err("other", `Mock backend has no command “${cmd}”`);
-      // clone so callers never hold live references into the mock DB (React Query would miss in-place updates)
-      const out = await h((args ?? {}) as Args);
-      return out === undefined ? out : structuredClone(out);
-    },
-    { shouldMockEvents: true },
-  );
+      return null;
+    }
+    const h = (fixture && fixture[cmd]) || handlers[cmd];
+    if (!h) err("other", `Mock backend has no command “${cmd}”`);
+    // clone so callers never hold live references into the mock DB (React Query would miss in-place updates)
+    const out = await h((args ?? {}) as Args);
+    return out === undefined ? out : structuredClone(out);
+  };
+  // inside the real app (design fixture on the native window) Tauri's IPC object is read-only, so ipc.ts calls this directly
+  try {
+    mockIPC(handle, { shouldMockEvents: true });
+  } catch {
+    (window as unknown as { __MOCK_INVOKE__?: typeof handle }).__MOCK_INVOKE__ = handle;
+  }
 
   const seedProvider = () => {
     const existing = Object.values(db.providers).find((p) => p.name === "Mock LM Studio");

@@ -15,7 +15,8 @@ export function toError(e: unknown): Error {
 
 async function call<R>(cmd: string, args?: Record<string, unknown>): Promise<R> {
   try {
-    return await invoke<R>(cmd, args);
+    const mock = (window as unknown as { __MOCK_INVOKE__?: (c: string, a?: unknown) => Promise<unknown> }).__MOCK_INVOKE__;
+    return mock ? ((await mock(cmd, args)) as R) : await invoke<R>(cmd, args);
   } catch (e) {
     throw toError(e);
   }

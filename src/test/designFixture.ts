@@ -51,7 +51,10 @@ export function fixtureName(): string | null {
 export const isDesignFixture = () => fixtureName() === "design";
 
 export function readOptions(search = location.search): FixtureOptions {
-  const q = new URLSearchParams(search);
+  // the native app can't take URL options, so `VITE_FIXTURE_OPTS="cards=review"` stands in for them
+  const env = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_FIXTURE_OPTS ?? "";
+  const fromUrl = new URLSearchParams(search);
+  const q = [...fromUrl.keys()].some((k) => k !== "fixture") ? fromUrl : new URLSearchParams(env);
   const pick = <K extends string>(k: string, allowed: readonly K[], d: K): K => {
     const v = q.get(k) as K | null;
     return v && allowed.includes(v) ? v : d;
