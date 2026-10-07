@@ -61,6 +61,9 @@ interface UiState {
   /** reasoning/verbosity/temperature per `${providerId}:${model}` */
   modelControls: Record<string, ModelControls>;
   setModelControls: (key: string, patch: ModelControls) => void;
+  /** most recently picked model ids per provider id, newest first */
+  recentModels: Record<string, string[]>;
+  pushRecentModel: (providerId: string, model: string) => void;
   navigate: (r: Route) => void;
   setTheme: (t: ThemePref) => void;
   setFont: (f: FontPref) => void;
@@ -109,6 +112,14 @@ export const useUi = create<UiState>()(
       activeThread: {},
       viewer: null,
       modelControls: {},
+      recentModels: {},
+      pushRecentModel: (providerId, model) =>
+        set((st) => ({
+          recentModels: {
+            ...st.recentModels,
+            [providerId]: [model, ...(st.recentModels[providerId] ?? []).filter((m) => m !== model)].slice(0, 10),
+          },
+        })),
       setModelControls: (key, patch) =>
         set((st) => ({ modelControls: { ...st.modelControls, [key]: { ...st.modelControls[key], ...patch } } })),
       navigate: (route) =>
@@ -164,6 +175,7 @@ export const useUi = create<UiState>()(
         studioOpen: st.studioOpen,
         activeThread: st.activeThread,
         modelControls: st.modelControls,
+        recentModels: st.recentModels,
       }),
     },
   ),

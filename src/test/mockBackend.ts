@@ -9,6 +9,7 @@ import type * as T from "../lib/types";
 import { DEFAULT_SHORTCUT, validateShortcut } from "../lib/capture/shortcut";
 import { parsePlaylistUri } from "../lib/music";
 import { importKind, originFor } from "../lib/importers/cloud";
+import { openRouterFixture } from "./openrouterFixture";
 import { fixtureOverrides, fixtureScript, installDeterminism, isDesignFixture, readOptions, seedDesignFixture } from "./designFixture";
 
 type Row<T> = Record<string, T>;
@@ -1551,6 +1552,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
     httpStream(a.request as T.ProxyRequest, a.onEvent as { id: number });
     return null;
   },
+  list_openrouter_models: () => ({ fetchedAt: Math.floor(Date.now() / 1000), models: openRouterFixture }),
   http_abort: (a) => {
     aborted.add(a.id as string);
     return null;
@@ -1807,6 +1809,21 @@ export function installMockBackend() {
     return p;
   };
 
+  const seedOpenRouter = () => {
+    const p: T.Provider = {
+      id: "mock-openrouter",
+      type: "openrouter",
+      kind: "apiKey",
+      name: "OpenRouter",
+      baseUrl: null,
+      config: { models: ["deepseek/deepseek-v4.1-flash", "anthropic/claude-haiku-4.5"], defaultModel: "deepseek/deepseek-v4.1-flash" },
+      createdAt: now(),
+    };
+    db.providers[p.id] = p;
+    save();
+    return p;
+  };
+
   const controls: MockControls = {
     reset: () => {
       db = emptyDb();
@@ -1828,5 +1845,6 @@ export function installMockBackend() {
   };
   (window as unknown as { __mock: MockControls }).__mock = controls;
   if (new URLSearchParams(location.search).has("seed")) seedProvider();
+  if (new URLSearchParams(location.search).has("openrouter")) seedOpenRouter();
   setInterval(focusTick, 1000);
 }

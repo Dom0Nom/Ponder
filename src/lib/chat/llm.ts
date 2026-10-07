@@ -1,5 +1,6 @@
 import type { LanguageModel } from "ai";
 import { api } from "../ipc";
+import { loadOpenRouterModels } from "../providers/openrouter";
 import { callOptions, createLanguageModel, resolveModel, type CallOptionInput, type CallOptions } from "../providers/model";
 import type { ModelRef, Provider, Space } from "../types";
 
@@ -25,6 +26,7 @@ export async function resolveChatModel(space?: Pick<Space, "modelOverride"> | nu
     providers,
   );
   if (!picked) throw new NoModelError();
+  if (picked.provider.type === "openrouter") await loadOpenRouterModels().catch(() => undefined);
   return {
     provider: picked.provider,
     modelId: picked.modelId,

@@ -181,6 +181,7 @@ export const api = {
   httpStream: (request: T.ProxyRequest, onEvent: Channel<T.ProxyEvent>) =>
     call<void>("http_stream", { request, onEvent }),
   httpAbort: (id: string) => call<void>("http_abort", { id }),
+  listOpenrouterModels: (force?: boolean) => call<T.OpenRouterCatalog>("list_openrouter_models", { force: force ?? false }),
   httpGetText: (url: string, headers?: Record<string, string>) =>
     call<T.FetchedPage>("http_get_text", { url, headers: headers ?? null }),
 

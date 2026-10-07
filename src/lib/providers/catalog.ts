@@ -306,6 +306,6 @@ export function pickDefaultModel(models: string[], current?: string | null): str
 }
 
 /** Temperature is only a user control on OpenAI-compatible endpoints. */
-export function offersTemperature(provider: Provider): boolean {
-  return capabilitiesOf(provider).temperature && catalog[provider.type].sdk === "openai-compatible";
+export function offersTemperature(provider: Provider, caps: Capabilities = capabilitiesOf(provider)): boolean {
+  return caps.temperature && catalog[provider.type].sdk === "openai-compatible";
 }
