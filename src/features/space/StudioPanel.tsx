@@ -13,26 +13,26 @@ import {
   SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Skeleton } from "../../components/ui/misc";
 import { api } from "../../lib/ipc";
 import { useCourses, useCurriculum, useDueCounts, useJournal } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Space } from "../../lib/types";
 import { dayLabel } from "../../lib/utils";
-import { useUi, type StudioView } from "../../stores/ui";
-import { CourseCard } from "../placement/CourseCard";
-import { PlanCard } from "../placement/PlanCard";
-import { FlashcardsCard } from "../cards/FlashcardsCard";
+import { useUi } from "../../stores/ui";
+import { CoursePanel } from "../placement/CourseCard";
+import { PlanPanel } from "../placement/PlanCard";
+import { FlashcardsPanel } from "../cards/FlashcardsCard";
+import { Calculator } from "../calculator/Calculator";
 import { FocusView } from "../focus/FocusView";
 import { LowEnergyView } from "../focus/LowEnergyView";
 import { MicroStepsView } from "../focus/MicroSteps";
 import { StudioTimer } from "../focus/StudioTimer";
 import { useLowEnergy } from "../focus/useLowEnergy";
-import { StepCheckerButton, StepCheckerDialog } from "../steps/StepChecker";
+import { StepCheckerPanel } from "../steps/StepChecker";
 import { JournalView } from "./JournalView";
 import { SpaceSettingsPanel } from "./SpaceSettingsPanel";
-import { StudioSubpanel } from "./StudioSubpanel";
 import { useStudioRecent, type RecentItem } from "./useStudioRecent";
 
 const RECENT_ICON: Record<RecentItem["kind"], LucideIcon> = {
@@ -86,7 +86,6 @@ function ToolGrid({ space }: { space: Space }) {
   const navigate = useUi((st) => st.navigate);
   const setStudioView = useUi((st) => st.setStudioView);
   const low = useLowEnergy(space.id);
-  const [stepsOpen, setStepsOpen] = useState(false);
   const counts = useDueCounts();
   const abilities = useQuery({ queryKey: ["abilities", space.id], queryFn: () => api.abilitiesList(space.id) });
   const cur = useCurriculum(space.id);
@@ -101,7 +100,7 @@ function ToolGrid({ space }: { space: Space }) {
 
   return (
     <div className="grid grid-cols-2 gap-2 px-4 pt-4">
-      <Tile icon={Layers} name={s.studio.flashcards} onClick={() => setStudioView("flashcards")}>
+      <Tile icon={Layers} name={s.studio.flashcards} testId="flashcards-tile" onClick={() => setStudioView("flashcards")}>
         <Meta loading={counts.isLoading} error={!!counts.error}>
           {row && row.due > 0 ? s.studio.due(row.due) : row && row.total > 0 ? s.studio.noneDue : s.studio.noCards}
         </Meta>
@@ -117,17 +116,17 @@ function ToolGrid({ space }: { space: Space }) {
           {low.active ? s.focus.lowEnergy.disabledReason : topics > 0 ? s.studio.topics(topics) : s.studio.practiceStart}
         </Meta>
       </Tile>
-      <Tile icon={ListChecks} name={s.studio.steps} testId="step-checker-button" onClick={() => setStepsOpen(true)}>
+      <Tile icon={ListChecks} name={s.studio.steps} testId="step-checker-button" onClick={() => setStudioView("steps")}>
         <Meta loading={false} error={false}>
           {s.studio.stepsMeta}
         </Meta>
       </Tile>
-      <Tile icon={MapIcon} name={s.studio.plan} onClick={() => setStudioView("plan")}>
+      <Tile icon={MapIcon} name={s.studio.plan} testId="plan-tile" onClick={() => setStudioView("plan")}>
         <Meta loading={cur.isLoading} error={!!cur.error}>
           {cur.data ? cur.data.title : s.studio.planPick}
         </Meta>
       </Tile>
-      <Tile icon={GraduationCap} name={s.studio.course} onClick={() => setStudioView("course")}>
+      <Tile icon={GraduationCap} name={s.studio.course} testId="course-tile" onClick={() => setStudioView("course")}>
         <Meta loading={courses.isLoading} error={!!courses.error}>
           {course.length === 0 ? s.studio.courseNone : course.length === 1 ? s.studio.coursePct(pct) : s.studio.courses(course.length)}
         </Meta>
@@ -137,7 +136,6 @@ function ToolGrid({ space }: { space: Space }) {
           {journal.data?.length ? s.studio.entries(journal.data.length) : s.studio.noEntries}
         </Meta>
       </Tile>
-      <StepCheckerDialog open={stepsOpen} onOpenChange={setStepsOpen} spaceId={space.id} />
     </div>
   );
 }
@@ -210,13 +208,6 @@ function MainView({ space }: { space: Space }) {
   );
 }
 
-const TITLES: Partial<Record<StudioView, string>> = {
-  flashcards: s.studio.flashcards,
-  steps: s.studio.steps,
-  plan: s.studio.plan,
-  course: s.studio.course,
-};
-
 export function StudioPanel({ space }: { space: Space }) {
   const view = useUi((st) => st.studioView);
   const from = useUi((st) => st.studioFrom);
@@ -236,20 +227,22 @@ export function StudioPanel({ space }: { space: Space }) {
       return <JournalView spaceId={space.id} onBack={back} />;
     case "settings":
       return <SpaceSettingsPanel space={space} onBack={back} />;
+    case "flashcards":
+      return <FlashcardsPanel space={space} onBack={back} />;
+    case "steps":
+      return <StepCheckerPanel spaceId={space.id} onBack={back} />;
+    case "plan":
+      return <PlanPanel space={space} onBack={back} />;
+    case "course":
+      return <CoursePanel space={space} onBack={back} />;
     case "calculator":
       return (
         <div className="flex h-full min-h-0 flex-col">
           <StudioTimer />
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <Calculator fit popOut />
+          </div>
         </div>
-      );
-    default:
-      return (
-        <StudioSubpanel title={TITLES[view] ?? ""} onBack={back}>
-          {view === "flashcards" && <FlashcardsCard space={space} />}
-          {view === "plan" && <PlanCard space={space} />}
-          {view === "course" && <CourseCard space={space} />}
-          {view === "steps" && <StepCheckerButton spaceId={space.id} />}
-        </StudioSubpanel>
       );
   }
 }

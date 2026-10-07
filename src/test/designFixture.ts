@@ -243,7 +243,7 @@ export const FIXTURE_QUIZ = {
 };
 
 export const FIXTURE_PRACTICE = {
-  question: "Solve the system. What is x?\n\n$$\\begin{cases} y = 3x - 4 \\\\ 2x + y = 11 \\end{cases}$$",
+  question: "Solve the system. What is x?\n\n$$\n\\begin{gathered} y = 3x - 4 \\\\ 2x + y = 11 \\end{gathered}\n$$",
   answer: "3",
   solution: "Substitute $y = 3x - 4$ into $2x + y = 11$: $2x + 3x - 4 = 11$, so $5x = 15$ and $x = 3$.",
 };
@@ -781,7 +781,8 @@ export function fixtureScript(fallback: Script): Script {
     if (/Write ONE (practice|new) problem/i.test(text)) {
       return { content: JSON.stringify({ kind: "numeric", ...FIXTURE_PRACTICE, level: 3 }) };
     }
-    if (/Classify the most likely mistake/i.test(text)) return { content: JSON.stringify({ errorType: "sign", note: "Sign slip." }) };
+    if (/Solve this problem carefully/i.test(text)) return { content: `{"answer": ${FIXTURE_PRACTICE.answer}}` };
+    if (/Classify the most likely mistake/i.test(text)) return { content: JSON.stringify({ errorType: "sign", note: "" }) };
     return fallback(req);
   };
 }

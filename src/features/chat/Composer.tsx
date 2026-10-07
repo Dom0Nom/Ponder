@@ -12,7 +12,7 @@ import { useChatStream } from "../../stores/chatStream";
 import { useComposer } from "../../stores/composer";
 import { useFocusStore } from "../focus/focusStore";
 import { useLowEnergy } from "../focus/useLowEnergy";
-import { StepCheckerDialog } from "../steps/StepChecker";
+import { PhotoDialog } from "../steps/PhotoDialog";
 import { Menu, MenuContent, MenuItem, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../../components/ui/menu";
 import { Tooltip } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
@@ -96,7 +96,7 @@ export function Composer({
         rows={1}
         value={text}
         aria-label={s.chat.placeholder}
-        placeholder={sources.inChat > 0 ? s.chat.placeholder : s.chat.emptyNoSources}
+        placeholder={s.chat.placeholder}
         onChange={(e) => {
           setText(e.target.value);
           const el = e.currentTarget;
@@ -184,7 +184,16 @@ export function Composer({
           )}
         </div>
       </div>
-      <StepCheckerDialog open={photoOpen} onOpenChange={setPhotoOpen} spaceId={space.id} />
+      <PhotoDialog
+        open={photoOpen}
+        onOpenChange={setPhotoOpen}
+        spaceId={space.id}
+        onRead={(t) => {
+          setText((cur) => [cur.trim(), t.problem, ...t.steps.map((x, i) => `${i + 1}. ${x}`)].filter(Boolean).join("\n"));
+          setPhotoOpen(false);
+          ref.current?.focus();
+        }}
+      />
     </div>
   );
 }

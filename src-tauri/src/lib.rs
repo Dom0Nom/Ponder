@@ -1,3 +1,4 @@
+mod calculator;
 mod capture;
 mod cards;
 mod cloud;
@@ -132,6 +133,7 @@ pub fn run() {
             watch::commands::watch_list,
             watch::commands::watch_add,
             watch::commands::watch_remove,
+            calculator::open_calculator_window,
             capture::capture_status,
             capture::capture_configure,
             focus::commands::focus_start,

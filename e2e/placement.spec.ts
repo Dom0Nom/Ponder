@@ -28,12 +28,12 @@ test("placement check on a new GED space sets topic levels and the prerequisite 
   await expect(plan).toContainText("GED (all four subjects)");
   await expect(plan.getByTestId("coverage-summary")).toContainText("0 covered");
 
-  await app.getByRole("button", { name: "Take the placement check" }).first().click();
+  await plan.getByRole("button", { name: "Take the placement check" }).click();
   const total = await answerQuiz(app, 10);
   expect(total).toBe(16);
   await expect(plan.getByText("Strong").first()).toBeVisible();
   await expect(plan.getByText("Needs work").first()).toBeVisible();
-  await app.getByRole("button", { name: "Back to Studio" }).click();
+  await plan.getByRole("button", { name: "Back to Studio" }).click();
   await expect(app.getByRole("region", { name: "Studio" })).toContainText("Placement check · GED");
   await app.getByRole("button", { name: /^Learning plan/ }).click();
 

@@ -299,6 +299,24 @@ async function httpStream(request: T.ProxyRequest, channel: { id: number }) {
   }
   const body = JSON.parse(request.body ?? "{}");
   const reply = script({ messages: body.messages ?? [], body });
+  if (!body.stream && url.pathname.endsWith("/messages")) {
+    send({ type: "head", status: 200, headers: { "content-type": "application/json" } });
+    send({
+      type: "chunk",
+      data: JSON.stringify({
+        id: "m",
+        type: "message",
+        role: "assistant",
+        model: body.model,
+        content: [{ type: "text", text: reply.content }],
+        stop_reason: "end_turn",
+        stop_sequence: null,
+        usage: { input_tokens: 1, output_tokens: 1 },
+      }),
+    });
+    send({ type: "end" });
+    return;
+  }
   if (!body.stream) {
     send({ type: "head", status: 200, headers: { "content-type": "application/json" } });
     send({
@@ -1051,6 +1069,11 @@ const handlers: Record<string, (a: Args) => unknown> = {
   music_pause: () => {
     db.musicCalls.push("pause");
     save();
+    return null;
+  },
+
+  open_calculator_window: () => {
+    window.open("/?window=calculator", "ponder-calculator", "width=400,height=560");
     return null;
   },
 

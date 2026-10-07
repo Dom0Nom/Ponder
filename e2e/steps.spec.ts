@@ -33,17 +33,17 @@ async function expectSignErrorAtStep1(app: Page) {
 
 test("flags the exact step with a sign error and saves it as a mistake", async ({ app }) => {
   const checker = await openChecker(app);
-  await expect(checker).toContainText("Nothing to check yet");
   await checker.getByLabel("Problem").fill("Solve -2(x-3)+4=10");
   await checker.getByLabel("Your steps, one per line").fill("-2x-6+4=10\n-2x-2=10\n-2x=12\nx=-6");
-  await expect(checker.getByTestId("step-row").first().locator(".katex")).toBeVisible();
   await checker.getByRole("button", { name: "Check my steps" }).click();
   await expectSignErrorAtStep1(app);
+  await expect(checker.getByTestId("step-row").first().locator(".katex")).toBeVisible();
   await expect(app.getByText("Saved to your mistake notebook")).toBeVisible();
   const mistakes = await app.evaluate(() => Object.values((window as any).__mock.db().mistakes) as any[]);
   expect(mistakes).toHaveLength(1);
   expect(mistakes[0]).toMatchObject({ origin: "step check", question: "Solve -2(x-3)+4=10", given: "-2x-6+4=10", correct: "-2x+6+4=10" });
 
+  await checker.getByRole("button", { name: "Edit steps" }).click();
   await checker.getByLabel("Your steps, one per line").fill("-2x+6+4=10\n-2x=0\nx=0");
   await checker.getByRole("button", { name: "Check my steps" }).click();
   await expect(checker.getByTestId("step-summary")).toContainText("Every step checks out");
@@ -77,5 +77,7 @@ test("pasting an image opens the photo reader with it", async ({ app }) => {
   const photo = app.getByRole("dialog", { name: "Use a photo of your work" });
   await expect(photo.getByTestId("photo-preview")).toBeVisible();
   await photo.getByRole("button", { name: "Read my work" }).click();
+  await expect(checker.getByLabel("Your steps, one per line")).toHaveValue("-2x-6+4=10\n-2x-2=10\n-2x=12\nx=-6");
+  await checker.getByRole("button", { name: "Check my steps" }).click();
   await expect(checker.getByTestId("step-row")).toHaveCount(4);
 });

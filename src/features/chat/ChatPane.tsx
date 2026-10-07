@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { useMessages, useSources, useThreads } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Space, Thread } from "../../lib/types";
+import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
 import { useChatStream } from "../../stores/chatStream";
 import { Button } from "../../components/ui/button";
@@ -35,7 +36,9 @@ function NewChatState({ hasSources, sourcesOpen, space }: { hasSources: boolean;
   const low = useLowEnergy(space.id);
   return (
     <div className="flex min-h-full flex-1 flex-col items-center justify-center gap-2.5 p-10 text-center" data-testid="chat-empty">
-      <PonderMark size={56} state="idle" className="mb-2.5" />
+      <div aria-hidden className="relative h-11">
+        <PonderMark size={56} state="idle" className="absolute bottom-2.5 left-1/2 -translate-x-1/2" />
+      </div>
       <p className="text-section font-semibold">{s.chat.emptyTitle}</p>
       <p className="max-w-[380px] text-body-lg leading-[1.5] text-muted">{hasSources ? s.chat.emptyBody : s.chat.emptyNoSources}</p>
       {!hasSources && !sourcesOpen && (
@@ -93,7 +96,7 @@ function ThreadView({ space, thread, ensureThread }: { space: Space; thread?: Th
         style={{ paddingLeft: sourcesOpen ? 340 : 0 }}
         data-testid="message-list"
       >
-        <div ref={content} className="mx-auto flex w-full max-w-[700px] flex-1 flex-col gap-[26px] px-6 pb-7 pt-8">
+        <div ref={content} className="mx-auto flex w-full max-w-[748px] flex-1 flex-col gap-[26px] px-6 pb-7 pt-8">
           {messages.isLoading && thread && (
             <div className="space-y-4">
               <Skeleton className="ml-auto h-10 w-1/2" />
@@ -115,7 +118,7 @@ function ThreadView({ space, thread, ensureThread }: { space: Space; thread?: Th
           ))}
         </div>
       </div>
-      <div className="shrink-0 pb-[18px] pr-6 transition-[padding] duration-200" style={{ paddingLeft: sourcesOpen ? 364 : 24 }}>
+      <div className={cn("shrink-0 pr-6 transition-[padding] duration-200", empty ? "pb-6" : "pb-[18px]")} style={{ paddingLeft: sourcesOpen ? 364 : 24 }}>
         <Composer
           space={space}
           thread={thread}

@@ -56,6 +56,9 @@ export const api = {
     call<T.WatchedFolder>("watch_add", { spaceId, path, recursive }),
   watchRemove: (id: string) => call<void>("watch_remove", { id }),
 
+  // calculator pop-out window
+  openCalculatorWindow: (title: string) => call<void>("open_calculator_window", { title }),
+
   // quick capture hotkey
   captureStatus: () => call<T.CaptureStatus>("capture_status"),
   captureConfigure: (enabled: boolean, shortcut: string) =>

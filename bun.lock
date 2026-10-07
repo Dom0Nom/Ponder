@@ -10,7 +10,7 @@
         "@ai-sdk/openai": "^4.0.84",
         "@ai-sdk/openai-compatible": "^3.0.63",
         "@ai-sdk/xai": "^5.0.15",
-        "@fontsource-variable/ibm-plex-sans": "5.3.0",
+        "@fontsource/ibm-plex-sans": "5",
         "@fontsource/opendyslexic": "^5.3.0",
         "@mozilla/readability": "^0.6.0",
         "@radix-ui/react-dialog": "^1.2.0",
@@ -113,7 +113,7 @@
 
     "@floating-ui/utils": ["@floating-ui/utils@0.2.12", "", {}, "sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww=="],
 
-    "@fontsource-variable/ibm-plex-sans": ["@fontsource-variable/ibm-plex-sans@5.3.0", "", {}, "sha512-agG8tXFEo0hD9+J7npa4vbbWult52eMLVaQ6WQRlhs/iCAojrMAoejru85W9HTVXHfyUj96KM7gp/KGAS87XaQ=="],
+    "@fontsource/ibm-plex-sans": ["@fontsource/ibm-plex-sans@5.3.0", "", {}, "sha512-CbE4CbbEEZJX860XyUiRpsksXIQR8Rp2XDva2VO53NJox9tVNtusrysd2x5YkUEY3ErQ66W1IiiQL8/wihhw5w=="],
 
     "@fontsource/opendyslexic": ["@fontsource/opendyslexic@5.3.0", "", {}, "sha512-BVYIW/ghc1U2iAghhYTN+GFWiZ3lnCy8Jf2KkZC23aHQHBNcMqKT718zckfqVxRx4qsXJmIMPWvczirRuhmtsg=="],
 

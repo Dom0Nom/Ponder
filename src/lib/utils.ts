@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { extendTailwindMerge } from "tailwind-merge";
+import { s } from "./strings";
 
 // custom font-size tokens must not be mistaken for text colors, or `text-label text-muted` loses its size
 const twMerge = extendTailwindMerge({
@@ -96,6 +97,28 @@ export function shortRelative(ts: number, now = Date.now()): string {
   if (g === "yesterday") return "Yesterday";
   if (g === "week") return `${Math.round(diff / 86_400_000)}d ago`;
   return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+export function relativeShort(ts: number, now = Date.now()): string {
+  const m = Math.floor((now - ts) / 60_000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d ago`;
+  if (d < 60) return `${Math.floor(d / 7)}w ago`;
+  return new Date(ts).toLocaleDateString();
+}
+
+export function dueLabel(due: number, now = new Date()): string {
+  const day = (t: number) => {
+    const x = new Date(t);
+    x.setHours(0, 0, 0, 0);
+    return x.getTime();
+  };
+  const diff = Math.round((day(due) - day(now.getTime())) / 86_400_000);
+  return diff <= 0 ? s.cards.dueToday : diff === 1 ? s.cards.dueTomorrow : s.cards.dueIn(diff);
 }
 
 export function uid(): string {

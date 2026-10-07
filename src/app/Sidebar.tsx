@@ -2,7 +2,7 @@ import { ArrowLeft, Files, House, Layers, PencilLine, Search, Settings } from "l
 import type { ComponentType, ReactNode } from "react";
 import { Button } from "../components/ui/button";
 import { Kbd, Tooltip } from "../components/ui/misc";
-import { useDueCounts, useSpaces } from "../lib/queries";
+import { useDueCounts, useSources, useSpaces } from "../lib/queries";
 import { s } from "../lib/strings";
 import { cn } from "../lib/utils";
 import { useUi } from "../stores/ui";
@@ -71,6 +71,7 @@ function SidebarBody() {
   const navigate = useUi((st) => st.navigate);
   const setSourcesOpen = useUi((st) => st.setSourcesOpen);
   const { data: due } = useDueCounts();
+  const hasSources = (useSources(route.name === "space" ? route.spaceId : "").data ?? []).length > 0;
   const practiceSpaceId = usePracticeSpaceId();
   const reviewCount = (due ?? []).reduce((n, c) => n + c.due + c.new, 0);
 
@@ -114,7 +115,7 @@ function SidebarBody() {
     <div className="flex min-h-0 flex-1 flex-col gap-0.5 px-3 pb-3 pt-2">
       <SearchButton />
       <NavItem icon={House} label={s.shell.home} current={route.name === "home"} onClick={() => navigate({ name: "home" })} />
-      {isSpace && (
+      {isSpace && hasSources && (
         <NavItem
           icon={Files}
           label={s.panes.sources}

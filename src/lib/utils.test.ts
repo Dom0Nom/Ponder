@@ -1,23 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { dayGroup, dayLabel, formatDuration, formatShortMinutes, shortRelative } from "./utils";
+import { dayLabel, dueLabel, formatShortMinutes, relativeShort, shortRelative } from "./utils";
 
-const at = (d: string) => new Date(d).getTime();
+const NOW = new Date(2026, 5, 15, 12, 0, 0).getTime();
+const MIN = 60_000;
+const DAY = 24 * 60 * MIN;
 
-describe("dayGroup", () => {
-  const now = at("2026-10-07T00:30:00");
-  it("buckets by local calendar day", () => {
-    expect(dayGroup(at("2026-10-07T00:00:01"), now)).toBe("today");
-    expect(dayGroup(at("2026-10-06T23:59:59"), now)).toBe("yesterday");
-    expect(dayGroup(at("2026-10-01T12:00:00"), now)).toBe("week");
-    expect(dayGroup(at("2026-09-30T12:00:00"), now)).toBe("month");
-    expect(dayGroup(at("2026-09-29T12:00:00"), now)).toBe("month");
-    expect(dayGroup(at("2026-09-08T12:00:00"), now)).toBe("month");
-    expect(dayGroup(at("2026-09-07T12:00:00"), now)).toBe("older");
-  });
-  it("treats future timestamps as today", () => {
-    expect(dayGroup(at("2026-10-09T12:00:00"), now)).toBe("today");
+describe("relativeShort", () => {
+  it("buckets by size", () => {
+    expect(relativeShort(NOW - 59_000, NOW)).toBe("just now");
+    expect(relativeShort(NOW - 59 * MIN, NOW)).toBe("59m ago");
+    expect(relativeShort(NOW - 23 * 60 * MIN, NOW)).toBe("23h ago");
+    expect(relativeShort(NOW - 6 * DAY, NOW)).toBe("6d ago");
+    expect(relativeShort(NOW - 14 * DAY, NOW)).toBe("2w ago");
+    expect(relativeShort(NOW - 59 * DAY, NOW)).toBe("8w ago");
+    expect(relativeShort(NOW - 60 * DAY, NOW)).toBe(new Date(NOW - 60 * DAY).toLocaleDateString());
   });
 });
+
+describe("dueLabel", () => {
+  const now = new Date(NOW);
+  it("labels by calendar day", () => {
+    expect(dueLabel(NOW, now)).toBe("Due today");
+    expect(dueLabel(NOW - 3 * DAY, now)).toBe("Due today");
+    expect(dueLabel(NOW + DAY, now)).toBe("Due tomorrow");
+    expect(dueLabel(NOW + 3 * DAY, now)).toBe("Due in 3 days");
+  });
+});
+
+const at = (d: string) => new Date(d).getTime();
 
 describe("short labels", () => {
   const now = at("2026-10-07T15:00:00");
@@ -39,13 +49,5 @@ describe("short labels", () => {
     expect(shortRelative(at("2026-10-06T12:00:00"), now)).toBe("Yesterday");
     expect(shortRelative(at("2026-10-04T15:00:00"), now)).toBe("3d ago");
     expect(shortRelative(at("2026-09-01T15:00:00"), now)).toBe("Sep 1");
-  });
-});
-
-describe("formatDuration", () => {
-  it("drops the leading zero on minutes", () => {
-    expect(formatDuration(57_000)).toBe("0:57");
-    expect(formatDuration(18 * 60_000 + 42_000)).toBe("18:42");
-    expect(formatDuration(3_725_000)).toBe("1:02:05");
   });
 });

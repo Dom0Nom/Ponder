@@ -154,6 +154,8 @@ export function ThreadList({ spaceId }: { spaceId: string }) {
   const [deleting, setDeleting] = useState<Thread | null>(null);
   const groups = useMemo(() => groupThreads(threads.data ?? []), [threads.data]);
 
+  if (!threads.isLoading && !threads.error && !threads.data?.length) return null;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="thread-list">
       <div className="relative h-[38px] shrink-0">

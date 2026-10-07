@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 import { create } from "zustand";
-import { GraduationCap, Layers, ListChecks, Pause, Play, Plus, Sparkles, Trash2 } from "lucide-react";
+import { ChevronRight, Library, Pause, PencilLine, Play, Plus, Search, Sparkles, Trash2 } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { invalidateCards, useCards, useDueCounts, useSources } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Card, CardKind, NewCard, Space } from "../../lib/types";
-import { cn, relativeTime } from "../../lib/utils";
+import { cn, dueLabel } from "../../lib/utils";
 import { resolveChatModel, NoModelError } from "../../lib/chat/llm";
 import { generateCards, hitsToPassages } from "../../lib/srs/generate";
 import { addGap, clozeFront, clozeNumbers, expandCloze } from "../../lib/srs/cloze";
@@ -14,12 +14,13 @@ import { useUi } from "../../stores/ui";
 import { useLowEnergy } from "../focus/useLowEnergy";
 import { Button } from "../../components/ui/button";
 import { Dialog } from "../../components/ui/dialog";
-import { Input, Label, Textarea } from "../../components/ui/input";
+import { fieldLabel, Input, Textarea } from "../../components/ui/input";
 import { EmptyState, Segmented, Skeleton, Spinner } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
+import { PanelList, panelRow } from "../space/PanelList";
+import { StudioSubpanel } from "../space/StudioSubpanel";
 import { OcclusionButtonSlot } from "./occlusionSlot";
 import { OcclusionEditor } from "./OcclusionEditor";
-import { OcclusionCardView } from "./OcclusionCardView";
 import { occlusionGroups } from "../../lib/srs/occlusion";
 
 interface AddCardRequest {
@@ -40,9 +41,10 @@ export const useAddCard = create<{ req: AddCardRequest; open: (r: Omit<AddCardRe
   close: () => set({ req: { open: false } }),
 }));
 
-const BTN = "min-w-[7.5rem] flex-1 whitespace-nowrap";
+const ROW = cn(panelRow, "h-[42px] w-full gap-3 text-left disabled:opacity-40");
+const AREA = "min-h-[72px] leading-[1.6]";
 
-export function FlashcardsCard({ space }: { space: Space }) {
+export function FlashcardsPanel({ space, onBack }: { space: Space; onBack: () => void }) {
   const counts = useDueCounts();
   const navigate = useUi((st) => st.navigate);
   const openAdd = useAddCard((st) => st.open);
@@ -65,52 +67,55 @@ export function FlashcardsCard({ space }: { space: Space }) {
   };
 
   return (
-    <div className="rounded-[var(--radius-card)] border border-border p-4" data-testid="flashcards-card">
-      <h3 className="mb-1 flex items-center gap-2 text-sm font-medium">
-        <Layers size={15} className="text-muted" /> {s.cards.title}
-      </h3>
+    <StudioSubpanel title={s.cards.title} onBack={onBack} testId="flashcards-card">
       {counts.isLoading ? (
-        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-8 w-40" />
       ) : (
-        <p className="text-xs text-muted" data-testid="card-counts">
-          {c ? s.cards.counts(c.due, c.new, c.total) : s.cards.none}
-        </p>
+        <div className="flex items-baseline gap-2" data-testid="card-counts">
+          {c ? (
+            <>
+              <span className="text-[2rem] font-semibold leading-none tabular-nums">{c.due}</span>
+              <span className="font-medium text-fg-secondary">{s.cards.countsRest(c.new, c.total)}</span>
+            </>
+          ) : (
+            <span className="text-muted">{s.cards.none}</span>
+          )}
+        </div>
       )}
-      <div className="mt-3 flex flex-wrap gap-1.5" data-testid="card-actions">
-        <Button
-          size="sm"
-          className={BTN}
-          variant={c && c.due + c.new > 0 ? "primary" : "secondary"}
-          disabled={!c?.total}
-          onClick={() => navigate({ name: "review", spaceId: space.id })}
-        >
-          <GraduationCap size={15} /> {s.cards.review}
-        </Button>
-        <Button size="sm" variant="secondary" className={BTN} disabled={quizzing} onClick={quiz}>
-          {quizzing ? <Spinner size={14} /> : <ListChecks size={15} />} {s.cards.quiz}
-        </Button>
-        <Button size="sm" variant="secondary" className={cn(BTN, "basis-full")} disabled={low.active} title={low.reason} onClick={() => setGenerating(true)}>
-          <Sparkles size={15} /> {s.cards.generate}
-        </Button>
-        <Button size="sm" variant="ghost" className={BTN} disabled={low.active} title={low.reason} onClick={() => openAdd({ spaceId: space.id })}>
-          <Plus size={15} /> {s.cards.add}
-        </Button>
-        {!low.active && <OcclusionButtonSlot spaceId={space.id} className={BTN} />}
-      </div>
-      <div className="mt-2 flex gap-3 text-xs">
-        {c?.total ? (
-          <button className="font-medium text-accent-text hover:underline" onClick={() => setBrowsing(true)}>
-            {s.cards.browse}
+      <Button variant="primary" className="w-full" disabled={!c?.total} onClick={() => navigate({ name: "review", spaceId: space.id })}>
+        <Play size={15} /> {s.cards.review}
+      </Button>
+      <div data-testid="card-actions">
+        <PanelList>
+          <button className={ROW} disabled={low.active} title={low.reason} onClick={() => setGenerating(true)}>
+            <Sparkles size={15} />
+            <span className="flex-1 font-medium">{s.cards.generate}</span>
+            <ChevronRight size={14} />
           </button>
-        ) : null}
-        <button className="font-medium text-accent-text hover:underline" onClick={() => navigate({ name: "review", spaceId: space.id, tab: "mistakes" })}>
-          {s.cards.mistakes}
-        </button>
+          <button className={ROW} disabled={low.active} title={low.reason} onClick={() => openAdd({ spaceId: space.id })}>
+            <Plus size={15} />
+            <span className="flex-1 font-medium">{s.cards.add}</span>
+            <ChevronRight size={14} />
+          </button>
+          {!low.active && <OcclusionButtonSlot spaceId={space.id} />}
+          <button className={ROW} disabled={quizzing} onClick={quiz}>
+            <PencilLine size={15} />
+            <span className="flex-1 font-medium">{s.cards.quiz}</span>
+            {quizzing ? <Spinner size={14} /> : <ChevronRight size={14} />}
+          </button>
+          {c?.total ? (
+            <button className={ROW} onClick={() => setBrowsing(true)}>
+              <Library size={15} />
+              <span className="flex-1 font-medium">{s.cards.browse}</span>
+              <ChevronRight size={14} />
+            </button>
+          ) : null}
+        </PanelList>
       </div>
-      {low.active && <p className="mt-2 text-xs text-faint">{low.reason}</p>}
+      {low.active && <p className="text-label text-muted">{low.reason}</p>}
       <GenerateCardsDialog space={space} open={generating} onOpenChange={setGenerating} />
       {browsing && <BrowseCardsDialog space={space} onClose={() => setBrowsing(false)} />}
-    </div>
+    </StudioSubpanel>
   );
 }
 
@@ -150,30 +155,32 @@ function GenerateCardsDialog({ space, open, onOpenChange }: { space: Space; open
       open={open}
       onOpenChange={onOpenChange}
       title={s.cards.generateTitle}
-      description={s.cards.generateBody}
+      className="w-[min(462px,calc(100vw-32px))]"
       footer={
         <>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>
             {s.common.cancel}
           </Button>
           <Button variant="primary" disabled={busy || !ready.length} onClick={run}>
-            {busy && <Spinner size={15} className="text-on-accent" />} {busy ? s.cards.generating : s.cards.generate}
+            {busy ? <Spinner size={15} className="text-on-primary" /> : <Sparkles size={15} />}
+            {busy ? s.cards.generating : s.cards.generateTitle}
           </Button>
         </>
       }
     >
-      <div className="space-y-4 pb-2">
+      <div className="flex flex-col gap-3.5">
         {!ready.length && <EmptyState title={s.sources.emptyTitle} body={s.sources.emptyBody} />}
-        <div>
-          <Label htmlFor="gen-focus">{s.cards.focus}</Label>
+        <label className="flex flex-col gap-1.5">
+          <span className={fieldLabel}>{s.cards.focus}</span>
           <Input id="gen-focus" value={focus} onChange={(e) => setFocus(e.target.value)} placeholder={s.cards.focusPlaceholder} />
-        </div>
-        <div>
-          <Label>{s.cards.howMany}</Label>
+        </label>
+        <div className="flex flex-col gap-1.5">
+          <span className={fieldLabel}>{s.cards.howMany}</span>
           <Segmented<"5" | "10" | "20">
             label={s.cards.howMany}
             value={count}
             onChange={setCount}
+            block
             options={(["5", "10", "20"] as const).map((v) => ({ value: v, label: v }))}
           />
         </div>
@@ -223,43 +230,46 @@ export function AddCardDialog({ space }: { space: Space }) {
       open={open}
       onOpenChange={(o) => !o && close()}
       title={s.cards.addTitle}
+      className="w-[min(482px,calc(100vw-32px))]"
       footer={
         <>
-          <Button variant="ghost" onClick={close}>
+          <Button variant="secondary" onClick={close}>
             {s.common.cancel}
           </Button>
           <Button variant="primary" disabled={!valid || busy} onClick={save}>
-            {s.common.save}
+            {s.cards.add}
           </Button>
         </>
       }
     >
-      <div className="space-y-4 pb-2">
+      <div className="flex flex-col gap-3.5">
         <Segmented<"basic" | "cloze">
           label={s.cards.addTitle}
           value={kind}
           onChange={setKind}
+          block
           options={(["basic", "cloze"] as const).map((v) => ({ value: v, label: s.cards.types[v] }))}
         />
         {kind === "basic" ? (
           <>
-            <div>
-              <Label htmlFor="card-front">{s.cards.front}</Label>
-              <Textarea id="card-front" rows={3} value={front} onChange={(e) => setFront(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="card-back">{s.cards.back}</Label>
-              <Textarea id="card-back" rows={3} value={back} onChange={(e) => setBack(e.target.value)} />
-            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className={fieldLabel}>{s.cards.front}</span>
+              <Textarea id="card-front" className={AREA} value={front} onChange={(e) => setFront(e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={fieldLabel}>{s.cards.back}</span>
+              <Textarea id="card-back" className={AREA} value={back} onChange={(e) => setBack(e.target.value)} />
+            </label>
           </>
         ) : (
-          <div>
-            <div className="flex items-end justify-between">
-              <Label htmlFor="card-cloze">{s.cards.clozeText}</Label>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="card-cloze" className={fieldLabel}>
+                {s.cards.clozeText}
+              </label>
               <Button
+                variant="ghost"
                 size="sm"
-                variant="tonal"
-                className="mb-1.5"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   const el = ta.current;
@@ -269,15 +279,15 @@ export function AddCardDialog({ space }: { space: Space }) {
                 {s.cards.makeGap}
               </Button>
             </div>
-            <Textarea id="card-cloze" ref={ta} rows={4} value={front} onChange={(e) => setFront(e.target.value)} />
-            <p className="mt-1.5 text-xs text-muted">{s.cards.clozeHelp}</p>
+            <Textarea id="card-cloze" ref={ta} rows={4} className={AREA} value={front} onChange={(e) => setFront(e.target.value)} />
+            <p className="text-label text-muted">{s.cards.clozeHelp}</p>
             {clozeNumbers(front).length > 0 && (
-              <p className="mt-2 rounded-xl bg-surface-2 px-3 py-2 text-sm">{clozeFront(front, clozeNumbers(front)[0])}</p>
+              <p className="rounded-pane bg-fill-subtle px-3 py-2 text-input">{clozeFront(front, clozeNumbers(front)[0])}</p>
             )}
-            <div className="mt-3">
-              <Label htmlFor="card-extra">{s.cards.back} (optional)</Label>
+            <label className="mt-1.5 flex flex-col gap-1.5">
+              <span className={fieldLabel}>{s.cards.back} (optional)</span>
               <Input id="card-extra" value={back} onChange={(e) => setBack(e.target.value)} />
-            </div>
+            </label>
           </div>
         )}
       </div>
@@ -285,11 +295,19 @@ export function AddCardDialog({ space }: { space: Space }) {
   );
 }
 
+const BROWSE_ROW = "group flex items-center gap-3 py-2.5 [&+&]:border-t [&+&]:border-divider";
+const REVEAL = "opacity-0 group-hover:opacity-100 focus-visible:opacity-100";
+
 function BrowseCardsDialog({ space, onClose }: { space: Space; onClose: () => void }) {
   const { data, isLoading } = useCards(space.id);
   const [editing, setEditing] = useState<Card[] | null>(null);
+  const [q, setQ] = useState("");
   const groups = occlusionGroups(data ?? []);
   const plain = (data ?? []).filter((c) => c.kind !== "occlusion");
+  const needle = q.trim().toLowerCase();
+  const match = (text: string) => !needle || text.toLowerCase().includes(needle);
+  const shownGroups = groups.filter((g) => match(g.map((c) => c.back).join(" ")));
+  const shownPlain = plain.filter((c) => match(`${c.front} ${c.back}`));
   const act = async (fn: () => Promise<unknown>) => {
     try {
       await fn();
@@ -298,41 +316,74 @@ function BrowseCardsDialog({ space, onClose }: { space: Space; onClose: () => vo
       toastError(s.errors.generic, e);
     }
   };
+  const meta = (c: Card, suspended: boolean) => (suspended ? s.cards.suspended : c.state === 0 ? s.review.new : dueLabel(c.due));
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()} title={s.cards.browseTitle} className="w-[min(720px,calc(100vw-32px))]">
-      {isLoading && <Skeleton className="h-40" />}
-      <ul className="divide-y divide-border pb-3" data-testid="card-browser">
-        {groups.map((g) => (
-          <li key={g[0].id} className="flex items-center gap-3 py-2.5" data-testid="occlusion-group">
-            <OcclusionCardView card={g[0]} revealed className="w-24 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm">{g.map((c) => c.back).filter(Boolean).join(", ") || s.occlusion.title}</p>
-              <p className="mt-0.5 text-[0.6875rem] text-faint">{s.cards.imageGroup(g.length)}</p>
+    <Dialog
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={s.cards.browseTitle}
+      className="w-[min(622px,calc(100vw-32px))]"
+      bodyClassName="px-0 pb-0 pt-1"
+    >
+      <div className="px-5 pb-2 pt-1">
+        <div className="relative">
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.cards.browseSearch} aria-label={s.cards.browseSearch} className="pr-8" />
+          <Search size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" aria-hidden />
+        </div>
+      </div>
+      {isLoading && <Skeleton className="mx-5 h-40" />}
+      {!isLoading && needle && !shownGroups.length && !shownPlain.length && <p className="px-5 pb-4 text-muted">{s.cards.noMatch}</p>}
+      <ul className="px-5 pb-4" data-testid="card-browser">
+        {shownGroups.map((g) => {
+          const suspended = g.every((c) => c.suspended);
+          return (
+            <li key={g[0].id} className={BROWSE_ROW} data-testid="occlusion-group">
+              <div className="flex min-w-0 flex-1 flex-col gap-px">
+                <span className={cn("truncate text-body-lg font-medium", suspended ? "text-muted" : "text-fg")}>{s.cards.imageGroup(g.length)}</span>
+                <span className="text-label text-muted">{meta(g[0], suspended)}</span>
+              </div>
+              <Button variant="ghost" size="sm" className={REVEAL} onClick={() => setEditing(g)}>
+                {s.common.edit}
+              </Button>
+              <Button
+                variant="ghost-muted"
+                size="icon-sm"
+                aria-label={suspended ? s.cards.unsuspend : s.cards.suspend}
+                title={suspended ? s.cards.unsuspend : s.cards.suspend}
+                onClick={() => act(() => Promise.all(g.map((c) => api.cardUpdate(c.id, { suspended: !suspended }))))}
+              >
+                {suspended ? <Play size={15} /> : <Pause size={15} />}
+              </Button>
+            </li>
+          );
+        })}
+        {shownPlain.map((c: Card) => (
+          <li key={c.id} className={BROWSE_ROW}>
+            <div className="flex min-w-0 flex-1 flex-col gap-px">
+              <span className={cn("truncate text-body-lg font-medium", c.suspended ? "text-muted" : "text-fg")}>
+                {c.kind === "cloze" ? clozeFront(c.front, c.data?.cloze ?? 1) : c.front || c.back}
+              </span>
+              <span className="text-label text-muted">{meta(c, c.suspended)}</span>
             </div>
-            <Button size="sm" variant="ghost" onClick={() => setEditing(g)}>
-              {s.common.edit}
+            <Button
+              variant="ghost-muted"
+              size="icon-sm"
+              className={REVEAL}
+              aria-label={s.common.delete}
+              title={s.common.delete}
+              onClick={() => act(() => api.cardDelete(c.id))}
+            >
+              <Trash2 size={15} />
             </Button>
-          </li>
-        ))}
-        {plain.map((c: Card) => (
-          <li key={c.id} className={cn("flex items-start gap-3 py-2.5", c.suspended && "opacity-50")}>
-            <div className="min-w-0 flex-1">
-              <p className="line-clamp-2 text-sm">{c.kind === "cloze" ? clozeFront(c.front, c.data?.cloze ?? 1) : c.front || c.back}</p>
-              <p className="mt-0.5 text-[0.6875rem] text-faint">
-                {[c.kind, c.origin, c.suspended ? s.cards.suspended : c.state === 0 ? s.review.new : s.cards.due(relativeTime(c.due))].join(" · ")}
-              </p>
-            </div>
-            <button
+            <Button
+              variant="ghost-muted"
+              size="icon-sm"
               aria-label={c.suspended ? s.cards.unsuspend : s.cards.suspend}
               title={c.suspended ? s.cards.unsuspend : s.cards.suspend}
               onClick={() => act(() => api.cardUpdate(c.id, { suspended: !c.suspended }))}
-              className="rounded-full p-1.5 text-muted hover:bg-surface-2"
             >
-              {c.suspended ? <Play size={14} /> : <Pause size={14} />}
-            </button>
-            <button aria-label={s.common.delete} onClick={() => act(() => api.cardDelete(c.id))} className="rounded-full p-1.5 text-muted hover:bg-danger-soft hover:text-danger">
-              <Trash2 size={14} />
-            </button>
+              {c.suspended ? <Play size={15} /> : <Pause size={15} />}
+            </Button>
           </li>
         ))}
       </ul>

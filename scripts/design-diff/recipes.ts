@@ -50,7 +50,12 @@ const hasUiKey = (p: Page, k: string) => p.evaluate((key) => key in (window as u
 
 /** Go to the GED Math space with the Systems of equations thread open. */
 export async function space(p: Page, panes = { sources: false, studio: true }) {
-  await setUi(p, { activeThread: { [SPACE]: THREAD }, studioOpen: panes.studio, sourcesOpen: { [SPACE]: panes.sources } });
+  await setUi(p, {
+    activeThread: { [SPACE]: THREAD },
+    studioOpen: panes.studio,
+    sourcesOpen: { [SPACE]: panes.sources },
+    modelControls: { "prov-anthropic:Sonnet 5.5": { reasoning: "high" } },
+  });
   await nav(p, { name: "space", spaceId: SPACE });
   await p.getByText("How do I know when to use substitution").first().waitFor({ timeout: 8000 }).catch(() => undefined);
   await settle(p);
@@ -126,6 +131,10 @@ export const SCREENS: Record<number, Screen> = {
     title: "Review (cards)",
     query: "cards=review",
     native: true,
+    masks: [
+      { x: 420, y: 274, w: 640, h: 22, reason: "queue count is fixture data (mock counts rows); space name is a kept feature, DECISIONS #14" },
+      { x: 420, y: 636, w: 640, h: 24, reason: "scheduler previews depend on fixture card state" },
+    ],
     setup: async (p) => {
       await nav(p, { name: "review" });
       await p.getByText("When should you solve", { exact: false }).first().waitFor({ timeout: 5000 }).catch(() => undefined);
@@ -207,22 +216,30 @@ export const SCREENS: Record<number, Screen> = {
   },
   11: {
     title: "Quiz",
-    pending: "Quiz is launched from the lesson/quiz flow; the pre-quiz dialog (\"Before you start\") needs the new entry point",
+    query: "curriculum=plan",
     setup: async (p) => {
       await space(p);
-      await click(p, /quiz me/i).catch(() => undefined);
-      await settle(p, 800);
+      await studio(p, "plan", "Learning plan");
+      await p.getByTestId("topic-row").filter({ hasText: "Systems of equations" }).first().click();
+      await click(p, /start this topic/i, "menuitem");
+      await p.getByTestId("quiz-question").waitFor({ timeout: 8000 }).catch(() => undefined);
+      await settle(p, 500);
     },
   },
   12: {
     title: "Practice problem",
     query: "curriculum=practice",
     native: true,
+    masks: [
+      { x: 412, y: 170, w: 456, h: 108, reason: "math is KaTeX, the design draws STIX Two Text; the map keeps KaTeX (03 §2)" },
+      { x: 1000, y: 380, w: 90, h: 22, reason: "skill change kept after answering, not drawn; DECISIONS #14" },
+      { x: 412, y: 92, w: 140, h: 22, reason: "problem count is fixture data and increments after grading" },
+    ],
     setup: async (p) => {
       await nav(p, { name: "practice", spaceId: SPACE, topicKey: "systems" });
       await p.getByText(/Solve the system/).first().waitFor({ timeout: 8000 }).catch(() => undefined);
       const input = p.getByRole("textbox").last();
-      await input.fill("6").catch(() => undefined);
+      await input.fill("x = 6").catch(() => undefined);
       await click(p, /^check$/i).catch(() => undefined);
       await settle(p, 800);
     },
@@ -236,7 +253,6 @@ export const SCREENS: Record<number, Screen> = {
   },
   14: {
     title: "Use a photo of your work",
-    pending: "Photo dialog is opened from the step checker; needs recipe against the restyled step checker",
     setup: async (p) => {
       await space(p);
       await studio(p, "steps", "Check my steps");
@@ -268,6 +284,8 @@ export const SCREENS: Record<number, Screen> = {
       await space(p);
       await studio(p, "flashcards", "Flashcards");
       await click(p, /^add card$/i).catch(() => undefined);
+      await p.getByLabel("Front", { exact: true }).fill("What does substitution need?");
+      await p.getByLabel("Back", { exact: true }).fill("One equation with a variable already on its own.");
       await settle(p, 400);
     },
   },
@@ -283,12 +301,12 @@ export const SCREENS: Record<number, Screen> = {
   },
   19: {
     title: "Image card (occlusion)",
-    pending: "Occlusion editor needs an image in the mock (image_store) and the redesigned dialog",
     setup: async (p) => {
       await space(p);
       await studio(p, "flashcards", "Flashcards");
-      await click(p, /image card/i).catch(() => undefined);
-      await settle(p, 500);
+      await p.getByTestId("occlusion-editor-button").click();
+      await click(p, /choose image/i).catch(() => undefined);
+      await settle(p, 600);
     },
   },
   20: {
@@ -463,8 +481,11 @@ export const SCREENS: Record<number, Screen> = {
     title: "Empty space",
     query: "chat=none&sources=empty",
     native: true,
+    masks: [
+      { x: 700, y: 250, w: 110, h: 90, reason: "Ponder mark replaces the chat-icon tile, 05-brand.md" },
+    ],
     setup: async (p) => {
-      await setUi(p, { studioOpen: false, sourcesOpen: {} });
+      await setUi(p, { studioOpen: false, sourcesOpen: {}, modelControls: { "prov-anthropic:Sonnet 5.5": { reasoning: "high" } } });
       await nav(p, { name: "space", spaceId: SPACE });
       await settle(p, 600);
     },

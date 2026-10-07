@@ -20,3 +20,5 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
 export function Label({ className, ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
   return <label className={cn("mb-1.5 block text-label font-semibold text-muted", className)} {...props} />;
 }
+
+export const fieldLabel = "text-label font-semibold text-muted";
