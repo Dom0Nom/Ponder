@@ -2,6 +2,7 @@ import { Switch } from "../../../components/ui/misc";
 import { toastError } from "../../../components/ui/toast";
 import { useFocusPrefs, useSetFocusPref, type ReadingPrefs } from "../../../lib/focusPrefs";
 import { s } from "../../../lib/strings";
+import { SettingsRow } from "../layout";
 
 export function ReadingSettings() {
   const { prefs } = useFocusPrefs();
@@ -15,20 +16,12 @@ export function ReadingSettings() {
   ];
 
   return (
-    <div>
-      <h3 className="text-sm font-medium">{s.reading.title}</h3>
-      <p className="mt-0.5 text-[0.8125rem] text-muted">{s.reading.body}</p>
-      <div className="mt-3 space-y-3">
-        {rows.map((r) => (
-          <div key={r.key} className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm">{r.label}</p>
-              <p className="text-xs text-muted">{r.body}</p>
-            </div>
-            <Switch checked={prefs.reading[r.key]} onCheckedChange={toggle(r.key)} label={r.label} />
-          </div>
-        ))}
-      </div>
-    </div>
+    <>
+      {rows.map((r) => (
+        <SettingsRow key={r.key} title={r.label} description={r.body}>
+          <Switch checked={prefs.reading[r.key]} onCheckedChange={toggle(r.key)} label={r.label} />
+        </SettingsRow>
+      ))}
+    </>
   );
 }

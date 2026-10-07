@@ -4,6 +4,7 @@ test("set up Google Drive, connect, browse a folder and import a PDF", async ({ 
   await app.getByRole("button", { name: "Settings" }).click();
   const card = app.getByRole("listitem", { name: "Google Drive" });
   await expect(card.getByText("Not set up")).toBeVisible();
+  await card.getByRole("button", { name: "Connect" }).click();
   await card.getByLabel("Client ID").fill("1234-abc.apps.googleusercontent.com");
   await card.getByLabel("Client secret").fill("GOCSPX-mock");
   await card.getByRole("button", { name: "Save" }).click();
@@ -47,5 +48,6 @@ test("cloud tab explains missing setup and links to Settings", async ({ app }) =
   await app.getByRole("tab", { name: "Dropbox" }).click();
   await expect(app.getByText("Add a Dropbox app key in Settings first.")).toBeVisible();
   await app.getByRole("button", { name: "Open Settings" }).click();
+  await app.getByRole("listitem", { name: "Dropbox" }).getByRole("button", { name: "Connect" }).click();
   await expect(app.getByRole("listitem", { name: "Dropbox" }).getByLabel("App key")).toBeVisible();
 });

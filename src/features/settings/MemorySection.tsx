@@ -1,15 +1,14 @@
 import { useState } from "react";
-import { Brain, Pencil, Trash2, User } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/ipc";
 import { qk, useMemory } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { MemoryItem } from "../../lib/types";
-import { relativeTime } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { ErrorState, Skeleton, Tooltip } from "../../components/ui/misc";
+import { ErrorState, Skeleton } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
+import { SettingsGroup, SettingsRow } from "./layout";
 
 export function MemorySection() {
   const { data, isLoading, error, refetch } = useMemory();
@@ -29,28 +28,33 @@ export function MemorySection() {
   };
 
   return (
-    <div data-testid="memory-section">
+    <SettingsGroup data-testid="memory-section">
+      {isLoading && <Skeleton className="my-3 h-12" />}
+      {error && <ErrorState size="sm" title={s.errors.generic} error={error} onRetry={() => refetch()} />}
+      {data && data.length === 0 && <p className="py-3 text-body text-muted">{s.memory.empty}</p>}
+      {data?.map((m) => (
+        <MemoryRow key={m.id} item={m} onChange={refresh} />
+      ))}
       <form
-        className="flex gap-2"
+        className="flex gap-2 py-3"
         onSubmit={(e) => {
           e.preventDefault();
           if (text.trim()) add();
         }}
       >
-        <Input value={text} onChange={(e) => setText(e.target.value)} placeholder={s.memory.placeholder} aria-label={s.memory.placeholder} maxLength={500} />
-        <Button type="submit" variant="primary" disabled={!text.trim()}>
+        <Input
+          className="flex-1"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={s.memory.placeholder}
+          aria-label={s.memory.placeholder}
+          maxLength={500}
+        />
+        <Button type="submit" variant="secondary" disabled={!text.trim()}>
           {s.memory.add}
         </Button>
       </form>
-      {isLoading && <Skeleton className="mt-4 h-20" />}
-      {error && <ErrorState title={s.errors.generic} error={error} onRetry={() => refetch()} />}
-      {data && data.length === 0 && <p className="mt-4 text-sm text-muted">{s.memory.empty}</p>}
-      <ul className="mt-3 divide-y divide-border">
-        {data?.map((m) => (
-          <MemoryRow key={m.id} item={m} onChange={refresh} />
-        ))}
-      </ul>
-    </div>
+    </SettingsGroup>
   );
 }
 
@@ -75,40 +79,42 @@ function MemoryRow({ item, onChange }: { item: MemoryItem; onChange: () => void 
       toastError(s.errors.generic, e, remove);
     }
   };
-  const Origin = item.origin === "tutor" ? Brain : User;
+  if (editing)
+    return (
+      <form
+        className="flex items-center gap-2 py-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+        <Input autoFocus className="flex-1" value={text} onChange={(e) => setText(e.target.value)} aria-label={s.common.edit} />
+        <Button type="submit" size="sm" variant="primary" disabled={!text.trim()}>
+          {s.common.save}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+          {s.common.cancel}
+        </Button>
+      </form>
+    );
   return (
-    <li className="group flex items-center gap-3 py-2.5">
-      <Tooltip content={item.origin === "tutor" ? s.memory.fromTutor : s.memory.fromYou}>
-        <Origin size={15} className="shrink-0 text-muted" />
-      </Tooltip>
-      {editing ? (
-        <form
-          className="flex flex-1 gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            save();
-          }}
-        >
-          <Input autoFocus value={text} onChange={(e) => setText(e.target.value)} aria-label={s.common.edit} />
-          <Button type="submit" size="sm" variant="primary" disabled={!text.trim()}>
-            {s.common.save}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
-            {s.common.cancel}
-          </Button>
-        </form>
-      ) : (
-        <>
-          <p className="min-w-0 flex-1 text-sm">{item.text}</p>
-          <span className="shrink-0 text-xs text-faint">{relativeTime(item.updatedAt)}</span>
-          <button aria-label={s.common.edit} onClick={() => setEditing(true)} className="rounded-full p-1.5 text-muted opacity-0 hover:bg-surface-2 hover:text-fg focus:opacity-100 group-hover:opacity-100">
-            <Pencil size={14} />
-          </button>
-          <button aria-label={s.memory.forget} onClick={remove} className="rounded-full p-1.5 text-muted opacity-0 hover:bg-danger-soft hover:text-danger focus:opacity-100 group-hover:opacity-100">
-            <Trash2 size={14} />
-          </button>
-        </>
-      )}
-    </li>
+    <SettingsRow
+      className="group"
+      title={item.text}
+      description={item.origin === "tutor" ? s.memory.fromTutor : s.memory.fromYou}
+    >
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={s.common.edit}
+        className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+        onClick={() => setEditing(true)}
+      >
+        {s.common.edit}
+      </Button>
+      <Button variant="ghost" size="sm" onClick={remove}>
+        {s.memory.forget}
+      </Button>
+    </SettingsRow>
   );
 }

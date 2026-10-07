@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, CircleAlert, CircleDashed, KeyRound, LogIn, LogOut, PlugZap, Trash2 } from "lucide-react";
+import { Ellipsis } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { ConfirmDialog, Dialog } from "../../components/ui/dialog";
@@ -13,29 +13,22 @@ import { qk, useSettings } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { ModelRef, Provider } from "../../lib/types";
 import { cn } from "../../lib/utils";
-import { NativeSelect } from "./NativeSelect";
+import { useUi } from "../../stores/ui";
+import {
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuSeparator,
+  MenuSub,
+  MenuSubContent,
+  MenuSubTrigger,
+  MenuTrigger,
+} from "../../components/ui/menu";
 import { pk, storeModels, useHasSecret, useOAuthStatus } from "./providerQueries";
-import { XaiDeviceDialog } from "./XaiDeviceDialog";
 
 export type Tone = "ok" | "warn" | "error" | "muted" | "pending";
-
-export function StatusPill({ tone, children }: { tone: Tone; children: React.ReactNode }) {
-  const Icon = tone === "ok" ? CheckCircle2 : tone === "error" || tone === "warn" ? CircleAlert : CircleDashed;
-  return (
-    <span
-      className={cn(
-        "inline-flex max-w-full items-center gap-1 truncate rounded-full px-2 py-0.5 text-xs font-medium",
-        tone === "ok" && "bg-accent-soft text-accent-text",
-        tone === "warn" && "bg-warn-soft text-warn",
-        tone === "error" && "bg-danger-soft text-danger",
-        (tone === "muted" || tone === "pending") && "bg-surface-2 text-muted",
-      )}
-    >
-      {tone === "pending" ? <Spinner size={12} /> : <Icon size={12} aria-hidden />}
-      <span className="truncate">{children}</span>
-    </span>
-  );
-}
 
 function KeyDialog({ provider, open, onOpenChange }: { provider: Provider; open: boolean; onOpenChange: (o: boolean) => void }) {
   const qc = useQueryClient();
@@ -65,7 +58,6 @@ function KeyDialog({ provider, open, onOpenChange }: { provider: Provider; open:
     >
       <form
         id={`key-${provider.id}`}
-        className="pb-2"
         onSubmit={(e) => {
           e.preventDefault();
           if (value.trim()) save.mutate();
@@ -81,7 +73,7 @@ function KeyDialog({ provider, open, onOpenChange }: { provider: Provider; open:
           value={value}
           onChange={(e) => setValue(e.target.value)}
         />
-        <p className="mt-1 text-xs text-muted">{s.providers.apiKeyHelp}</p>
+        <p className="mt-1.5 text-caption text-muted">{s.providers.apiKeyHelp}</p>
       </form>
     </Dialog>
   );
@@ -97,7 +89,8 @@ export function ProviderCard({ provider, justAdded }: { provider: Provider; just
   const { data: settings } = useSettings();
   const [keyOpen, setKeyOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
-  const [deviceOpen, setDeviceOpen] = useState(false);
+  const navigate = useUi((st) => st.navigate);
+  const setJustAdded = useUi((st) => st.setJustAddedProvider);
   const [testError, setTestError] = useState<string | null>(null);
 
   const test = useMutation({
@@ -154,11 +147,15 @@ export function ProviderCard({ provider, justAdded }: { provider: Provider; just
     onError: (e) => toastError(s.errors.generic, e),
   });
 
-  const signIn = () => (provider.type === "chatgpt-oauth" ? chatgptSignIn.mutate() : setDeviceOpen(true));
+  const signIn = () =>
+    provider.type === "chatgpt-oauth"
+      ? chatgptSignIn.mutate()
+      : navigate({ name: "settings", page: { kind: "grokSignIn", providerId: provider.id } });
   const autoStarted = useRef(false);
   useEffect(() => {
     if (!justAdded || autoStarted.current) return;
     autoStarted.current = true;
+    setJustAdded(null);
     if (isOAuth) signIn();
     else test.mutate();
   }, [justAdded]);
@@ -183,74 +180,73 @@ export function ProviderCard({ provider, justAdded }: { provider: Provider; just
   const models = provider.config.models ?? [];
   const signedIn = oauthState === "signedIn";
 
+  const statusText =
+    status.tone === "muted" && provider.kind === "local" && !testError
+      ? `${s.providers.status.local} · ${s.providers.modelCount(models.length)}`
+      : status.label;
+
   return (
-    <li className="rounded-[var(--radius-card)] border border-border p-4">
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <p className="truncate text-[0.9375rem] font-medium">{provider.name}</p>
-            {provider.name !== entry?.label && <span className="text-xs text-muted">{entry?.label ?? provider.type}</span>}
-          </div>
-          {entry?.baseUrlEditable && <p className="mt-0.5 truncate font-mono text-xs text-muted">{baseUrlOf(provider)}</p>}
-          <div className="mt-2 flex min-w-0">
-            <StatusPill tone={status.tone}>{status.label}</StatusPill>
-          </div>
-        </div>
-        <Button size="icon-sm" variant="ghost" aria-label={s.common.remove} title={s.common.remove} onClick={() => setRemoveOpen(true)}>
-          <Trash2 size={16} />
+    <li className="flex items-center gap-3.5 px-3.5 py-3" aria-label={provider.name}>
+      <span
+        className="min-w-0 flex-1 truncate text-input font-semibold"
+        title={entry?.baseUrlEditable ? baseUrlOf(provider) : undefined}
+      >
+        {provider.name}
+      </span>
+      <span
+        className={cn(
+          "flex min-w-0 max-w-[40%] items-center gap-1.5 text-caption text-muted",
+          status.tone === "error" && "text-danger",
+          status.tone === "warn" && "text-warn",
+        )}
+      >
+        {status.tone === "pending" && <Spinner size={12} />}
+        <span className="truncate">{statusText}</span>
+      </span>
+      {(!isOAuth || signedIn) && (
+        <Button variant="ghost" size="sm" onClick={() => test.mutate()} disabled={test.isPending}>
+          {test.isPending ? s.providers.testing : s.providers.test}
         </Button>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        {isOAuth &&
-          (signedIn ? (
-            <Button size="sm" variant="ghost" onClick={() => signOut.mutate()} disabled={signOut.isPending}>
-              <LogOut size={14} aria-hidden />
-              {s.providers.signOut}
-            </Button>
-          ) : (
-            <Button size="sm" variant="primary" onClick={signIn} disabled={chatgptSignIn.isPending || oauthState === "pending"}>
-              <LogIn size={14} aria-hidden />
+      )}
+      <Menu>
+        <MenuTrigger asChild>
+          <Button variant="ghost-muted" size="icon-sm" aria-label={s.providers.more}>
+            <Ellipsis size={15} />
+          </Button>
+        </MenuTrigger>
+        <MenuContent align="end" className="min-w-[180px]">
+          {!isOAuth && <MenuItem onSelect={() => setKeyOpen(true)}>{secret.data ? s.providers.replaceKey : s.providers.addKey}</MenuItem>}
+          {isOAuth && !signedIn && (
+            <MenuItem disabled={chatgptSignIn.isPending || oauthState === "pending"} onSelect={signIn}>
               {provider.type === "chatgpt-oauth" ? s.providers.signInChatgpt : s.providers.signInGrok}
-            </Button>
-          ))}
-        {!isOAuth && (
-          <Button size="sm" variant="secondary" onClick={() => setKeyOpen(true)}>
-            <KeyRound size={14} aria-hidden />
-            {secret.data ? s.providers.replaceKey : s.providers.addKey}
-          </Button>
-        )}
-        {(!isOAuth || signedIn) && (
-          <Button size="sm" variant="tonal" onClick={() => test.mutate()} disabled={test.isPending}>
-            {test.isPending ? <Spinner size={14} /> : <PlugZap size={14} aria-hidden />}
-            {test.isPending ? s.providers.testing : s.providers.test}
-          </Button>
-        )}
-      </div>
-
-      <div className="mt-3 flex items-center gap-3">
-        <span className="shrink-0 text-xs font-medium text-muted">{s.providers.defaultModel}</span>
-        {models.length > 0 ? (
-          <NativeSelect
-            className="min-w-0 flex-1"
-            aria-label={s.providers.defaultModel}
-            value={provider.config.defaultModel ?? ""}
-            onChange={(e) => setDefaultModel.mutate(e.target.value)}
-          >
-            {!provider.config.defaultModel && <option value="">—</option>}
-            {models.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </NativeSelect>
-        ) : (
-          <span className="text-xs text-faint">{provider.config.defaultModel ?? s.providers.noModels}</span>
-        )}
-      </div>
-
+            </MenuItem>
+          )}
+          {isOAuth && signedIn && (
+            <MenuItem disabled={signOut.isPending} onSelect={() => signOut.mutate()}>
+              {s.providers.signOut}
+            </MenuItem>
+          )}
+          {models.length > 0 && (
+            <MenuSub>
+              <MenuSubTrigger>{s.providers.defaultModel}</MenuSubTrigger>
+              <MenuSubContent className="max-h-[320px] overflow-y-auto">
+                <MenuRadioGroup value={provider.config.defaultModel ?? ""} onValueChange={(m) => setDefaultModel.mutate(m)}>
+                  {models.map((m) => (
+                    <MenuRadioItem key={m} value={m}>
+                      {m}
+                    </MenuRadioItem>
+                  ))}
+                </MenuRadioGroup>
+              </MenuSubContent>
+            </MenuSub>
+          )}
+          <MenuSeparator />
+          <MenuItem danger onSelect={() => setRemoveOpen(true)}>
+            {s.common.remove}
+          </MenuItem>
+        </MenuContent>
+      </Menu>
       {!isOAuth && <KeyDialog provider={provider} open={keyOpen} onOpenChange={setKeyOpen} />}
-      {provider.type === "xai-oauth" && <XaiDeviceDialog provider={provider} open={deviceOpen} onOpenChange={setDeviceOpen} />}
       <ConfirmDialog
         open={removeOpen}
         onOpenChange={setRemoveOpen}

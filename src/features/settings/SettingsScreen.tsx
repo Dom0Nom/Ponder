@@ -1,35 +1,51 @@
+import { useEffect } from "react";
 import { s } from "../../lib/strings";
 import { useUi, type FontPref, type ThemePref } from "../../stores/ui";
 import { Segmented, Switch } from "../../components/ui/misc";
 import { Slider } from "../../components/ui/slider";
-import { motionReduced, useReducedMotion } from "../../app/useTheme";
+import { motionReduced, useIsDark, useReducedMotion } from "../../app/useTheme";
 import { ProvidersSection } from "./ProvidersSection";
 import { ModelPicker } from "./ModelPicker";
 import { MemorySection } from "./MemorySection";
 import { CaptureSection } from "./CaptureSection";
 import { CloudSection } from "./CloudSection";
 import { FocusPackSection } from "./FocusPackSection";
-import { useEffect } from "react";
+import { SettingsGroup, SettingsRow, SettingsSection } from "./layout";
+import { AddProviderPage } from "./AddProviderPage";
+import { LanScanPage } from "./LanScanPage";
+import { GrokSignInPage } from "./GrokSignInPage";
+import { BreakMenuPage } from "./focus/BreakMenuPage";
 import { useSettings, useSetSetting } from "../../lib/queries";
 import type { ModelRef } from "../../lib/types";
 import { toastError } from "../../components/ui/toast";
+import lockupLight from "../../assets/brand/ponder-lockup-light.png";
+import lockupDark from "../../assets/brand/ponder-lockup-dark.png";
+import { version } from "../../../package.json";
 
-function Section({ title, body, children, id }: { title: string; body?: string; children: React.ReactNode; id?: string }) {
-  return (
-    <section id={id} className="scroll-mt-4 rounded-[var(--radius-pane)] bg-surface p-6 shadow-card">
-      <h2 className="text-[1.0625rem] font-semibold">{title}</h2>
-      {body && <p className="mt-1 text-sm text-muted">{body}</p>}
-      <div className="mt-5">{children}</div>
-    </section>
-  );
+function SettingsSubPage() {
+  const page = useUi((st) => (st.route.name === "settings" ? st.route.page : undefined));
+  if (!page) return null;
+  switch (page.kind) {
+    case "addProvider":
+      return <AddProviderPage type={page.type} />;
+    case "lanScan":
+      return <LanScanPage />;
+    case "grokSignIn":
+      return <GrokSignInPage providerId={page.providerId} />;
+    case "breakMenu":
+      return <BreakMenuPage />;
+  }
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function About() {
+  const dark = useIsDark();
   return (
-    <div className="flex items-center justify-between gap-6 py-2.5">
-      <span className="text-sm">{label}</span>
-      {children}
-    </div>
+    <SettingsSection id="settings-about" title={s.settings.about}>
+      <div className="flex items-center gap-4 rounded-card border border-border p-4">
+        <img src={dark ? lockupDark : lockupLight} alt={s.appName} className="h-24 w-auto" />
+        <p className="text-body text-muted">{s.settings.version(version)}</p>
+      </div>
+    </SettingsSection>
   );
 }
 
@@ -39,76 +55,82 @@ export function SettingsScreen() {
   const { data: settings } = useSettings();
   const setSetting = useSetSetting();
   const section = ui.route.name === "settings" ? ui.route.section : undefined;
+  const page = ui.route.name === "settings" ? ui.route.page : undefined;
   useEffect(() => {
-    if (section) document.getElementById(`settings-${section}`)?.scrollIntoView({ behavior: motionReduced() ? "auto" : "smooth" });
-  }, [section]);
+    if (!page && section) document.getElementById(`settings-${section}`)?.scrollIntoView({ behavior: motionReduced() ? "auto" : "smooth" });
+  }, [section, page]);
+  if (page) return <SettingsSubPage />;
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-3xl space-y-4 px-8 pb-16 pt-6">
-        <h1 className="text-[1.75rem] font-semibold tracking-tight">{s.settings.title}</h1>
-        <Section title={s.settings.appearance}>
-          <Row label={s.settings.theme}>
-            <Segmented<ThemePref>
-              label={s.settings.theme}
-              value={ui.theme}
-              onChange={ui.setTheme}
-              options={(["system", "light", "dark"] as const).map((v) => ({ value: v, label: s.settings.themes[v] }))}
-            />
-          </Row>
-          <Row label={s.settings.font}>
-            <Segmented<FontPref>
-              label={s.settings.fontOptions}
-              value={ui.font}
-              onChange={ui.setFont}
-              options={(["default", "dyslexic"] as const).map((v) => ({ value: v, label: s.settings.fonts[v] }))}
-            />
-          </Row>
-          <Row label={s.settings.textSize}>
-            <Slider
-              label={s.settings.textSize}
-              value={ui.textScale}
-              min={0.875}
-              max={1.375}
-              step={0.0625}
-              onChange={ui.setTextScale}
-              format={(v) => `${Math.round(v * 100)}%`}
-            />
-          </Row>
-          <Row label={s.settings.reduceMotion}>
-            <Switch checked={ui.reduceMotion} onCheckedChange={ui.setReduceMotion} label={s.settings.reduceMotion} />
-          </Row>
-          <Row label={s.settings.visualEffects}>
-            <Switch
-              checked={ui.visualEffects && !reduced}
-              disabled={reduced}
-              onCheckedChange={ui.setVisualEffects}
-              label={s.settings.visualEffects}
-            />
-          </Row>
-        </Section>
-        <Section id="settings-focus" title={s.settings.focusPack} body={s.settings.focusPackBody}>
+      <div className="mx-auto flex max-w-[720px] flex-col gap-5 px-10 pb-12 pt-10">
+        <h1 className="text-page font-semibold">{s.settings.title}</h1>
+        <SettingsSection id="settings-appearance" title={s.settings.appearance}>
+          <SettingsGroup>
+            <SettingsRow title={s.settings.theme}>
+              <Segmented<ThemePref>
+                label={s.settings.theme}
+                value={ui.theme}
+                onChange={ui.setTheme}
+                options={(["system", "light", "dark"] as const).map((v) => ({ value: v, label: s.settings.themes[v] }))}
+              />
+            </SettingsRow>
+            <SettingsRow title={s.settings.font}>
+              <Segmented<FontPref>
+                label={s.settings.fontOptions}
+                value={ui.font}
+                onChange={ui.setFont}
+                options={(["default", "dyslexic"] as const).map((v) => ({ value: v, label: s.settings.fonts[v] }))}
+              />
+            </SettingsRow>
+            <SettingsRow title={s.settings.textSize}>
+              <Slider
+                label={s.settings.textSize}
+                value={ui.textScale}
+                min={0.875}
+                max={1.375}
+                step={0.0625}
+                onChange={ui.setTextScale}
+                format={(v) => `${Math.round(v * 100)}%`}
+              />
+            </SettingsRow>
+            <SettingsRow title={s.settings.reduceMotion}>
+              <Switch checked={ui.reduceMotion} onCheckedChange={ui.setReduceMotion} label={s.settings.reduceMotion} />
+            </SettingsRow>
+            <SettingsRow title={s.settings.visualEffects}>
+              <Switch
+                checked={ui.visualEffects && !reduced}
+                disabled={reduced}
+                onCheckedChange={ui.setVisualEffects}
+                label={s.settings.visualEffects}
+              />
+            </SettingsRow>
+          </SettingsGroup>
+        </SettingsSection>
+        <SettingsSection id="settings-focus" title={s.settings.focusPack} body={s.settings.focusPackBody}>
           <FocusPackSection />
-        </Section>
-        <Section id="settings-capture" title={s.capture.settingsTitle} body={s.capture.settingsBody}>
+        </SettingsSection>
+        <SettingsSection id="settings-capture" title={s.capture.settingsTitle} body={s.capture.settingsBody}>
           <CaptureSection />
-        </Section>
-        <Section id="settings-memory" title={s.memory.title} body={s.memory.body}>
+        </SettingsSection>
+        <SettingsSection id="settings-memory" title={s.memory.title} body={s.memory.body}>
           <MemorySection />
-        </Section>
-        <Section title={s.settings.defaultModel}>
+        </SettingsSection>
+        <SettingsSection id="settings-model" title={s.settings.defaultModel}>
           <ModelPicker
+            className="w-80"
             value={(settings?.defaultModel as ModelRef | undefined) ?? null}
             onChange={(v) =>
               setSetting.mutate({ key: "defaultModel", value: v }, { onError: (e) => toastError(s.errors.generic, e) })
             }
           />
-        </Section>
-        <Section title={s.settings.providers} body={s.settings.providersBody}>
+        </SettingsSection>
+        <SettingsSection id="settings-providers" title={s.settings.providers} body={s.settings.providersBody}>
           <ProvidersSection />
-        </Section>
-        <Section id="settings-cloud" title={s.cloud.sectionTitle} body={s.cloud.sectionBody}>
+        </SettingsSection>
+        <SettingsSection id="settings-cloud" title={s.cloud.sectionTitle} body={s.cloud.sectionBody}>
           <CloudSection />
-        </Section>
+        </SettingsSection>
+        <About />
       </div>
     </div>
   );
