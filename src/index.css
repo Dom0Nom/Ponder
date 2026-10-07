@@ -419,7 +419,6 @@ input[type="range"].slider { -webkit-appearance: none; appearance: none; height:
   --calc-second-on-dark: #dbf78d;
   --calc-second-on-light: #64820a;
   --calc-key-ring: #9da5aa;
-  --calc-key-ring-light: #d0d0d0;
   --calc-key-pressed: #b82e2e;
   --calc-key-pressed-ring: #ffffff;
   --calc-focus: #ff1229;
