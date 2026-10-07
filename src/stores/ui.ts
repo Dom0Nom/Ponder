@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { ModelControls } from "../lib/providers/controls";
 import type { ProviderType } from "../lib/types";
 
 export type Route =
@@ -42,7 +43,9 @@ interface UiState {
   justAddedProvider: string | null;
   /** Studio sub-view; null is the main Studio view. Not persisted. */
   studioView: StudioView | null;
-  panes: { sources: boolean; studio: boolean };
+  studioOpen: boolean;
+  /** Sources panel per space; undefined is closed. Not persisted. */
+  sourcesOpen: Record<string, boolean>;
   paletteOpen: boolean;
   focusDialogOpen: boolean;
   captureOpen: boolean;
@@ -52,9 +55,9 @@ interface UiState {
   activeThread: Record<string, string>;
   /** source viewer target */
   viewer: { sourceId: string; start?: number; end?: number } | null;
-  /** model "thinking" in chat; off by default because local reasoning models get slow */
-  thinking: boolean;
-  setThinking: (t: boolean) => void;
+  /** reasoning/verbosity/temperature per `${providerId}:${model}` */
+  modelControls: Record<string, ModelControls>;
+  setModelControls: (key: string, patch: ModelControls) => void;
   navigate: (r: Route) => void;
   setTheme: (t: ThemePref) => void;
   setFont: (f: FontPref) => void;
@@ -66,7 +69,8 @@ interface UiState {
   setRenamingThread: (id: string | null) => void;
   setJustAddedProvider: (id: string | null) => void;
   setStudioView: (v: StudioView | null) => void;
-  togglePane: (p: "sources" | "studio") => void;
+  toggleStudio: () => void;
+  setSourcesOpen: (spaceId: string, open: boolean) => void;
   setPaletteOpen: (o: boolean) => void;
   setFocusDialogOpen: (o: boolean) => void;
   setCaptureOpen: (o: boolean) => void;
@@ -91,7 +95,8 @@ export const useUi = create<UiState>()(
       renamingThreadId: null,
       justAddedProvider: null,
       studioView: null,
-      panes: { sources: true, studio: true },
+      studioOpen: true,
+      sourcesOpen: {},
       paletteOpen: false,
       focusDialogOpen: false,
       captureOpen: false,
@@ -99,8 +104,9 @@ export const useUi = create<UiState>()(
       importDialog: { open: false },
       activeThread: {},
       viewer: null,
-      thinking: false,
-      setThinking: (thinking) => set({ thinking }),
+      modelControls: {},
+      setModelControls: (key, patch) =>
+        set((st) => ({ modelControls: { ...st.modelControls, [key]: { ...st.modelControls[key], ...patch } } })),
       navigate: (route) =>
         set((st) => ({
           route,
@@ -119,7 +125,8 @@ export const useUi = create<UiState>()(
       setRenamingThread: (id) => set({ renamingThreadId: id, sidebarOpen: id ? true : get().sidebarOpen }),
       setJustAddedProvider: (justAddedProvider) => set({ justAddedProvider }),
       setStudioView: (studioView) => set({ studioView }),
-      togglePane: (p) => set((st) => ({ panes: { ...st.panes, [p]: !st.panes[p] } })),
+      toggleStudio: () => set((st) => ({ studioOpen: !st.studioOpen })),
+      setSourcesOpen: (spaceId, open) => set((st) => ({ sourcesOpen: { ...st.sourcesOpen, [spaceId]: open } })),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
       setFocusDialogOpen: (focusDialogOpen) => set({ focusDialogOpen }),
       setCaptureOpen: (captureOpen) => set({ captureOpen }),
@@ -127,15 +134,19 @@ export const useUi = create<UiState>()(
       setImportDialog: (importDialog) => set({ importDialog }),
       setActiveThread: (spaceId, threadId) =>
         set((st) => ({ activeThread: { ...st.activeThread, [spaceId]: threadId } })),
-      openViewer: (viewer) =>
-        set((st) => ({ viewer, panes: viewer ? { ...st.panes, sources: true } : st.panes })),
+      openViewer: (viewer) => set({ viewer }),
     }),
     {
       name: "ui",
-      version: 1,
+      version: 2,
       migrate: (st: unknown, v: number) => {
-        const o = st as { font?: string };
-        return (v < 1 && o?.font === "inter" ? { ...o, font: "default" } : st) as UiState;
+        const o = { ...(st as { font?: string; panes?: unknown; thinking?: unknown }) };
+        if (v < 1 && o.font === "inter") o.font = "default";
+        if (v < 2) {
+          delete o.panes;
+          delete o.thinking;
+        }
+        return o as UiState;
       },
       partialize: (st) => ({
         route: st.route,
@@ -145,9 +156,9 @@ export const useUi = create<UiState>()(
         reduceMotion: st.reduceMotion,
         visualEffects: st.visualEffects,
         sidebarOpen: st.sidebarOpen,
-        panes: st.panes,
+        studioOpen: st.studioOpen,
         activeThread: st.activeThread,
-        thinking: st.thinking,
+        modelControls: st.modelControls,
       }),
     },
   ),

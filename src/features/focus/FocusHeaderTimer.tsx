@@ -45,8 +45,8 @@ const CompactTimer = forwardRef<HTMLButtonElement, { state: FocusState } & Butto
 export function FocusHeaderTimer() {
   const state = useFocusStore((st) => st.state);
   const route = useUi((st) => st.route);
-  const studioOpen = useUi((st) => st.panes.studio);
-  const togglePane = useUi((st) => st.togglePane);
+  const studioOpen = useUi((st) => st.studioOpen);
+  const toggleStudio = useUi((st) => st.toggleStudio);
 
   if (!state) return null;
 
@@ -54,7 +54,7 @@ export function FocusHeaderTimer() {
     if (studioOpen) return null;
     return (
       <div className="t-panel-slide" data-open="true" style={{ "--panel-translate-y": "0px" } as CSSProperties}>
-        <CompactTimer state={state} onClick={() => togglePane("studio")} />
+        <CompactTimer state={state} onClick={toggleStudio} />
       </div>
     );
   }

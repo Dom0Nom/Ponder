@@ -7,7 +7,7 @@ interface Node {
   data?: { hName?: string; hProperties?: Record<string, unknown> };
 }
 
-/** Turns `[1]`, `[2][3]`, `[1, 4]`, `[~2]` in text nodes into `<cite-ref data-n data-inferred>` elements. */
+/** Turns `[1]`, `[2][3]`, `[1, 4]`, `[~2]` in text nodes into one `<cite-ref data-ns="2,3" data-inferred>` per bracket run. */
 export function remarkCitations(opts: { known: number }) {
   return (tree: Node) => {
     const walk = (node: Node) => {
@@ -24,10 +24,19 @@ export function remarkCitations(opts: { known: number }) {
               .filter((r) => r.n >= 1 && r.n <= opts.known);
             if (!refs.length) continue;
             if (m.index! > last) next.push({ type: "text", value: child.value.slice(last, m.index) });
-            for (const r of refs) {
+            const prev = next[next.length - 1];
+            const adjacent = m.index === last && prev?.type === "citeRef";
+            if (adjacent) {
+              const props = prev.data!.hProperties!;
+              props["data-ns"] = [props["data-ns"], ...refs.map((r) => r.n)].join(",");
+              props["data-inferred"] = props["data-inferred"] === "1" && refs.every((r) => r.inferred) ? "1" : "0";
+            } else {
               next.push({
                 type: "citeRef",
-                data: { hName: "cite-ref", hProperties: { "data-n": r.n, "data-inferred": r.inferred ? "1" : "0" } },
+                data: {
+                  hName: "cite-ref",
+                  hProperties: { "data-ns": refs.map((r) => r.n).join(","), "data-inferred": refs.every((r) => r.inferred) ? "1" : "0" },
+                },
                 children: [],
               });
             }

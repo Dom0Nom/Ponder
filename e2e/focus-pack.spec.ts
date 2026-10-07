@@ -65,11 +65,12 @@ test("low-energy session shows the review-only card and blocks new material", as
   await expect(card).toContainText("Low-energy session");
   await expect(card.getByRole("button", { name: /Re-test mistakes/ })).toBeEnabled();
   await expect(card.getByRole("button", { name: /Review due cards/ })).toBeVisible();
-  await expect(app.getByRole("button", { name: "Add source" })).toBeDisabled();
   await app.getByRole("button", { name: "Flashcards", exact: true }).click();
   await expect(app.getByRole("button", { name: "Make cards from sources" })).toBeDisabled();
   await expect(app.getByRole("button", { name: "Add card" })).toBeDisabled();
   await app.getByRole("button", { name: "Back to Studio" }).click();
+  await app.keyboard.press("ControlOrMeta+Shift+KeyS");
+  await expect(app.getByRole("button", { name: "Add source" })).toBeDisabled();
 
   await card.getByRole("button", { name: /Re-test mistakes/ }).click();
   await expect(app.getByRole("tab", { name: "Mistake notebook", selected: true })).toBeVisible();

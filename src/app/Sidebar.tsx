@@ -66,10 +66,10 @@ function usePracticeSpaceId(): string | undefined {
 
 function SidebarBody() {
   const route = useUi((st) => st.route);
-  const panes = useUi((st) => st.panes);
+  const sourcesOpen = useUi((st) => (route.name === "space" ? st.sourcesOpen[route.spaceId] === true : false));
   const settingsReturn = useUi((st) => st.settingsReturn);
   const navigate = useUi((st) => st.navigate);
-  const togglePane = useUi((st) => st.togglePane);
+  const setSourcesOpen = useUi((st) => st.setSourcesOpen);
   const { data: due } = useDueCounts();
   const practiceSpaceId = usePracticeSpaceId();
   const reviewCount = (due ?? []).reduce((n, c) => n + c.due + c.new, 0);
@@ -119,8 +119,8 @@ function SidebarBody() {
           icon={Files}
           label={s.panes.sources}
           hint="⌘⇧S"
-          current={panes.sources}
-          onClick={() => togglePane("sources")}
+          current={sourcesOpen}
+          onClick={() => setSourcesOpen(route.spaceId, !sourcesOpen)}
         />
       )}
       <NavItem

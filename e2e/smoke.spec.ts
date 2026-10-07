@@ -5,6 +5,6 @@ test("home shows empty state and creates a space", async ({ app }) => {
   await app.getByRole("button", { name: "New space" }).first().click();
   await app.getByLabel("Name").fill("GED Math");
   await app.getByRole("button", { name: "Create" }).click();
-  await expect(app.getByRole("region", { name: "Sources" })).toBeVisible();
+  await expect(app.getByRole("region", { name: "Chat" })).toBeVisible();
   await expect(app.getByRole("banner").getByText("GED Math")).toBeVisible();
 });

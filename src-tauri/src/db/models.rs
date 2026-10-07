@@ -391,7 +391,7 @@ pub struct MessagePatch {
     pub error: Option<String>,
 }
 
-const ROLES: &[&str] = &["user", "assistant", "buddy", "system"];
+const ROLES: &[&str] = &["user", "assistant", "buddy", "system", "practice"];
 
 fn message_from_row(r: &Row) -> rusqlite::Result<Message> {
     Ok(Message {
@@ -752,6 +752,21 @@ mod tests {
             },
         )
         .unwrap();
+        let practice = add_message(
+            &c,
+            NewMessage {
+                thread_id: t.id.clone(),
+                role: "practice".into(),
+                content: String::new(),
+                reasoning: None,
+                citations: None,
+                meta: None,
+                status: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(practice.role, "practice");
+        delete_message(&c, &practice.id).unwrap();
         let m2 = update_message(&c, &m.id, MessagePatch { content: Some("hello".into()), ..Default::default() }).unwrap();
         assert_eq!(m2.content, "hello");
         let src = insert_source(&c, &s.id, "Doc", "text", None).unwrap();
