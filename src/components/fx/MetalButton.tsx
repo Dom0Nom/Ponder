@@ -13,7 +13,7 @@ export default function MetalButton({ children }: { children: ReactNode }) {
       disableGlow
       ringCssPx={1}
       borderRadius={7}
-      className="rounded-[7px] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring"
+      className="rounded-[7px] !bg-primary !text-on-primary focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring"
     >
       {children}
     </MetalFx>
