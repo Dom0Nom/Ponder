@@ -9,7 +9,6 @@ import { s } from "../../lib/strings";
 import type { Message, Space } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
-import { Tooltip } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { useFocusStore } from "../focus/focusStore";
 import { actionIconBtn } from "./actionButton";
@@ -54,11 +53,16 @@ export function RetryButton({ message, space, subtle }: { message: Message; spac
   };
   if (subtle)
     return (
-      <Tooltip content={s.chat.regenerate} description={s.chat.regenerateDesc(message.meta?.model?.model ?? "")} side="top">
-        <button aria-label={s.chat.regenerate} disabled={busy} onClick={retry} className={actionIconBtn}>
-          <RefreshCw size={14} />
-        </button>
-      </Tooltip>
+      <button
+        aria-label={s.chat.regenerate}
+        data-tip-name={s.chat.regenerate}
+        data-tip-desc={s.chat.regenerateDesc(message.meta?.model?.model ?? "")}
+        disabled={busy}
+        onClick={retry}
+        className={actionIconBtn}
+      >
+        <RefreshCw size={14} />
+      </button>
     );
   return (
     <button

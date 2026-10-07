@@ -164,24 +164,17 @@ export function Composer({
           </Tooltip>
         )}
         <div className="ml-auto">
-          {running ? (
-            <button
-              aria-label={s.chat.stop}
-              onClick={() => thread && stop(thread.id)}
-              className="flex size-[30px] items-center justify-center rounded-btn bg-primary text-on-primary"
-            >
-              <Square size={12} fill="currentColor" />
-            </button>
-          ) : (
-            <button
-              aria-label={s.chat.send}
-              disabled={disabled || !text.trim()}
-              onClick={() => send()}
-              className="flex size-[30px] items-center justify-center rounded-btn bg-primary text-on-primary transition-opacity hover:bg-primary-hover"
-            >
-              <ArrowUp size={15} />
-            </button>
-          )}
+          <button
+            aria-label={running ? s.chat.stop : s.chat.send}
+            disabled={!running && (disabled || !text.trim())}
+            onClick={() => (running ? thread && stop(thread.id) : send())}
+            className="flex size-[30px] items-center justify-center rounded-btn bg-primary text-on-primary transition-opacity hover:bg-primary-hover"
+          >
+            <span className="t-icon-swap" data-state={running ? "b" : "a"}>
+              <ArrowUp size={15} data-icon="a" className="t-icon" />
+              <Square size={12} fill="currentColor" data-icon="b" className="t-icon" />
+            </span>
+          </button>
         </div>
       </div>
       <PhotoDialog

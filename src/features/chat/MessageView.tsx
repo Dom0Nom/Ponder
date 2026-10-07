@@ -11,6 +11,7 @@ import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
 import { useComposer } from "../../stores/composer";
 import { Tooltip } from "../../components/ui/misc";
+import { Reveal } from "../../components/motion/Reveal";
 import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { PonderMark } from "../../components/brand/PonderMark";
 import { KIND_ICON } from "../sources/kinds";
@@ -19,7 +20,9 @@ import { AnswerActions } from "./AnswerActions";
 import { FollowUps } from "./FollowUps";
 import { InlinePractice } from "./InlinePractice";
 import { Markdown } from "./Markdown";
+import { ReasoningPeek } from "./ReasoningPeek";
 import { RetryButton } from "./RetryButton";
+import { ThinkingLine } from "../../components/motion/ThinkingLine";
 
 export function MessageView({
   message,
@@ -46,11 +49,11 @@ export function MessageView({
   }
   if (message.role === "buddy") {
     return (
-      <div className="flex justify-center" data-testid="msg-buddy">
+      <Reveal className="flex justify-center" data-testid="msg-buddy">
         <span className="inline-flex items-center gap-2 rounded-full bg-fill px-3.5 py-1.5 text-label font-medium text-fg-secondary">
           <Timer size={13} /> {message.content}
         </span>
-      </div>
+      </Reveal>
     );
   }
   if (message.role === "practice") return <InlinePractice message={message} space={space} />;
@@ -89,7 +92,7 @@ export function AnswerBody({
         seg.kind === "uncited" ? (
           <div key={i} className="relative pl-3" data-testid="uncited-block">
             <span aria-hidden className="absolute bottom-1 left-0 top-1 w-[2px] rounded-full bg-border" />
-            <Markdown text={seg.text} knownCitations={citations.length} renderCite={renderCite} />
+            <Markdown text={seg.text} knownCitations={citations.length} renderCite={renderCite} streaming={streaming} />
             <p className="mt-0.5 text-kbd text-muted">{s.chat.noSourceCited}</p>
           </div>
         ) : seg.kind === "general" ? (
@@ -97,10 +100,10 @@ export function AnswerBody({
             <p className="mb-1 flex items-center gap-1.5 text-kbd font-medium text-muted">
               <Globe2 size={12} /> {s.chat.notFromSources}
             </p>
-            <Markdown text={seg.text} knownCitations={citations.length} renderCite={renderCite} />
+            <Markdown text={seg.text} knownCitations={citations.length} renderCite={renderCite} streaming={streaming} />
           </div>
         ) : (
-          <Markdown key={i} text={seg.text} knownCitations={citations.length} renderCite={renderCite} />
+          <Markdown key={i} text={seg.text} knownCitations={citations.length} renderCite={renderCite} streaming={streaming} />
         ),
       )}
     </div>
@@ -134,20 +137,20 @@ function AssistantMessage({
     <div className="flex flex-col gap-2.5 text-input leading-[1.65]" data-testid="msg-assistant">
       {reasoning && <Thinking text={reasoning} active={streaming && !content} ms={message.meta?.thinkingMs} />}
       {streaming && !content && !reasoning && (
-        <GeneratingStatus label={`${s.chat.thinking}…`} />
+        <GeneratingStatus think label={`${s.chat.thinking}…`} />
       )}
       <AnswerBody content={content} citations={citations} streaming={streaming} spaceId={space.id} />
       {streaming && content && <GeneratingStatus label={`${s.chat.writing}…`} />}
       {message.meta?.stopped && <p className="text-xs text-faint">{s.chat.stopped}</p>}
       {(message.status === "error" || interrupted) && (
-        <div role="alert" className="flex items-start gap-2 rounded-pane bg-danger-hover px-4 py-3 text-body leading-[1.45]">
+        <Reveal role="alert" className="flex items-start gap-2 rounded-pane bg-danger-hover px-4 py-3 text-body leading-[1.45]">
           <AlertCircle size={16} className="mt-0.5 shrink-0 text-danger" />
           <div className="min-w-0 flex-1">
             <p className="font-medium">{s.chat.failed}</p>
             <p className="break-words text-muted">{message.error ?? s.chat.interrupted}</p>
           </div>
           <RetryButton message={message} space={space} />
-        </div>
+        </Reveal>
       )}
       {message.meta?.retrievalError && <p className="text-xs text-warn">{s.chat.sourceSearchFailed(message.meta.retrievalError)}</p>}
       {!streaming && content && <AnswerActions message={message} space={space} content={content} />}
@@ -168,22 +171,24 @@ function Thinking({ text, active, ms }: { text: string; active: boolean; ms?: nu
   const [open, setOpen] = useState(false);
   const label = active ? `${s.chat.thinking}…` : ms ? s.chat.thoughtFor(thoughtSeconds(ms)) : s.chat.thoughts;
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="t-acc t-acc--noblur flex flex-col" data-open={open}>
       <button
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         className="group/think inline-flex h-[21.45px] items-center gap-1.5 self-start text-label font-medium leading-[1.65] text-fg-secondary hover:text-fg"
       >
         {active ? <PonderMark size={20} state="generating" /> : <Brain size={13} />}
-        {label}
-        <ChevronRight
-          size={12}
-          className={cn("opacity-0 transition-[opacity,transform] group-hover/think:opacity-100 group-focus-visible/think:opacity-100", open && "rotate-90 opacity-100")}
-        />
+        <ThinkingLine label={label} shimmer={active} />
+        <span className={cn("t-acc-chevron t-acc-chevron--right opacity-0 transition-opacity group-hover/think:opacity-100 group-focus-visible/think:opacity-100", open && "opacity-100")}>
+          <ChevronRight size={12} />
+        </span>
       </button>
-      {open && (
-        <div className="max-h-64 overflow-y-auto whitespace-pre-wrap border-l-2 border-border pl-3 text-label leading-relaxed text-muted">{text}</div>
-      )}
+      {active && !open && text && <ReasoningPeek text={text} />}
+      <div className="t-acc-panel" inert={!open}>
+        <div className="t-acc-panel-inner">
+          <div className="mt-1.5 max-h-64 overflow-y-auto whitespace-pre-wrap border-l-2 border-border pl-3 text-label leading-relaxed text-muted">{text}</div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -221,7 +226,7 @@ function CiteChip({ citations, inferred, spaceId }: { citations: Citation[]; inf
         aria-label={s.chat.citation(titles.join(", "))}
         onClick={() => openViewer({ sourceId: first.sourceId, start: first.start, end: first.end })}
         className={cn(
-          "ml-1 inline-flex h-5 max-w-[220px] items-center gap-[5px] whitespace-nowrap rounded-full pl-[3px] pr-2 align-[1px] text-label font-medium leading-none text-fg",
+          "ml-1 inline-flex h-5 max-w-[220px] items-center transition-colors duration-(--motion-quick) gap-[5px] whitespace-nowrap rounded-full pl-[3px] pr-2 align-[1px] text-label font-medium leading-none text-fg",
           inferred ? "border border-dashed border-control-off" : "bg-chip hover:bg-fill-active",
         )}
       >

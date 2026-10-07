@@ -11,6 +11,8 @@ import { ConfirmDialog } from "../../components/ui/dialog";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../../components/ui/menu";
 import { Skeleton, Tooltip } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
+import { useFlip } from "../../lib/useFlip";
+import { useFreshKeys } from "../../lib/useFreshKeys";
 import { useActiveThread, useNewThread } from "./useActiveThread";
 
 const GROUP_ORDER = ["pinned", "today", "yesterday", "week", "month", "older"] as const;
@@ -65,7 +67,7 @@ function RenameInput({ thread, spaceId }: { thread: Thread; spaceId: string }) {
   );
 }
 
-function ThreadRow({ thread, spaceId, active, onDelete }: { thread: Thread; spaceId: string; active: boolean; onDelete: () => void }) {
+function ThreadRow({ thread, spaceId, active, fresh, onDelete }: { thread: Thread; spaceId: string; active: boolean; fresh: boolean; onDelete: () => void }) {
   const setActive = useUi((st) => st.setActiveThread);
   const renaming = useUi((st) => st.renamingThreadId === thread.id);
   const setRenaming = useUi((st) => st.setRenamingThread);
@@ -80,6 +82,8 @@ function ThreadRow({ thread, spaceId, active, onDelete }: { thread: Thread; spac
       tabIndex={0}
       aria-current={active ? "true" : undefined}
       data-testid="thread-row"
+      data-flip-key={thread.id}
+      data-open={fresh || undefined}
       onClick={() => !renaming && setActive(spaceId, thread.id)}
       onKeyDown={(e) => {
         if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
@@ -89,6 +93,7 @@ function ThreadRow({ thread, spaceId, active, onDelete }: { thread: Thread; spac
       }}
       className={cn(
         "group relative flex h-8 shrink-0 cursor-pointer items-center gap-0.5 whitespace-nowrap rounded-btn pl-4 pr-1.5",
+        fresh && "t-panel-slide",
         active ? "bg-selected font-semibold" : "font-medium hover:bg-fill-hover",
         menuOpen && !active && "bg-fill-hover",
       )}
@@ -153,6 +158,9 @@ export function ThreadList({ spaceId }: { spaceId: string }) {
   const qc = useQueryClient();
   const [deleting, setDeleting] = useState<Thread | null>(null);
   const groups = useMemo(() => groupThreads(threads.data ?? []), [threads.data]);
+  const listRef = useRef<HTMLDivElement>(null);
+  const isFresh = useFreshKeys(threads.data?.map((t) => t.id));
+  useFlip(listRef, [threads.data]);
 
   if (!threads.isLoading && !threads.error && !threads.data?.length) return null;
 
@@ -170,7 +178,7 @@ export function ThreadList({ spaceId }: { spaceId: string }) {
           </button>
         </Tooltip>
       </div>
-      <div className="-mx-3 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3">
+      <div ref={listRef} className="relative -mx-3 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3">
         {threads.isLoading && (
           <div className="space-y-2 px-4 pt-3">
             <Skeleton className="h-4 w-1/2" />
@@ -187,7 +195,7 @@ export function ThreadList({ spaceId }: { spaceId: string }) {
           <div key={group} className="flex flex-col gap-0.5">
             <p className="whitespace-nowrap px-4 pb-1 pt-2.5 text-label font-semibold text-muted">{s.shell.groups[group]}</p>
             {items.map((t) => (
-              <ThreadRow key={t.id} thread={t} spaceId={spaceId} active={t.id === active?.id} onDelete={() => setDeleting(t)} />
+              <ThreadRow key={t.id} thread={t} spaceId={spaceId} active={t.id === active?.id} fresh={isFresh(t.id)} onDelete={() => setDeleting(t)} />
             ))}
           </div>
         ))}

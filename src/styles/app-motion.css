@@ -33,3 +33,7 @@
 /* Spinner primitive — design 34a icon-loader (lucide Loader, 8 spokes): stepped rotation, 8 frames/s instead of 60 */
 @keyframes m-spin { to { transform: rotate(360deg); } }
 .m-spin { animation: m-spin 1s steps(8) infinite; }
+
+/* Inactive pages of a page slide are hidden after the exit so they leave the accessibility tree and hit tests */
+.t-page-slide .t-page { visibility: hidden; transition-property: opacity, transform, filter, visibility; transition-duration: var(--page-fade-dur), var(--page-slide-dur), var(--page-slide-dur), 0s; transition-delay: 0s, 0s, 0s, var(--page-fade-dur); }
+.t-page-slide[data-page="1"] .t-page[data-page-id="1"], .t-page-slide[data-page="2"] .t-page[data-page-id="2"] { visibility: visible; transition-delay: 0s; }

@@ -68,10 +68,13 @@ export async function runTurn(input: TurnInput): Promise<Message> {
 
   let hits: SearchHit[] = [];
   let retrievalError: string | null = null;
+  useChatStream.getState().setPhase(threadId, "search");
   try {
     hits = await retrieve(space.id, input.userText ?? input.query ?? "");
   } catch (e) {
     retrievalError = (e as Error).message;
+  } finally {
+    useChatStream.getState().setPhase(threadId, null);
   }
   const citations: Citation[] = hitsToCitations(hits);
   const sources = queryClient.getQueryData<{ status: string }[]>(qk.sources(space.id)) ?? [];

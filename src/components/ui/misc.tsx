@@ -1,6 +1,6 @@
 import * as Sw from "@radix-ui/react-switch";
 import * as Tip from "@radix-ui/react-tooltip";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader } from "lucide-react";
 import { useRef, type HTMLAttributes, type ReactNode } from "react";
 import { cn } from "../../lib/utils";
 import { s } from "../../lib/strings";
@@ -80,7 +80,7 @@ export function Tooltip({
 }
 
 export function Spinner({ className, size = 16 }: { className?: string; size?: number }) {
-  return <Loader2 size={size} className={cn("animate-spin text-muted", className)} aria-label={s.common.loading} />;
+  return <Loader size={size} className={cn("m-spin text-muted", className)} aria-label={s.common.loading} />;
 }
 
 export function Skeleton({ className }: { className?: string }) {

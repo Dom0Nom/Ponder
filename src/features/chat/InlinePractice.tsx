@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Camera, Check, Lightbulb, X } from "lucide-react";
+import { ArrowRight, Camera, Lightbulb, X } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
 import { invalidateCards, qk } from "../../lib/queries";
@@ -12,6 +12,9 @@ import type { InlinePracticeMeta, Message, PracticeItem, Space } from "../../lib
 import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
 import { Skeleton } from "../../components/ui/misc";
+import { Collapse, Reveal } from "../../components/motion/Reveal";
+import { SuccessCheck } from "../../components/motion/SuccessCheck";
+import { useShake } from "../../components/motion/useShake";
 import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { toastError } from "../../components/ui/toast";
 import { StepCheckerDialog } from "../steps/StepChecker";
@@ -32,7 +35,7 @@ function Dashes({ meta }: { meta: InlinePracticeMeta }) {
         <span
           key={i}
           className={cn(
-            "h-1 w-4 rounded-[2px]",
+            "h-1 w-4 rounded-[2px] transition-colors duration-(--motion-fast) ease-smooth",
             i < meta.index ? "bg-fg" : i === meta.index ? (meta.results[i] === "right" ? "bg-fg" : "bg-faint") : "bg-field",
           )}
         />
@@ -52,6 +55,7 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
   const [whyOpen, setWhyOpen] = useState(false);
   const [stepsOpen, setStepsOpen] = useState(false);
   const next = useRef<Promise<PracticeItem> | null>(null);
+  const shake = useShake();
 
   if (!meta) return null;
   const item = meta.items[meta.index];
@@ -74,6 +78,7 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
     setChecked(null);
     setHintOpen(false);
     setWhyOpen(false);
+    shake.reset();
   };
 
   const goNext = async (record?: "skipped") => {
@@ -145,6 +150,7 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
       qc.invalidateQueries({ queryKey: ["abilities", space.id] });
       qc.invalidateQueries({ queryKey: ["errorPatterns"] });
       setChecked({ grade, response: given });
+      if (!grade.correct) shake.shake();
       await save(setResult(meta, meta.index, grade.correct ? "right" : "wrong"));
       prefetch();
     } catch (e) {
@@ -210,11 +216,13 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
               </div>
             ),
           )}
-          {hintOpen && item.hint && (
-            <p className="flex gap-2 text-body leading-[1.5] text-fg-secondary" data-testid="inline-practice-hint">
-              <Lightbulb size={14} className="mt-0.5 shrink-0 text-fg" />
-              {item.hint}
-            </p>
+          {item.hint && (
+            <Collapse open={hintOpen} noblur>
+              <p className="flex gap-2 text-body leading-[1.5] text-fg-secondary" data-testid="inline-practice-hint">
+                <Lightbulb size={14} className="mt-0.5 shrink-0 text-fg" />
+                {item.hint}
+              </p>
+            </Collapse>
           )}
           {item.kind === "mcq" && (
             <div className="flex flex-col gap-1.5" role="radiogroup" aria-label={item.question}>
@@ -225,8 +233,10 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
                   aria-checked={response === String(i)}
                   disabled={!!checked}
                   onClick={() => setResponse(String(i))}
+                  {...(checked && !correct && response === String(i) ? shake.props : {})}
                   className={cn(
                     "flex min-h-9 items-center rounded-btn border px-3 text-left text-input",
+                    shake.cls(checked && !correct && response === String(i)),
                     checked && String(i) === item.answer
                       ? "border-success"
                       : checked && response === String(i)
@@ -255,7 +265,9 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
                 onChange={(e) => setResponse(e.target.value)}
                 placeholder={s.practice.answerPlaceholder}
                 aria-label={s.practice.yourAnswer}
+                {...shake.props}
                 className={cn(
+                  shake.cls(checked && !correct),
                   "h-9 min-w-0 flex-1 rounded-btn border bg-surface px-3 text-input outline-none placeholder:text-faint",
                   checked ? (correct ? "border-success" : "border-danger") : "border-control focus:border-fg",
                 )}
@@ -286,7 +298,7 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
         </div>
       )}
       {checked && item && (
-        <div
+        <Reveal
           data-testid="inline-practice-result"
           className={cn(
             "flex items-center gap-3 border-t py-3 pl-4 pr-3",
@@ -294,7 +306,7 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
           )}
         >
           <span className={cn("flex size-6 shrink-0 items-center justify-center rounded-full", correct ? "bg-success text-on-success" : "bg-danger text-on-danger")}>
-            {correct ? <Check size={14} /> : <X size={14} />}
+            {correct ? <SuccessCheck size={14} /> : <X size={14} />}
           </span>
           <div className="min-w-0 flex-1">
             <p className={cn("font-semibold", correct ? "text-success-text" : "text-danger-text")}>
@@ -329,12 +341,14 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
               </button>
             </>
           )}
-        </div>
+        </Reveal>
       )}
-      {whyOpen && checked && item && (
-        <div className="border-t border-divider px-4 py-3.5 text-input" data-testid="inline-practice-why">
-          <Markdown text={item.solution} />
-        </div>
+      {checked && item && (
+        <Collapse open={whyOpen} noblur>
+          <div className="border-t border-divider px-4 py-3.5 text-input" data-testid="inline-practice-why">
+            <Markdown text={item.solution} />
+          </div>
+        </Collapse>
       )}
       {item && (
         <StepCheckerDialog open={stepsOpen} onOpenChange={setStepsOpen} spaceId={space.id} problem={item.question} expectedAnswer={item.answer} />

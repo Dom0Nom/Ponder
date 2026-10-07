@@ -1,5 +1,6 @@
 import { ArrowLeft, Files, House, Layers, PencilLine, Search, Settings } from "lucide-react";
-import type { ComponentType, ReactNode } from "react";
+import { useRef, type ComponentType, type ReactNode } from "react";
+import { NumberPop } from "../components/motion/NumberPop";
 import { Button } from "../components/ui/button";
 import { Kbd, Tooltip } from "../components/ui/misc";
 import { useDueCounts, useSources, useSpaces } from "../lib/queries";
@@ -25,6 +26,8 @@ function NavItem({
   disabled?: boolean;
   onClick: () => void;
 }) {
+  const shown = useRef(count ?? 0);
+  if (count) shown.current = count;
   return (
     <button
       aria-current={current ? "page" : undefined}
@@ -37,7 +40,13 @@ function NavItem({
     >
       <Icon size={16} />
       <span className="flex-1">{label}</span>
-      {count ? <span className="font-kbd text-meta font-semibold tracking-[.12em] text-muted">{count}</span> : null}
+      {count !== undefined && (
+        <span className="t-badge" data-open={count > 0} aria-hidden={count === 0 || undefined}>
+          <span className="t-badge-dot font-kbd text-meta font-semibold tracking-[.12em] text-muted">
+            <NumberPop text={String(count || shown.current)} popKey={count || shown.current} />
+          </span>
+        </span>
+      )}
       {hint && <span className="font-kbd text-meta font-semibold tracking-[.12em] text-muted">{hint}</span>}
     </button>
   );

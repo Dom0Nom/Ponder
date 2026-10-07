@@ -11,7 +11,8 @@ import { secondOpinion } from "../../lib/chat/secondOpinion";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
 import { Dialog } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
-import { Spinner, Tooltip } from "../../components/ui/misc";
+import { Reveal } from "../../components/motion/Reveal";
+import { ActivityOrb } from "../../components/motion/ActivityOrb";
 import { PonderMark } from "../../components/brand/PonderMark";
 import { toast, toastError } from "../../components/ui/toast";
 import { actionIconBtn } from "./actionButton";
@@ -42,11 +43,9 @@ export function CheckButton({ message, space }: { message: Message; space: Space
   };
   if (!message.citations?.length) return null;
   return (
-    <Tooltip content={s.check.run} description={s.check.desc} side="top">
-      <button aria-label={s.check.run} disabled={busy} onClick={run} className={actionIconBtn}>
-        {busy ? <Spinner size={14} /> : <ShieldCheck size={14} />}
-      </button>
-    </Tooltip>
+    <button aria-label={s.check.run} data-tip-name={s.check.run} data-tip-desc={s.check.desc} disabled={busy} onClick={run} className={actionIconBtn}>
+      {busy ? <ActivityOrb activity="grade" size={16} /> : <ShieldCheck size={14} />}
+    </button>
   );
 }
 
@@ -57,7 +56,7 @@ export function CheckResults({ message }: { message: Message }) {
   const byN = new Map((message.citations ?? []).map((c) => [c.n, c]));
   const counts = check.items.reduce<Record<string, number>>((acc, i) => ({ ...acc, [i.verdict]: (acc[i.verdict] ?? 0) + 1 }), {});
   return (
-    <div className="rounded-pane border border-border px-4 py-3" data-testid="self-check">
+    <Reveal className="rounded-pane border border-border px-4 py-3" data-testid="self-check">
       <p className="flex flex-wrap items-center gap-x-2 text-label font-semibold text-muted">
         <ShieldCheck size={13} /> {s.check.title}
         <span className="font-normal text-faint">
@@ -95,7 +94,7 @@ export function CheckResults({ message }: { message: Message }) {
         })}
       </ul>
       <p className="mt-2 text-[0.6875rem] text-faint">{s.check.byModel(check.model.model)}</p>
-    </div>
+    </Reveal>
   );
 }
 
@@ -134,11 +133,16 @@ export function SecondOpinionButton({ message, space }: { message: Message; spac
 
   return (
     <>
-      <Tooltip content={s.secondOpinion.run} description={s.secondOpinion.desc} side="top">
-        <button aria-label={s.secondOpinion.run} disabled={busy} onClick={openDialog} className={actionIconBtn}>
-          {busy ? <Spinner size={14} /> : <Scale size={14} />}
-        </button>
-      </Tooltip>
+      <button
+        aria-label={s.secondOpinion.run}
+        data-tip-name={s.secondOpinion.run}
+        data-tip-desc={s.secondOpinion.desc}
+        disabled={busy}
+        onClick={openDialog}
+        className={actionIconBtn}
+      >
+        {busy ? <PonderMark size={20} state="generating" /> : <Scale size={14} />}
+      </button>
       <Dialog
         open={open}
         onOpenChange={setOpen}
@@ -182,7 +186,7 @@ export function SecondOpinions({
         const content = live[m.id]?.content ?? m.content;
         const streaming = m.status === "streaming" && !!live[m.id];
         return (
-          <div key={m.id} className="rounded-pane bg-fill px-4 py-3" data-testid="second-opinion">
+          <Reveal key={m.id} className="rounded-pane bg-fill px-4 py-3" data-testid="second-opinion">
             <div className="mb-1.5 flex items-center gap-2 text-xs font-medium text-muted">
               <Scale size={13} /> {s.secondOpinion.label(m.meta?.model?.model ?? "")}
               {streaming && <PonderMark size={20} state="generating" />}
@@ -202,7 +206,7 @@ export function SecondOpinions({
             ) : (
               <p className="text-sm text-muted">{s.chat.thinking}…</p>
             )}
-          </div>
+          </Reveal>
         );
       })}
       <Dialog

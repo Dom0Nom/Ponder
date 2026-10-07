@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import rehypeHighlight from "rehype-highlight";
+import { rehypeStreamWords } from "./rehypeStreamWords";
 import { remarkCitations } from "./remarkCitations";
 import { remarkHtmlBreaks } from "./remarkHtmlBreaks";
 import { remarkPlainMath } from "./remarkPlainMath";
@@ -13,10 +14,12 @@ export const Markdown = memo(function Markdown({
   knownCitations = 0,
   renderCite,
   plainInlineMath,
+  streaming,
 }: {
   text: string;
   knownCitations?: number;
   plainInlineMath?: boolean;
+  streaming?: boolean;
   renderCite?: (ns: number[], inferred: boolean) => ReactNode;
 }) {
   const components = {
@@ -32,7 +35,7 @@ export const Markdown = memo(function Markdown({
     <div className="prose-chat">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath, ...(plainInlineMath ? [remarkPlainMath] : []), remarkHtmlBreaks, [remarkCitations, { known: knownCitations }]]}
-        rehypePlugins={[rehypeKatex, [rehypeHighlight, { detect: true, ignoreMissing: true }]]}
+        rehypePlugins={[rehypeKatex, [rehypeHighlight, { detect: true, ignoreMissing: true }], ...(streaming ? [rehypeStreamWords] : [])]}
         components={components}
       >
         {text}

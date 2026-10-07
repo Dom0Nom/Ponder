@@ -8,6 +8,8 @@ import { useUi } from "../../stores/ui";
 import { useChatStream } from "../../stores/chatStream";
 import { Button } from "../../components/ui/button";
 import { ErrorState, Skeleton } from "../../components/ui/misc";
+import { ActivityOrb } from "../../components/motion/ActivityOrb";
+import { ThinkingLine } from "../../components/motion/ThinkingLine";
 import { PonderMark } from "../../components/brand/PonderMark";
 import { useLowEnergy } from "../focus/useLowEnergy";
 import { MessageView } from "./MessageView";
@@ -54,6 +56,7 @@ function ThreadView({ space, thread, ensureThread }: { space: Space; thread?: Th
   const messages = useMessages(thread?.id);
   const sources = useSources(space.id);
   const live = useChatStream((st) => st.live);
+  const phase = useChatStream((st) => (thread ? st.phase[thread.id] : undefined));
   const sourcesOpen = useUi((st) => st.sourcesOpen[space.id] === true);
   const scroller = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
@@ -105,6 +108,12 @@ function ThreadView({ space, thread, ensureThread }: { space: Space; thread?: Th
           )}
           {messages.error && <ErrorState title={s.errors.generic} error={messages.error} onRetry={() => messages.refetch()} />}
           {empty && <NewChatState hasSources={ready.length > 0} sourcesOpen={sourcesOpen} space={space} />}
+          {phase && (
+            <span className="inline-flex items-center gap-2 text-label font-medium text-fg-secondary">
+              <ActivityOrb activity="search" size={16} />
+              <ThinkingLine label={s.chat.searchingSources} />
+            </span>
+          )}
           {visible.map((m) => (
             <MessageView
               key={m.id}

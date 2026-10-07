@@ -248,6 +248,7 @@ export const s = {
     emptyBody: "Answers come from your selected sources, with citations you can click.",
     emptyNoSources: "Add a source first, or ask a general question.",
     thinking: "Thinking",
+    searchingSources: "Searching your sources…",
     writing: "Writing",
     thoughts: "Reasoning",
     thoughtFor: (sec: number) =>

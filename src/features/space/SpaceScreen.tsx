@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type CSSProperties } from "react";
 import { qk, queryClient, useSpace } from "../../lib/queries";
 import { api } from "../../lib/ipc";
 import { s } from "../../lib/strings";
@@ -11,6 +11,8 @@ import { StudioPanel } from "./StudioPanel";
 import { SourceViewer } from "../sources/SourceViewer";
 import { AddCardDialog } from "../cards/FlashcardsCard";
 import { cn, relativeTime } from "../../lib/utils";
+import { useStayMounted } from "../../components/motion/useStayMounted";
+import { usePageSlide } from "../../components/motion/usePageSlide";
 
 /** One line for the home card: where the learner left off. */
 async function writeRecap(spaceId: string) {
@@ -35,6 +37,8 @@ export function SpaceScreen({ spaceId }: { spaceId: string }) {
   const studioOpen = useUi((st) => st.studioOpen);
   const sourcesOpen = useUi((st) => st.sourcesOpen[spaceId] === true);
   const viewer = useUi((st) => st.viewer);
+  const studioMounted = useStayMounted(studioOpen, 200);
+  const { page, sub: viewerTarget } = usePageSlide(viewer);
 
   useEffect(() => {
     api.touchSpace(spaceId).catch(() => {});
@@ -65,22 +69,33 @@ export function SpaceScreen({ spaceId }: { spaceId: string }) {
       <AddCardDialog space={space} />
       <ContentCard scroll={false} className={cn("border-0 after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded-pane after:border after:border-border transition-[left,right] duration-200", studioOpen ? "right-[336px]" : "right-2")}>
         <section aria-label={s.panes.chat} data-testid="pane-chat" className="relative flex h-full min-w-0 flex-col">
-          {viewer ? (
-            <div className="flex min-h-0 flex-1 flex-col transition-[padding] duration-200" style={{ paddingLeft: sourcesOpen ? 340 : 0 }}>
-              <SourceViewer key={viewer.sourceId} target={viewer} />
+          <div className="t-page-slide min-h-0 flex-1" data-page={page}>
+            <div className="t-page flex flex-col" data-page-id="1" inert={page === 2}>
+              <ChatPane space={space} />
             </div>
-          ) : (
-            <ChatPane space={space} />
-          )}
+            {viewerTarget && (
+              <div
+                className="t-page flex flex-col transition-[padding] duration-200"
+                data-page-id="2"
+                inert={page === 1}
+                style={{ paddingLeft: sourcesOpen ? 340 : 0 }}
+              >
+                <SourceViewer key={viewerTarget.sourceId} target={viewerTarget} />
+              </div>
+            )}
+          </div>
           <SourcesPanel space={space} open={sourcesOpen} />
           <SourcesHost space={space} />
         </section>
       </ContentCard>
-      {studioOpen && (
+      {studioMounted && (
         <section
           aria-label={s.panes.studio}
           data-testid="pane-studio"
-          className="absolute bottom-0 right-0 top-0 flex w-[328px] flex-col overflow-hidden border-l border-t border-border bg-surface"
+          data-open={studioOpen}
+          inert={!studioOpen}
+          style={{ "--panel-translate-x": "16px", "--panel-translate-y": "0px" } as CSSProperties}
+          className="t-panel-slide absolute bottom-0 right-0 top-0 flex w-[328px] flex-col overflow-hidden border-l border-t border-border bg-surface"
         >
           <StudioPanel space={space} />
         </section>

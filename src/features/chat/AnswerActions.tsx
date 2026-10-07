@@ -8,12 +8,12 @@ import { useMessages, useSources, useThreads } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Citation, Message, Space } from "../../lib/types";
 import { useUi } from "../../stores/ui";
-import { Tooltip } from "../../components/ui/misc";
 import { PonderMark } from "../../components/brand/PonderMark";
 import { toastError } from "../../components/ui/toast";
 import { useAddCard } from "../cards/FlashcardsCard";
 import { useLowEnergy } from "../focus/useLowEnergy";
 import { KIND_ICON } from "../sources/kinds";
+import { ActionTipGroup } from "./ActionTipGroup";
 import { CheckButton, SecondOpinionButton } from "./AnswerTools";
 import { actionIconBtn, actionTextBtn } from "./actionButton";
 import { RetryButton } from "./RetryButton";
@@ -111,9 +111,11 @@ export function AnswerActions({ message, space, content }: { message: Message; s
 
   return (
     <div className="-ml-1.5 flex items-center gap-0.5 text-caption" data-testid="answer-actions">
-      <Tooltip content={s.common.copy} description={s.chat.copyDesc} side="top">
+      <ActionTipGroup className="gap-0.5">
         <button
           aria-label={s.common.copy}
+          data-tip-name={s.common.copy}
+          data-tip-desc={s.chat.copyDesc}
           className={actionIconBtn}
           onClick={async () => {
             await navigator.clipboard.writeText(plainAnswer(content));
@@ -121,12 +123,15 @@ export function AnswerActions({ message, space, content }: { message: Message; s
             setTimeout(() => setCopied(false), 1500);
           }}
         >
-          {copied ? <Check size={14} /> : <Copy size={14} />}
+          <span className="t-icon-swap" data-state={copied ? "b" : "a"}>
+            <Copy size={14} data-icon="a" className="t-icon" />
+            <Check size={14} data-icon="b" className="t-icon" />
+          </span>
         </button>
-      </Tooltip>
-      <CheckButton message={message} space={space} />
-      <SecondOpinionButton message={message} space={space} />
-      <RetryButton message={message} space={space} subtle />
+        <CheckButton message={message} space={space} />
+        <SecondOpinionButton message={message} space={space} />
+        <RetryButton message={message} space={space} subtle />
+      </ActionTipGroup>
       <span aria-hidden className="mx-1.5 h-3.5 w-px bg-border" />
       <button className={actionTextBtn} onClick={makeCard}>
         <Layers size={13} /> {s.chat.makeCard}

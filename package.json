@@ -55,12 +55,14 @@
     "thinking-orbs": "0.3.2",
     "ts-fsrs": "^5.4.2",
     "turndown": "^7.2.4",
+    "unist-util-visit": "5.1.0",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2",
+    "@types/hast": "3.0.5",
     "@types/node": "^26.6.4",
     "@types/pngjs": "^6.0.5",
     "@types/react": "^19.1.8",

@@ -20,7 +20,8 @@ import { useCourses, useCurriculum, useDueCounts, useJournal } from "../../lib/q
 import { s } from "../../lib/strings";
 import type { Space } from "../../lib/types";
 import { dayLabel } from "../../lib/utils";
-import { useUi } from "../../stores/ui";
+import { useUi, type StudioView } from "../../stores/ui";
+import { usePageSlide } from "../../components/motion/usePageSlide";
 import { CoursePanel } from "../placement/CourseCard";
 import { PlanPanel } from "../placement/PlanCard";
 import { FlashcardsPanel } from "../cards/FlashcardsCard";
@@ -208,15 +209,11 @@ function MainView({ space }: { space: Space }) {
   );
 }
 
-export function StudioPanel({ space }: { space: Space }) {
-  const view = useUi((st) => st.studioView);
+function SubView({ space, view }: { space: Space; view: StudioView }) {
   const from = useUi((st) => st.studioFrom);
   const setStudioView = useUi((st) => st.setStudioView);
   const back = () => setStudioView(from);
-
   switch (view) {
-    case null:
-      return <MainView space={space} />;
     case "focus":
       return <FocusView space={space} onBack={back} />;
     case "microsteps":
@@ -245,4 +242,21 @@ export function StudioPanel({ space }: { space: Space }) {
         </div>
       );
   }
+}
+
+export function StudioPanel({ space }: { space: Space }) {
+  const view = useUi((st) => st.studioView);
+  const { page, sub } = usePageSlide(view);
+  return (
+    <div className="t-page-slide h-full" data-page={page}>
+      <div className="t-page" data-page-id="1" inert={page === 2}>
+        <MainView space={space} />
+      </div>
+      {sub && (
+        <div className="t-page" data-page-id="2" inert={page === 1}>
+          <SubView space={space} view={sub} />
+        </div>
+      )}
+    </div>
+  );
 }
