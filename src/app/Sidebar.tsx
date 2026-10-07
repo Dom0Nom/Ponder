@@ -37,7 +37,7 @@ function NavItem({
     >
       <Icon size={16} />
       <span className="flex-1">{label}</span>
-      {count ? <span className="text-meta font-semibold text-muted">{count}</span> : null}
+      {count ? <span className="font-kbd text-meta font-semibold tracking-[.12em] text-muted">{count}</span> : null}
       {hint && <span className="font-kbd text-meta font-semibold tracking-[.12em] text-muted">{hint}</span>}
     </button>
   );

@@ -71,7 +71,7 @@ function Tile({
       onClick={onClick}
       className="flex flex-col items-start gap-2 rounded-pane border border-selected p-3 text-left text-body transition-colors hover:border-hover hover:bg-fill-subtle disabled:pointer-events-none disabled:opacity-50"
     >
-      <span className="flex h-5.75 items-center">
+      <span className="flex h-[23.2px] items-center">
         <Icon size={16} />
       </span>
       <span className="flex min-w-0 max-w-full flex-col items-start">
