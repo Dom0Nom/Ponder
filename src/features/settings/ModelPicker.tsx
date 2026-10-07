@@ -24,11 +24,13 @@ export function ModelPicker({
   value,
   onChange,
   allowDefault,
+  defaultLabel,
   className,
 }: {
   value: ModelRef | null;
   onChange: (v: ModelRef | null) => void;
   allowDefault?: boolean;
+  defaultLabel?: string;
   className?: string;
 }) {
   const { data: providers, isLoading, error } = useProviders();
@@ -95,7 +97,7 @@ export function ModelPicker({
     <div className={cn("flex gap-2", className ?? "w-full")}>
       <NativeSelect className="min-w-0 flex-1" aria-label={s.models.model} value={selected} onChange={(e) => pick(e.target.value)}>
         {allowDefault ? (
-          <option value="">{s.models.appDefault}</option>
+          <option value="">{defaultLabel ?? s.models.appDefault}</option>
         ) : (
           !value && (
             <option value="" disabled>

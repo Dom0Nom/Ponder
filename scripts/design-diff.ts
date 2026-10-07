@@ -179,10 +179,13 @@ function applyMasks(png: PNG, masks: Mask[]) {
 }
 
 // Deliberate deviations the user asked for after the design was drawn; excluded from every full-frame compare.
-const USER_DEVIATIONS: Mask[] = [
+const USER_DEVIATIONS: (Mask & { screens?: number[] })[] = [
   { x: 104, y: 10, w: 100, h: 28, reason: "Ponder mark + wordmark in the sidebar top row, requested by the user 2026-10-07" },
-  { x: 380, y: 732, w: 270, h: 36, reason: "model logo in the composer button, requested by the user 2026-10-07" },
+  { x: 380, y: 732, w: 270, h: 36, screens: [2, 38], reason: "model logo in the composer button, requested by the user 2026-10-07" },
+  { x: 320, y: 56, w: 98, h: 34, screens: [27], reason: "prominent deep research entry in the sources panel header, requested by the user 2026-10-07" },
+  { x: 686, y: 457, w: 132, h: 39, screens: [38], reason: "prominent deep research entry in the empty space state, requested by the user 2026-10-07" },
 ];
+const deviationsFor = (n: number) => USER_DEVIATIONS.filter((m) => !m.screens || m.screens.includes(n));
 
 // Header back button on Practice and Review (it shifts the breadcrumb), requested by the user 2026-10-07.
 const BACK_BUTTON_SCREENS = new Set([3, 4, 12, 31, 37]);
@@ -195,14 +198,15 @@ function crop(png: PNG, r: Region): PNG {
   return out;
 }
 
-function compare(designPath: string, appBuf: Buffer, masks: Mask[], diffPath: string, region?: Region) {
+function compare(designPath: string, appBuf: Buffer, masks: Mask[], diffPath: string, region: Region | undefined, n: number) {
   let a = PNG.sync.read(readFileSync(designPath));
   let b = PNG.sync.read(appBuf);
   if (region) {
     a = crop(a, region);
     b = crop(b, region);
+    masks = [...masks, ...deviationsFor(n).map((m) => ({ ...m, x: m.x - region.x, y: m.y - region.y }))];
   } else {
-    masks = [...masks, ...USER_DEVIATIONS];
+    masks = [...masks, ...deviationsFor(n)];
   }
   if (a.width !== b.width || a.height !== b.height) {
     throw new Error(`size mismatch: design ${a.width}x${a.height}, app ${b.width}x${b.height}`);
@@ -308,7 +312,7 @@ async function main() {
           buf = await shootApp(browser, r);
         }
         writeFileSync(appPath, buf);
-        row.pct = compare(join(DESIGN_OUT, `${r.id}.png`), buf, BACK_BUTTON_SCREENS.has(r.n) ? [...r.masks, BACK_BUTTON] : r.masks, join(OUT, `${r.id}-diff.png`), r.region);
+        row.pct = compare(join(DESIGN_OUT, `${r.id}.png`), buf, BACK_BUTTON_SCREENS.has(r.n) ? [...r.masks, BACK_BUTTON] : r.masks, join(OUT, `${r.id}-diff.png`), r.region, r.n);
         row.status = row.pct <= THRESHOLD_PCT ? "pass" : r.pending ? "pending" : "fail";
         if (r.pending) row.note = r.pending;
       } catch (e) {

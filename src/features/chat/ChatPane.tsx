@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import { useMessages, useSources, useThreads } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Space, Thread } from "../../lib/types";
@@ -44,9 +44,12 @@ function NewChatState({ hasSources, sourcesOpen, space }: { hasSources: boolean;
       <p className="t-stagger-line text-section font-semibold">{s.chat.emptyTitle}</p>
       <p className="t-stagger-line t-stagger-line--2 max-w-[380px] text-body-lg leading-[1.5] text-muted">{hasSources ? s.chat.emptyBody : s.chat.emptyNoSources}</p>
       {!hasSources && !sourcesOpen && (
-        <div className="t-stagger-line t-stagger-line--3 mt-2">
+        <div className="t-stagger-line t-stagger-line--3 relative mt-2">
           <Button className="font-semibold" disabled={low.active} title={low.reason} onClick={() => setImportDialog({ open: true })}>
             <Plus size={15} /> {s.sources.add}
+          </Button>
+          <Button variant="primary" className="absolute left-1/2 top-full mt-3 -translate-x-1/2 font-semibold" disabled={low.active} title={low.reason} onClick={() => setImportDialog({ open: true, tab: "research" })}>
+            <Sparkles size={15} /> {s.sources.findSources}
           </Button>
         </div>
       )}

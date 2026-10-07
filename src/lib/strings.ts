@@ -117,6 +117,7 @@ export const s = {
   },
   sources: {
     add: "Add source",
+    findSources: "Find sources",
     allSources: "All sources",
     selectAll: "Select all sources",
     openOriginal: "Open original",
@@ -234,6 +235,15 @@ export const s = {
     credibility: "Credibility",
     noResults: "No usable sources found. Try a broader question.",
     needModel: "Deep research needs a chat model. Add a provider in Settings.",
+    suggesting: "Suggesting a question…",
+    regenerate: "Suggest another question",
+    suggestFailed: "Couldn't suggest a question",
+    model: (name: string) => `Model: ${name}`,
+    settingsTitle: "Deep research",
+    settingsBody: "The model and instructions used to find sources. Chat keeps using its own model.",
+    sameAsChat: "Same as chat model",
+    promptLabel: "Instructions for the source-finding agent",
+    resetPrompt: "Reset to default",
   },
   chat: {
     newThread: "New chat",

@@ -6,6 +6,7 @@ import { Slider } from "../../components/ui/slider";
 import { motionReduced, useIsDark, useReducedMotion } from "../../app/useTheme";
 import { ProvidersSection } from "./ProvidersSection";
 import { ModelPicker } from "./ModelPicker";
+import { ResearchSection } from "./ResearchSection";
 import { MemorySection } from "./MemorySection";
 import { CaptureSection } from "./CaptureSection";
 import { CloudSection } from "./CloudSection";
@@ -112,6 +113,9 @@ export function SettingsScreen() {
               setSetting.mutate({ key: "defaultModel", value: v }, { onError: (e) => toastError(s.errors.generic, e) })
             }
           />
+        </SettingsSection>
+        <SettingsSection id="settings-research" title={s.research.settingsTitle} body={s.research.settingsBody}>
+          <ResearchSection />
         </SettingsSection>
         <SettingsSection id="settings-providers" title={s.settings.providers} body={s.settings.providersBody}>
           <ProvidersSection />

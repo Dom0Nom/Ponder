@@ -6,6 +6,7 @@ import { JSDOM } from "jsdom";
 import { extractReadable } from "../src/lib/importers/web";
 import { fetchTranscript, type HttpFn } from "../src/lib/importers/youtube";
 import { deepResearch } from "../src/lib/research/deepResearch";
+import { DEFAULT_RESEARCH_SYSTEM_PROMPT, generateResearchQuery } from "../src/lib/research/prompts";
 import { liveModel } from "./lib/liveModel";
 
 const g = globalThis as unknown as { DOMParser: unknown };
@@ -23,10 +24,19 @@ const yt = await fetchTranscript("aircAruvnKk", http, ["en"]);
 console.log(`youtube: "${yt.title}" ${yt.markdown.length} chars in ${Date.now() - t0} ms`);
 console.log(yt.markdown.split("\n").slice(4, 6).join("\n").slice(0, 200));
 
-const question = process.argv[2] ?? "How does the electron transport chain make ATP?";
+const llm = liveModel();
+const systemPrompt = `${DEFAULT_RESEARCH_SYSTEM_PROMPT}\nFor this run, prefer encyclopedias and university course pages over papers.`;
+const suggested = await generateResearchQuery(
+  { name: "Biology", sources: [{ title: "Campbell Biology, chapter 9: Cellular respiration" }, { title: "Khan Academy: Photosynthesis overview" }] },
+  { llm, systemPrompt },
+);
+console.log(`suggested question for "Biology": ${suggested}`);
+
+const question = process.argv[2] ?? suggested;
 const t1 = Date.now();
 const found = await deepResearch(question, {
-  llm: liveModel(),
+  llm,
+  systemPrompt,
   http,
   fetchPage: async (url) => {
     const r = await fetch(url, { headers: { "User-Agent": UA } });
