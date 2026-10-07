@@ -13,7 +13,7 @@ vi.mock("./proxyFetch", () => ({
 
 import { callOptions, createLanguageModel, listModels, resolveModel, chatgptFetch } from "./model";
 import { catalog, offersTemperature } from "./catalog";
-import { controlsKey, resolveControls } from "./controls";
+import { controlsKey, effortLabel, modelLabel, resolveControls, thinkingOn } from "./controls";
 
 function prov(type: ProviderType, extra: Partial<Provider> = {}): Provider {
   return {
@@ -265,5 +265,26 @@ describe("resolveModel", () => {
   it("returns null without usable providers", () => {
     expect(resolveModel(null, null, [])).toBeNull();
     expect(resolveModel(null, null, [prov("openai", { config: {} })])).toBeNull();
+  });
+});
+
+describe("model button labels", () => {
+  it("drops the vendor prefix", () => {
+    expect(modelLabel("anthropic/claude-haiku-4.5")).toBe("claude-haiku-4.5");
+    expect(modelLabel("qwen3.5-9b")).toBe("qwen3.5-9b");
+  });
+
+  it("shows the chosen level", () => {
+    expect(effortLabel(prov("openai"), { reasoning: "high" })).toBe("High");
+    expect(effortLabel(prov("openai"))).toBe("");
+    expect(effortLabel(prov("anthropic"), { reasoning: "xhigh" })).toBe("Max");
+  });
+
+  it("shows Thinking for a bare switch and nothing when off", () => {
+    expect(effortLabel(prov("lmstudio"))).toBe("");
+    expect(effortLabel(prov("lmstudio"), { reasoning: "medium" })).toBe("Thinking");
+    expect(thinkingOn(prov("lmstudio"))).toBe(false);
+    expect(thinkingOn(prov("lmstudio"), { reasoning: "medium" })).toBe(true);
+    expect(thinkingOn(prov("anthropic"))).toBe(true);
   });
 });

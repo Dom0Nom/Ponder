@@ -41,6 +41,11 @@ export function ImportDialog({
 }) {
   const [tab, setTab] = useState(initialTab ?? "file");
   const query = useUi((st) => st.importDialog.query);
+  const setSourcesOpen = useUi((st) => st.setSourcesOpen);
+  const done = () => {
+    setSourcesOpen(space.id, true);
+    onOpenChange(false);
+  };
   useEffect(() => {
     if (open) setTab(initialTab ?? "file");
   }, [open, initialTab]);
@@ -59,25 +64,25 @@ export function ImportDialog({
           ))}
         </Tabs.List>
         <Tabs.Content value="file">
-          <FileTab space={space} done={() => onOpenChange(false)} />
+          <FileTab space={space} done={done} />
         </Tabs.Content>
         <Tabs.Content value="paste">
-          <PasteTab space={space} done={() => onOpenChange(false)} />
+          <PasteTab space={space} done={done} />
         </Tabs.Content>
         <Tabs.Content value="url">
-          <UrlTab space={space} kind="url" done={() => onOpenChange(false)} />
+          <UrlTab space={space} kind="url" done={done} />
         </Tabs.Content>
         <Tabs.Content value="youtube">
-          <UrlTab space={space} kind="youtube" done={() => onOpenChange(false)} />
+          <UrlTab space={space} kind="youtube" done={done} />
         </Tabs.Content>
         <Tabs.Content value="gdrive">
-          <CloudTab service="google" space={space} done={() => onOpenChange(false)} />
+          <CloudTab service="google" space={space} done={done} />
         </Tabs.Content>
         <Tabs.Content value="dropbox">
-          <CloudTab service="dropbox" space={space} done={() => onOpenChange(false)} />
+          <CloudTab service="dropbox" space={space} done={done} />
         </Tabs.Content>
         <Tabs.Content value="research">
-          <ResearchPanel key={query ?? ""} space={space} initialQuery={query} done={() => onOpenChange(false)} />
+          <ResearchPanel key={query ?? ""} space={space} initialQuery={query} done={done} />
         </Tabs.Content>
       </Tabs.Root>
     </Dialog>

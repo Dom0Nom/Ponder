@@ -19,6 +19,7 @@
   --fill-subtle: #f7f7f7;
   --fill-faint: #fafafa;
   --fill-overlay: rgba(0, 0, 0, 0.08);
+  --chip: #ededed;
   --border: #e6e6e6;
   --divider: #efefef;
   --field: #e3e3e3;
@@ -31,6 +32,7 @@
   --primary: #111111;
   --primary-hover: #000000;
   --on-primary: #ffffff;
+  --on-primary-muted: #a8a8a8;
   --danger: #b3261e;
   --on-danger: #ffffff;
   --danger-hover: #fdf0ef;
@@ -86,6 +88,7 @@
   --fill-subtle: #262626;
   --fill-faint: #242424;
   --fill-overlay: rgba(255, 255, 255, 0.08);
+  --chip: #2e2e2e;
   --border: #2e2e2e;
   --divider: #2a2a2a;
   --field: #333333;
@@ -98,6 +101,7 @@
   --primary: #ececec;
   --primary-hover: #ffffff;
   --on-primary: #171717;
+  --on-primary-muted: #6e6e6e;
   --danger: #e5736b;
   --on-danger: #171717;
   --danger-hover: #3a2220;
@@ -143,6 +147,7 @@
   --color-fill-subtle: var(--fill-subtle);
   --color-fill-faint: var(--fill-faint);
   --color-overlay: var(--fill-overlay);
+  --color-chip: var(--chip);
   --color-border: var(--border);
   --color-divider: var(--divider);
   --color-field: var(--field);
@@ -155,6 +160,7 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-on-primary: var(--on-primary);
+  --color-on-primary-muted: var(--on-primary-muted);
   --color-danger: var(--danger);
   --color-on-danger: var(--on-danger);
   --color-danger-hover: var(--danger-hover);
@@ -305,7 +311,7 @@ body {
   overflow-wrap: anywhere;
 }
 .prose-chat > * + * {
-  margin-top: 0.7em;
+  margin-top: 0.625rem;
 }
 .prose-chat h1,
 .prose-chat h2,

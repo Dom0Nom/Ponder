@@ -1,6 +1,7 @@
 import { api } from "../ipc";
 import { queryClient, qk } from "../queries";
 import { resolveChatModel } from "../chat/llm";
+import { storedControls } from "../chat/controls";
 import { runTurn } from "../chat/runner";
 import type { Course, Lesson, Space, SpaceCurriculum, TopicRef } from "../types";
 import { useQuiz } from "../../stores/quiz";
@@ -117,7 +118,8 @@ export async function startTopic(space: Space, curriculum: SpaceCurriculum, topi
     ? `I want to learn "${topic.title}", but I missed these prerequisite questions:\n${teachFirst.map((q) => `- ${q}`).join("\n")}\nTeach me the prerequisites first (${prereqNames}), then check I've got them before we move on.`
     : `I'm ready to start "${topic.title}" (${topic.description}). Teach it to me step by step, starting from the core idea.`;
   invalidate(space.id);
-  await runTurn({ space, threadId, tutorStyle: space.tutorStyle, thinking: useUi.getState().thinking, focus: useFocusStore.getState().state, userText });
+  const llm = await resolveChatModel(space);
+  await runTurn({ space, threadId, llm, tutorStyle: space.tutorStyle, controls: storedControls(llm), focus: useFocusStore.getState().state, userText });
 }
 
 export async function studyLesson(space: Space, course: Course, lesson: Lesson): Promise<void> {
@@ -128,11 +130,13 @@ export async function studyLesson(space: Space, course: Course, lesson: Lesson):
   const chapter = text.slice(lesson.startOffset, lesson.endOffset);
   const threadId = await threadFor(space.id, course.title);
   invalidate(space.id);
+  const llm = await resolveChatModel(space);
   await runTurn({
     space,
     threadId,
+    llm,
     tutorStyle: space.tutorStyle,
-    thinking: ui.thinking,
+    controls: storedControls(llm),
     focus: useFocusStore.getState().state,
     userText: `Let's study "${lesson.title}" from "${course.title}". Give me an overview of the chapter, then teach it section by section.`,
     query: lesson.title,

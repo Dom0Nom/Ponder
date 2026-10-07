@@ -21,7 +21,8 @@ export function useGlobalShortcuts() {
         ui.navigate({ name: "settings" });
       } else if (e.shiftKey && ui.route.name === "space" && (e.key.toLowerCase() === "s" || e.key.toLowerCase() === "t")) {
         e.preventDefault();
-        ui.togglePane(e.key.toLowerCase() === "s" ? "sources" : "studio");
+        if (e.key.toLowerCase() === "s") ui.setSourcesOpen(ui.route.spaceId, !ui.sourcesOpen[ui.route.spaceId]);
+        else ui.toggleStudio();
       } else if (e.key === "\\") {
         e.preventDefault();
         ui.toggleSidebar();

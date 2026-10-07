@@ -76,7 +76,7 @@ export interface Thread {
   pinned: boolean;
 }
 
-export type MessageRole = "user" | "assistant" | "buddy" | "system";
+export type MessageRole = "user" | "assistant" | "buddy" | "system" | "practice";
 export type MessageStatus = "complete" | "streaming" | "error";
 
 export interface Citation {
@@ -109,6 +109,19 @@ export interface MessageMeta {
   /** this message is a second opinion on another assistant message */
   secondOpinionOf?: string;
   check?: SelfCheck;
+  /** state of an inline practice card (role "practice") */
+  practice?: InlinePracticeMeta;
+}
+
+export interface InlinePracticeMeta {
+  answerId: string;
+  topicKey: string;
+  topicTitle: string;
+  /** problems written so far; the next one is added while the learner answers */
+  items: PracticeItem[];
+  index: number;
+  results: ("right" | "wrong" | "skipped")[];
+  total: number;
 }
 
 export type ClaimVerdict = "supported" | "partly" | "unsupported" | "contradicted";

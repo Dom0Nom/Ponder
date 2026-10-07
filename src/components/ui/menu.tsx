@@ -15,7 +15,7 @@ export const MenuGroup = DM.Group;
 export const MenuRadioGroup = DM.RadioGroup;
 export const MenuSub = DM.Sub;
 
-export function MenuContent({ className, popover, ...p }: DM.DropdownMenuContentProps & { popover?: boolean }) {
+export function MenuContent({ className, popover, ...p }: Omit<DM.DropdownMenuContentProps, "popover"> & { popover?: boolean }) {
   return (
     <DM.Portal>
       <DM.Content sideOffset={4} {...p} className={cn(contentClass, popover ? popoverClass : "shadow-menu", className)} />
