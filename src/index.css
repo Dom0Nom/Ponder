@@ -30,6 +30,7 @@
   --fill-overlay: rgba(0, 0, 0, 0.08);
   --chip: #ededed;
   --icon-tile: #ffffff;
+  --icon-tile-dark: #1f1f23;
   --border: #e6e6e6;
   --border-hover: #d9d9d9;
   --divider: #efefef;
@@ -100,6 +101,7 @@
   --fill-overlay: rgba(255, 255, 255, 0.08);
   --chip: #2e2e2e;
   --icon-tile: #ffffff;
+  --icon-tile-dark: #1f1f23;
   --border: #2e2e2e;
   --border-hover: #444444;
   --divider: #2a2a2a;
@@ -161,6 +163,7 @@
   --color-overlay: var(--fill-overlay);
   --color-chip: var(--chip);
   --color-icon-tile: var(--icon-tile);
+  --color-icon-tile-dark: var(--icon-tile-dark);
   --color-border: var(--border);
   --color-border-hover: var(--border-hover);
   --color-divider: var(--divider);

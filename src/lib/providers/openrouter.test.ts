@@ -120,3 +120,37 @@ describe("search and author filter", () => {
     expect(searchModels([m("a/x", []), m("a/x:batch", [])], "x").map((r) => r.id)).toEqual(["a/x"]);
   });
 });
+
+describe("author logos", () => {
+  it("maps authors to sites, with guesses for unknown ones", async () => {
+    const { authorSites, baseAuthor, hostOfBaseUrl } = await import("./openrouter");
+    expect(authorSites("xiaomi")).toEqual(["mi.com"]);
+    expect(authorSites("~moonshotai")).toEqual(["moonshot.ai"]);
+    expect(authorSites("newlab")).toEqual(["newlab.com", "newlab.ai"]);
+    expect(authorSites("we!rd")).toEqual([]);
+    expect(baseAuthor("~z-ai")).toBe("z-ai");
+    expect(hostOfBaseUrl("https://api.kimi.ai/coding/v1")).toBe("api.kimi.ai");
+    for (const u of ["http://192.168.1.20:1234/v1", "http://localhost:11434", "http://[::1]:80", "http://nas.local/v1", null, ""]) {
+      expect(hostOfBaseUrl(u)).toBeNull();
+    }
+  });
+
+  it("every author in the OpenRouter list is mapped or bundled", async () => {
+    const { AUTHOR_DOMAINS, baseAuthor } = await import("./openrouter");
+    const { authorIconUrl } = await import("./icons");
+    const authors = `aion-labs amazon anthracite-org anthropic apodex arcee-ai baidu bytedance bytedance-seed cognitivecomputations cohere deepseek
+      dots-studio fireworks google gryphe ibm-granite inception inclusionai inference-net liquid mancer meituan meta meta-llama microsoft minimax
+      mistralai moonshotai morph nex-agi nousresearch nvidia openai openrouter perceptron perplexity poolside prism-ml qwen rekaai relace sakana
+      sao10k stepfun tencent thedrummer thinkingmachines typesafe unbiased undi95 upstage writer x-ai xiaomi z-ai ~anthropic ~deepseek ~google
+      ~moonshotai ~openai ~x-ai ~z-ai`.split(/\s+/);
+    const missing = authors.filter((a) => !authorIconUrl(a) && !(baseAuthor(a) in AUTHOR_DOMAINS));
+    expect(missing).toEqual([]);
+  });
+
+  it("bundled authors resolve without a site lookup", async () => {
+    const { authorIconUrl } = await import("./icons");
+    expect(authorIconUrl("~anthropic")).toBeTruthy();
+    expect(authorIconUrl("meta")).toBeTruthy();
+    expect(authorIconUrl("xiaomi")).toBeUndefined();
+  });
+});

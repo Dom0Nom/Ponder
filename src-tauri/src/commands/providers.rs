@@ -348,3 +348,8 @@ pub async fn list_openrouter_models(
 ) -> AppResult<crate::openrouter::OpenRouterCatalog> {
     crate::openrouter::load(&svc.page_http, &state.data_dir, force.unwrap_or(false)).await
 }
+
+#[tauri::command]
+pub async fn site_icon(state: State<'_, AppState>, host: String) -> AppResult<Option<String>> {
+    crate::icons::site_icon(&state.data_dir, &host).await
+}

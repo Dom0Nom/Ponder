@@ -36,6 +36,8 @@ const byAuthor: Record<string, string> = {
   google,
   deepseek,
   "meta-llama": meta,
+  meta,
+  openrouter,
   mistralai: mistral,
   "x-ai": xai,
   qwen,
@@ -43,4 +45,4 @@ const byAuthor: Record<string, string> = {
 };
 
 export const providerIconUrl = (type: ProviderType): string | undefined => byType[type];
-export const authorIconUrl = (author: string): string | undefined => byAuthor[author];
+export const authorIconUrl = (author: string): string | undefined => byAuthor[author.replace(/^~/, "")];

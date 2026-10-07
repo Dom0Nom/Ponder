@@ -36,6 +36,80 @@ export const SEARCH_LIMIT = 50;
 
 export const authorOf = (modelId: string) => (modelId.includes("/") ? modelId.slice(0, modelId.indexOf("/")) : "");
 
+/** Site to take each OpenRouter author's logo from. Empty = no site of their own that identifies them (Hugging Face profiles, parked domains); those keep the plug. */
+export const AUTHOR_DOMAINS: Record<string, string> = {
+  "aion-labs": "aionlabs.ai",
+  amazon: "aws.amazon.com",
+  apodex: "apodex.ai",
+  "arcee-ai": "arcee.ai",
+  baidu: "baidu.com",
+  bytedance: "seed.bytedance.com",
+  "bytedance-seed": "seed.bytedance.com",
+  cognitivecomputations: "dphn.ai",
+  cohere: "cohere.com",
+  "dots-studio": "xiaohongshu.com",
+  fireworks: "fireworks.ai",
+  gryphe: "",
+  "ibm-granite": "ibm.com",
+  inception: "inceptionlabs.ai",
+  inclusionai: "",
+  "anthracite-org": "",
+  sao10k: "",
+  undi95: "",
+  "inference-net": "inference.net",
+  liquid: "liquid.ai",
+  mancer: "mancer.tech",
+  meituan: "meituan.com",
+  microsoft: "microsoft.com",
+  minimax: "minimax.io",
+  moonshotai: "moonshot.ai",
+  morph: "morphllm.com",
+  "nex-agi": "nex-agi.com",
+  nousresearch: "nousresearch.com",
+  nvidia: "nvidia.com",
+  perceptron: "perceptron.inc",
+  perplexity: "perplexity.ai",
+  poolside: "poolside.ai",
+  "prism-ml": "prismml.com",
+  rekaai: "reka.ai",
+  relace: "relace.ai",
+  sakana: "sakana.ai",
+  stepfun: "stepfun.com",
+  tencent: "tencent.com",
+  thedrummer: "thedrummer.com",
+  thinkingmachines: "thinkingmachines.ai",
+  typesafe: "typesafe.com",
+  unbiased: "unbiased.ai",
+  upstage: "upstage.ai",
+  writer: "writer.com",
+  xiaomi: "mi.com",
+  "z-ai": "z.ai",
+};
+
+/** OpenRouter's `~vendor/...` ids are rolling aliases of `vendor/...`. */
+export const baseAuthor = (author: string) => author.replace(/^~/, "");
+
+/** Sites to try for an author's logo, best first: the mapped domain, else `<author>.com` / `.ai`. */
+export function authorSites(author: string): string[] {
+  const a = baseAuthor(author);
+  const mapped = AUTHOR_DOMAINS[a];
+  if (mapped === "") return [];
+  if (mapped) return [mapped];
+  return /^[a-z0-9-]+$/.test(a) ? [`${a}.com`, `${a}.ai`] : [];
+}
+
+/** Hostname to look a custom provider's logo up by; none for IPs, localhost and LAN names. */
+export function hostOfBaseUrl(baseUrl: string | null | undefined): string | null {
+  if (!baseUrl) return null;
+  try {
+    const host = new URL(baseUrl.includes("://") ? baseUrl : `https://${baseUrl}`).hostname.toLowerCase();
+    if (!host.includes(".") || /^\d+\.\d+\.\d+\.\d+$/.test(host) || host.includes(":") || /\.(local|lan|internal)$/.test(host)) return null;
+    return host;
+  } catch {
+    return null;
+  }
+}
+
 export function authorLabel(authorId: string): string {
   return OPENROUTER_AUTHORS.find((a) => a.id === authorId)?.label ?? authorId;
 }
