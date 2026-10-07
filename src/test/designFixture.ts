@@ -432,11 +432,48 @@ function seedGed(db: DB, o: FixtureOptions, at: (n: number) => number, x: <V ext
       content: `${first}\n\nUse **elimination** when both equations are in standard form and a variable has matching or opposite coefficients, so adding the equations cancels it. [3]`,
       reasoning: v2 ? "Comparing when each method needs fewer steps." : null,
       citations,
-      meta: { tutorStyle: "mixed", model: { providerId: "prov-anthropic", model: "Sonnet 5.5" }, thinking: v2, thoughtSeconds: 4 } as T.MessageMeta,
+      meta: { tutorStyle: "mixed", model: { providerId: "prov-anthropic", model: "Sonnet 5.5" }, thinking: v2, ...(v2 ? { thinkingMs: 4000, followUps: ["Why does substitution work?", "Show me when elimination is faster", "Give me a harder one"] } : {}) } as T.MessageMeta,
       status: "complete",
       error: null,
       createdAt: at(2 * H),
     };
+    if (v2) {
+      const item = (id: string, kind: T.PracticeItem["kind"]): T.PracticeItem => ({
+        id,
+        topicKey: "free:Systems of equations",
+        kind,
+        question: "Which method fits best, and what's $x$?\n$$\\begin{cases} y = 3x - 4 \\\\ 2x + y = 11 \\end{cases}$$",
+        options: null,
+        answer: "3",
+        solution: "Substitute y into the second equation.",
+        difficulty: 0,
+        parentId: null,
+        hint: "Replace y in the second equation.",
+        createdAt: at(2 * H),
+      });
+      db.messages["msg-practice-1"] = {
+        id: "msg-practice-1",
+        threadId: "th-systems",
+        role: "practice",
+        content: "",
+        reasoning: null,
+        citations: null,
+        meta: {
+          practice: {
+            answerId: "msg-asst-1",
+            topicKey: "free:Systems of equations",
+            topicTitle: "Systems of equations",
+            items: [item("pi-1", "numeric"), item("pi-2", "numeric")],
+            index: 1,
+            results: ["right"],
+            total: 3,
+          },
+        },
+        status: "complete",
+        error: null,
+        createdAt: at(2 * H - MIN),
+      };
+    }
     db.settings["design.followUps"] = ["Why does substitution work?", "Show me when elimination is faster", "Give me a harder one"];
     db.settings["design.practiceCard"] = { index: 2, of: 3, question: "Which method fits best, and what's $x$?", system: ["y = 3x - 4", "2x + y = 11"] };
   }

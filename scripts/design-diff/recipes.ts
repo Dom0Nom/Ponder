@@ -50,7 +50,7 @@ const hasUiKey = (p: Page, k: string) => p.evaluate((key) => key in (window as u
 
 /** Go to the GED Math space with the Systems of equations thread open. */
 export async function space(p: Page, panes = { sources: false, studio: true }) {
-  await setUi(p, { activeThread: { [SPACE]: THREAD }, panes });
+  await setUi(p, { activeThread: { [SPACE]: THREAD }, studioOpen: panes.studio, sourcesOpen: { [SPACE]: panes.sources } });
   await nav(p, { name: "space", spaceId: SPACE });
   await p.getByText("How do I know when to use substitution").first().waitFor({ timeout: 8000 }).catch(() => undefined);
   await settle(p);
@@ -93,7 +93,7 @@ export const SCREENS: Record<number, Screen> = {
     source: "space-v2",
     query: "chat=v2&focus=work",
     native: true,
-    pending: "New shell: thread list in the sidebar, inline practice card, Studio main view with timer and tiles (01 §5-7, 02 §3.6)",
+    masks: [{ x: 952, y: 48, w: 328, h: 752, reason: "Studio restyled in 02 §10 step" }],
     setup: (p) => space(p),
   },
   3: {
@@ -402,7 +402,7 @@ export const SCREENS: Record<number, Screen> = {
     query: "chat=none&sources=empty",
     native: true,
     setup: async (p) => {
-      await setUi(p, { panes: { sources: false, studio: true } });
+      await setUi(p, { studioOpen: false, sourcesOpen: {} });
       await nav(p, { name: "space", spaceId: SPACE });
       await settle(p, 600);
     },
