@@ -1,4 +1,4 @@
-/** Key table measured from UI-SPEC §4 (device frame 400×560, CSS px). Legends use a small markup:
+/** Key table from UI-SPEC §4 (device frame 400×560, CSS px). Legends use a small markup:
  * `{…}` after text is a superscript; `{nd}`, `{Und}`, `{pi}`, `{var}`, `{toggle}`, `{caret}` are drawn specially. */
 
 export type KeyKind = "second" | "fn" | "op" | "num";
@@ -14,18 +14,20 @@ export interface KeyDef {
   h: number;
 }
 
-const COLS = [76, 126, 176, 226, 276];
+const COLS = [75.95, 126.2, 176.45, 226.7, 276.95];
 const ROWS: Record<string, [number, number]> = {
-  A: [184, 38],
-  B: [224, 38],
-  "1": [264, 37],
-  "2": [304, 37],
-  "3": [344, 37],
-  "4": [383, 38],
-  "5": [423, 37],
-  "6": [463, 37],
-  "7": [503, 37],
+  A: [184.28, 36.75],
+  B: [224.03, 36.75],
+  "1": [264.03, 36.5],
+  "2": [303.78, 36.5],
+  "3": [343.53, 36.5],
+  "4": [383.28, 36.5],
+  "5": [423.03, 36.5],
+  "6": [462.78, 36.5],
+  "7": [502.53, 36.5],
 };
+/** Key pitch; each key's hit target is the full cell centred on it (UI-SPEC §4.1). */
+export const PITCH = { x: 50.25, y: 39.77 };
 
 type Spec = [id: string, main: string, second: string | undefined, kind: KeyKind];
 
@@ -100,13 +102,13 @@ export const KEY_DEFS: KeyDef[] = Object.entries(GRID).flatMap(([row, specs]) =>
     kind,
     x: COLS[col],
     y,
-    w: col === 4 && (row === "6" || row === "7") ? 47 : 48,
+    w: 47,
     h,
   }));
 });
 
 /** Arrow pad (UI-SPEC §5): ellipse box and the outer-edge arrow positions. */
-export const ARROW_PAD = { x: 227, y: 185, w: 97, h: 77, hole: { x: 266, y: 217, w: 18, h: 12 } };
+export const ARROW_PAD = { x: 227.2, y: 184.8, w: 96.3, h: 75.5, hole: { w: 18, h: 12 } };
 
 /** Physical keyboard → key name. */
 export const KEYBOARD: Record<string, string> = {

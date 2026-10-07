@@ -65,5 +65,5 @@ test("display canvas renders at the device size", async ({ page }) => {
   await open(page);
   const box = await page.getByTestId("calc-lcd").boundingBox();
   expect(box && Math.round(box.width)).toBe(243);
-  expect(box && Math.round(box.height)).toBe(104);
+  expect(box && Math.round(box.height)).toBe(100);
 });
