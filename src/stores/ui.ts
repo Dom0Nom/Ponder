@@ -43,6 +43,8 @@ interface UiState {
   justAddedProvider: string | null;
   /** Studio sub-view; null is the main Studio view. Not persisted. */
   studioView: StudioView | null;
+  /** view Back returns to from the current sub-view */
+  studioFrom: StudioView | null;
   studioOpen: boolean;
   /** Sources panel per space; undefined is closed. Not persisted. */
   sourcesOpen: Record<string, boolean>;
@@ -68,7 +70,7 @@ interface UiState {
   setSpaceDialogOpen: (o: boolean) => void;
   setRenamingThread: (id: string | null) => void;
   setJustAddedProvider: (id: string | null) => void;
-  setStudioView: (v: StudioView | null) => void;
+  setStudioView: (v: StudioView | null, from?: StudioView | null) => void;
   toggleStudio: () => void;
   setSourcesOpen: (spaceId: string, open: boolean) => void;
   setPaletteOpen: (o: boolean) => void;
@@ -95,6 +97,7 @@ export const useUi = create<UiState>()(
       renamingThreadId: null,
       justAddedProvider: null,
       studioView: null,
+      studioFrom: null,
       studioOpen: true,
       sourcesOpen: {},
       paletteOpen: false,
@@ -113,6 +116,7 @@ export const useUi = create<UiState>()(
           viewer: null,
           studioView:
             route.name === "space" && st.route.name === "space" && route.spaceId === st.route.spaceId ? st.studioView : null,
+          studioFrom: route.name === "space" && st.route.name === "space" && route.spaceId === st.route.spaceId ? st.studioFrom : null,
           settingsReturn: route.name === "settings" && st.route.name !== "settings" ? st.route : st.settingsReturn,
         })),
       setTheme: (theme) => set({ theme }),
@@ -124,7 +128,7 @@ export const useUi = create<UiState>()(
       setSpaceDialogOpen: (spaceDialogOpen) => set({ spaceDialogOpen }),
       setRenamingThread: (id) => set({ renamingThreadId: id, sidebarOpen: id ? true : get().sidebarOpen }),
       setJustAddedProvider: (justAddedProvider) => set({ justAddedProvider }),
-      setStudioView: (studioView) => set({ studioView }),
+      setStudioView: (studioView, from = null) => set({ studioView, studioFrom: studioView ? from : null }),
       toggleStudio: () => set((st) => ({ studioOpen: !st.studioOpen })),
       setSourcesOpen: (spaceId, open) => set((st) => ({ sourcesOpen: { ...st.sourcesOpen, [spaceId]: open } })),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),

@@ -8,17 +8,12 @@ import { useUi } from "../../stores/ui";
 import { ParkingInput, SessionControls } from "./controls";
 import { useFocusStore } from "./focusStore";
 import { TimeBar } from "./TimeBar";
-import { clockLabel, clockText, phaseLabel, timeFraction } from "./timer";
+import { clockLabel, clockText, elapsedFraction, phaseLabel } from "./timer";
 
 function PhaseIcon({ state, size = 15 }: { state: FocusState; size?: number }) {
   if (state.paused) return <Pause size={size} />;
   if (state.phase === "break" || state.phase === "longBreak") return <Coffee size={size} />;
   return <Timer size={size} />;
-}
-
-function elapsedPercent(state: FocusState): number {
-  const f = timeFraction(state);
-  return (state.phaseDurationMs && state.remainingMs != null ? 1 - f : f) * 100;
 }
 
 const triggerClass = "flex h-7 items-center gap-2.5 rounded-btn px-2.5 hover:bg-fill-active";
@@ -27,7 +22,7 @@ const CompactTimer = forwardRef<HTMLButtonElement, { state: FocusState } & Butto
   { state, onClick, ...rest },
   ref,
 ) {
-  const pct = elapsedPercent(state);
+  const pct = elapsedFraction(state) * 100;
   return (
     <button ref={ref} {...rest} aria-label={`${phaseLabel(state)}, ${clockLabel(state)}`} className={triggerClass} onClick={onClick}>
       <span className="text-body-lg font-semibold tabular-nums">{clockText(state)}</span>
@@ -77,7 +72,7 @@ export function FocusHeaderTimer() {
             </p>
             <p className="text-title font-semibold tabular-nums">{clockText(state)}</p>
           </div>
-          <TimeBar state={state} variant="bar" className="mb-3" />
+          <TimeBar state={state} className="mb-3" />
           {state.goal && <p className="mb-3 text-body text-muted">{state.goal}</p>}
           <SessionControls state={state} />
           <div className="mt-4 border-t border-border pt-3">

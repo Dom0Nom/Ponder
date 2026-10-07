@@ -98,6 +98,14 @@ const outside = (box: { x: number; y: number; w: number; h: number }, reason: st
   { x: box.x + box.w, y: box.y, w: 1280 - box.x - box.w, h: 800 - box.y, reason },
   { x: box.x, y: box.y + box.h, w: box.w, h: 800 - box.y - box.h, reason },
 ];
+const STUDIO_BOX = { x: 931, y: 49, w: 341, h: 743 };
+const STUDIO_IN_CARD =
+  "DECISIONS #2: the app's Studio is the 2a column (328px, outside the chat card); screens 22-26 draw it inside the card at 340px. The recipe re-lays the panel into the design's box; the sidebar and chat around it differ by 2a decisions";
+/** Moves the real Studio panel into the 340px slot inside the chat card that screens 22-26 draw. */
+const studioInCard = (p: Page) =>
+  p.addStyleTag({
+    content: `[data-testid=pane-studio]{top:2px!important;right:9px!important;bottom:9px!important;width:340px!important;border-top:0!important;z-index:20}`,
+  });
 const BACKDROP = "the design draws 9a/10a over a static copy of Home (shifted, no New space button), not the real screen 1";
 
 const SIDEBAR: Mask[] = [
@@ -115,8 +123,10 @@ export const SCREENS: Record<number, Screen> = {
     query: "chat=v2&focus=work",
     native: true,
     masks: [
-      { x: 952, y: 48, w: 328, h: 752, reason: "Studio restyled in 02 §10 step" },
-      { x: 1036, y: 6, w: 92, h: 36, reason: "Calculator button arrives with the calculator in the Studio step (02 §10.7)" },
+      { x: 1121, y: 252, w: 143, h: 90, reason: "tile reads 'Learning plan' + the real curriculum, not 'Study plan / Week 3 of 8' (DECISIONS #14, 02 §10.2: no schedule exists)" },
+      { x: 978, y: 410, w: 80, h: 20, reason: "Course progress is computed from the fixture's lessons; the design's 62% has no matching rows" },
+      { x: 1130, y: 410, w: 110, h: 20, reason: "Journal tile shows the real entry count, 'Reflect on today' is removed placeholder copy (02 §10.2)" },
+      { x: 954, y: 488, w: 326, h: 160, reason: "Recent lists the fixture's real items; the design's three rows are sample data" },
     ],
     setup: async (p) => {
       await space(p);
@@ -170,10 +180,12 @@ export const SCREENS: Record<number, Screen> = {
   },
   7: {
     title: "Start a focus session",
+    masks: outside({ x: 380, y: 170, w: 520, h: 460 }, "the design draws 7a over a reduced static copy of the space (no Sources row, thread list or Studio), not the real screen 2"),
     setup: async (p) => {
-      await space(p);
+      await space(p, { sources: false, studio: false });
       await setUi(p, { focusDialogOpen: true });
       await settle(p, 400);
+      await p.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     },
   },
   8: {
@@ -243,9 +255,11 @@ export const SCREENS: Record<number, Screen> = {
   },
   13: {
     title: "Check my steps",
+    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
     setup: async (p) => {
       await space(p);
       await studio(p, "steps", "Check my steps");
+      await studioInCard(p);
     },
   },
   14: {
@@ -261,9 +275,11 @@ export const SCREENS: Record<number, Screen> = {
     title: "Flashcards",
     query: "cards=browse",
     native: true,
+    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
     setup: async (p) => {
       await space(p);
       await studio(p, "flashcards", "Flashcards");
+      await studioInCard(p);
     },
   },
   16: {
@@ -309,56 +325,79 @@ export const SCREENS: Record<number, Screen> = {
   20: {
     title: "Learning plan",
     query: "curriculum=plan",
+    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
     setup: async (p) => {
       await space(p);
       await studio(p, "plan", "Learning plan");
+      await studioInCard(p);
     },
   },
   21: {
     title: "Course",
+    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
     setup: async (p) => {
       await space(p);
       await studio(p, "course", "Course");
+      await studioInCard(p);
     },
   },
   22: {
     title: "Journal",
+    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
     setup: async (p) => {
       await space(p);
       await studio(p, "journal", "Journal");
+      await studioInCard(p);
     },
   },
   23: {
     title: "Space settings",
     native: true,
+    masks: [
+      ...outside(STUDIO_BOX, STUDIO_IN_CARD),
+      { x: 947, y: 210, w: 310, h: 38, reason: "the fixture's curriculum has no matching option in the Exam select, so it reads None" },
+      { x: 947, y: 326, w: 310, h: 20, reason: "tutor style help copy is the app's own string (s.space.tutorStyleHelp), the design words it differently" },
+      { x: 1197, y: 745, w: 60, h: 36, reason: "Save is disabled until something changes (real behavior); the design draws it enabled" },
+    ],
     setup: async (p) => {
       await space(p);
       await studio(p, "settings", "Space settings");
+      await studioInCard(p);
     },
   },
   24: {
     title: "Focus session running",
     query: "focus=work",
     native: true,
+    masks: [
+      ...outside(STUDIO_BOX, STUDIO_IN_CARD),
+      { x: 931, y: 736, w: 341, h: 57, reason: "the Where do I start? entry row stays reachable from the Focus view (02 §13); 24a doesn't draw it" },
+    ],
     setup: async (p) => {
       await space(p);
       await studio(p, "focus", "Focus");
+      await studioInCard(p);
     },
   },
   25: {
     title: "Where do I start?",
+    masks: [
+      ...outside(STUDIO_BOX, STUDIO_IN_CARD),
+      { x: 956, y: 296, w: 300, h: 146, reason: "25a draws unchecked boxes as thin bars (collapsed wrapper) that push the text left; the app draws 16x16 boxes (02 §14.1 #8)" },
+    ],
     setup: async (p) => {
       await space(p);
       await studio(p, "microsteps", "Where do I start");
+      await studioInCard(p);
     },
   },
   26: {
     title: "Low-energy session",
-    query: "focus=work",
-    pending: "Low-energy card needs a session started with energy=low; fixture seeds energy normal",
+    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
     setup: async (p) => {
       await space(p);
       await studio(p, "lowEnergy", "Low-energy");
+      await studioInCard(p);
     },
   },
   27: {
@@ -465,7 +504,6 @@ export const SCREENS: Record<number, Screen> = {
     native: true,
     masks: [
       { x: 700, y: 250, w: 110, h: 90, reason: "Ponder mark replaces the chat-icon tile, 05-brand.md" },
-      { x: 1036, y: 6, w: 92, h: 36, reason: "Calculator button arrives with the calculator in the Studio step (02 §10.7)" },
     ],
     setup: async (p) => {
       await setUi(p, { studioOpen: false, sourcesOpen: {}, modelControls: { "prov-anthropic:Sonnet 5.5": { reasoning: "high" } } });

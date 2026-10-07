@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Pencil, PanelLeft, PanelRight, Pin, PinOff, Trash2 } from "lucide-react";
+import { Calculator, ChevronDown, Pencil, PanelLeft, PanelRight, Pin, PinOff, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "../components/ui/button";
 import { ConfirmDialog } from "../components/ui/dialog";
@@ -132,6 +132,13 @@ export function Header() {
   const toggleSidebar = useUi((st) => st.toggleSidebar);
   const studioOpen = useUi((st) => st.studioOpen);
   const toggleStudio = useUi((st) => st.toggleStudio);
+  const calcOpen = useUi((st) => st.studioOpen && st.studioView === "calculator");
+
+  const toggleCalculator = () => {
+    const ui = useUi.getState();
+    ui.setStudioView(calcOpen ? null : "calculator");
+    if (!ui.studioOpen) useUi.setState({ studioOpen: true });
+  };
 
   return (
     <header data-tauri-drag-region className="flex h-[48px] shrink-0 items-center gap-3 pl-3 pr-4">
@@ -174,6 +181,19 @@ export function Header() {
       </div>
       <div className="ml-auto flex items-center gap-2">
         <FocusHeaderTimer />
+        {route.name === "space" && (
+          <Tooltip content={s.calc.title}>
+            <Button
+              variant="chrome"
+              className="h-7 gap-2 rounded-btn px-2.5 font-normal"
+              aria-pressed={calcOpen}
+              onClick={toggleCalculator}
+            >
+              <Calculator size={14} />
+              {s.calc.button}
+            </Button>
+          </Tooltip>
+        )}
         {route.name === "space" && (
           <Button
             variant="chrome"

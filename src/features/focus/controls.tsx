@@ -1,13 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Coffee, Pause, Play, Square } from "lucide-react";
+import { Coffee, Pause, Play, Square } from "lucide-react";
 import { useState, type KeyboardEvent } from "react";
 import { Button } from "../../components/ui/button";
+import { Checkbox16 } from "../../components/ui/checkbox";
 import { Input } from "../../components/ui/input";
 import { toast, toastError } from "../../components/ui/toast";
 import { api } from "../../lib/ipc";
 import { s } from "../../lib/strings";
 import type { FocusState, ParkingItem } from "../../lib/types";
-import { cn } from "../../lib/utils";
 import { useFocusStore } from "./focusStore";
 
 type Action = "pause" | "resume" | "endWork" | "stop";
@@ -51,7 +51,7 @@ export function SessionControls({ state, size = "sm" }: { state: FocusState; siz
             <Play size={15} /> {s.focus.resume}
           </Button>
         ) : (
-          <Button variant="tonal" size={size} disabled={!!pending} onClick={() => run("pause")}>
+          <Button variant="secondary" size={size} disabled={!!pending} onClick={() => run("pause")}>
             <Pause size={15} /> {s.focus.pause}
           </Button>
         ))}
@@ -124,12 +124,12 @@ export function ParkingInput({
       disabled={saving}
       onChange={(e) => setText(e.target.value)}
       onKeyDown={onKeyDown}
-      className={cn("h-9", className)}
+      className={className}
     />
   );
 }
 
-export function ParkingList({ items, compact }: { items: ParkingItem[]; compact?: boolean }) {
+export function ParkingList({ items }: { items: ParkingItem[] }) {
   const qc = useQueryClient();
   const resolve = async (id: string) => {
     try {
@@ -140,17 +140,10 @@ export function ParkingList({ items, compact }: { items: ParkingItem[]; compact?
     }
   };
   return (
-    <ul className={cn("space-y-1", compact && "text-[0.8125rem]")}>
+    <ul className="flex flex-col gap-2">
       {items.map((p) => (
-        <li key={p.id} className="group flex items-start gap-2 rounded-lg px-1 py-1 hover:bg-surface-2">
-          <button
-            aria-label={s.focus.parkingResolve}
-            title={s.focus.parkingResolve}
-            onClick={() => resolve(p.id)}
-            className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border text-transparent hover:border-accent hover:text-accent"
-          >
-            <Check size={10} strokeWidth={3} />
-          </button>
+        <li key={p.id} className="flex items-center gap-2.5">
+          <Checkbox16 aria-label={s.focus.parkingResolve} title={s.focus.parkingResolve} checked={false} onChange={() => resolve(p.id)} />
           <span className="min-w-0 flex-1 break-words">{p.text}</span>
         </li>
       ))}

@@ -33,12 +33,18 @@ export function timeFraction(st: FocusState): number {
   return (st.elapsedMs % HOUR) / HOUR;
 }
 
-/** Accent during work, easing toward warm amber in the last 20% of a block; calm green on breaks. */
+/** Share of the phase that has passed (the bar's fill). */
+export function elapsedFraction(st: FocusState): number {
+  const f = timeFraction(st);
+  return st.phaseDurationMs && st.remainingMs != null ? 1 - f : f;
+}
+
+/** Bar color during work, easing toward warm amber in the last 20% of a block; calm green on breaks. */
 export function timeColor(st: FocusState): string {
   if (st.paused) return "var(--text-faint)";
   if (st.phase === "break" || st.phase === "longBreak") return "var(--timer-break)";
-  if (st.remainingMs == null) return "var(--accent)";
+  if (st.remainingMs == null) return "var(--text)";
   const warm = Math.min(1, Math.max(0, (0.2 - timeFraction(st)) / 0.2));
-  if (warm === 0) return "var(--accent)";
-  return `color-mix(in oklab, var(--timer-warm) ${Math.round(warm * 85)}%, var(--accent))`;
+  if (warm === 0) return "var(--text)";
+  return `color-mix(in oklab, var(--timer-warm) ${Math.round(warm * 85)}%, var(--text))`;
 }

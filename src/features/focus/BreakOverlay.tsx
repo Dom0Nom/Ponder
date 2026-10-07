@@ -1,9 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { Check, Coffee, Lightbulb } from "lucide-react";
+import { Coffee } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../components/ui/button";
-import { cn } from "../../lib/utils";
 import { Spinner } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
 import { useFocusPrefs } from "../../lib/focusPrefs";
@@ -13,7 +12,6 @@ import { s } from "../../lib/strings";
 import type { FocusState } from "../../lib/types";
 import { ParkingList } from "./controls";
 import { isBreakPhase, useFocusStore } from "./focusStore";
-import { TimeBar } from "./TimeBar";
 import { clockText } from "./timer";
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -98,80 +96,67 @@ function LockedBreak({ state }: { state: FocusState }) {
       aria-labelledby="break-title"
       aria-describedby="break-body"
       tabIndex={-1}
-      className="pointer-events-auto fixed inset-0 z-[2147483000] flex flex-col items-center overflow-y-auto bg-bg px-6 outline-none"
+      className="pointer-events-auto fixed inset-0 z-[2147483000] grid grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] justify-items-center bg-chrome px-6 outline-none"
     >
-      <div className="m-auto flex w-full max-w-xl flex-col items-center py-12 text-center">
-        <p className="mb-8 flex items-center gap-2 text-sm font-medium text-muted">
-          <Coffee size={16} /> {s.focus.block(state.block)}
+      <div />
+      <div className="flex flex-col items-center text-center">
+        <p className="mt-3.5 text-timer-xl font-medium tabular-nums" aria-live="off">
+          {clockText(state)}
         </p>
-        <TimeBar state={state} size={menu.length > 0 ? 240 : 300}>
-          <span className="text-6xl font-semibold tabular-nums tracking-tight" aria-live="off">
-            {clockText(state)}
-          </span>
-          <span className="mt-1 text-sm text-muted">{s.focus.left}</span>
-        </TimeBar>
-        <h1 id="break-title" className="mt-10 text-2xl font-semibold">
+        <h1 id="break-title" className="mt-9 text-[1.5rem] font-semibold">
           {title}
         </h1>
-        <p id="break-body" className="mt-2 max-w-md text-[0.9375rem] text-muted">
+        <p id="break-body" className="sr-only">
           {s.focus.breakBody}
         </p>
+      </div>
+      <div className="flex min-h-0 w-full flex-col items-center overflow-y-auto pb-24 pt-8">
         {menu.length > 0 ? (
-          <section aria-labelledby="break-pick" className="mt-6 w-full text-left">
-            <h2 id="break-pick" className="mb-3 text-center text-sm font-medium text-muted">
+          <section aria-labelledby="break-pick" className="w-full max-w-[520px]">
+            <h2 id="break-pick" className="mb-2 text-center text-label font-semibold text-muted">
               {s.breakMenu.pick}
             </h2>
             <div className="grid gap-2 sm:grid-cols-2">
-              {menu.map((item) => {
-                const on = picked === item;
-                return (
-                  <button
-                    key={item}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => setPicked(item)}
-                    className={cn(
-                      "flex min-h-12 w-full items-center justify-between gap-3 rounded-[var(--radius-card)] border-2 px-4 py-2.5 text-left text-base shadow-card transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-                      on ? "border-accent bg-accent-soft text-accent-text" : "border-transparent bg-surface hover:bg-surface-2",
-                    )}
-                  >
-                    <span>{item}</span>
-                    {on && <Check size={18} aria-hidden />}
-                  </button>
-                );
-              })}
+              {menu.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  aria-pressed={picked === item}
+                  onClick={() => setPicked(item)}
+                  className="flex h-10 items-center justify-between gap-3 rounded-pane border border-border bg-surface px-3.5 text-left text-input font-medium transition-colors hover:bg-fill aria-pressed:bg-fill-active aria-pressed:font-semibold"
+                >
+                  <span>{item}</span>
+                </button>
+              ))}
             </div>
-            <p role="status" className="mt-3 min-h-5 text-center text-sm text-muted">
+            <p role="status" className="mt-3 min-h-5 text-center text-body text-muted">
               {picked ? s.breakMenu.picked(picked) : ""}
             </p>
           </section>
         ) : (
-        <div className="mt-8 flex w-full max-w-md items-start gap-3 rounded-[var(--radius-card)] bg-surface p-4 text-left shadow-card">
-          <Lightbulb size={18} className="mt-0.5 shrink-0 text-timer-break" />
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-faint">{s.focus.tipLabel}</p>
-            <p className="mt-0.5 text-[0.9375rem]">{tip}</p>
+          <div className="max-w-md text-center">
+            <p className="text-label font-semibold text-muted">{s.focus.tipLabel}</p>
+            <p className="mt-0.5 text-title-sm text-fg-secondary">{tip}</p>
           </div>
-        </div>
         )}
-        {parking.isError && <p className="mt-6 text-xs text-danger">{s.focus.parkingLoadFailed}</p>}
+        {parking.isError && <p className="mt-6 text-label text-danger">{s.focus.parkingLoadFailed}</p>}
         {open.length > 0 && (
-          <div className="mt-4 w-full max-w-md rounded-[var(--radius-card)] bg-surface p-4 text-left shadow-card">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-faint">{s.focus.parkingAtBreak}</p>
+          <div className="mt-6 w-full max-w-md text-left">
+            <p className="mb-2 text-label font-semibold text-muted">{s.focus.parkingAtBreak}</p>
             <ParkingList items={open} />
           </div>
         )}
-        <div className="mt-12 flex flex-col items-center gap-2">
-          <Button variant="ghost" size="sm" disabled={busy} onClick={needApp} className="text-faint">
-            {busy && <Spinner size={13} />}
-            {s.focus.needApp}
-          </Button>
-          {error && (
-            <p role="alert" className="text-xs text-danger">
-              {error}
-            </p>
-          )}
-        </div>
+      </div>
+      <div className="fixed bottom-8 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2">
+        {error && (
+          <p role="alert" className="text-label text-danger">
+            {error}
+          </p>
+        )}
+        <Button variant="ghost-muted" size="sm" disabled={busy} onClick={needApp}>
+          {busy && <Spinner size={13} />}
+          {s.focus.needApp}
+        </Button>
       </div>
     </div>,
     document.body,
@@ -194,12 +179,12 @@ function PausedBanner({ state }: { state: FocusState }) {
   return createPortal(
     <div
       role="status"
-      className="fixed left-1/2 top-2 z-[70] flex -translate-x-1/2 items-center gap-3 rounded-full border border-border bg-surface py-1 pl-4 pr-1 text-[0.8125rem] shadow-lg"
+      className="fixed left-1/2 top-2 z-[70] flex h-10 -translate-x-1/2 items-center gap-3 rounded-pane border border-border bg-surface pl-3.5 pr-1 text-body shadow-menu"
     >
-      <Coffee size={15} className="text-timer-break" />
+      <Coffee size={15} />
       <span className="font-medium">{s.focus.breakPaused}</span>
-      <span className="text-faint tabular-nums">· {s.focus.timeLeft(clockText(state))}</span>
-      <Button variant="primary" size="sm" disabled={busy} onClick={resume}>
+      <span className="text-muted tabular-nums">· {s.focus.timeLeft(clockText(state))}</span>
+      <Button variant="primary" size="sm" className="h-8 px-3" disabled={busy} onClick={resume}>
         {s.focus.resumeBreak}
       </Button>
     </div>,

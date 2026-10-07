@@ -7,6 +7,11 @@ export interface HyperfocusPrefs {
   minutes: number;
 }
 
+export interface CheckInPrefs {
+  /** minutes between study-buddy check-ins; 0 = off */
+  minutes: number;
+}
+
 export interface ReadingPrefs {
   bionic: boolean;
   ruler: boolean;
@@ -23,6 +28,7 @@ export const PREF_KEYS = {
   breakMenu: "focus.breakMenu",
   reading: "reading.aids",
   music: "focus.music",
+  checkIns: "focus.checkIns",
 } as const;
 
 export const DEFAULT_HYPERFOCUS: HyperfocusPrefs = { enabled: true, minutes: 90 };
@@ -32,6 +38,7 @@ export const DEFAULT_BREAK_MENU: string[] = [
   "Look out of a window",
   "Do ten slow breaths",
 ];
+export const DEFAULT_CHECKINS: CheckInPrefs = { minutes: 15 };
 export const DEFAULT_READING: ReadingPrefs = { bionic: false, ruler: false };
 export const DEFAULT_MUSIC: MusicPrefs = { enabled: false, playlist: "" };
 
@@ -45,6 +52,7 @@ export function readPrefs(settings: Record<string, unknown> | undefined) {
     breakMenu: Array.isArray(menu) ? menu.filter((x): x is string => typeof x === "string") : DEFAULT_BREAK_MENU,
     reading: obj(settings?.[PREF_KEYS.reading], DEFAULT_READING),
     music: obj(settings?.[PREF_KEYS.music], DEFAULT_MUSIC),
+    checkIns: obj(settings?.[PREF_KEYS.checkIns], DEFAULT_CHECKINS),
   };
 }
 
