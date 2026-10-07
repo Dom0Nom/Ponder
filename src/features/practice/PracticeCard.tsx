@@ -23,7 +23,7 @@ export function PracticeCard({ space }: { space: Space }) {
             <li key={a.topicKey}>
               <button
                 onClick={() => navigate({ name: "practice", spaceId: space.id, topicKey: a.topicKey })}
-                className="flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left text-xs hover:bg-surface-2"
+                className="flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left text-xs hover:bg-fill"
               >
                 <span className="min-w-0 flex-1 truncate">{a.topicTitle}</span>
                 <span className="tabular-nums text-faint">{skillPercent(a.theta)}</span>

@@ -82,12 +82,6 @@
   --font-math-stack: "STIX Two Text", "Times New Roman", serif;
   --font-kbd-stack: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
   --text-scale: 1;
-  /* transitional aliases: delete when `grep -rn "accent\|surface-2\|surface-3\|bg-bg" src` is empty */
-  --accent: var(--primary);
-  --accent-hover: var(--primary-hover);
-  --accent-soft: var(--fill-active);
-  --accent-text: var(--text);
-  --on-accent: var(--on-primary);
   --mark-tint-light: #ffffff;
   --mark-tint-dark: #d9d9d9;
   color-scheme: light;
@@ -220,15 +214,6 @@
   --shadow-float: var(--sh-float);
   --shadow-panel: var(--sh-panel);
   --shadow-card: none;
-  /* transitional aliases */
-  --color-bg: var(--chrome);
-  --color-surface-2: var(--fill);
-  --color-surface-3: var(--fill-active);
-  --color-accent: var(--primary);
-  --color-accent-hover: var(--primary-hover);
-  --color-accent-soft: var(--fill-active);
-  --color-accent-text: var(--text);
-  --color-on-accent: var(--on-primary);
 }
 
 @theme {

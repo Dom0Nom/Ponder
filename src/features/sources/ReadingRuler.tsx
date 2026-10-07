@@ -22,8 +22,8 @@ export function ReadingRuler({ enabled, children }: { enabled: boolean; children
       {children}
       {show && (
         <div aria-hidden data-testid="reading-ruler" className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute inset-x-0 top-0 bg-bg/60 motion-safe:transition-[height] motion-safe:duration-75" style={{ height: top }} />
-          <div className="absolute inset-x-0 bottom-0 bg-bg/60 motion-safe:transition-[top] motion-safe:duration-75" style={{ top: top + BAND }} />
+          <div className="absolute inset-x-0 top-0 bg-chrome/60 motion-safe:transition-[height] motion-safe:duration-75" style={{ height: top }} />
+          <div className="absolute inset-x-0 bottom-0 bg-chrome/60 motion-safe:transition-[top] motion-safe:duration-75" style={{ top: top + BAND }} />
           <div className="absolute inset-x-0 border-y border-control" style={{ top, height: BAND }} />
         </div>
       )}

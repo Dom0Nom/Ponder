@@ -1,7 +1,7 @@
 import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { cn } from "../../lib/utils";
 
-type Variant = "primary" | "secondary" | "ghost" | "ghost-muted" | "chrome" | "danger" | "success" | "tonal";
+type Variant = "primary" | "secondary" | "ghost" | "ghost-muted" | "chrome" | "danger" | "success";
 type Size = "sm" | "md" | "lg" | "icon" | "icon-sm" | "icon-xs";
 
 const variants: Record<Variant, string> = {
@@ -12,8 +12,6 @@ const variants: Record<Variant, string> = {
   chrome: "text-fg font-medium hover:bg-fill-active aria-pressed:bg-pressed aria-pressed:hover:bg-pressed",
   danger: "bg-danger text-on-danger font-semibold hover:brightness-110",
   success: "bg-success text-on-success font-medium hover:brightness-110",
-  // transitional: screens not yet restyled still pass "tonal"
-  tonal: "border border-control bg-transparent text-fg font-semibold hover:bg-fill-subtle",
 };
 const sizes: Record<Size, string> = {
   sm: "h-7.5 px-2.25 gap-1.5 rounded-btn",
