@@ -163,11 +163,11 @@ function layoutNode(n: MNode, small: boolean): Box {
     case "inv": {
       const c = layoutSeq(n.a, small);
       const h = c.asc + 1;
-      return { w: c.w + 1, asc: c.asc, desc: c.desc, ops: [...shift(c.ops, 1, 0), { k: "inv", x: 0, y: -c.asc, w: c.w + 1, h }] };
+      return { w: c.w, asc: c.asc, desc: c.desc, ops: [...c.ops, { k: "inv", x: -1, y: -c.asc, w: c.w + 1, h }] };
     }
     case "blink": {
       const c = layoutSeq(n.a, small);
-      return { w: c.w + 1, asc: c.asc, desc: c.desc, ops: [...shift(c.ops, 1, 0), { k: "blink", x: 0, y: -c.asc, w: c.w + 1, h: c.asc + 1 }] };
+      return { w: c.w, asc: c.asc, desc: c.desc, ops: [...c.ops, { k: "blink", x: -1, y: -c.asc, w: c.w + 1, h: c.asc + 1 }] };
     }
   }
 }
