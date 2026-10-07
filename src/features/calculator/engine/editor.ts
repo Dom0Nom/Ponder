@@ -41,6 +41,9 @@ function parentTpl(ed: Ed): { list: El[]; el: { k: TplKind; s: El[][] }; i: numb
 
 export const isEmpty = (ed: Ed) => ed.els.length === 0;
 
+/** The cursor is in an exponent that has nothing in it yet. */
+export const inEmptyPow = (ed: Ed) => parentTpl(ed)?.el.k === "pow" && listAt(ed).length === 0;
+
 /** Insert elements at the cursor. A single element overwrites unless insert mode is on or the cursor is at the end. */
 export function insert(ed: Ed, els: El[], enter?: { at: number; slot: number; end?: boolean }) {
   const l = listAt(ed);

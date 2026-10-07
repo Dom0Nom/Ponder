@@ -29,6 +29,7 @@ type Rect = [number, number, number, number];
 interface Pending {
   inv: Rect[];
   blink: Rect[];
+  solid: Rect[];
 }
 
 const INK_W: Record<FontId, number> = { n: 5, s: 5, m: 4 };
@@ -55,6 +56,9 @@ function drawOps(d: Dots, ops: Op[], ox: number, base: number, p: Pending) {
       case "cur":
       case "blink":
         p.blink.push([x, y, o.w, o.h]);
+        break;
+      case "solid":
+        p.solid.push([x, y, o.w, o.h]);
         break;
     }
   }
@@ -88,7 +92,7 @@ function drawGrid(d: Dots, m: Model, p: Pending) {
 /** Rasterize a screen model into text-area dots. `blinkOn` shows the cursor and blinking choices. */
 export function rasterize(m: Model, blinkOn: boolean): Uint8Array {
   const d = new Dots();
-  const p: Pending = { inv: [], blink: [] };
+  const p: Pending = { inv: [], blink: [], solid: [] };
   if (m.kind === "grid") drawGrid(d, m, p);
   else if (m.kind === "menu") {
     m.rows.forEach((row, i) => {
@@ -114,7 +118,10 @@ export function rasterize(m: Model, blinkOn: boolean): Uint8Array {
     }
   }
   for (const r of p.inv) d.xor(...r);
-  if (blinkOn) for (const r of p.blink) d.xor(...r);
+  if (blinkOn) {
+    for (const r of p.blink) d.xor(...r);
+    for (const r of p.solid) d.fill(...r);
+  }
   return d.bits;
 }
 

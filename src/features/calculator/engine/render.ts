@@ -1,4 +1,4 @@
-import { BLINK_OFF, BLINK_ON, CUR, CUR_INS, type MNode, cells, measure, parse, serialize } from "../lcd/layout";
+import { BLINK_OFF, BLINK_ON, type MNode, cells, isEmptySlot, measure, parse, serialize } from "../lcd/layout";
 import { type State, MODE_ROWS, fmtOf, menuTabs, modeSelected, tableRows } from "./calc";
 import { isEmpty, markup } from "./editor";
 import { formatFit, formatPlain } from "./format";
@@ -67,18 +67,36 @@ function modeInd(s: State): string[] {
   return out;
 }
 
+/** Function names and `ans` are tokens: a token that crosses a cut stays whole. */
+function tokenEnds(ns: MNode[]): number[] {
+  const flat = ns.map((n) => (n.t !== "g" ? "." : /^[A-Za-z]$/.test(n.key) ? n.key : n.key === "(" ? "(" : n.key === "⁻¹" ? "~" : "."));
+  const ends = ns.map((_, i) => i + 1);
+  for (const m of flat.join("").matchAll(/[A-Za-z]{2,}~?\(?/g))
+    for (let i = m.index; i < m.index + m[0].length; i++) ends[i] = m.index + m[0].length;
+  return ends;
+}
+
 /** Cut a history row at the 16th cell, also inside a superscript, and mark it with ▸ (BEHAVIOR §3.2). */
 function cutRight(m: string): string {
   let budget = CELLS - 1;
   const take = (ns: MNode[]): string => {
+    const ends = tokenEnds(ns);
     let out = "";
-    for (const n of ns) {
+    for (let i = 0; i < ns.length; i++) {
+      const n = ns[i];
       if (budget <= 0) break;
       if (n.t === "sup") {
         out += `^{${take(n.a)}}`;
         continue;
       }
-      const c = n.t === "g" ? 1 : cells([n]);
+      if (n.t === "g") {
+        const e = ends[i];
+        out += serialize(ns.slice(i, e));
+        budget -= e - i;
+        i = e - 1;
+        continue;
+      }
+      const c = cells([n]);
       if (c > budget) {
         budget = 0;
         break;
@@ -91,26 +109,60 @@ function cutRight(m: string): string {
   return take(parse(m)) + "▸";
 }
 
+const hasCursor = (n: MNode): boolean =>
+  n.t === "cur" || ("a" in n && (n.a.some(hasCursor) || (n.t === "frac" && n.b.some(hasCursor)) || (n.t === "root" && n.i.some(hasCursor))));
+
+/** The slot of a template that holds the cursor. */
+function cursorSlot(n: MNode): MNode[] | undefined {
+  if (n.t === "frac") return n.a.some(hasCursor) ? n.a : n.b;
+  if (n.t === "root") return n.i.some(hasCursor) ? n.i : n.a;
+  return "a" in n ? n.a : undefined;
+}
+
+/** Cells the cursor needs after the last item when it sits at the very end (one more inside a superscript). */
+function endCost(ns: MNode[]): number {
+  const last = ns[ns.length - 1];
+  if (!last) return 0;
+  switch (last.t) {
+    case "cur":
+      return 1;
+    case "sup": {
+      const c = endCost(last.a);
+      return c && c + 1;
+    }
+    case "sqrt":
+    case "root":
+      return endCost(last.a);
+    case "frac":
+      return endCost(last.a) || endCost(last.b);
+    default:
+      return 0;
+  }
+}
+
 /** Horizontal scroll of the entry being typed: the cursor keeps a cell of its own (BEHAVIOR §3.2). */
 function scrollEntry(m: string): string {
-  const nodes = parse(m);
-  const endsWithCursor = (ns: MNode[]): boolean => {
-    const last = ns[ns.length - 1];
-    if (!last) return false;
-    if (last.t === "cur") return true;
-    if (last.t === "sup" || last.t === "sqrt") return endsWithCursor(last.a);
-    if (last.t === "frac") return endsWithCursor(last.a) || endsWithCursor(last.b);
-    if (last.t === "root") return endsWithCursor(last.a);
-    return false;
-  };
-  const hasCursor = (n: MNode): boolean =>
-    n.t === "cur" || ("a" in n && (n.a.some(hasCursor) || (n.t === "frac" && n.b.some(hasCursor)) || (n.t === "root" && n.i.some(hasCursor))));
-  const items = nodes.map((n) => ({ n, w: n.t === "cur" ? 0 : cells([n]) }));
-  const endsInToken = /[a-z]{2,}(⁻¹)?\(?$/.test(m.split(CUR).join("").split(CUR_INS).join(""));
-  if (endsWithCursor(nodes) && !endsInToken) items[items.length - 1].w += 1;
-  const total = items.reduce((a, it) => a + it.w, 0);
-  if (total <= CELLS) return m;
-  const cur = Math.max(0, items.findIndex((it) => hasCursor(it.n)));
+  let nodes = parse(m);
+  if (cells(nodes) <= CELLS - 2) return m;
+  // a template wider than the screen scrolls by its content: descend to the slot that holds the cursor
+  let hidden = 0;
+  for (;;) {
+    const at = nodes.findIndex(hasCursor);
+    const n = nodes[at];
+    const slot = n && n.t !== "cur" && cells([n]) > CELLS - 2 ? cursorSlot(n) : undefined;
+    if (!slot) break;
+    hidden += cells(nodes.slice(0, at)) + (n.t === "sqrt" || (n.t === "root" && slot === n.a) ? 1 : 0);
+    nodes = slot;
+  }
+  const items: { n: MNode | null; w: number }[] = nodes.map((n, i) => ({
+    n,
+    w: n.t === "cur" ? (nodes[i + 1]?.t === "frac" && nodes[i - 1]?.t === "g" ? 1 : 0) : n.t === "frac" && isEmptySlot(n.a) && isEmptySlot(n.b) ? 2 : cells([n]),
+  }));
+  items[items.length - 1].w += endCost(nodes);
+  const total = hidden + items.reduce((a, it) => a + it.w, 0);
+  if (total <= CELLS) return serialize(nodes);
+  if (hidden) items.unshift({ n: null, w: hidden });
+  const cur = Math.max(0, items.findIndex((it) => it.n && hasCursor(it.n)));
   const window = (start: number) => {
     let used = start > 0 ? 1 : 0;
     let i = start;
@@ -121,11 +173,11 @@ function scrollEntry(m: string): string {
     }
     return i;
   };
-  let start = 0;
+  let start = hidden ? 1 : 0;
   while (window(start) <= cur && start < items.length - 1) start++;
   const stop = window(start);
   const rest = items.slice(stop).some((it) => it.w > 0);
-  return (start > 0 ? "◂" : "") + serialize(items.slice(start, stop).map((it) => it.n)) + (rest ? "▸" : "");
+  return (start > 0 ? "◂" : "") + serialize(items.slice(start, stop).map((it) => it.n!)) + (rest ? "▸" : "");
 }
 
 const contains = (ns: MNode[], t: MNode["t"]): boolean =>

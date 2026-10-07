@@ -84,7 +84,8 @@ export type Op =
   | { k: "rect"; x: number; y: number; w: number; h: number }
   | { k: "inv"; x: number; y: number; w: number; h: number }
   | { k: "cur"; x: number; y: number; w: number; h: number }
-  | { k: "blink"; x: number; y: number; w: number; h: number };
+  | { k: "blink"; x: number; y: number; w: number; h: number }
+  | { k: "solid"; x: number; y: number; w: number; h: number };
 
 export interface Box {
   w: number;
@@ -100,14 +101,38 @@ export function layoutSeq(nodes: MNode[], font: FontId = "n"): Box {
   let x = 0;
   let asc = GLYPH_H[font];
   let desc = DESC[font];
-  for (const n of nodes) {
+  nodes.forEach((n, i) => {
     const b = layoutNode(n, font);
     ops.push(...shift(b.ops, x, 0));
-    x += b.w;
+    // the cursor in front of a stacked fraction (after a mixed number's whole part) takes a cell of its own
+    x += b.w + (n.t === "cur" && nodes[i + 1]?.t === "frac" && nodes[i - 1]?.t === "g" ? PITCH[font] : 0);
     asc = Math.max(asc, b.asc);
     desc = Math.max(desc, b.desc);
-  }
+  });
   return { w: x, asc, desc, ops };
+}
+
+export const isEmptySlot = (nodes: MNode[]) => nodes.every((n) => n.t === "cur");
+
+/** Dotted placeholder box: the outline of a glyph cell with every second dot lit. */
+function placeholder(font: FontId): Op[] {
+  const h = GLYPH_H[font];
+  const w = font === "m" ? 4 : 5;
+  const ops: Op[] = [];
+  for (let r = 0; r < h; r += 2) {
+    const edge = r === 0 || r === h - 1;
+    for (let c = 0; c < w; c += edge ? 2 : w - 1) ops.push({ k: "rect", x: c, y: r - h, w: 1, h: 1 });
+  }
+  return ops;
+}
+
+/** An empty template slot is a placeholder box; a cursor in it fills the box while the cursor is on. */
+function layoutSlot(nodes: MNode[], font: FontId): Box {
+  if (!isEmptySlot(nodes)) return layoutSeq(nodes, font);
+  const h = GLYPH_H[font];
+  const ops = placeholder(font);
+  if (nodes.length) ops.push({ k: "solid", x: 0, y: -h, w: font === "m" ? 4 : 5, h });
+  return { w: PITCH[font], asc: h, desc: DESC[font], ops };
 }
 
 function layoutNode(n: MNode, font: FontId): Box {
@@ -120,15 +145,13 @@ function layoutNode(n: MNode, font: FontId): Box {
     case "cur":
       return { w: 0, asc: h, desc: 0, ops: [{ k: "cur", x: 0, y: n.under ? 0 : -h, w: p - 1, h: n.under ? 1 : h }] };
     case "sup": {
-      const e = layoutSeq(n.a, sub);
+      const e = layoutSlot(n.a, sub);
       const dy = font === "n" ? -4 : -2;
-      const ops = shift(e.ops, 0, dy);
-      if (!n.a.length) ops.push({ k: "rect", x: 0, y: dy - 5, w: 5, h: 1 }, { k: "rect", x: 0, y: dy - 1, w: 5, h: 1 });
-      return { w: n.a.length ? e.w : p, asc: e.asc - dy, desc: Math.max(0, e.desc + dy), ops };
+      return { w: e.w, asc: e.asc - dy, desc: Math.max(0, e.desc + dy), ops: shift(e.ops, 0, dy) };
     }
     case "frac": {
-      const a = layoutSeq(n.a, sub);
-      const b = layoutSeq(n.b, sub);
+      const a = layoutSlot(n.a, sub);
+      const b = layoutSlot(n.b, sub);
       const w = Math.max(a.w, b.w, p);
       const bar = font === "n" ? -4 : -3;
       const gap = font === "n" ? 1 : 0;
@@ -143,8 +166,8 @@ function layoutNode(n: MNode, font: FontId): Box {
     }
     case "sqrt":
     case "root": {
-      const r = layoutSeq(n.a, font);
-      const idx = n.t === "root" ? layoutSeq(n.i, sub) : null;
+      const r = layoutSlot(n.a, font);
+      const idx = n.t === "root" ? layoutSlot(n.i, sub) : null;
       const ox = idx ? idx.w : 0;
       const barY = -r.asc - 1;
       const ops: Op[] = [];
@@ -177,8 +200,9 @@ export function measure(markup: string): { w: number; h: number } {
   return { w: b.w, h: b.asc + b.desc };
 }
 
-/** Character cells (BEHAVIOR §3.2): fractions count their wider part, √ counts one cell. */
+/** Character cells (BEHAVIOR §3.2): fractions count their wider part, √ counts one cell; an empty slot is one cell. */
 export function cells(nodes: MNode[]): number {
+  const slot = (ns: MNode[]) => (isEmptySlot(ns) ? 1 : cells(ns));
   let c = 0;
   for (const n of nodes) {
     switch (n.t) {
@@ -186,18 +210,20 @@ export function cells(nodes: MNode[]): number {
         c += 1;
         break;
       case "sup":
+        c += slot(n.a);
+        break;
       case "inv":
       case "blink":
         c += cells(n.a);
         break;
       case "frac":
-        c += Math.max(cells(n.a), cells(n.b));
+        c += Math.max(slot(n.a), slot(n.b));
         break;
       case "sqrt":
-        c += 1 + cells(n.a);
+        c += 1 + slot(n.a);
         break;
       case "root":
-        c += cells(n.i) + 1 + cells(n.a);
+        c += slot(n.i) + 1 + slot(n.a);
         break;
     }
   }
