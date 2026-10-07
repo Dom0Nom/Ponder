@@ -16,7 +16,7 @@ export function parseHyperfocusMinutes(text: string): number | null {
   return text.trim() !== "" && Number.isInteger(n) && n >= MIN_MINUTES && n <= MAX_MINUTES ? n : null;
 }
 
-export function HyperfocusSettings() {
+export function HyperfocusSettings({ part = "switch" }: { part?: "switch" | "minutes" }) {
   const { prefs, isLoading, error } = useFocusPrefs();
   const { refetch } = useSettings();
   const setPref = useSetFocusPref();
@@ -25,6 +25,7 @@ export function HyperfocusSettings() {
 
   useEffect(() => setText(String(hf.minutes)), [hf.minutes]);
 
+  if (part === "minutes" && (isLoading || error)) return null;
   if (isLoading) return <Skeleton className="my-3 h-12" />;
   if (error) return <ErrorState title={s.errors.generic} error={error} onRetry={() => refetch()} />;
 
@@ -37,15 +38,21 @@ export function HyperfocusSettings() {
     }
   };
 
+  if (part === "switch")
+    return (
+      <div data-testid="hyperfocus-settings">
+        <SettingsRow title={s.focus.hyperfocus.settingTitle} description={s.focus.hyperfocus.settingHelp}>
+          <Switch
+            label={s.focus.hyperfocus.settingTitle}
+            checked={hf.enabled}
+            onCheckedChange={(enabled) => void save({ ...hf, enabled })}
+          />
+        </SettingsRow>
+      </div>
+    );
+
   return (
-    <div data-testid="hyperfocus-settings" className="[&>*+*]:border-t [&>*+*]:border-divider">
-      <SettingsRow title={s.focus.hyperfocus.settingTitle} description={s.focus.hyperfocus.settingHelp}>
-        <Switch
-          label={s.focus.hyperfocus.settingTitle}
-          checked={hf.enabled}
-          onCheckedChange={(enabled) => void save({ ...hf, enabled })}
-        />
-      </SettingsRow>
+    <>
       {hf.enabled && (
         <SettingsRow
           title={<label htmlFor="hyperfocus-minutes">{s.focus.hyperfocus.minutes}</label>}
@@ -73,6 +80,6 @@ export function HyperfocusSettings() {
           />
         </SettingsRow>
       )}
-    </div>
+    </>
   );
 }

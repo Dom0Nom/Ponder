@@ -86,8 +86,17 @@ interface Screen {
 
 const home = (p: Page) => nav(p, { name: "home" });
 
+/** Masks covering everything in the 1280x800 frame except `box`. */
+const outside = (box: { x: number; y: number; w: number; h: number }, reason: string): Mask[] => [
+  { x: 0, y: 0, w: 1280, h: box.y, reason },
+  { x: 0, y: box.y, w: box.x, h: 800 - box.y, reason },
+  { x: box.x + box.w, y: box.y, w: 1280 - box.x - box.w, h: 800 - box.y, reason },
+  { x: box.x, y: box.y + box.h, w: box.w, h: 800 - box.y - box.h, reason },
+];
+const BACKDROP = "the design draws 9a/10a over a static copy of Home (shifted, no New space button), not the real screen 1";
+
 export const SCREENS: Record<number, Screen> = {
-  1: { title: "Home", native: true, setup: home },
+  1: { title: "Home", native: true, query: "cards=review", setup: home },
   2: {
     title: "Space (chat, Studio main view, focus running)",
     source: "space-v2",
@@ -152,6 +161,11 @@ export const SCREENS: Record<number, Screen> = {
   },
   9: {
     title: "Command palette",
+    query: "cards=review",
+    masks: [
+      ...outside({ x: 339, y: 96, w: 602, h: 504 }, BACKDROP),
+      { x: 340, y: 150, w: 600, h: 450, reason: "design lists 2 of the 6 fixture spaces, so the rows below shift (sample data)" },
+    ],
     setup: async (p) => {
       await home(p);
       await setUi(p, { paletteOpen: true });
@@ -160,10 +174,16 @@ export const SCREENS: Record<number, Screen> = {
   },
   10: {
     title: "Quick capture",
+    query: "cards=review",
+    masks: [
+      ...outside({ x: 399, y: 233, w: 482, h: 334 }, BACKDROP),
+      { x: 798, y: 516, w: 66, h: 38, reason: "Save is disabled while the note is empty (real behavior); the design draws it enabled" },
+    ],
     setup: async (p) => {
       await home(p);
       await setUi(p, { captureOpen: true });
       await settle(p, 400);
+      await p.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     },
   },
   11: {
@@ -352,6 +372,9 @@ export const SCREENS: Record<number, Screen> = {
   },
   32: {
     title: "Add an AI provider",
+    masks: [
+      { x: 380, y: 500, w: 560, h: 260, reason: "provider tiles the design omits stay reachable, DECISIONS #14" },
+    ],
     setup: async (p) => {
       await nav(p, { name: "settings" });
       await click(p, /add provider/i);
@@ -368,11 +391,12 @@ export const SCREENS: Record<number, Screen> = {
   },
   34: {
     title: "Sign in with Grok",
-    pending: "Redesigned Add-provider page (screen 32) with the Grok device-code step",
     setup: async (p) => {
       await nav(p, { name: "settings" });
       await click(p, /add provider/i);
-      await click(p, /grok/i, null).catch(() => undefined);
+      await p.getByRole("button", { name: /^Grok/ }).first().click();
+      await click(p, /add provider/i);
+      await p.getByText("WDJB-MJHT").waitFor({ timeout: 8000 });
       await settle(p, 600);
     },
   },
@@ -380,7 +404,7 @@ export const SCREENS: Record<number, Screen> = {
     title: "Break menu",
     setup: async (p) => {
       await nav(p, { name: "settings" });
-      await click(p, /^edit$/i).catch(() => undefined);
+      await click(p, /edit break menu/i);
       await settle(p, 400);
     },
   },

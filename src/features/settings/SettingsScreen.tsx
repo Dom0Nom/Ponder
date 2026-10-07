@@ -93,17 +93,6 @@ export function SettingsScreen() {
                 format={(v) => `${Math.round(v * 100)}%`}
               />
             </SettingsRow>
-            <SettingsRow title={s.settings.reduceMotion}>
-              <Switch checked={ui.reduceMotion} onCheckedChange={ui.setReduceMotion} label={s.settings.reduceMotion} />
-            </SettingsRow>
-            <SettingsRow title={s.settings.visualEffects}>
-              <Switch
-                checked={ui.visualEffects && !reduced}
-                disabled={reduced}
-                onCheckedChange={ui.setVisualEffects}
-                label={s.settings.visualEffects}
-              />
-            </SettingsRow>
           </SettingsGroup>
         </SettingsSection>
         <SettingsSection id="settings-focus" title={s.settings.focusPack} body={s.settings.focusPackBody}>
@@ -129,6 +118,21 @@ export function SettingsScreen() {
         </SettingsSection>
         <SettingsSection id="settings-cloud" title={s.cloud.sectionTitle} body={s.cloud.sectionBody}>
           <CloudSection />
+        </SettingsSection>
+        <SettingsSection id="settings-motion" title={s.settings.motion}>
+          <SettingsGroup>
+            <SettingsRow title={s.settings.reduceMotion}>
+              <Switch checked={ui.reduceMotion} onCheckedChange={ui.setReduceMotion} label={s.settings.reduceMotion} />
+            </SettingsRow>
+            <SettingsRow title={s.settings.visualEffects}>
+              <Switch
+                checked={ui.visualEffects && !reduced}
+                disabled={reduced}
+                onCheckedChange={ui.setVisualEffects}
+                label={s.settings.visualEffects}
+              />
+            </SettingsRow>
+          </SettingsGroup>
         </SettingsSection>
         <About />
       </div>

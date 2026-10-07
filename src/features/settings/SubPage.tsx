@@ -22,7 +22,7 @@ export function SubPage({
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto flex max-w-[800px] flex-col gap-4 p-10">
-        <nav aria-label={s.settings.title} className="flex items-center gap-1.5 text-body text-muted">
+        <nav aria-label={s.settings.title} className="flex h-5 items-center gap-1.5 text-body text-muted">
           <button className="flex items-center gap-1 hover:text-fg" onClick={() => navigate({ name: "settings", section })}>
             <ChevronLeft size={14} />
             {s.settings.title}
@@ -31,7 +31,7 @@ export function SubPage({
           <span className="font-medium text-fg">{crumb}</span>
         </nav>
         <div className="-mx-5 flex flex-col">
-          <div className="flex flex-col gap-1 pb-1 pl-5 pr-4 pt-4">
+          <div className="flex flex-col gap-[5px] pb-[5px] pl-5 pr-4 pt-[15px]">
             <h1 className="text-title font-semibold">{title}</h1>
             {description && <p className="text-pretty text-body leading-[1.5] text-muted">{description}</p>}
           </div>

@@ -11,6 +11,7 @@ export function FocusPackSection() {
       <BreakMenuSettings />
       <ReadingSettings />
       <MusicSettings />
+      <HyperfocusSettings part="minutes" />
     </SettingsGroup>
   );
 }

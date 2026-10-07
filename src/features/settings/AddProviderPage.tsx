@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ChevronRight, ExternalLink, HardDrive, KeyRound, LogIn } from "lucide-react";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Input, Label } from "../../components/ui/input";
 import { toastError } from "../../components/ui/toast";
@@ -16,41 +16,54 @@ import { SubPage } from "./SubPage";
 
 const groupIcon: Record<ProviderKind, typeof HardDrive> = { local: HardDrive, oauth: LogIn, apiKey: KeyRound };
 
+const DESIGNED: Record<ProviderKind, ProviderType[]> = {
+  local: ["lmstudio", "ollama"],
+  oauth: ["chatgpt-oauth", "xai-oauth"],
+  apiKey: ["anthropic", "openai", "openrouter", "openai-compatible"],
+};
+
+function Tile({ type, onPick }: { type: ProviderType; onPick: (t: ProviderType) => void }) {
+  const Icon = groupIcon[catalog[type].kind];
+  const hint = s.providers.tileHint[type];
+  return (
+    <button
+      onClick={() => onPick(type)}
+      className="flex h-12 items-center gap-3 rounded-tile border border-border px-3 text-left hover:bg-fill-faint"
+    >
+      <Icon size={15} aria-hidden />
+      <span className="flex flex-1 flex-col">
+        <span className="font-semibold">{catalog[type].tileLabel ?? catalog[type].label}</span>
+        {hint && <span className="text-label text-muted">{hint}</span>}
+      </span>
+      <ChevronRight size={14} aria-hidden />
+    </button>
+  );
+}
+
 function TypeGrid({ onPick }: { onPick: (t: ProviderType) => void }) {
   const groups: ProviderKind[] = ["local", "oauth", "apiKey"];
+  const shown = new Set(groups.flatMap((g) => DESIGNED[g]));
+  const extra = catalogOrder.filter((t) => !shown.has(t));
   return (
-    <div className="flex flex-col gap-3.5">
-      {groups.map((g) => {
-        const Icon = groupIcon[g];
-        return (
-          <div key={g} className="flex flex-col gap-2">
-            <p className="text-label font-semibold text-muted">{s.providers.groups[g]}</p>
-            <div className="grid grid-cols-2 gap-2">
-              {catalogOrder
-                .filter((t) => catalog[t].kind === g)
-                .map((t) => {
-                  const hint = s.providers.tileHint[t];
-                  return (
-                    <button
-                      key={t}
-                      onClick={() => onPick(t)}
-                      className="flex h-11.5 items-center gap-3 rounded-tile border border-border px-3 text-left hover:bg-fill-faint"
-                    >
-                      <Icon size={15} aria-hidden />
-                      <span className="flex flex-1 flex-col">
-                        <span className="font-semibold">{catalog[t].tileLabel ?? catalog[t].label}</span>
-                        {hint && <span className="text-label text-muted">{hint}</span>}
-                      </span>
-                      <ChevronRight size={14} aria-hidden />
-                    </button>
-                  );
-                })}
-            </div>
-            {g === "apiKey" && <p className="text-caption text-muted">{s.providers.claudeNote}</p>}
+    <>
+      {groups.map((g) => (
+        <Fragment key={g}>
+          <p className="text-label font-semibold text-muted">{s.providers.groups[g]}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {DESIGNED[g].map((t) => (
+              <Tile key={t} type={t} onPick={onPick} />
+            ))}
           </div>
-        );
-      })}
-    </div>
+        </Fragment>
+      ))}
+      <p className="text-label font-semibold text-muted">{s.providers.moreProviders}</p>
+      <div className="grid grid-cols-2 gap-2">
+        {extra.map((t) => (
+          <Tile key={t} type={t} onPick={onPick} />
+        ))}
+      </div>
+      <p className="text-caption text-muted">{s.providers.claudeNote}</p>
+    </>
   );
 }
 

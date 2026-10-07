@@ -70,6 +70,7 @@ export function QuickCaptureDialog() {
       onOpenChange={setOpen}
       title={s.capture.title}
       className="w-[min(480px,calc(100vw-32px))]"
+      bodyClassName="pb-4"
       footer={
         <>
           <span className="mr-auto text-caption text-muted">{s.capture.hint}</span>

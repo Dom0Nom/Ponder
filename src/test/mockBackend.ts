@@ -1509,10 +1509,10 @@ const handlers: Record<string, (a: Args) => unknown> = {
     if (db.providers[pid]?.type !== "xai-oauth") err("invalid", "This provider doesn't use that sign-in method");
     mockSignIn(pid, "you@example.com", 3000);
     return {
-      userCode: "MOCK-CODE",
+      userCode: "WDJB-MJHT",
       verificationUri: "https://accounts.x.ai/device",
-      verificationUriComplete: "https://accounts.x.ai/device?user_code=MOCK-CODE",
-      expiresIn: 600,
+      verificationUriComplete: "https://accounts.x.ai/device?user_code=WDJB-MJHT",
+      expiresIn: 840,
     };
   },
   oauth_sign_out: (a) => {

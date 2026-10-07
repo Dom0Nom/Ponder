@@ -35,7 +35,7 @@ function ItemRow({
     if (!onCommit(draft)) setDraft(item);
   };
   return (
-    <li className="flex h-10.5 items-center gap-1.5">
+    <li className="flex h-[42.5px] items-center gap-1.5">
       <input
         value={draft}
         maxLength={MAX_BREAK_ITEM_LEN}
