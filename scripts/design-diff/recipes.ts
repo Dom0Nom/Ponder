@@ -125,6 +125,8 @@ const studioInCard = (p: Page) =>
 const SPACE_BACKDROP = "the design draws the dialog over a static reduced copy of the space (no Sources row or thread list, other chat text), not the real screen 2";
 const BACKDROP = "the design draws 9a/10a over a static copy of Home (shifted, no New space button), not the real screen 1";
 
+const OLD_BACKDROP = "old-backdrop artboard: the component box only; the backdrop is gated by screen 2";
+
 export const SCREENS: Record<number, Screen> = {
   1: { title: "Home", native: true, query: "cards=review", setup: home },
   2: {
@@ -176,6 +178,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   6: {
     title: "Source viewer",
+    region: { x: 233, y: 48, w: 1040, h: 745, reason: OLD_BACKDROP },
     setup: async (p) => {
       await space(p, { sources: false, studio: false });
       const [start, end] = await p.evaluate(() => {
@@ -458,12 +461,14 @@ export const SCREENS: Record<number, Screen> = {
   },
   27: {
     title: "Sources panel",
+    region: { x: 233, y: 48, w: 342, h: 745, reason: OLD_BACKDROP },
     setup: async (p) => {
       await space(p, { sources: true, studio: false });
     },
   },
   28: {
     title: "Watched folders",
+    region: { x: 379, y: 230, w: 522, h: 340, reason: OLD_BACKDROP },
     setup: async (p) => {
       await space(p, { sources: false, studio: false });
       await setUi(p, { watchDialogOpen: true });
@@ -472,6 +477,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   29: {
     title: "Deep research",
+    region: { x: 337, y: 148, w: 606, h: 503, reason: OLD_BACKDROP },
     setup: async (p) => {
       await space(p, { sources: false, studio: false });
       const found = [
@@ -489,13 +495,14 @@ export const SCREENS: Record<number, Screen> = {
   },
   30: {
     title: "Google Drive",
+    region: { x: 299, y: 182, w: 682, h: 436, reason: OLD_BACKDROP },
     query: "drive=1",
     setup: async (p) => {
       await space(p, { sources: false, studio: false });
       await setUi(p, { importDialog: { open: true, tab: "gdrive" } });
       await settle(p, 800);
       await p.getByText("Math formula sheet").first().click().catch(() => undefined);
-      await p.getByText("Practice test answers").first().click().catch(() => undefined);
+      await p.getByText("Week 4 notes").first().click().catch(() => undefined);
       await settle(p, 300);
     },
   },
