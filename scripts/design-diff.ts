@@ -146,7 +146,7 @@ async function shootApp(browser: Browser, r: Recipe): Promise<Buffer> {
   page.on("pageerror", (e) => errors.push(String(e)));
   try {
     const q = new URLSearchParams(`fixture=design&${r.query}`);
-    await page.goto(`http://localhost:${PORT}/?${q}`);
+    await page.goto(`http://localhost:${PORT}/?${q}`, { timeout: 30_000 });
     await page.waitForFunction(() => "__ui" in window && !!document.querySelector("#root > *"), null, { timeout: 15_000 });
     await page.addStyleTag({ content: CSS_FREEZE });
     await r.setup(page);
