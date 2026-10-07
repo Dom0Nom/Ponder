@@ -64,7 +64,7 @@ export function WatchedFoldersDialog({ space, open, onOpenChange }: { space: Spa
       onOpenChange={onOpenChange}
       title={s.watch.title}
       description={s.watch.body}
-      className="w-[min(520px,calc(100vw-32px))]"
+      className="w-[min(522px,calc(100vw-32px))]"
       footer={
         <>
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
@@ -126,8 +126,8 @@ function FolderRow({ folder, home, onRemoved }: { folder: WatchedFolder; home: s
       : `${s.watch.status[folder.status]}${bad ? "" : ` · ${s.watch.files(folder.fileCount)}`}`;
 
   return (
-    <li className="flex min-h-11 items-center gap-3 border-divider py-2 [&+&]:border-t" data-testid="watched-folder" data-status={folder.status}>
-      <div className="min-w-0 flex-1">
+    <li className="flex min-h-[60px] items-center gap-3 border-divider py-2 [&+&]:min-h-[61px] [&+&]:border-t" data-testid="watched-folder" data-status={folder.status}>
+      <div className="flex min-w-0 flex-1 flex-col gap-px">
         <p className="truncate text-body-lg font-medium" title={folder.path}>
           {path}
         </p>

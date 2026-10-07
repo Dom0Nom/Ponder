@@ -11,7 +11,7 @@ import { useLowEnergy } from "../focus/useLowEnergy";
 import { useStayMounted } from "../../components/motion/useStayMounted";
 import { ActivityOrb } from "../../components/motion/ActivityOrb";
 import { Button } from "../../components/ui/button";
-import { Checkbox16 } from "../../components/ui/Checkbox16";
+import { Checkbox16 } from "../../components/ui/checkbox";
 import { ConfirmDialog, Dialog } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "../../components/ui/menu";
@@ -52,8 +52,7 @@ export function SourcesPanel({ space, open }: { space: Space; open: boolean }) {
 
   const all = data ?? [];
   const usable = all.filter((x) => x.status === "ready");
-  const onCount = usable.filter((x) => x.useInChat).length;
-  const allOn = usable.length > 0 && onCount === usable.length;
+  const allOn = usable.length > 0 && usable.every((x) => x.useInChat);
 
   const toggleAll = async (on: boolean) => {
     try {
@@ -77,11 +76,11 @@ export function SourcesPanel({ space, open }: { space: Space; open: boolean }) {
         if (e.key === "Escape" && !e.defaultPrevented) setSourcesOpen(space.id, false);
       }}
       className={cn(
-        "t-panel-slide absolute inset-y-0 left-0 z-10 flex w-[340px] flex-col overflow-hidden border-r border-border bg-surface",
+        "t-panel-slide group/panel absolute inset-y-0 left-0 z-10 flex w-[340px] flex-col overflow-hidden border-r border-border bg-surface",
         dragging && "ring-2 ring-inset ring-fg/30",
       )}
     >
-      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-divider pl-4 pr-2.5">
+      <div className="flex h-[49px] shrink-0 items-center gap-2 border-b border-divider pl-4 pr-2.5">
         <h2 className="flex-1 text-input font-semibold">{s.panes.sources}</h2>
         <Tooltip content={s.watch.title}>
           <button
@@ -123,11 +122,10 @@ export function SourcesPanel({ space, open }: { space: Space; open: boolean }) {
         </ul>
       )}
       {usable.length >= 2 && (
-        <label className="flex h-11 shrink-0 cursor-pointer items-center gap-2.5 border-t border-divider px-4 text-label font-semibold text-muted">
+        <label className="absolute inset-x-0 bottom-0 flex h-11 cursor-pointer items-center gap-2.5 border-t border-divider bg-surface px-4 text-label font-semibold text-muted opacity-0 transition-opacity duration-(--motion-quick) focus-within:opacity-100 group-hover/panel:opacity-100">
           <Checkbox16
             aria-label={s.sources.selectAll}
             checked={allOn}
-            indeterminate={onCount > 0 && !allOn}
             onChange={(e) => toggleAll(e.target.checked)}
           />
           {s.sources.allSources}
@@ -216,12 +214,12 @@ function SourceRow({ source }: { source: Source }) {
         className="flex min-w-0 flex-1 flex-col text-left"
         onClick={() => source.status !== "processing" && openViewer({ sourceId: source.id })}
         disabled={source.status === "processing"}
-        title={source.status === "error" ? (source.error ?? s.sources.error) : undefined}
+        title={source.status === "error" ? (source.error ?? s.sources.error) : source.status === "processing" ? `${Math.round(source.progress * 100)}%` : undefined}
       >
         <span className="truncate font-medium">{source.title}</span>
         <span className={cn("text-label", source.status === "error" ? "text-danger" : "text-muted")}>
           {source.status === "processing"
-            ? `${label} · ${s.sources.processing} ${Math.round(source.progress * 100)}%`
+            ? `${label} · ${s.sources.processing}`
             : source.status === "error"
               ? `${label} · ${s.sources.error}`
               : label}
