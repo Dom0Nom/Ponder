@@ -3,6 +3,7 @@ import { extractJson } from "../chat/json";
 import type { ResolvedModel } from "../chat/llm";
 import { fetchReadable } from "../importers/web";
 import type { HttpFn } from "../importers/youtube";
+import { DEFAULT_RESEARCH_SYSTEM_PROMPT } from "./prompts";
 import { engines, normalizeForDedupe, wikipediaIn, type SearchResult } from "./search";
 
 export type ResearchStage = "planning" | "searching" | "fetching" | "ranking" | "done";
@@ -20,15 +21,18 @@ export interface FoundSource {
 
 export interface ResearchDeps {
   llm: ResolvedModel;
+  systemPrompt?: string;
   http: HttpFn;
   fetchPage?: typeof fetchReadable;
   onStage?: (stage: ResearchStage, detail?: string) => void;
   signal?: AbortSignal;
 }
 
-async function ask(llm: ResolvedModel, prompt: string, signal?: AbortSignal): Promise<string> {
+async function ask(deps: ResearchDeps, prompt: string, signal?: AbortSignal): Promise<string> {
+  const { llm } = deps;
   const r = await generateText({
     model: llm.model,
+    system: deps.systemPrompt?.trim() || DEFAULT_RESEARCH_SYSTEM_PROMPT,
     prompt,
     abortSignal: signal,
     ...llm.options({ thinking: false }),
@@ -44,8 +48,8 @@ export interface Plan {
 
 export async function planQueries(question: string, deps: ResearchDeps): Promise<Plan> {
   const text = await ask(
-    deps.llm,
-    `A learner wants study sources about: "${question}".\nWrite 3 to 5 short web search queries that would find trustworthy, free learning material (textbooks, encyclopedias, university pages, papers). Mix general and specific queries. If the question isn't in English, write about half the queries in the learner's language and half in English.\nAlso give the ISO 639-1 code of the language the question is written in.\nReturn JSON only: {"language": "en", "queries": ["...", "..."]}`,
+    deps,
+    `A learner wants study sources about: "${question}".\nWrite 3 to 5 short web search queries that would find trustworthy, free learning material. If the question isn't in English, write about half the queries in the learner's language and half in English.\nAlso give the ISO 639-1 code of the language the question is written in.\nReturn JSON only: {"language": "en", "queries": ["...", "..."]}`,
     deps.signal,
   );
   const parsed = extractJson<{ queries?: unknown; language?: unknown }>(text);
@@ -138,7 +142,7 @@ export async function rank(question: string, pages: Page[], deps: ResearchDeps):
   const found: FoundSource[] = [];
   for (let b = 0; b < pages.length; b += 4) {
     const batch = pages.slice(b, b + 4);
-    const text = await ask(deps.llm, rankPrompt(question, batch), deps.signal);
+    const text = await ask(deps, rankPrompt(question, batch), deps.signal);
     found.push(...applyRatings(batch, extractJson<Rating[]>(text) ?? []));
   }
   return filterAndSort(found);

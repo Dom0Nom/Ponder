@@ -1,11 +1,13 @@
-import { lazy, useRef, useState } from "react";
+import { lazy, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, RefreshCw } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Space } from "../../lib/types";
-import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
+import { NoModelError } from "../../lib/chat/llm";
+import { resolveResearch } from "../../lib/research/config";
+import { contextKey, generateResearchQuery, queryCache, sharedQuery } from "../../lib/research/prompts";
 import { deepResearch, type FoundSource, type ResearchStage } from "../../lib/research/deepResearch";
 import { proxyHttp } from "../../lib/importers/http";
 import { Reveal } from "../../components/motion/Reveal";
@@ -54,8 +56,43 @@ export function ResearchPanel({
   const [found, setFound] = useState<FoundSource[] | null>(initialFound ?? null);
   const [selected, setSelected] = useState<Set<string>>(new Set(initialFound?.map((f) => f.id)));
   const [importing, setImporting] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
   const abort = useRef<AbortController | null>(null);
+  const suggestAbort = useRef<AbortController | null>(null);
+  const typed = useRef(false);
   const qc = useQueryClient();
+
+  const suggest = async (force: boolean) => {
+    suggestAbort.current?.abort();
+    const ctrl = new AbortController();
+    suggestAbort.current = ctrl;
+    setSuggesting(true);
+    try {
+      const [{ llm, systemPrompt }, sources, threads, curriculum] = await Promise.all([
+        resolveResearch(space),
+        api.listSources(space.id),
+        api.listThreads(space.id),
+        api.curriculumGet(space.id),
+      ]);
+      const ctx = { name: space.name, sources, curriculum, threads: [...threads].sort((a, b) => b.updatedAt - a.updatedAt) };
+      const key = contextKey(ctx, `${llm.provider.id}/${llm.modelId}|${systemPrompt}`);
+      const text = (!force && queryCache.get(space.id, key)) || (await sharedQuery(space.id, key, () => generateResearchQuery(ctx, { llm, systemPrompt })));
+      queryCache.set(space.id, key, text);
+      if (!ctrl.signal.aborted && (force || !typed.current)) setQ(text);
+    } catch (e) {
+      if (ctrl.signal.aborted) return;
+      if (!typed.current) setQ(space.name);
+      if (!(e instanceof NoModelError)) toastError(s.research.suggestFailed, e, () => suggest(true));
+    } finally {
+      if (suggestAbort.current === ctrl) setSuggesting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!initialQuery) suggest(false);
+    return () => suggestAbort.current?.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const run = async () => {
     abort.current?.abort();
@@ -64,9 +101,10 @@ export function ResearchPanel({
     setFound(null);
     setStage("planning");
     try {
-      const llm = await resolveChatModel(space);
+      const { llm, systemPrompt } = await resolveResearch(space);
       const res = await deepResearch(q, {
         llm,
+        systemPrompt,
         http: proxyHttp,
         signal: ctrl.signal,
         onStage: (st, d) => {
@@ -142,13 +180,29 @@ export function ResearchPanel({
           if (q.trim() && !stage) run();
         }}
       >
-        <Input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={s.research.placeholder}
-          aria-label={s.research.placeholder}
-          className="flex-1"
-        />
+        <div className="relative flex-1">
+          <Input
+            value={q}
+            onChange={(e) => {
+              typed.current = true;
+              setQ(e.target.value);
+            }}
+            placeholder={suggesting ? s.research.suggesting : s.research.placeholder}
+            aria-label={s.research.placeholder}
+            aria-busy={suggesting}
+            className="pr-9"
+          />
+          <button
+            type="button"
+            aria-label={s.research.regenerate}
+            title={s.research.regenerate}
+            disabled={suggesting || !!stage}
+            onClick={() => suggest(true)}
+            className="absolute right-1.5 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-item text-muted hover:bg-fill hover:text-fg disabled:opacity-50"
+          >
+            <RefreshCw size={13} className={suggesting ? "animate-spin" : undefined} />
+          </button>
+        </div>
         <Button type="submit" variant="secondary" disabled={!q.trim() || !!stage} title={s.research.hint}>
           {s.research.start}
         </Button>
