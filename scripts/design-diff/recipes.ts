@@ -246,9 +246,11 @@ export const SCREENS: Record<number, Screen> = {
   },
   13: {
     title: "Check my steps",
+    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
     setup: async (p) => {
       await space(p);
       await studio(p, "steps", "Check my steps");
+      await studioInCard(p);
     },
   },
   14: {
@@ -264,9 +266,11 @@ export const SCREENS: Record<number, Screen> = {
     title: "Flashcards",
     query: "cards=browse",
     native: true,
+    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
     setup: async (p) => {
       await space(p);
       await studio(p, "flashcards", "Flashcards");
+      await studioInCard(p);
     },
   },
   16: {
@@ -312,16 +316,20 @@ export const SCREENS: Record<number, Screen> = {
   20: {
     title: "Learning plan",
     query: "curriculum=plan",
+    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
     setup: async (p) => {
       await space(p);
       await studio(p, "plan", "Learning plan");
+      await studioInCard(p);
     },
   },
   21: {
     title: "Course",
+    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
     setup: async (p) => {
       await space(p);
       await studio(p, "course", "Course");
+      await studioInCard(p);
     },
   },
   22: {
