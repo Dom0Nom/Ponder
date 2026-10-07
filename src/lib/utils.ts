@@ -1,5 +1,16 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+// custom font-size tokens must not be mistaken for text colors, or `text-label text-muted` loses its size
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      "font-size": [
+        { text: ["kbd", "meta", "label", "caption", "body", "body-lg", "input", "title-sm", "title", "section", "page", "code", "timer", "timer-xl"] },
+      ],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -55,6 +66,36 @@ export function relativeTime(ts: number, now = Date.now()): string {
   if (days === 1) return "yesterday";
   if (days < 7) return `${days} days ago`;
   return new Date(ts).toLocaleDateString();
+}
+
+export function formatShortMinutes(ms: number): string {
+  const mins = Math.max(0, Math.round(ms / 60000));
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  return mins % 60 ? `${h}h ${mins % 60}m` : `${h}h`;
+}
+
+/** "Today", "Yesterday", short weekday within a week, else "Sep 3". */
+export function dayLabel(ts: number, now = Date.now()): string {
+  const g = dayGroup(ts, now);
+  if (g === "today") return "Today";
+  if (g === "yesterday") return "Yesterday";
+  const d = new Date(ts);
+  return g === "week"
+    ? d.toLocaleDateString("en-US", { weekday: "short" })
+    : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/** "just now", "5m ago", "2h ago", "Yesterday", "3d ago", else "Sep 3". */
+export function shortRelative(ts: number, now = Date.now()): string {
+  const diff = now - ts;
+  if (diff < 60_000) return "just now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  const g = dayGroup(ts, now);
+  if (g === "today") return `${Math.floor(diff / 3_600_000)}h ago`;
+  if (g === "yesterday") return "Yesterday";
+  if (g === "week") return `${Math.round(diff / 86_400_000)}d ago`;
+  return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 export function uid(): string {

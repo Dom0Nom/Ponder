@@ -21,6 +21,7 @@
   --fill-overlay: rgba(0, 0, 0, 0.08);
   --chip: #ededed;
   --border: #e6e6e6;
+  --border-hover: #d9d9d9;
   --divider: #efefef;
   --field: #e3e3e3;
   --control: #dedede;
@@ -90,6 +91,7 @@
   --fill-overlay: rgba(255, 255, 255, 0.08);
   --chip: #2e2e2e;
   --border: #2e2e2e;
+  --border-hover: #444444;
   --divider: #2a2a2a;
   --field: #333333;
   --control: #3a3a3a;
@@ -149,6 +151,7 @@
   --color-overlay: var(--fill-overlay);
   --color-chip: var(--chip);
   --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
   --color-divider: var(--divider);
   --color-field: var(--field);
   --color-control: var(--control);
