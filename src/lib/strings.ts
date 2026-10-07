@@ -181,7 +181,9 @@ export const s = {
     emptyBody: "Answers come from your selected sources, with citations you can click.",
     emptyNoSources: "Add a source first, or ask a general question.",
     thinking: "Thinking",
-    thoughtFor: "Thoughts",
+    thoughts: "Reasoning",
+    thoughtFor: (sec: number) =>
+      sec < 60 ? `Thought for ${sec} second${sec === 1 ? "" : "s"}` : `Thought for ${Math.round(sec / 60)} min`,
     thinkingToggle: "Thinking",
     notFromSources: "Not from your sources",
     noSourceCited: "No source cited",

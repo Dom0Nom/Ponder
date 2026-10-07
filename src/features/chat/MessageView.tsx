@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { AlertCircle, Brain, Check, ChevronRight, Copy, Globe2, RotateCcw, Timer } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { splitSegments, citedNumbers, inferCitations } from "../../lib/chat/citations";
+import { hideFollowUpMarkers } from "../../lib/chat/followUps";
 import { hideMemoryMarkers } from "../../lib/chat/memory";
 import { CheckButton, CheckResults, RememberedChips, SecondOpinionButton, SecondOpinions } from "./AnswerTools";
 import { runTurn } from "../../lib/chat/runner";
@@ -57,7 +58,7 @@ export function AnswerBody({ content, citations, streaming }: { content: string;
   const shown = useMemo(
     () =>
       streaming
-        ? hideMemoryMarkers(content)
+        ? hideFollowUpMarkers(hideMemoryMarkers(content))
         : inferCitations(content, citations.map((c) => ({ n: c.n, text: c.text ?? c.snippet }))),
     [streaming, content, citations],
   );
@@ -186,7 +187,7 @@ function Thinking({ text, active }: { text: string; active: boolean }) {
         className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium text-muted hover:bg-surface-2"
       >
         {active ? <Spinner size={13} /> : <Brain size={13} />}
-        {active ? `${s.chat.thinking}…` : s.chat.thoughtFor}
+        {active ? `${s.chat.thinking}…` : s.chat.thoughts}
         <ChevronRight size={13} className={cn("transition-transform", open && "rotate-90")} />
       </button>
       {open && (

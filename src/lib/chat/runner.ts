@@ -4,6 +4,9 @@ import { queryClient, qk } from "../queries";
 import type { Citation, FocusState, Message, MessageMeta, SearchHit, Space, TutorStyle } from "../types";
 import { useChatStream } from "../../stores/chatStream";
 import { hitsToCitations } from "./citations";
+import { extractFollowUps } from "./followUps";
+import { ThinkingTimer } from "./thinking";
+import type { ModelControls } from "../providers/controls";
 import { extractMemories, isKnownFact } from "./memory";
 import { buildSystemPrompt, historyMessages, threadTitleFrom, type Passage } from "./context";
 import { resolveChatModel, type ResolvedModel } from "./llm";
@@ -12,7 +15,9 @@ export interface TurnInput {
   space: Space;
   threadId: string;
   tutorStyle: TutorStyle;
-  thinking: boolean;
+  /** legacy on/off switch; `controls` supersedes it */
+  thinking?: boolean;
+  controls?: ModelControls;
   focus: FocusState | null;
   /** what the learner typed; omitted for study-buddy turns */
   userText?: string;
@@ -81,7 +86,7 @@ export async function runTurn(input: TurnInput): Promise<Message> {
       ...input.meta,
       tutorStyle: input.tutorStyle,
       model: { providerId: llm.provider.id, model: llm.modelId },
-      thinking: input.thinking,
+      ...(input.thinking != null ? { thinking: input.thinking } : {}),
     },
   });
   invalidate();
@@ -112,6 +117,7 @@ export async function runTurn(input: TurnInput): Promise<Message> {
 
   let content = "";
   let reasoning = "";
+  const timer = new ThinkingTimer();
   let lastPersist = Date.now();
   let error: string | null = null;
 
@@ -121,11 +127,16 @@ export async function runTurn(input: TurnInput): Promise<Message> {
       system,
       messages,
       abortSignal: controller.signal,
-      ...llm.options({ thinking: input.thinking }),
+      ...llm.options({ ...(input.thinking != null ? { thinking: input.thinking } : {}), ...input.controls }),
     });
     for await (const part of result.stream) {
-      if (part.type === "text-delta") content += part.text;
-      else if (part.type === "reasoning-delta") reasoning += part.text;
+      if (part.type === "text-delta") {
+        timer.text();
+        content += part.text;
+      } else if (part.type === "reasoning-delta") {
+        timer.reasoning();
+        reasoning += part.text;
+      }
       else if (part.type === "error") throw part.error;
       else continue;
       useChatStream.getState().update(assistant.id, { content, reasoning });
@@ -138,9 +149,14 @@ export async function runTurn(input: TurnInput): Promise<Message> {
     if (!controller.signal.aborted) error = describeError(e);
   }
 
+  timer.finish();
   const stopped = controller.signal.aborted;
   const remembered: string[] = [];
+  let followUps: string[] = [];
   if (!error && content) {
+    const fu = extractFollowUps(content);
+    content = fu.clean;
+    if (!input.meta?.buddyKind) followUps = fu.followUps;
     const ex = extractMemories(content);
     content = ex.clean;
     const known = memory.map((m) => m.text);
@@ -165,6 +181,8 @@ export async function runTurn(input: TurnInput): Promise<Message> {
       ...(stopped ? { stopped: true } : {}),
       ...(retrievalError ? { retrievalError } : {}),
       ...(remembered.length ? { remembered } : {}),
+      ...(timer.thinkingMs ? { thinkingMs: timer.thinkingMs } : {}),
+      ...(followUps.length ? { followUps } : {}),
     },
   });
   // swap in the final row before dropping live state, or the stale "streaming" row flashes as interrupted

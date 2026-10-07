@@ -5,7 +5,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createXai } from "@ai-sdk/xai";
 import type { LanguageModel } from "ai";
 import type { ModelRef, Provider } from "../types";
-import { baseUrlOf, catalog, capabilitiesOf, pickDefaultModel } from "./catalog";
+import { baseUrlOf, catalog, capabilitiesOf, pickDefaultModel, type ReasoningLevel, type Verbosity } from "./catalog";
 import { createProxyFetch } from "./proxyFetch";
 
 export type ChatModel = Exclude<LanguageModel, string>;
@@ -77,12 +77,14 @@ export function createLanguageModel(provider: Provider, modelId: string, opts: M
 export interface CallOptionInput {
   /** false turns reasoning off where the provider supports it; true/undefined keeps the model default */
   thinking?: boolean;
+  reasoning?: ReasoningLevel;
+  verbosity?: Verbosity;
   temperature?: number;
   maxOutputTokens?: number;
 }
 
 export interface CallOptions {
-  reasoning?: "none";
+  reasoning?: ReasoningLevel;
   temperature?: number;
   maxOutputTokens?: number;
   providerOptions?: Record<string, Record<string, string | number | boolean | null>>;
@@ -92,10 +94,15 @@ export interface CallOptions {
 export function callOptions(provider: Provider, input: CallOptionInput = {}): CallOptions {
   const caps = capabilitiesOf(provider);
   const out: CallOptions = {};
+  const lv = input.reasoning;
+  if (lv && (caps.reasoningLevels?.some((l) => l.value === lv) || (lv === "none" && caps.thinkingToggle))) {
+    out.reasoning = lv;
+  }
   if (input.thinking === false && caps.reasoningToggle) out.reasoning = "none";
+  if (input.verbosity && caps.verbosity) out.providerOptions = { openai: { textVerbosity: input.verbosity } };
   if (input.temperature != null && caps.temperature) out.temperature = input.temperature;
   if (input.maxOutputTokens != null && caps.maxOutputTokens) out.maxOutputTokens = input.maxOutputTokens;
-  if (provider.type === "chatgpt-oauth") out.providerOptions = { openai: { store: false } };
+  if (provider.type === "chatgpt-oauth") out.providerOptions = { openai: { ...out.providerOptions?.openai, store: false } };
   return out;
 }
 

@@ -1069,9 +1069,9 @@ const handlers: Record<string, (a: Args) => unknown> = {
   list_threads: (a) =>
     Object.values(db.threads)
       .filter((t) => t.spaceId === a.spaceId)
-      .sort((x, y) => y.updatedAt - x.updatedAt),
+      .sort((x, y) => Number(y.pinned) - Number(x.pinned) || y.updatedAt - x.updatedAt),
   create_thread: (a) => {
-    const t: T.Thread = { id: id(), spaceId: a.spaceId as string, title: (a.title as string) ?? "New chat", createdAt: now(), updatedAt: now() };
+    const t: T.Thread = { id: id(), spaceId: a.spaceId as string, title: (a.title as string) ?? "New chat", createdAt: now(), updatedAt: now(), pinned: false };
     db.threads[t.id] = t;
     save();
     return t;
@@ -1079,6 +1079,12 @@ const handlers: Record<string, (a: Args) => unknown> = {
   rename_thread: (a) => {
     const t = db.threads[a.id as string] ?? err("not_found", "thread not found");
     t.title = (a.title as string).trim() || err("invalid", "Title can't be empty");
+    save();
+    return t;
+  },
+  pin_thread: (a) => {
+    const t = db.threads[a.id as string] ?? err("not_found", "thread not found");
+    t.pinned = !!a.pinned;
     save();
     return t;
   },
@@ -1371,7 +1377,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
   practice_item_add: (a) => {
     const it = a.item as T.PracticeItem;
     if (!["mcq", "numeric", "short"].includes(it.kind)) err("invalid", `Unknown item kind: ${it.kind}`);
-    const item = { ...it, id: id(), createdAt: now(), spaceId: a.spaceId as string };
+    const item = { ...it, hint: it.hint?.trim() || null, id: id(), createdAt: now(), spaceId: a.spaceId as string };
     db.practiceItems[item.id] = item;
     save();
     return item;

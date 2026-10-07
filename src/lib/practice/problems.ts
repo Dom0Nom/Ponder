@@ -37,6 +37,7 @@ export function parseProblem(text: string, topicKey: string, level: number, pare
   }
   if (kind === "numeric" && parseNumber(answer) == null) throw new Error("The model's numeric answer wasn't a number. Try again.");
   if (!question || !answer || !solution) throw new Error("The model's problem was incomplete. Try again.");
+  const hint = String(o.hint ?? "").trim() || null;
   const lvl = Number(o.level);
   return {
     topicKey,
@@ -47,11 +48,12 @@ export function parseProblem(text: string, topicKey: string, level: number, pare
     solution,
     difficulty: difficultyFor(Number.isInteger(lvl) && lvl >= 1 && lvl <= 5 ? lvl : level),
     parentId,
+    hint,
   };
 }
 
 const FORMAT =
-  'Return JSON only: {"kind": "numeric" | "mcq" | "short", "question": "…", "options": ["…"] (mcq only, 4 options), "answer": "number for numeric, option index for mcq, short model answer for short", "solution": "worked solution in Markdown, LaTeX in $…$", "level": 1-5}';
+  'Return JSON only: {"kind": "numeric" | "mcq" | "short", "question": "…", "options": ["…"] (mcq only, 4 options), "answer": "number for numeric, option index for mcq, short model answer for short", "solution": "worked solution in Markdown, LaTeX in $…$", "hint": "one sentence that nudges toward the method without giving the answer", "level": 1-5}';
 
 export async function generateProblem(
   llm: ResolvedModel,

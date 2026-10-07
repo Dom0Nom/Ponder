@@ -5,6 +5,7 @@
 import { generateText, streamText } from "ai";
 import { buildSystemPrompt } from "../src/lib/chat/context";
 import { citedNumbers, inferCitations, splitSegments } from "../src/lib/chat/citations";
+import { extractFollowUps } from "../src/lib/chat/followUps";
 import { extractMemories } from "../src/lib/chat/memory";
 import { selfCheck } from "../src/lib/chat/selfCheck";
 import type { Citation } from "../src/lib/types";
@@ -34,10 +35,11 @@ async function turn(label: string, modelId: string | undefined, question: string
   const r = streamText({ model: llm.model, system, prompt: question, ...llm.options({ thinking: false }) });
   let text = "";
   for await (const p of r.stream) if (p.type === "text-delta") text += p.text;
-  const { clean, memories } = extractMemories(text);
+  const fu = extractFollowUps(text);
+  const { clean, memories } = extractMemories(fu.clean);
   const shown = inferCitations(clean, citations.map((c) => ({ n: c.n, text: c.text! })));
   const kinds = splitSegments(shown, { hadSources: true, known: 3 }).map((s) => s.kind);
-  console.log(`\n== ${label} (${llm.modelId}, ${Date.now() - t} ms)\n${clean}\n-- cited: [${citedNumbers(clean, 3)}] after matching: [${citedNumbers(shown, 3)}] segments: ${kinds.join(",")} memories: ${JSON.stringify(memories)}`);
+  console.log(`\n== ${label} (${llm.modelId}, ${Date.now() - t} ms)\n${clean}\n-- cited: [${citedNumbers(clean, 3)}] after matching: [${citedNumbers(shown, 3)}] segments: ${kinds.join(",")} memories: ${JSON.stringify(memories)}\n-- follow-ups (${fu.followUps.length}): ${JSON.stringify(fu.followUps)}${/\{\{\s*follow/i.test(clean) ? "   !! marker left in text" : ""}`);
   return clean;
 }
 

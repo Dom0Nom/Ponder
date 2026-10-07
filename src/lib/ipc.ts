@@ -71,6 +71,7 @@ export const api = {
   createThread: (spaceId: string, title?: string) =>
     call<T.Thread>("create_thread", { spaceId, title: title ?? null }),
   renameThread: (id: string, title: string) => call<T.Thread>("rename_thread", { id, title }),
+  pinThread: (id: string, pinned: boolean) => call<T.Thread>("pin_thread", { id, pinned }),
   deleteThread: (id: string) => call<void>("delete_thread", { id }),
   listMessages: (threadId: string) => call<T.Message[]>("list_messages", { threadId }),
   addMessage: (message: T.NewMessage) => call<T.Message>("add_message", { message }),

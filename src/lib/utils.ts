@@ -11,7 +11,23 @@ export function formatDuration(ms: number): string {
   const m = Math.floor((total % 3600) / 60);
   const sec = total % 60;
   if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+export type DayGroup = "today" | "yesterday" | "week" | "month" | "older";
+
+/** Local-calendar bucket: today, yesterday, <7 days, <30 days, older. Future timestamps count as today. */
+export function dayGroup(ts: number, now = Date.now()): DayGroup {
+  const a = new Date(now);
+  const b = new Date(ts);
+  const days = Math.round(
+    (Date.UTC(a.getFullYear(), a.getMonth(), a.getDate()) - Date.UTC(b.getFullYear(), b.getMonth(), b.getDate())) / 86_400_000,
+  );
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return "week";
+  if (days < 30) return "month";
+  return "older";
 }
 
 export function formatMinutes(ms: number): string {
