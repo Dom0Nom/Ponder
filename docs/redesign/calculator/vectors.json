@@ -1,6 +1,6 @@
 {
  "version": 1,
- "status": "Verified against the reference emulator: 625 of 625 vectors.",
+ "status": "Verified against the reference emulator: 645 of 645 vectors.",
  "encoding": "BEHAVIOR.md §2",
  "keyNames": "BEHAVIOR.md §1",
  "start": {
@@ -107,7 +107,7 @@
    "clear"
   ]
  },
- "count": 625,
+ "count": 645,
  "vectors": [
   {
    "id": "arith-onePlusOne",
@@ -4615,8 +4615,7 @@
    ],
    "expect": {
     "lines": [
-     "⁻",
-     "\\f{3}{5}^{1}\t\\f{5}{3}"
+     "\\f{3}{5}^{⁻1}\t\\f{5}{3}"
     ],
     "indicators": [
      "DEG",
@@ -6292,8 +6291,7 @@
    ],
    "expect": {
     "lines": [
-     "⁻",
-     "(4^{⁻1})^{1}\t4"
+     "(4^{⁻1})^{⁻1}\t4"
     ],
     "indicators": [
      "DEG",
@@ -18352,6 +18350,559 @@
     ]
    },
    "source": "reference",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-orderDomainFirst",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "recip",
+    "7",
+    "div",
+    "4",
+    "mul",
+    "add",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DOMAIN",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-orderDivFirst",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "div",
+    "0",
+    "sub",
+    "1",
+    "add",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DIVIDE BY 0",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-orderSyntaxFirst",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "add",
+    "add",
+    "2",
+    "div",
+    "0",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "SYNTAX",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-orderDomainBeforeSyntax",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "log",
+    "0",
+    "rparen",
+    "add",
+    "mul",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DOMAIN",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-toggleMidEntry",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "4",
+    "toggle",
+    "2",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "SYNTAX",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-toggleMidEntryShow",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "4",
+    "toggle",
+    "2"
+   ],
+   "expect": {
+    "lines": [
+     "4◂▸2"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-toggleEmpty",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "toggle"
+   ],
+   "expect": {
+    "lines": [
+     "◂▸"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-toggleEmptyThenSqrt",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "toggle",
+    "2nd",
+    "square",
+    "8",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "SYNTAX",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-toggleAfterParen",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "log",
+    "3",
+    "7",
+    "pi",
+    "rparen",
+    "toggle",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "log(37π)◂▸",
+     "\t2.065351597"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteEmptiesExponent",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "pow",
+    "6",
+    "delete",
+    "8",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "28\t28"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteEmptiesExponentShow",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "pow",
+    "6",
+    "delete",
+    "8"
+   ],
+   "expect": {
+    "lines": [
+     "28"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-clearInExponent",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "rparen",
+    "lparen",
+    "4",
+    "pow",
+    "left",
+    "9",
+    "clear"
+   ],
+   "expect": {
+    "lines": [
+     ")(49"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-clearInExponentThen",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "4",
+    "pow",
+    "5",
+    "clear",
+    "9",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "49\t49"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-scroll15",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+   ],
+   "expect": {
+    "lines": [
+     "123456789012345"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-scroll16",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6"
+   ],
+   "expect": {
+    "lines": [
+     "◂34567890123456"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-scrollSuperscript",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "sin",
+    "2",
+    "3",
+    "2",
+    "0",
+    "1",
+    "2nd",
+    "rparen",
+    "left",
+    "6",
+    "pow",
+    "0",
+    "6",
+    "3",
+    "0"
+   ],
+   "expect": {
+    "lines": [
+     "◂n⁻¹(232016^{0630}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "hist-cutSuperscript",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "left",
+    "square",
+    "pow",
+    "3",
+    "add",
+    "2",
+    "5",
+    "2",
+    "mul",
+    "tan",
+    "9",
+    "div",
+    "5",
+    "left",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "(ans^{2})^{3+252*tan}▸",
+     "\t0"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "hist-toggleMidEntrySyntax",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "enter",
+    "4",
+    "8",
+    "9",
+    "recip",
+    "cos",
+    "neg",
+    "9",
+    "enter",
+    "0",
+    "toggle",
+    "7",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "SYNTAX",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-toggleInsideEntryLong",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "rparen",
+    "4",
+    "toggle",
+    "2",
+    "div",
+    "neg",
+    "sin",
+    "neg",
+    "0",
+    "4",
+    "9",
+    "9",
+    "5"
+   ],
+   "expect": {
+    "lines": [
+     "◂◂▸2÷⁻sin(⁻04995"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteExponentLong",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "pow",
+    "6",
+    "delete",
+    "8",
+    "div",
+    "2nd",
+    "sin",
+    "3",
+    "var",
+    "tan"
+   ],
+   "expect": {
+    "lines": [
+     "◂s8÷sin⁻¹(3xtan("
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (differential check)",
    "confidence": "high",
    "verified": true
   }

@@ -2,6 +2,19 @@
 
 Source of truth for the builder of `src/features/calculator/`. Written clean-room: from observing the reference emulator as a black box (keys clicked, LCD pixels read) and from TI's public *reference calculator guidebook* (2019 edition, cited as **GB p.N**). No code, artwork or font data from the reference is used or described here.
 
+## Changes (differential check)
+
+The running build was compared with the running reference: all vectors plus 200 random key sequences (`scripts/calc-diff.ts`). New rules found there, each backed by new verified vectors (645 in total):
+
+- **Two vectors were misread in the verification pass and are corrected:** `frac-mpReciprocalFraction` is `\f{3}{5}^{⁻1}\t\f{5}{3}` and `pow-recipRecip` is `(4^{⁻1})^{⁻1}\t4`. There is no separate `⁻` row; drop the special case built for it (QUESTIONS Q13 "raised minus sign").
+- **Scrolling reserves the cursor cell** (§3.2): 15 digits fit (`123456789012345`), 16 scroll to `◂34567890123456`.
+- **A history row too long for the screen is cut at the 16th cell, also inside a superscript** (§3.2): `(ans^{2})^{3+252*tan}▸`.
+- **`toggle` inside an entry inserts a `◂▸` token** (§7.5): `4◂▸2` → SYNTAX; `log(37π)◂▸` → `2.065351597`; on an empty line it shows `◂▸`.
+- **`delete` that empties a superscript removes the template**; typing continues on the baseline (§5): `2 pow 6 delete 8` → `28`.
+- **`clear` with the cursor in a template removes that template only**, not the whole entry (§5): `4 pow 5 clear 9` → `49`.
+- **Errors are reported in evaluation order** (§21): the first failing operation from the left wins, even when a syntax error comes later (`ans^{⁻1}7÷4*+` → DOMAIN, `2÷0-1+` → DIVIDE BY 0, `1++2÷0` → SYNTAX).
+- An empty superscript template is written `^{}` (like `\f{}{}`).
+
 ## Changes (verification pass)
 
 The first version of this file was written without access to the reference. It has now been checked against it, and every vector in `vectors.json` carries the reference's actual screen. File names, the key-name vocabulary (§1) and the general text encoding (§2) are unchanged. What changed:
@@ -30,7 +43,7 @@ The first version of this file was written without access to the reference. It h
 
 ## 0. Status
 
-All 625 vectors (578 from the first draft plus 47 new probes) in `vectors.json` were run on the reference (each one from a page reload plus a device reset) and read back pixel by pixel. Vectors whose result differed from the first draft were captured at least twice more and kept only where the runs agreed (three were flaky in the first run and fixed by the re-runs). Tags:
+All 645 vectors (578 from the first draft, 47 probes from the verification pass, 20 from the differential check) in `vectors.json` were run on the reference (each one from a page reload plus a device reset) and read back pixel by pixel. Vectors whose result differed from the first draft were captured at least twice more and kept only where the runs agreed (three were flaky in the first run and fixed by the re-runs). Tags:
 - **[ref]**: observed on the reference.
 - **[GB]**: from the guidebook; where it disagrees with the reference, the reference wins.
 
@@ -165,7 +178,7 @@ The Home screen scrolls by dot rows, so the top row can be cut. A row is written
 - History grows from the top. Each calculation shows the entry left-aligned and the result right-aligned.
 - **Same row or next row:** a result shares the entry's row when entry cells + result cells ≤ 14 (at least two empty cells between them); otherwise it goes right-aligned on the next row. Cell counts: one per character; a stacked fraction counts as its wider part; a superscript counts its characters; `√{…}` counts 1 + its content; `\r{n}{…}` counts index + 1 + content; `◂▸` is one cell, `▸F◂▸d` four, `▸n/d◂▸Un/d` five. Two exceptions put the result on its own row even when it fits: a result that is a stacked fraction containing a radical (`sin(45)` / `\t\f{√{2}}{2}`), and an entry with a fraction nested in a fraction. This matches all 625 vectors.
 - Rows that contain superscripts or fractions are taller; the screen scrolls by dot rows, so the top row may be cut (§2.3).
-- An entry longer than 16 cells scrolls horizontally. Then the first or last cell shows the overflow mark: `◂67890123456789` (cursor at the end), `123456789012345▸` (cursor at the start). History rows that are too long are cut and end with `▸` (`sin(30)^{2}+cos(30▸`).
+- An entry that does not fit scrolls horizontally. **The cursor cell at the end counts**: entry plus cursor may use 16 cells, so 15 digits still fit and 16 digits show `◂34567890123456`. The first or last cell then shows the overflow mark: `◂67890123456789` (cursor at the end), `123456789012345▸` (cursor at the start). History rows that are too long are cut at the 16th cell and end with `▸`, also inside a superscript: `sin(30)^{2}+cos(30▸`, `(ans^{2})^{3+252*tan}▸`.
 
 ### 3.3 Indicator band
 Items and their left edge in canvas pixels (canvas 192 px = 96 dots wide):
@@ -200,10 +213,10 @@ Observed combinations: fresh screen: none; after `enter`: `↑ ↓`; typing a ne
 
 - Typing at the end of the entry appends. With the cursor inside the entry, typing **overwrites** the character under the cursor (`1 2 3 left left 9` → `193`).
 - `2nd`,`delete` switches to insert for the following characters (`1 2 3 left left 2nd delete 9` → `1923`); the cursor becomes an underline.
-- `delete` deletes the character under the cursor; at the end of the entry it deletes the last character (`1 2 3 delete` → `12`).
+- `delete` deletes the character under the cursor; at the end of the entry it deletes the last character (`1 2 3 delete` → `12`). Deleting the last character of a superscript removes the template, and the next keys go on the baseline (`2 pow 6 delete 8` → `28`).
 - A function token (`sin(`, `log(`, `ans`) is one element for the cursor and for `delete` (`sin(30) 2nd left delete` leaves `30)`, which is a SYNTAX error on `enter`).
 - `left`/`right` move one element; `2nd`,`left` / `2nd`,`right` jump to the start/end. `left` at the start stays there.
-- `clear`: clears the entry line; on an empty entry line clears the screen (history still reachable with `up`); on an error screen returns to the entry with the cursor at the error; in a menu goes back.
+- `clear`: with the cursor in a MathPrint template, removes only that template and its content (`4 pow 5 clear 9` → `49`; `)(4^{}`, `left`, `9`, `clear` → `)(49`); otherwise clears the entry line; on an empty entry line clears the screen (history still reachable with `up`); on an error screen returns to the entry with the cursor at the error; in a menu goes back.
 - History: `up` from the empty entry line highlights the last **result**, the next `up` its **entry**, and so on upwards. The highlighted item is shown inverse (`2+2\t«4»`). `enter` pastes it at the cursor. Pasting into a started entry inserts at the cursor (`2*` + pasted `15` → `2*15`).
 - **Implicit ans:** a first key that is a binary or postfix operator (`add sub mul div pow square recip sto`, `%`, angle marks, `nPr`, `nCr`, `!`) inserts `ans` first: `ans*3`, `ans→y`, `ans°`, `ans nPr`. `neg` does not.
 - `enter` on an empty entry line repeats the last entry (`2+3 enter enter` → two rows `2+3\t5`). On a fresh screen it does nothing.
@@ -253,6 +266,8 @@ Examples [ref]: `60+5*⁻12` = 0, `⁻3^{2}` = ⁻9, `⁻3!` = ⁻6, `2*5 nCr 2`
 - In Classic, results are decimal unless the input used `n/d`: `1÷2` → `0.5`, `10^⁻2` → `0.01`, `1⁄8` → `1⁄8`.
 
 ### 7.5 Answer toggle `toggle`
+
+- While an entry is being typed, `toggle` inserts a `◂▸` token at the cursor. At the end of a complete expression it makes `enter` show the other result form (`log(37π)◂▸` → `\t2.065351597`); anywhere else it is a SYNTAX error on `enter` (`4◂▸2`). On an empty line it shows `◂▸`, and a following `√{8}` is a SYNTAX error.
 - Adds a history row: the previous result followed by `◂▸`, then the other form: `\f{1}{8}◂▸` / `0.125`; `2√{2}◂▸` / `2.828427125`; `2π◂▸` / `6.283185307`; a decimal toggles to its exact form with the 13-digit value shown: `3.142857142857◂▸` / `\f{22}{7}`, `0.7853981633975◂▸` / `\f{π}{4}`.
 - On an empty line, the conversion keys paste the previous **value**: `2nd prb 6` → `0▸DMS`; after `\f{7}{4}`, `2nd x10n` → `\f{7}{4}▸n/d◂▸Un/d`.
 
@@ -349,6 +364,8 @@ Examples [ref]: `60+5*⁻12` = 0, `⁻3^{2}` = ⁻9, `⁻3!` = ⁻6, `2*5 nCr 2`
 ## 21. Errors [ref]
 
 Screen: `["", "<MESSAGE>", "Error"]`; `clear` returns to the entry with the cursor at the error.
+
+The entry is evaluated from the left and the first error met is shown: `ans^{⁻1}7÷4*+` (Ans 0) → DOMAIN, `2÷0-1+` → DIVIDE BY 0, `log(0)+*` → DOMAIN; `1++2÷0` → SYNTAX because the syntax error comes first.
 
 | message | observed triggers |
 |---|---|
