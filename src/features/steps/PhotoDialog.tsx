@@ -121,9 +121,9 @@ function FileView({ onFile }: { onFile: (f: File) => void }) {
       )}
       data-testid="photo-drop"
     >
-      <Image size={20} aria-hidden />
+      <span className="flex h-[29px] items-center"><Image size={20} aria-hidden /></span>
       <p>{s.steps.drop}</p>
-      <Button variant="secondary" onClick={() => input.current?.click()}>
+      <Button variant="secondary" className="text-fg-secondary" onClick={() => input.current?.click()}>
         {s.steps.chooseFile}
       </Button>
       <input

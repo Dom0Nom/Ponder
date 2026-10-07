@@ -14,7 +14,7 @@ import { invalidateCards, useSpace } from "../../lib/queries";
 import { checkSteps, type StepCheckResult, type StepVerdict } from "../../lib/steps/check";
 import type { Transcription } from "../../lib/steps/vision";
 import { s } from "../../lib/strings";
-import { cn } from "../../lib/utils";
+import { cn, plainMath } from "../../lib/utils";
 import { imageFromClipboard } from "./image";
 import { PhotoDialog } from "./PhotoDialog";
 
@@ -34,6 +34,7 @@ const linesOf = (text: string) =>
     .filter(Boolean);
 
 function Tex({ tex, className }: { tex: string; className?: string }) {
+  const plain = plainMath(tex);
   const html = useMemo(() => {
     const t = tex.trim().replace(/^\$+|\$+$/g, "");
     try {
@@ -42,6 +43,7 @@ function Tex({ tex, className }: { tex: string; className?: string }) {
       return null;
     }
   }, [tex]);
+  if (plain != null) return <span className={cn("font-math", className)}>{plain}</span>;
   return html ? <span className={className} dangerouslySetInnerHTML={{ __html: html }} /> : <span className={className}>{tex}</span>;
 }
 
@@ -71,12 +73,14 @@ function StepRow({
           —
         </span>
       ) : verdict.ok ? (
-        <span className="flex items-center gap-1 text-success" title={verdict.checkedBy === "calc" ? s.steps.byCalc : undefined}>
+        <span className="flex h-[23.8px] items-center gap-1 text-success" title={verdict.checkedBy === "calc" ? s.steps.byCalc : undefined}>
           {verdict.checkedBy === "calc" && <Calculator size={12} aria-hidden />}
           <Check size={15} aria-label={s.steps.stepOk} />
         </span>
       ) : (
-        <X size={15} className="text-danger" aria-label={s.steps.stepWrong} />
+        <span className="flex h-[23.8px] items-center">
+          <X size={15} className="text-danger" aria-label={s.steps.stepWrong} />
+        </span>
       )}
     </li>
   );
@@ -247,11 +251,11 @@ export function StepCheckerPanel({
           <span className={LABEL}>{s.steps.problem}</span>
           <Input value={problem} placeholder={s.steps.problemPlaceholder} onChange={(e) => setProblem(e.target.value)} />
         </label>
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center">
+        <div className={cn("group flex flex-col", editing ? "gap-1.5" : "gap-3.5")}>
+          <div className="relative flex items-center">
             <span className={LABEL}>{s.steps.yourSteps}</span>
             {!editing && (
-              <Button variant="ghost" size="sm" className="ml-auto h-6" onClick={() => setEditing(true)}>
+              <Button variant="ghost" size="sm" className="absolute right-0 top-1/2 h-6 -translate-y-1/2 opacity-0 focus-visible:opacity-100 group-hover:opacity-100" onClick={() => setEditing(true)}>
                 <Pencil size={14} /> {s.steps.edit}
               </Button>
             )}

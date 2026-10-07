@@ -134,3 +134,14 @@ export function tildePath(path: string, home: string): string {
   const h = home.replace(/[\\/]+$/, "");
   return h && (path === h || path.startsWith(`${h}/`)) ? `~${path.slice(h.length)}` : path;
 }
+
+/** Spaced, typographic form of a simple expression ("2x-6+4=10" -> "2x − 6 + 4 = 10"); null when it needs real TeX. */
+export function plainMath(text: string): string | null {
+  const t = text.trim().replace(/^\$+|\$+$/g, "");
+  if (/[\\^_{}]/.test(t)) return null;
+  return t
+    .replace(/\s*([+=<>×÷−])\s*/g, " $1 ")
+    .replace(/(?<=[\w)])\s*-\s*(?=[\w(])/g, " − ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
