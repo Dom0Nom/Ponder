@@ -1052,6 +1052,11 @@ const handlers: Record<string, (a: Args) => unknown> = {
     return null;
   },
 
+  open_calculator_window: () => {
+    window.open("/?window=calculator", "ponder-calculator", "width=400,height=560");
+    return null;
+  },
+
   capture_status: () => captureStatus(),
   capture_configure: (a) => {
     const shortcut = String(a.shortcut ?? "").trim();
