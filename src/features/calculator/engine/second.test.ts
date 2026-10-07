@@ -3,7 +3,7 @@ import data from "../../../../docs/redesign/calculator/vectors.json";
 import { Calculator } from "./index";
 import { model } from "./render";
 import { rasterize } from "../lcd/draw";
-import { layout } from "../lcd/layout";
+import { OVER_OFF, OVER_ON, layout } from "../lcd/layout";
 import { glyph } from "../lcd/font";
 
 function run(keys: string) {
@@ -117,5 +117,20 @@ describe("glyphs", () => {
     expect(glyph("*").rows.join("")).not.toContain("#####");
     expect(glyph("*").rows.filter((r) => r.includes("#"))).toHaveLength(3);
     expect(lines("2 mul 3")).toEqual(["2*3"]);
+  });
+});
+
+describe("radical scrolled partly off screen", () => {
+  test("the overline stays over every visible cell of the content", () => {
+    const keys = "8 2nd square pow 2nd neg toggle 3 add 3 7 3 tan 2 7";
+    const row = model(run(keys).state).rows[0].l;
+    expect(row.startsWith("◂" + OVER_ON)).toBe(true);
+    expect(row.endsWith(OVER_OFF)).toBe(true);
+    const inner = row.slice(1 + OVER_ON.length, -OVER_OFF.length);
+    const l = layout(row.slice(1));
+    const bar = l.ops.find((o): o is Extract<typeof o, { k: "rect" }> => o.k === "rect" && o.h === 1 && o.w > 1)!;
+    expect(bar.w).toBe(layout(inner).w);
+    expect(bar.y).toBe(-l.asc);
+    expect(lines(keys)).toEqual(["◂ns◂▸3+373tan(27"]);
   });
 });

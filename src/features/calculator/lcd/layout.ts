@@ -5,6 +5,8 @@ import { glyphKeys } from "./font";
 export const CUR = "";
 export const BLINK_ON = "";
 export const BLINK_OFF = "";
+export const OVER_ON = "\uE004";
+export const OVER_OFF = "\uE005";
 export const CUR_INS = "";
 const SEQ = ["▸n/d◂▸Un/d", "▸F◂▸d"];
 
@@ -16,6 +18,7 @@ export type MNode =
   | { t: "sup"; a: MNode[] }
   | { t: "inv"; a: MNode[] }
   | { t: "blink"; a: MNode[] }
+  | { t: "over"; a: MNode[] }
   | { t: "cur"; under?: boolean }
   | { t: "base" };
 
@@ -53,6 +56,9 @@ export function parseItems(s: string): Item[] {
       } else if (c === "«") {
         i++;
         node = { t: "inv", a: seq("»").map((x) => x.node) };
+      } else if (c === OVER_ON) {
+        i++;
+        node = { t: "over", a: seq(OVER_OFF).map((x) => x.node) };
       } else if (c === BLINK_ON) {
         i++;
         node = { t: "blink", a: seq(BLINK_OFF).map((x) => x.node) };
@@ -188,6 +194,10 @@ function layoutNode(n: MNode, font: FontId): Box {
       );
       return { w: ox + p + r.w, asc: Math.max(r.asc + 1, idx ? idx.asc + 3 : 0), desc: Math.max(r.desc, DESC[font]), ops };
     }
+    case "over": {
+      const c = layoutSeq(n.a, font);
+      return { w: c.w, asc: c.asc + 1, desc: c.desc, ops: [...c.ops, { k: "rect", x: 0, y: -c.asc - 1, w: c.w, h: 1 }] };
+    }
     case "inv":
     case "blink": {
       const c = layoutSeq(n.a, font);
@@ -220,6 +230,7 @@ export function cells(nodes: MNode[]): number {
         break;
       case "inv":
       case "blink":
+      case "over":
         c += cells(n.a);
         break;
       case "frac":
@@ -255,6 +266,8 @@ export function serialize(nodes: MNode[]): string {
           return `^{${serialize(n.a)}}`;
         case "inv":
           return `«${serialize(n.a)}»`;
+        case "over":
+          return OVER_ON + serialize(n.a) + OVER_OFF;
         case "blink":
           return BLINK_ON + serialize(n.a) + BLINK_OFF;
       }

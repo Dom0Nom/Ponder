@@ -1,4 +1,4 @@
-import { BLINK_OFF, BLINK_ON, type MNode, cells, isEmptySlot, measure, parse, serialize } from "../lcd/layout";
+import { BLINK_OFF, BLINK_ON, OVER_OFF, OVER_ON, type MNode, cells, isEmptySlot, measure, parse, serialize } from "../lcd/layout";
 import { type State, MODE_ROWS, fmtOf, menuTabs, modeSelected, tableRows } from "./calc";
 import { isEmpty, markup } from "./editor";
 import { formatFit, formatPlain } from "./format";
@@ -27,7 +27,7 @@ export interface Model {
   cut?: number;
 }
 
-const stripMarks = (s: string) => s.replace(/[-]/g, "");
+const stripMarks = (s: string) => s.replace(/[\uE000-\uE005]/g, "");
 const width = (m: string) => measure(m).w;
 const rowBox = (r: Row) => {
   const a = measure(r.l || " ");
@@ -146,12 +146,14 @@ function scrollEntry(m: string): string {
   if (cells(nodes) <= CELLS - 2) return m;
   // a template wider than the screen scrolls by its content: descend to the slot that holds the cursor
   let hidden = 0;
+  let overline = false;
   for (;;) {
     const at = nodes.findIndex(hasCursor);
     const n = nodes[at];
     const slot = n && n.t !== "cur" && cells([n]) > CELLS - 2 ? cursorSlot(n) : undefined;
     if (!slot) break;
     hidden += cells(nodes.slice(0, at)) + (n.t === "sqrt" || (n.t === "root" && slot === n.a) ? 1 : 0);
+    overline ||= n.t === "sqrt" || (n.t === "root" && slot === n.a);
     nodes = slot;
   }
   const items: { n: MNode | null; w: number }[] = nodes.map((n, i) => ({
@@ -160,7 +162,8 @@ function scrollEntry(m: string): string {
   }));
   items[items.length - 1].w += endCost(nodes);
   const total = hidden + items.reduce((a, it) => a + it.w, 0);
-  if (total <= CELLS) return serialize(nodes);
+  const over = (t: string) => (overline ? OVER_ON + t + OVER_OFF : t);
+  if (total <= CELLS) return (hidden ? "◂" : "") + over(serialize(nodes));
   if (hidden) items.unshift({ n: null, w: hidden });
   const cur = Math.max(0, items.findIndex((it) => it.n && hasCursor(it.n)));
   const window = (start: number) => {
@@ -178,7 +181,8 @@ function scrollEntry(m: string): string {
   // a cursor item too wide for the window is still shown
   const stop = Math.max(window(start), cur + 1);
   const rest = items.slice(stop).some((it) => it.w > 0);
-  return (start > 0 ? "◂" : "") + serialize(items.slice(start, stop).map((it) => it.n!)) + (rest ? "▸" : "");
+  // a radical scrolled partly off screen keeps its overline over the visible content
+  return (start > 0 ? "◂" : "") + over(serialize(items.slice(start, stop).map((it) => it.n!))) + (rest ? "▸" : "");
 }
 
 const contains = (ns: MNode[], t: MNode["t"]): boolean =>
