@@ -38,7 +38,7 @@ export async function resolveResearch(
       provider: picked.provider,
       modelId: picked.modelId,
       model: createLanguageModel(picked.provider, picked.modelId),
-      options: (o) => callOptions(picked.provider, o),
+      options: (o) => callOptions(picked.provider, picked.modelId, o),
     },
   };
 }
