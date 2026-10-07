@@ -9,6 +9,7 @@ import type * as T from "../lib/types";
 import { DEFAULT_SHORTCUT, validateShortcut } from "../lib/capture/shortcut";
 import { parsePlaylistUri } from "../lib/music";
 import { importKind, originFor } from "../lib/importers/cloud";
+import { fixtureOverrides, fixtureScript, installDeterminism, isDesignFixture, readOptions, seedDesignFixture } from "./designFixture";
 
 type Row<T> = Record<string, T>;
 
@@ -22,7 +23,7 @@ interface MockChunk {
   page: number | null;
 }
 
-interface DB {
+export interface DB {
   spaces: Row<Omit<T.Space, "sourceCount">>;
   sources: Row<T.Source>;
   texts: Row<T.SourceText>;
@@ -83,7 +84,7 @@ interface MockFocus {
   breakDoneMs: number;
 }
 
-const STORAGE_KEY = "mock-backend-db";
+const STORAGE_KEY = isDesignFixture() ? "mock-backend-db-design" : "mock-backend-db";
 
 function emptyDb(): DB {
   return {
@@ -148,7 +149,8 @@ function err(code: string, message: string): never {
 }
 
 function spaceOut(sp: Omit<T.Space, "sourceCount">): T.Space {
-  return { ...sp, sourceCount: Object.values(db.sources).filter((x) => x.spaceId === sp.id).length };
+  const override = (sp as { sourceCountOverride?: number }).sourceCountOverride;
+  return { ...sp, sourceCount: override ?? Object.values(db.sources).filter((x) => x.spaceId === sp.id).length };
 }
 
 function microList(spaceId: string | null): T.MicroStep[] {
@@ -1725,7 +1727,20 @@ export interface MockControls {
 
 export function installMockBackend() {
   (window as unknown as { __MOCK_BACKEND__: boolean }).__MOCK_BACKEND__ = true;
-  load();
+  const fixture = isDesignFixture() ? fixtureOverrides() : null;
+  if (fixture) {
+    installDeterminism();
+    try {
+      localStorage.removeItem("ui");
+    } catch {
+      /* storage disabled */
+    }
+    db = emptyDb();
+    seedDesignFixture(db, readOptions());
+    script = fixtureScript(defaultScript);
+    save();
+  } else load();
+  void import("../stores/ui").then((m) => ((window as unknown as { __ui: unknown }).__ui = m.useUi));
   mockIPC(
     async (cmd, args) => {
       if (cmd.startsWith("plugin:")) {
@@ -1736,7 +1751,7 @@ export function installMockBackend() {
         }
         return null;
       }
-      const h = handlers[cmd];
+      const h = (fixture && fixture[cmd]) || handlers[cmd];
       if (!h) err("other", `Mock backend has no command “${cmd}”`);
       // clone so callers never hold live references into the mock DB (React Query would miss in-place updates)
       const out = await h((args ?? {}) as Args);
@@ -1774,7 +1789,7 @@ export function installMockBackend() {
       focusTick();
     },
     setScript: (fn) => {
-      script = fn ?? defaultScript;
+      script = fn ?? (fixture ? fixtureScript(defaultScript) : defaultScript);
     },
     setStreamDelay: (ms) => {
       streamDelayMs = ms;
