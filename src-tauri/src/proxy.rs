@@ -252,6 +252,7 @@ pub async fn run(http: &reqwest::Client, req: Prepared, mut cancel: oneshot::Rec
     }
     emit(ProxyEvent::Head { status, headers: header_map(resp.headers()) });
     let mut dec = Utf8Decoder::default();
+    let mut received = 0usize;
     loop {
         let next = tokio::select! {
             c = resp.chunk() => c,
@@ -259,13 +260,18 @@ pub async fn run(http: &reqwest::Client, req: Prepared, mut cancel: oneshot::Rec
         };
         match next {
             Ok(Some(bytes)) => {
+                received += bytes.len();
                 let s = dec.push(&bytes);
                 if !s.is_empty() {
                     emit(ProxyEvent::Chunk { data: s });
                 }
             }
             Ok(None) => break,
-            Err(e) => return emit(ProxyEvent::Error { message: describe_reqwest(&e, &req.url) }),
+            Err(e) => {
+                let message = describe_reqwest(&e, &req.url);
+                log::warn!("stream broke after {received} bytes: {message}");
+                return emit(ProxyEvent::Error { message });
+            }
         }
     }
     let tail = dec.finish();
@@ -282,7 +288,13 @@ fn describe_reqwest(e: &reqwest::Error, url: &str) -> String {
     } else if e.is_timeout() {
         format!("{host} took too long to respond")
     } else {
-        format!("Request to {host} failed: {e}")
+        let mut msg = format!("Request to {host} failed: {e}");
+        let mut src = std::error::Error::source(e);
+        while let Some(cause) = src {
+            msg.push_str(&format!(": {cause}"));
+            src = cause.source();
+        }
+        msg
     }
 }
 
@@ -630,6 +642,48 @@ mod tests {
         assert_eq!(events.last(), Some(&ProxyEvent::End));
         assert!(!content.trim().is_empty());
         assert!(reasoning.is_empty());
+    }
+
+    /// Real cloud provider through the proxy: the key is injected from the secret store and the JS
+    /// side's fake Authorization header is dropped. Needs OPENROUTER_API_KEY.
+    #[tokio::test]
+    #[ignore]
+async fn live_openrouter_long_stream() {
+        let Ok(key) = std::env::var("OPENROUTER_API_KEY") else {
+            eprintln!("OPENROUTER_API_KEY not set");
+            return;
+        };
+        let p = provider("openrouter", "apiKey", Some("https://openrouter.ai/api/v1"));
+        let secrets = MemoryStore::default();
+        secrets.set(&p.id, &key).unwrap();
+        for round in 0..4 {
+            let body = serde_json::json!({
+                "model": "deepseek/deepseek-v4.1-flash",
+                "stream": true,
+                "reasoning_effort": "none",
+                "messages": [{"role": "user", "content": "Schreib einen ausführlichen Lernplan (ca. 500 Wörter) für 25 Minuten Biologie mit Listen, Gedankenstrichen und Umlauten."}],
+            });
+            let mut r = req(
+                "https://openrouter.ai/api/v1/chat/completions",
+                &[("content-type", "application/json"), ("authorization", "Bearer managed-by-backend")],
+            );
+            r.body = Some(body.to_string());
+            let prepared = prepare(&r, Some(&p), &secrets, &OAuth::new(Arc::new(MemoryStore::default()))).await.unwrap();
+            let (_tx, rx) = oneshot::channel();
+            let mut events = vec![];
+            let start = std::time::Instant::now();
+            let mut gaps = vec![];
+            let mut last = std::time::Instant::now();
+            run(&stream_client(), prepared, rx, |e| {
+                gaps.push(last.elapsed().as_millis());
+                last = std::time::Instant::now();
+                events.push(e)
+            })
+            .await;
+            let max_gap = gaps.iter().copied().max().unwrap_or(0);
+            println!("round {round}: {} events in {:?}, max gap {max_gap} ms, last {:?}", events.len(), start.elapsed(), events.last());
+            assert_eq!(events.last(), Some(&ProxyEvent::End));
+        }
     }
 
     /// Real cloud provider through the proxy: the key is injected from the secret store and the JS

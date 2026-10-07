@@ -1,5 +1,6 @@
 import { streamText, type ModelMessage } from "ai";
 import { api } from "../ipc";
+import { s } from "../strings";
 import { queryClient, qk } from "../queries";
 import type { Citation, FocusState, Message, MessageMeta, SearchHit, Space, TutorStyle } from "../types";
 import { useChatStream } from "../../stores/chatStream";
@@ -199,6 +200,8 @@ export async function runTurn(input: TurnInput): Promise<Message> {
 export function describeError(e: unknown): string {
   const err = e as { message?: string; statusCode?: number; responseBody?: string; cause?: unknown };
   let msg = err?.message ?? String(e);
+  const cause = (err?.cause as { message?: string } | undefined)?.message;
+  if (msg === "Failed to process successful response") msg = cause ? s.chat.streamBroke(cause) : s.chat.streamBroke("");
   if (err?.statusCode === 401 || err?.statusCode === 403) msg = `The provider rejected the request (${err.statusCode}). Check the API key or sign-in in Settings.`;
   else if (err?.statusCode === 404) msg = `The model wasn't found (${err.statusCode}). Pick another model in Settings.`;
   else if (err?.statusCode === 429) msg = "Rate limit or quota reached at the provider. Try again in a moment.";

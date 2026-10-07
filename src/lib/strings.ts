@@ -254,6 +254,8 @@ export const s = {
     thoughts: "Reasoning",
     thoughtFor: (sec: number) =>
       sec < 60 ? `Thought for ${sec} second${sec === 1 ? "" : "s"}` : `Thought for ${Math.round(sec / 60)} min`,
+    streamBroke: (cause: string) =>
+      `The connection to the model broke off mid-answer${cause ? ` (${cause})` : ""}. Retry to get the full answer.`,
     thinkingToggle: "Thinking",
     extendedThinking: "Extended thinking",
     notFromSources: "Not from your sources",
