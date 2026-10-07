@@ -80,22 +80,29 @@ function Key({ k, h }: { k: KeyDef; h: KeyHandlers }) {
 }
 
 const P = ARROW_PAD;
-const CX = P.w / 2;
-const CY = P.h / 2;
-const RX = P.w / 2;
-const RY = P.h / 2;
 type Pt = [number, number];
 
-const arcPts = (a0: number, a1: number, n = 14): Pt[] =>
-  Array.from({ length: n + 1 }, (_, i) => {
-    const a = a0 + ((a1 - a0) * i) / n;
-    return [CX + RX * Math.cos(a), CY + RY * Math.sin(a)] as Pt;
+const ECX = 275.375;
+const ECY = 222.5;
+const ERX = 46.6;
+const ERY = 36.25;
+const loc = ([x, y]: Pt): Pt => [x - P.x, y - P.y];
+const onEllipseX = (x: number, top: boolean): Pt => [x, ECY + (top ? -1 : 1) * ERY * Math.sqrt(1 - ((x - ECX) / ERX) ** 2)];
+const onEllipseY = (y: number, left: boolean): Pt => [ECX + (left ? -1 : 1) * ERX * Math.sqrt(1 - ((y - ECY) / ERY) ** 2), y];
+const ang = ([x, y]: Pt) => Math.atan2((y - ECY) / ERY, (x - ECX) / ERX);
+const arcPts = (a: Pt, b: Pt, wrap = false, n = 16): Pt[] => {
+  const a0 = ang(a);
+  let a1 = ang(b);
+  if (wrap && a1 < a0) a1 += 2 * Math.PI;
+  return Array.from({ length: n + 1 }, (_, i) => {
+    const t = a0 + ((a1 - a0) * i) / n;
+    return loc([ECX + ERX * Math.cos(t), ECY + ERY * Math.sin(t)]);
   });
-const ellipseAngle = ([x, y]: Pt) => Math.atan2((y - CY) / RY, (x - CX) / RX);
+};
 const quadPts = (a: Pt, c: Pt, b: Pt, n = 8): Pt[] =>
   Array.from({ length: n + 1 }, (_, i) => {
     const t = i / n;
-    return [(1 - t) ** 2 * a[0] + 2 * (1 - t) * t * c[0] + t * t * b[0], (1 - t) ** 2 * a[1] + 2 * (1 - t) * t * c[1] + t * t * b[1]] as Pt;
+    return loc([(1 - t) ** 2 * a[0] + 2 * (1 - t) * t * c[0] + t * t * b[0], (1 - t) ** 2 * a[1] + 2 * (1 - t) * t * c[1] + t * t * b[1]]);
   });
 
 /** Closed path through the corner points, edges given as sampled polylines, corners rounded. */
@@ -121,43 +128,57 @@ function padPath(edges: Pt[][], r = 3): string {
   return d + "Z";
 }
 
-const line = (a: Pt, b: Pt): Pt[] => [a, b];
-const E = { tl: [19.5, 7.4] as Pt, tr: [CX * 2 - 19.5, 7.4] as Pt, bl: [19.5, P.h - 7.4] as Pt, br: [CX * 2 - 19.5, P.h - 7.4] as Pt };
-const H = { tl: [40.2, 33.6] as Pt, tr: [CX * 2 - 40.2, 33.6] as Pt, bl: [40.2, P.h - 33.6] as Pt, br: [CX * 2 - 40.2, P.h - 33.6] as Pt };
-const hy = 29.6;
-const hx = 37.4;
+const line = (a: Pt, b: Pt): Pt[] => [loc(a), loc(b)];
+
+// Pad outlines are the outer edge of the 1 px ring (UI-SPEC §5); the black outline is drawn outside it.
+const UW = 28.3;
+const UT = onEllipseX(ECX - UW, true);
+const UTR = onEllipseX(ECX + UW, true);
+const DB = onEllipseX(ECX - UW, false);
+const DBR = onEllipseX(ECX + UW, false);
+const LT = onEllipseY(195.8, true);
+const LB = onEllipseY(249.2, true);
+const RT = onEllipseY(195.8, false);
+const RB = onEllipseY(249.2, false);
+const HUX = 267.6;
+const HUY = 215.9;
+const HLX = 266.75;
+const HLY = 218.4;
+const hu = (l: boolean, top: boolean): Pt => [l ? HUX : 2 * ECX - HUX, top ? HUY : 2 * ECY - HUY];
+const hl = (l: boolean, top: boolean): Pt => [l ? HLX : 2 * ECX - HLX, top ? HLY : 2 * ECY - HLY];
 
 const PADS: Record<string, string> = {
   up: padPath([
-    arcPts(ellipseAngle(E.tl), ellipseAngle(E.tr)),
-    line(E.tr, H.tr),
-    quadPts(H.tr, [CX, hy], H.tl),
-    line(H.tl, E.tl),
+    arcPts(UT, UTR),
+    line(UTR, hu(false, true)),
+    quadPts(hu(false, true), [ECX, 214.1], hu(true, true)),
+    line(hu(true, true), UT),
   ]),
   down: padPath([
-    arcPts(-ellipseAngle(E.tl), -ellipseAngle(E.tr)),
-    line(E.br, H.br),
-    quadPts(H.br, [CX, P.h - hy], H.bl),
-    line(H.bl, E.bl),
+    arcPts(DB, DBR),
+    line(DBR, hu(false, false)),
+    quadPts(hu(false, false), [ECX, 2 * ECY - 214.1], hu(true, false)),
+    line(hu(true, false), DB),
   ]),
   left: padPath([
-    line(E.tl, H.tl),
-    quadPts(H.tl, [hx, CY], H.bl),
-    line(H.bl, E.bl),
-    arcPts(ellipseAngle(E.bl), 2 * Math.PI + ellipseAngle(E.tl)),
+    line(LT, hl(true, true)),
+    quadPts(hl(true, true), [264.4, ECY], hl(true, false)),
+    line(hl(true, false), LB),
+    arcPts(LB, LT, true),
   ]),
   right: padPath([
-    line(E.tr, H.tr),
-    quadPts(H.tr, [P.w - hx, CY], H.br),
-    line(H.br, E.br),
-    arcPts(ellipseAngle(E.br), ellipseAngle(E.tr)),
+    line(RT, hl(false, true)),
+    quadPts(hl(false, true), [2 * ECX - 264.4, ECY], hl(false, false)),
+    line(hl(false, false), RB),
+    arcPts(RB, RT),
   ]),
 };
+const poly = (pts: Pt[]) => pts.map((p) => loc(p).map((v) => v.toFixed(2)).join(",")).join(" ");
 const ARROWS: Record<string, string> = {
-  up: "44.3,14.95 52.05,14.95 48.18,10.95",
-  down: "44.3,61.2 51.8,61.2 48.05,64.95",
-  left: "14.55,34.2 14.55,41.7 10.8,37.95",
-  right: "81.8,34.2 81.8,41.7 85.55,37.95",
+  up: poly([[271.25, 199.5], [279.25, 199.5], [275.25, 195.5]]),
+  down: poly([[271.5, 245.75], [279.25, 245.75], [275.375, 249.5]]),
+  left: poly([[241.75, 218.75], [241.75, 226.25], [238, 222.5]]),
+  right: poly([[309, 218.75], [309, 226.25], [312.75, 222.5]]),
 };
 
 function ArrowPad({ h }: { h: KeyHandlers }) {
@@ -191,8 +212,7 @@ function ArrowPad({ h }: { h: KeyHandlers }) {
           >
             <path d={PADS[id]} style={{ fill: down ? "var(--calc-key-pressed)" : "var(--calc-key-op)" }} />
             <g clipPath={`url(#${uid}-${id})`} fill="none">
-              <path d={PADS[id]} strokeWidth={5} style={{ stroke: down ? "var(--calc-key-pressed-ring)" : "var(--calc-key-ring)" }} />
-              <path d={PADS[id]} strokeWidth={3} style={{ stroke: "var(--calc-key-border)" }} />
+              <path d={PADS[id]} strokeWidth={2} style={{ stroke: down ? "var(--calc-key-pressed-ring)" : "var(--calc-key-ring)" }} />
             </g>
             <polygon points={ARROWS[id]} style={{ fill: "var(--calc-legend-light)" }} />
           </g>

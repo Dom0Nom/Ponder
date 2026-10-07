@@ -66,6 +66,6 @@ test("display canvas keeps the device proportions at any scale", async ({ page }
   const lcd = await page.getByTestId("calc-lcd").boundingBox();
   const device = await page.getByTestId("calculator").boundingBox();
   expect(lcd && device).toBeTruthy();
-  expect(lcd!.width / lcd!.height).toBeCloseTo(243 / 100, 1);
-  expect(lcd!.width / device!.width).toBeCloseTo(243 / 267.9, 2);
+  expect(lcd!.width / lcd!.height).toBeCloseTo(245 / 105, 1);
+  expect(lcd!.width / device!.width).toBeCloseTo(245 / 267.9, 2);
 });

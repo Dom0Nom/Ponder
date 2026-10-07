@@ -164,19 +164,31 @@ export function compose(bits: Uint8Array, indicators: string[]): Uint8Array {
 }
 
 export interface PaintOpts {
+  /** Backing-store size in device pixels. */
   width: number;
   height: number;
+  /** Device pixels per CSS px. */
+  k: number;
+  /** Canvas origin in CSS px. */
+  origin: { x: number; y: number };
+  /** White LCD rect and dot-area size in CSS px (UI-SPEC §3.1). */
+  lcd: { x: number; y: number; w: number; h: number; dotsH: number };
   ink: string;
   bg: string;
 }
 
-/** Paint the canvas pixels nearest-neighbour into a `width`×`height` device-pixel area (top 99.75 of 103.9 CSS px). */
+/** Paint the LCD: the white area at its exact fractional edges, canvas pixels nearest-neighbour with separate x and y factors (UI-SPEC §3.2). */
 export function paint(ctx: CanvasRenderingContext2D, px: Uint8Array, o: PaintOpts) {
+  ctx.clearRect(0, 0, o.width, o.height);
+  const left = (o.lcd.x - o.origin.x) * o.k;
+  const top = (o.lcd.y - o.origin.y) * o.k;
   ctx.fillStyle = o.bg;
-  ctx.fillRect(0, 0, o.width, o.height);
+  ctx.fillRect(left, top, o.lcd.w * o.k, o.lcd.h * o.k);
   ctx.fillStyle = o.ink;
-  const k = o.width / PX_W;
-  const edge = (i: number) => Math.round(i * k);
+  const kx = (o.lcd.w * o.k) / PX_W;
+  const ky = (o.lcd.dotsH * o.k) / PX_H;
+  const ex = (i: number) => Math.round(left + i * kx);
+  const ey = (i: number) => Math.round(top + i * ky);
   for (let y = 0; y < PX_H; y++) {
     let x = 0;
     while (x < PX_W) {
@@ -186,7 +198,7 @@ export function paint(ctx: CanvasRenderingContext2D, px: Uint8Array, o: PaintOpt
       }
       let e = x;
       while (e < PX_W && px[y * PX_W + e]) e++;
-      ctx.fillRect(edge(x), edge(y), edge(e) - edge(x), edge(y + 1) - edge(y));
+      ctx.fillRect(ex(x), ey(y), ex(e) - ex(x), ey(y + 1) - ey(y));
       x = e;
     }
   }
