@@ -19,6 +19,20 @@ export interface Mask {
   reason: string;
 }
 
+/**
+ * Component-only comparison, approved by the user for artboards that draw an older space screen
+ * (no thread list, 592px chat column, old composer) behind their dialog or panel. The backdrop
+ * follows the 2a reference instead and is gated by screen 2 itself. The rectangle is the
+ * component's box in the artboard; % is relative to that box.
+ */
+export interface Region {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  reason: string;
+}
+
 export interface Recipe {
   id: string;
   n: number;
@@ -29,6 +43,7 @@ export interface Recipe {
   /** UI for this state doesn't exist yet or the recipe can't reach it; failure doesn't fail the run */
   pending?: string;
   masks: Mask[];
+  region?: Region;
   /** screens that `--native` can compare against the real window */
   native: boolean;
   setup: (p: Page) => Promise<void>;
@@ -83,6 +98,7 @@ interface Screen {
   source?: Recipe["source"];
   pending?: string;
   masks?: Mask[];
+  region?: Region;
   native?: boolean;
   setup: (p: Page) => Promise<void>;
   /** per-theme replacement for fields above */
@@ -548,6 +564,7 @@ export function buildRecipes(): Recipe[] {
         source: o.source ?? "app-screens",
         pending: o.pending,
         masks: o.masks ?? [],
+        region: o.region,
         native: !!o.native,
         setup: o.setup,
       });
