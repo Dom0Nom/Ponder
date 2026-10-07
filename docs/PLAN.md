@@ -9,6 +9,22 @@ Source of truth for scope is `docs/SPEC.md`. This file records how it is built a
 - **AI HTTP goes through our own Rust proxy instead of `@tauri-apps/plugin-http`.** The AI SDK gets a custom `fetch` that calls the `http_stream` command; Rust injects the provider's API key / OAuth token from the keychain, only for that provider's own base URL. Keys never enter the webview. Also removes CORS issues.
 - **keyring 3** (stable API) instead of 4.
 
+## Redesign (Ponder look)
+
+Built from `docs/redesign/` (foundation and shell, space and Studio, learning screens, motion, brand, calculator) against `design/`, checked per artboard with `scripts/design-diff.ts`. Deviations:
+
+- Studio uses the 2a variant: flush against the window edge, outside the chat card.
+- The sources panel is in-flow (pushes the chat) instead of an overlay.
+- Dialogs and Studio panels are compared by `region`, because their design backdrops are outdated.
+- IBM Plex Sans is bundled as static weights, not the variable font.
+- KaTeX is pinned to 0.16 to match rehype-katex; two versions broke subscripts.
+- The sidebar shows the Ponder mark and wordmark (added at the user's request, listed in `USER_DEVIATIONS`).
+- Mark animation is faster than the brand spec: idle 0.2, generating 0.7.
+- Provider tiles use provider favicons.
+- The model menu shows one provider at a time.
+- OpenRouter lists text chat models only.
+- Calculator was built clean-room from `docs/redesign/calculator/`.
+
 ## Architecture
 
 ```

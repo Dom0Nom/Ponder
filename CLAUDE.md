@@ -34,7 +34,12 @@ Tauri WebDriver doesn't work on macOS. Run `bun run tauri dev`, then screenshot 
 - Errors: Rust returns `AppError` (serialized `{code, message}`); UI shows them via `toastError(title, err, retry?)` or `ErrorState`. Nothing fails silently.
 - Every screen/pane has empty, loading (Skeleton) and error states.
 - Secrets only via `secrets.rs`: OS keychain in release builds; debug builds use `dev-secrets.json` (0600) in the app data dir, since rebuilt binaries trigger keychain prompts. Never log keys/tokens. AI HTTP goes through `http_stream`, which injects auth in Rust only for the provider's own base URL.
-- UI strings go in `src/lib/strings.ts`. Colors via theme tokens (`bg-surface`, `text-muted`, `bg-accent`…), never raw hex in components.
+- UI strings go in `src/lib/strings.ts`. Colors via theme tokens (`bg-surface`, `text-muted`, `bg-primary`…), never raw hex in components. There is no accent color.
+- Tokens: names live in `src/index.css` (colors, radii, type scale, shadows, `--motion-*`). `--calc-*` only inside the calculator.
+- Motion: `src/styles/transitions/<slug>.css` are real transitions.dev snippets (keep the attribution header; edit only as documented there), app-specific motion is in `src/styles/app-motion.css`. Durations/easings come from `--motion-*`. Reduce motion and Visual effects are settings that set `data-motion` on `<html>`; reduced motion removes all animation. WebGL effects only behind Visual effects.
+- `studioView` in `src/stores/ui.ts` says which Studio panel is open (`focus`, `microsteps`, `lowEnergy`, `journal`, `flashcards`, `steps`, `plan`, `course`, `settings`, `calculator`, or `null`). It is not persisted.
+- Pixel gate: `bun scripts/design-diff.ts [--port N]` renders the app with `?fixture=design` and compares it to the design artboards. No masks. `region` only for artboards whose design backdrop is outdated; user-requested changes go in `USER_DEVIATIONS`. Run it after any UI change.
+- Calculator is clean-room: the builder never reads the reference; `docs/redesign/calculator/` is the only channel.
 - Minimal comments. Commit messages: short list of what changed, no AI trailers.
 
 ## Dev LLM

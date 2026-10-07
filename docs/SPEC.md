@@ -11,7 +11,7 @@ NotebookLM is the baseline, not the ceiling: sources + grounded AI + generated s
 | Stack | Tauri 2 (Rust backend) + React + TypeScript + Vite, `bun` as package manager |
 | Data | Local-only. SQLite + files in the app data dir. No account, no server, no telemetry. Sync later. |
 | Spaces | Called "Spaces". One per subject (GED, robotics, programming, ...). |
-| Look | NotebookLM / Google Workspace feel: neutral surfaces, soft rounded cards, one accent color, Inter, lots of whitespace, 3-pane layout (Sources, Chat, Studio). Light + dark + system. Not editorial. |
+| Look | Neutral gray desktop look: IBM Plex Sans, no accent color (solid black/white for primary actions, color only for meaning), left sidebar (search, navigation, chats) + chat + Studio; sources open as a panel. Light + dark + system. Not editorial. Reference: `design/App Screens.dc.html` + `design/Space Screen v2.dc.html`; rules: `design/DESIGN-RULES.md`. Brand: Ponder (logo and the logo font only for the logo). |
 | UI language | English, strings kept in one place for later i18n. Dyslexia-friendly font option (OpenDyslexic) + text size setting. AI replies in the user's language. |
 | Tutor style | Per-space setting: Direct / Socratic / Mixed, switchable in chat. |
 | Grounding | Sources first with citations. General knowledge allowed but visibly tagged "not from your sources". Per-space strict toggle (sources only). |
@@ -31,7 +31,7 @@ NotebookLM is the baseline, not the ceiling: sources + grounded AI + generated s
 Must work end-to-end and be verified:
 
 **Spaces**
-- Create, rename, delete, pick icon/color; per-space settings (tutor style, strict grounding, model)
+- Create, rename, delete, pick icon; per-space settings (tutor style, strict grounding, model)
 - Home screen grid of spaces, last-opened recap line
 
 **Sources**
@@ -55,7 +55,7 @@ Must work end-to-end and be verified:
 - OAuth provider plumbing (auth-code + PKCE with 127.0.0.1 callback, device code, rotating token refresh, keychain storage) with ChatGPT and xAI implemented per `docs/OAUTH.md`
 
 **Focus**
-- Start session from anywhere (toolbar + ⌘⇧F), pick technique, optional goal
+- Start session from anywhere (⌘⇧F, command palette, Studio), pick technique, optional goal
 - Compact timer in the app header + menu bar (tray) timer
 - Break: fullscreen overlay with countdown, break tip, "I need the app" pause (logged)
 - Study-buddy events injected into the active chat (check-in, T-3 recall, block-end quiz, post-break recap, session summary)
@@ -64,7 +64,7 @@ Must work end-to-end and be verified:
 - Parking lot: one-keystroke capture of distracting thoughts mid-session, shown at the break
 
 **App shell**
-- 3-pane space layout, collapsible panes, ⌘K command palette, light/dark/system theme, dyslexia font + text size
+- Space layout: collapsible sidebar, chat, Studio (⌘⇧T), Sources panel (⌘⇧S); ⌘K palette; light/dark/system; dyslexia font + text size
 - Empty states, loading skeletons, error toasts with retry; nothing silently fails
 
 ## Roadmap after the first build (in order)
@@ -94,7 +94,7 @@ Cut: calendar sync, essay coach (separate from exam-simulator essay grading, whi
 
 ## Architecture
 
-- **Frontend** (`src/`): React + TS, Tailwind + Radix primitives (shadcn-style, restyled to the Google look), Zustand for UI state, TanStack Query for backend calls. AI calls through the Vercel AI SDK (`ai` + provider packages) with `@tauri-apps/plugin-http` fetch so there's no CORS issue and keys stay out of web requests made by the page.
+- **Frontend** (`src/`): React + TS, Tailwind + Radix primitives (shadcn-style, restyled to the app's neutral design system (`src/index.css` tokens)), Zustand for UI state, TanStack Query for backend calls. AI calls through the Vercel AI SDK (`ai` + provider packages) with `@tauri-apps/plugin-http` fetch so there's no CORS issue and keys stay out of web requests made by the page.
 - **Backend** (`src-tauri/`): Rust. SQLite (`rusqlite` or `sqlx`) with FTS5 + `sqlite-vec`; local embeddings via `fastembed` (ONNX, small model, CPU-friendly); document extraction (PDF via pdfium or `pdf-extract`, DOCX/EPUB parsers); keychain (`keyring`); focus timer state machine emitting Tauri events; OAuth callback server; window control (fullscreen, always-on-top overlay).
 - **Provider layer**: one interface `{ id, kind: apiKey|oauth|local, models(), chat(stream), embed?, tts?, webSearch? }`. Capabilities declared per provider so features degrade cleanly (e.g. no built-in search → free fallback).
 - **Importer interface**: `{ id, canHandle(input), import(input) → Source }`, so cloud connectors plug in later without touching the pipeline.
