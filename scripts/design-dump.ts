@@ -16,7 +16,7 @@ const collect = ({ root, box }: { root: string | null; box: number[] }) => {
   const ox = root ? o.x + (parseFloat(getComputedStyle(el).borderLeftWidth) || 0) : 0;
   const oy = root ? o.y + (parseFloat(getComputedStyle(el).borderTopWidth) || 0) : 0;
   const out: string[] = [];
-  const r1 = (n: number) => Math.round(n * 10) / 10;
+  const r1 = (n: number) => Math.round(n * 100) / 100;
   for (const e of Array.from(el.querySelectorAll("*")) as HTMLElement[]) {
     const cs = getComputedStyle(e);
     if (cs.display === "none" || cs.visibility === "hidden") continue;
