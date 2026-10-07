@@ -675,3 +675,16 @@ export interface ErrorPattern {
   lastAt: number;
   topics: string[];
 }
+
+export interface OpenRouterModel {
+  id: string;
+  name: string;
+  contextLength: number | null;
+  supportedParameters: string[];
+  created: number | null;
+}
+
+export interface OpenRouterCatalog {
+  fetchedAt: number;
+  models: OpenRouterModel[];
+}

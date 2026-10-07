@@ -1,6 +1,6 @@
 import { LearnChevron } from "../../components/motion/LearnChevron";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, HardDrive, KeyRound, LogIn } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import { Fragment, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Input, Label } from "../../components/ui/input";
@@ -13,9 +13,8 @@ import type { Provider, ProviderKind, ProviderType } from "../../lib/types";
 import { useUi } from "../../stores/ui";
 import { openExternal } from "./openExternal";
 import { pk } from "./providerQueries";
+import { ProviderIcon } from "../../components/ProviderIcon";
 import { SubPage } from "./SubPage";
-
-const groupIcon: Record<ProviderKind, typeof HardDrive> = { local: HardDrive, oauth: LogIn, apiKey: KeyRound };
 
 const DESIGNED: Record<ProviderKind, ProviderType[]> = {
   local: ["lmstudio", "ollama"],
@@ -24,14 +23,13 @@ const DESIGNED: Record<ProviderKind, ProviderType[]> = {
 };
 
 function Tile({ type, onPick }: { type: ProviderType; onPick: (t: ProviderType) => void }) {
-  const Icon = groupIcon[catalog[type].kind];
   const hint = s.providers.tileHint[type];
   return (
     <button
       onClick={() => onPick(type)}
       className="t-learn flex h-12 items-center gap-3 rounded-tile border border-border px-3 text-left hover:bg-fill-faint"
     >
-      <Icon size={15} aria-hidden />
+      <ProviderIcon type={type} size={20} />
       <span className="flex flex-1 flex-col">
         <span className="font-semibold">{catalog[type].tileLabel ?? catalog[type].label}</span>
         {hint && <span className="text-label text-muted">{hint}</span>}

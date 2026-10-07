@@ -68,3 +68,21 @@ http://www.apache.org/licenses/LICENSE-2.0
 The Ponder logo (`src/assets/brand/`, `design/brand/`) and the "ponder" display font belong to
 the project owner. They are not covered by this repository's MIT license, and they are not to
 be reused in forks without permission.
+
+## Provider logos (trademarks)
+
+The icons in `src/assets/providers/` are the logos or favicons of the services the app connects to. They are trademarks of their owners, used only to identify the provider, and are not covered by this repository's MIT license. Downscaled to 64 px from the sources below.
+
+- OpenRouter: https://openrouter.ai/favicon/glyph.png
+- LM Studio: https://lmstudio.ai/assets/marketing/logo-192x192.png
+- Ollama: https://ollama.com/public/apple-touch-icon.png
+- llama.cpp (ggml-org): https://github.com/ggml-org.png
+- Anthropic: https://www.anthropic.com (site favicon)
+- OpenAI: https://developers.openai.com/favicon.png
+- Google Gemini: https://gemini.google.com (site icon)
+- xAI: https://x.ai/favicon.ico
+- Groq: https://groq.com/apple-touch-icon.png
+- Mistral AI: https://mistral.ai/favicon.ico
+- DeepSeek: https://www.deepseek.com/favicon.ico
+- Meta: https://ai.meta.com (site icon, SVG)
+- Qwen: https://qwen.ai (site icon)

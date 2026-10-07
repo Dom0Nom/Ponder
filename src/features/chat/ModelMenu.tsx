@@ -1,16 +1,19 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { Check, ChevronDown, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
-import { TEMPERATURE_VALUES, capabilitiesOf, offersTemperature } from "../../lib/providers/catalog";
-import { controlsKey, effortLabel, modelLabel, thinkingOn } from "../../lib/providers/controls";
+import { ChevronDown, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { ProviderIcon } from "../../components/ProviderIcon";
+import { Menu, MenuContent, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../../components/ui/menu";
+import { TEMPERATURE_VALUES, offersTemperature } from "../../lib/providers/catalog";
+import { controlsKey, effortLabel, modelCapabilities, modelLabel, thinkingOn } from "../../lib/providers/controls";
 import { resolveModel } from "../../lib/providers/model";
-import { useProviders, useSettings, useUpdateSpace } from "../../lib/queries";
+import { useOpenRouterModels, useProviders, useSettings, useUpdateSpace } from "../../lib/queries";
 import { s } from "../../lib/strings";
-import type { ModelRef, Provider, Space } from "../../lib/types";
+import type { ModelRef, Space } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
 import { Switch } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
+import { ModelBrowser } from "./ModelBrowser";
 
 const triggerClass =
   "flex h-7 max-w-[260px] items-center gap-1.5 rounded-btn pl-2.5 pr-2 font-medium text-muted hover:bg-fill data-[state=open]:bg-fill";
@@ -50,9 +53,6 @@ function Segmented({
   );
 }
 
-const providerModels = (p: Provider) =>
-  (p.config.models ?? (p.config.defaultModel ? [p.config.defaultModel] : [])).filter((m) => !/embed/i.test(m));
-
 export function ModelMenu({ space }: { space: Space }) {
   const providers = useProviders();
   const settings = useSettings();
@@ -60,11 +60,15 @@ export function ModelMenu({ space }: { space: Space }) {
   const navigate = useUi((st) => st.navigate);
   const controls = useUi((st) => st.modelControls);
   const setControls = useUi((st) => st.setModelControls);
+  const pushRecent = useUi((st) => st.pushRecentModel);
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
+  const [viewId, setViewId] = useState<string | null>(null);
+  const content = useRef<HTMLDivElement>(null);
 
   const list = providers.data ?? [];
   const current = resolveModel((settings.data?.defaultModel as ModelRef | undefined) ?? null, space.modelOverride, list);
+  // loads the list so per-model controls are known before the menu opens
+  useOpenRouterModels(current?.provider.type === "openrouter");
 
   if (!current)
     return (
@@ -75,19 +79,46 @@ export function ModelMenu({ space }: { space: Space }) {
 
   const key = controlsKey(current.provider.id, current.modelId);
   const stored = controls[key];
-  const caps = capabilitiesOf(current.provider);
-  const effort = effortLabel(current.provider, stored);
-  const total = list.reduce((n, p) => n + providerModels(p).length, 0);
-  const q = query.trim().toLowerCase();
+  const caps = modelCapabilities(current.provider, current.modelId);
+  const effort = effortLabel(current.provider, stored, caps);
+  const viewed = list.find((p) => p.id === viewId) ?? current.provider;
   const pick = (providerId: string, model: string) => {
     update.mutate({ id: space.id, patch: { modelOverride: { providerId, model } } }, { onError: (e) => toastError(s.errors.generic, e) });
+    pushRecent(providerId, model);
     setOpen(false);
   };
-  const showToggle = caps.reasoningToggle || caps.thinkingToggle;
-  const hasControls = !!caps.reasoningLevels || caps.verbosity || offersTemperature(current.provider) || showToggle;
+  // controls belong to the model in use, so they only show next to its own provider's list
+  const own = viewed.id === current.provider.id;
+  const showToggle = own && (caps.reasoningToggle || caps.thinkingToggle);
+  const showTemperature = own && offersTemperature(current.provider, caps);
+  const showLevels = own && !!caps.reasoningLevels;
+  const showVerbosity = own && caps.verbosity;
+  const hasControls = showLevels || showVerbosity || showTemperature || showToggle;
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const root = content.current;
+    const target = e.target;
+    if (!root || !(target instanceof HTMLElement) || !root.contains(target)) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      const items = Array.from(root.querySelectorAll<HTMLElement>("[data-nav]"));
+      const i = items.indexOf(target);
+      if (i === -1 && target !== root) return;
+      e.preventDefault();
+      const next = e.key === "ArrowDown" ? Math.min(items.length - 1, i + 1) : Math.max(0, i - 1);
+      items[next]?.focus();
+    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && target.tagName !== "INPUT") {
+      root.querySelector<HTMLInputElement>("[data-model-search]")?.focus();
+    }
+  };
 
   return (
-    <Popover.Root open={open} onOpenChange={setOpen}>
+    <Popover.Root
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) setViewId(current.provider.id);
+      }}
+    >
       <Popover.Trigger asChild>
         <button className={triggerClass} aria-label={`${modelLabel(current.modelId)} ${effort}`.trim()}>
           <span className="truncate text-fg">{modelLabel(current.modelId)}</span>
@@ -97,49 +128,49 @@ export function ModelMenu({ space }: { space: Space }) {
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
+          ref={content}
           side="top"
           align="start"
           sideOffset={8}
+          collisionPadding={12}
+          avoidCollisions
           data-testid="model-menu"
-          className="t-dropdown z-50 max-h-[min(520px,var(--radix-popover-content-available-height))] w-[300px] overflow-y-auto rounded-pane border border-border bg-surface p-1 text-body text-fg shadow-popover outline-none"
+          onKeyDown={onKeyDown}
+          className="t-dropdown z-50 flex max-h-[min(560px,var(--radix-popover-content-available-height))] w-[300px] flex-col overflow-hidden [&>*:not([data-list])]:shrink-0 rounded-pane border border-border bg-surface p-1 text-body text-fg shadow-popover outline-none"
         >
-          {total > 12 && (
-            <label className="mx-1.5 mb-1 mt-0.5 flex h-[30px] items-center gap-2 rounded-btn border border-border px-2.5 text-muted">
-              <Search size={13} />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={s.models.search(total)}
-                aria-label={s.models.search(total)}
-                className="min-w-0 flex-1 bg-transparent text-fg outline-none placeholder:text-faint"
-              />
-            </label>
-          )}
-          {list.map((p) => {
-            const models = providerModels(p).filter((m) => !q || m.toLowerCase().includes(q));
-            if (!models.length) return null;
-            return (
-              <div key={p.id} role="group" aria-label={p.name}>
-                <div className="flex items-center gap-2 px-2.5 pb-1.5 pt-2">
-                  <span className="flex size-[18px] items-center justify-center rounded-kbd bg-chip text-kbd font-semibold">
-                    {p.name.charAt(0).toUpperCase()}
-                  </span>
-                  <span className="font-semibold">{p.name}</span>
-                </div>
-                {models.map((m) => {
-                  const on = p.id === current.provider.id && m === current.modelId;
-                  return (
-                    <button key={m} role="menuitemradio" aria-checked={on} title={m} onClick={() => pick(p.id, m)} className={itemClass}>
-                      <span className="min-w-0 flex-1 truncate font-semibold">{modelLabel(m)}</span>
-                      {on && <Check size={14} className="shrink-0" />}
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })}
+          <Menu>
+            <MenuTrigger asChild disabled={list.length < 2}>
+              <button
+                aria-label={s.models.providerPicker}
+                data-testid="provider-picker"
+                className="mb-1 flex h-[34px] w-full items-center gap-2.5 rounded-item px-2.5 text-left font-semibold hover:bg-fill disabled:hover:bg-transparent data-[state=open]:bg-fill"
+              >
+                <ProviderIcon type={viewed.type} size={18} />
+                <span className="min-w-0 flex-1 truncate">{viewed.name}</span>
+                {list.length > 1 && <ChevronDown size={13} className="shrink-0 text-muted" />}
+              </button>
+            </MenuTrigger>
+            <MenuContent popover align="start" className="w-[284px]">
+              <MenuRadioGroup value={viewed.id} onValueChange={setViewId}>
+                {list.map((p) => (
+                  <MenuRadioItem key={p.id} value={p.id}>
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <ProviderIcon type={p.type} size={18} />
+                      <span className="truncate">{p.name}</span>
+                    </span>
+                  </MenuRadioItem>
+                ))}
+              </MenuRadioGroup>
+            </MenuContent>
+          </Menu>
+          <div className="mx-1.5 mb-1 h-px bg-divider" />
+          <ModelBrowser
+            provider={viewed}
+            selected={viewed.id === current.provider.id ? current.modelId : null}
+            onPick={(m) => pick(viewed.id, m)}
+          />
           {hasControls && <div className="my-1 h-px bg-divider" />}
-          {caps.reasoningLevels && (
+          {showLevels && caps.reasoningLevels && (
             <Segmented
               label={caps.reasoningLabel}
               value={stored?.reasoning}
@@ -147,7 +178,7 @@ export function ModelMenu({ space }: { space: Space }) {
               onChange={(v) => setControls(key, { reasoning: v as never })}
             />
           )}
-          {caps.verbosity && (
+          {showVerbosity && (
             <Segmented
               label={s.models.verbosity}
               value={stored?.verbosity}
@@ -155,7 +186,7 @@ export function ModelMenu({ space }: { space: Space }) {
               onChange={(v) => setControls(key, { verbosity: v as never })}
             />
           )}
-          {offersTemperature(current.provider) && (
+          {showTemperature && (
             <Segmented
               label={s.models.temperature}
               value={stored?.temperature != null ? String(stored.temperature) : undefined}
@@ -169,7 +200,7 @@ export function ModelMenu({ space }: { space: Space }) {
               <Switch
                 size="sm"
                 label={caps.thinkingToggle ? s.chat.extendedThinking : s.chat.thinkingToggle}
-                checked={thinkingOn(current.provider, stored)}
+                checked={thinkingOn(current.provider, stored, caps)}
                 onCheckedChange={(on) =>
                   setControls(key, { reasoning: on ? (stored?.reasoning && stored.reasoning !== "none" ? stored.reasoning : "medium") : "none" })
                 }

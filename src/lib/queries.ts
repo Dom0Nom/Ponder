@@ -1,5 +1,6 @@
 import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./ipc";
+import { loadOpenRouterModels } from "./providers/openrouter";
 import { toast } from "sonner";
 import { s } from "./strings";
 import type { SpacePatch } from "./types";
@@ -11,6 +12,7 @@ export const queryClient = new QueryClient({
 });
 
 export const qk = {
+  openrouterModels: ["openrouterModels"] as const,
   spaces: ["spaces"] as const,
   space: (id: string) => ["space", id] as const,
   sources: (spaceId: string) => ["sources", spaceId] as const,
@@ -53,6 +55,10 @@ export const useMessages = (threadId: string | undefined) =>
 export const useJournal = (spaceId: string) =>
   useQuery({ queryKey: qk.journal(spaceId), queryFn: () => api.listJournal(spaceId) });
 export const useProviders = () => useQuery({ queryKey: qk.providers, queryFn: api.listProviders });
+
+/** OpenRouter's model list (disk-cached by the backend); only fetched while `enabled`. */
+export const useOpenRouterModels = (enabled: boolean) =>
+  useQuery({ queryKey: qk.openrouterModels, queryFn: () => loadOpenRouterModels(), enabled, staleTime: 60 * 60_000, retry: false });
 export const useSettings = () => useQuery({ queryKey: qk.settings, queryFn: api.getSettings });
 
 export function useUpdateSpace() {
