@@ -1,6 +1,9 @@
 import { ArrowLeft, Files, House, Layers, PencilLine, Search, Settings } from "lucide-react";
 import { useRef, type ComponentType, type ReactNode } from "react";
-import { PonderMark } from "../components/brand/PonderMark";
+import markDark from "../assets/brand/ponder-mark-dark-tight.png";
+import markLight from "../assets/brand/ponder-mark-light-tight.png";
+import wordDark from "../assets/brand/ponder-wordmark-dark-tight.png";
+import wordLight from "../assets/brand/ponder-wordmark-light-tight.png";
 import { NumberPop } from "../components/motion/NumberPop";
 import { Button } from "../components/ui/button";
 import { Kbd, Tooltip } from "../components/ui/misc";
@@ -9,6 +12,8 @@ import { s } from "../lib/strings";
 import { cn } from "../lib/utils";
 import { useUi } from "../stores/ui";
 import { SidebarThreadListSlot } from "./SidebarThreadListSlot";
+import { useFullscreen } from "./useFullscreen";
+import { useIsDark } from "./useTheme";
 
 function NavItem({
   icon: Icon,
@@ -43,7 +48,7 @@ function NavItem({
       <span className="flex-1">{label}</span>
       {count !== undefined && (
         <span className="t-badge" data-open={count > 0} aria-hidden={count === 0 || undefined}>
-          <span className="t-badge-dot font-kbd text-meta font-semibold tracking-[.12em] text-muted">
+          <span className="t-badge-dot text-meta font-semibold text-muted">
             <NumberPop text={String(count || shown.current)} popKey={count || shown.current} />
           </span>
         </span>
@@ -160,6 +165,8 @@ function SidebarBody() {
 
 export function Sidebar() {
   const open = useUi((st) => st.sidebarOpen);
+  const dark = useIsDark();
+  const fullscreen = useFullscreen();
   return (
     <aside
       aria-label={s.shell.sidebar}
@@ -168,10 +175,17 @@ export function Sidebar() {
       className="relative z-[5] h-full shrink-0 overflow-hidden bg-chrome transition-[width] duration-[180ms] ease-[ease]"
     >
       <div className={cn("flex h-full w-[232px] flex-col transition-opacity duration-150", open ? "opacity-100" : "opacity-0")}>
-        <div className="flex h-[48px] shrink-0 items-center pl-[88px]" data-tauri-drag-region>
-          <div role="img" aria-label={s.appName} className="pointer-events-none flex items-center gap-1.5 text-fg">
-            <PonderMark size={18} />
-            <span aria-hidden className="font-brand text-[19px] leading-none">ponder</span>
+        <div className="relative h-[48px] shrink-0" data-tauri-drag-region>
+          <div
+            role="img"
+            aria-label={s.appName}
+            className={cn(
+              "pointer-events-none absolute inset-y-0 right-0 flex items-center justify-center gap-[7px]",
+              fullscreen ? "left-0" : "left-[76px]",
+            )}
+          >
+            <img src={dark ? markDark : markLight} alt="" draggable={false} className="h-[22px] w-auto" />
+            <img src={dark ? wordDark : wordLight} alt="" draggable={false} className="h-[18px] w-auto" />
           </div>
         </div>
         <SidebarBody />
