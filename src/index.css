@@ -72,6 +72,7 @@
   --sh-float: 0 6px 16px rgba(0, 0, 0, 0.18);
   --sh-panel: 8px 0 24px rgba(0, 0, 0, 0.06);
   --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-math-stack: "STIX Two Text", "Times New Roman", serif;
   --font-kbd-stack: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
   --text-scale: 1;
   /* transitional aliases: delete when `grep -rn "accent\|surface-2\|surface-3\|bg-bg" src` is empty */
@@ -202,6 +203,7 @@
   --font-sans: var(--font-ui);
   --ease-smooth: var(--motion-ease-smooth);
   --font-kbd: var(--font-kbd-stack);
+  --font-math: var(--font-math-stack);
   --shadow-menu: var(--sh-menu);
   --shadow-popover: var(--sh-popover);
   --shadow-dialog: var(--sh-dialog);
@@ -395,9 +397,11 @@ input[type="range"].slider { -webkit-appearance: none; appearance: none; height:
 .slider::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(var(--primary), var(--primary)) 0 / var(--fill-pct, 0%) 100% no-repeat, var(--field); }
 .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: var(--surface); border: 1px solid var(--control-off); box-sizing: border-box; }
 
-.practice-question p { margin: 0; }
-.practice-question .katex-display { margin: 18px 0 0; padding: 22px 22px 19px; border-radius: 8px; background: var(--fill-subtle); font-size: 1.125rem; line-height: 1.6; }
+.practice-question p { margin: 0; line-height: 1.5; }
+.practice-solution .prose-chat p { line-height: 1.7; }
+.practice-question .katex-display { margin: 18px 0 0; padding: 24.5px 22px 25.1px; border-radius: 8px; background: var(--fill-subtle); font-size: 1.125rem; line-height: 1.6; }
 .practice-question .katex-display > .katex { font-size: 1.07em; }
+.practice-question .katex-display .katex, .practice-question .katex-display .katex * { font-family: var(--font-math-stack); font-style: normal; }
 
 /* Calculator (GED test layout): device colors, identical in light and dark (a physical-object simulation). */
 :root {

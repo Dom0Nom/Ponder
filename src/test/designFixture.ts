@@ -212,25 +212,22 @@ const COVERAGE: Record<string, { similarity: number | null; keywordHits: number 
 };
 
 const COURSE_LESSONS = [
-  "Prerequisites",
-  "Equations and inequalities",
-  "Functions",
-  "Linear functions",
-  "Polynomial functions",
-  "Exponential functions",
-  "Systems of equations",
-  "Matrices",
-  "Analytic geometry",
-  "Sequences and series",
-  "Probability",
-  "Counting principles",
+  "1 Prerequisites",
+  "2 Equations and inequalities",
+  "3 Functions",
+  "4 Linear functions",
+  "5 Polynomial functions",
+  "6 Exponential functions",
+  "7 Systems of equations",
 ];
 
 const CARDS_BROWSE = [
   { id: "c-sub", kind: "basic", front: "When should you solve a system by substitution?", back: "When one equation already has a variable on its own, or can get there in one step.", due: FIXTURE_NOW + 1 * D, state: 2, suspended: false },
   { id: "c-slope", kind: "basic", front: "What is the slope in y = mx + b?", back: "m", due: FIXTURE_NOW + 3 * D, state: 2, suspended: false },
-  { id: "c-image", kind: "occlusion", front: "Image card · 3 boxes", back: "", due: FIXTURE_NOW - 1 * MIN, state: 2, suspended: false },
-  { id: "c-elim", kind: "cloze", front: "Elimination works when coefficients are {{c1::matching or opposite}}.", back: "", due: FIXTURE_NOW + 5 * D, state: 2, suspended: true },
+  { id: "c-image", kind: "occlusion", front: "", back: "", due: FIXTURE_NOW - 1 * MIN, state: 2, suspended: false },
+  { id: "c-image2", kind: "occlusion", front: "", back: "", due: FIXTURE_NOW - 1 * MIN, state: 2, suspended: false },
+  { id: "c-image3", kind: "occlusion", front: "", back: "", due: FIXTURE_NOW - 1 * MIN, state: 2, suspended: false },
+  { id: "c-elim", kind: "basic", front: "Elimination works when coefficients are…", back: "", due: FIXTURE_NOW + 5 * D, state: 2, suspended: true },
 ] as const;
 
 const REVIEW_FIRST = [
@@ -636,14 +633,20 @@ function seedCards(db: DB, o: FixtureOptions, at: (n: number) => number, spaceNa
         state: c.state,
         suspended: c.suspended,
         createdAt: at(i * H),
-        data: c.kind === "occlusion" ? { image: "cell.svg", masks: [0, 1, 2].map((k) => ({ id: `m${k}`, x: 0.1 + k * 0.25, y: 0.3, w: 0.2, h: 0.12 })), mask: "m0" } : null,
+        data: c.kind === "occlusion" ? { image: "cell.svg", masks: [0, 1, 2].map((k) => ({ id: `m${k}`, x: 0.1 + k * 0.25, y: 0.3, w: 0.2, h: 0.12 })), mask: `m${c.id === "c-image" ? 0 : c.id === "c-image2" ? 1 : 2}` } : null,
       });
     });
   }
   if (o.cards === "review") {
     const due = (i: number) => FIXTURE_NOW - (60 - i) * MIN;
     REVIEW_FIRST.forEach((c, i) => {
-      db.cards[`c-r${i}`] = mk(`c-r${i}`, sp, spaceName, { front: c.front, back: c.back, due: due(i), createdAt: at(i * H) });
+      db.cards[`c-r${i}`] = mk(`c-r${i}`, sp, spaceName, {
+        front: c.front,
+        back: c.back,
+        due: due(i),
+        createdAt: at(i * H),
+        fsrs: { due: due(i), stability: 3, difficulty: 5, elapsed_days: 3, scheduled_days: 3, learning_steps: 0, reps: 4, lapses: 0, state: 2, last_review: due(i) - 3 * D },
+      });
     });
     db.cards["c-sub"] = mk("c-sub", sp, spaceName, {
       front: "When should you solve a system by substitution?",
@@ -653,10 +656,11 @@ function seedCards(db: DB, o: FixtureOptions, at: (n: number) => number, spaceNa
       sourceId: "src-openstax",
       chunkStart: 0,
       chunkEnd: 100,
+      fsrs: { due: due(3), stability: 1.2, difficulty: 6, elapsed_days: 0, scheduled_days: 0, learning_steps: 1, reps: 1, lapses: 0, state: 1, last_review: due(3) - 60_000 },
     });
     for (let i = 4; i < 8; i++) db.cards[`c-g${i}`] = mk(`c-g${i}`, sp, spaceName, { front: `GED review card ${i + 1}`, back: "Answer", due: due(i) });
     for (let i = 0; i < 4; i++) db.cards[`c-es${i}`] = mk(`c-es${i}`, SP.es, "Spanish A2", { front: `Spanish card ${i + 1}`, back: "Respuesta", due: due(10 + i) });
-    for (let i = 0; i < 3; i++) db.cards[`c-b${i}`] = mk(`c-b${i}`, SP.bio, "Biology", { front: `Biology card ${i + 1}`, back: "Answer", due: due(20 + i) });
+    for (let i = 0; i < 2; i++) db.cards[`c-b${i}`] = mk(`c-b${i}`, SP.bio, "Biology", { front: `Biology card ${i + 1}`, back: "Answer", due: due(20 + i) });
   }
 }
 
@@ -752,6 +756,12 @@ function seedCommon(db: DB, o: FixtureOptions, at: (n: number) => number, _x: <V
   if (o.drive) db.cloud.google = { clientId: "design-client.apps.googleusercontent.com", hasSecret: true, state: "signedIn", account: "me@example.com", error: null };
 }
 
+const PLACEHOLDER_IMAGE =
+  "data:image/svg+xml;base64," +
+  btoa(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="552" height="358"><text x="276" y="184" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="#8a8a8a" text-anchor="middle">Your image</text></svg>',
+  );
+
 type Args = Record<string, unknown>;
 
 /** Handlers that replace the mock's own when the fixture is active. */
@@ -773,6 +783,8 @@ export function fixtureOverrides(): Record<string, (a: Args) => unknown> {
         keywordHits: COVERAGE[t.id]?.keywordHits ?? 0,
         best: null,
       })),
+    image_store: () => "your-image.svg",
+    image_read: () => PLACEHOLDER_IMAGE,
     lan_scan: () => LAN_SERVERS,
     cloud_list: () => ({ items: DRIVE_ITEMS, nextPageToken: null }),
     oauth_xai_device_start: () => ({
@@ -793,10 +805,26 @@ export function fixtureScript(fallback: Script): Script {
     const text = typeof last?.content === "string" ? last.content : JSON.stringify(last?.content ?? "");
     if (/multiple-choice quiz/i.test(text)) {
       const tid = text.match(/id \\?"([^"\\]+)\\?"/)?.[1] ?? null;
-      return { content: JSON.stringify(FIXTURE_QUIZ.questions.map((q) => ({ ...q, topicId: tid }))) };
+      // the app shuffles options with the seeded random; this pre-order shows 3, −4, 4, −3
+      const qs = FIXTURE_QUIZ.questions.map((q, i) => (i === 0 ? { ...q, options: ["−4", "4", "3", "−3"], answer: 2 } : q));
+      return { content: JSON.stringify(qs.map((q) => ({ ...q, topicId: tid }))) };
     }
     if (/Write ONE (practice|new) problem/i.test(text)) {
       return { content: JSON.stringify({ kind: "numeric", ...FIXTURE_PRACTICE, level: 3 }) };
+    }
+    if (/You check a learner's worked math solution/i.test(text)) {
+      return {
+        content: JSON.stringify({
+          steps: [
+            { step: 1, ok: true },
+            { step: 2, ok: true },
+            { step: 3, ok: false, issue: "Adding 6 to both sides gives 12, not 8.", hint: "Add the same number to both sides.", fix: "2x = 12" },
+            { step: 4, ok: true },
+          ],
+          finalCorrect: null,
+          summary: "",
+        }),
+      };
     }
     if (/Solve this problem carefully/i.test(text)) return { content: `{"answer": ${FIXTURE_PRACTICE.answer}}` };
     if (/Classify the most likely mistake/i.test(text)) return { content: JSON.stringify({ errorType: "sign", note: "" }) };

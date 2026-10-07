@@ -311,6 +311,11 @@ function BrowseCardsDialog({ space, onClose }: { space: Space; onClose: () => vo
   const match = (text: string) => !needle || text.toLowerCase().includes(needle);
   const shownGroups = groups.filter((g) => match(g.map((c) => c.back).join(" ")));
   const shownPlain = plain.filter((c) => match(`${c.front} ${c.back}`));
+  const order = new Map((data ?? []).map((c, i) => [c.id, i]));
+  const items = [
+    ...shownGroups.map((g) => ({ at: order.get(g[0].id) ?? 0, group: g, card: null as Card | null })),
+    ...shownPlain.map((c) => ({ at: order.get(c.id) ?? 0, group: null as Card[] | null, card: c })),
+  ].sort((a, b) => a.at - b.at);
   const act = async (fn: () => Promise<unknown>) => {
     try {
       await fn();
@@ -328,7 +333,7 @@ function BrowseCardsDialog({ space, onClose }: { space: Space; onClose: () => vo
       className="w-[min(622px,calc(100vw-32px))]"
       bodyClassName="px-0 pb-0 pt-1"
     >
-      <div className="px-5 pb-2 pt-1">
+      <div className="px-5 pb-2">
         <div className="relative">
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.cards.browseSearch} aria-label={s.cards.browseSearch} className="pr-8" />
           <Search size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" aria-hidden />
@@ -337,58 +342,61 @@ function BrowseCardsDialog({ space, onClose }: { space: Space; onClose: () => vo
       {isLoading && <Skeleton className="mx-5 h-40" />}
       {!isLoading && needle && !shownGroups.length && !shownPlain.length && <p className="px-5 pb-4 text-muted">{s.cards.noMatch}</p>}
       <ul className="px-5 pb-4" data-testid="card-browser">
-        {shownGroups.map((g) => {
-          const suspended = g.every((c) => c.suspended);
+        {items.map(({ group: g, card: c }) => {
+          if (g) {
+            const suspended = g.every((x) => x.suspended);
+            return (
+              <li key={g[0].id} className={BROWSE_ROW} data-testid="occlusion-group">
+                <div className="flex min-w-0 flex-1 flex-col gap-px">
+                  <span className={cn("truncate text-body-lg font-medium leading-[1.45]", suspended ? "text-muted" : "text-fg")}>{s.cards.imageGroup(g.length)}</span>
+                  <span className="text-label text-muted">{meta(g[0], suspended)}</span>
+                </div>
+                <Button variant="ghost" size="sm" className={REVEAL} onClick={() => setEditing(g)}>
+                  {s.common.edit}
+                </Button>
+                <Button
+                  variant="ghost-muted"
+                  size="icon-sm"
+                  aria-label={suspended ? s.cards.unsuspend : s.cards.suspend}
+                  title={suspended ? s.cards.unsuspend : s.cards.suspend}
+                  onClick={() => act(() => Promise.all(g.map((x) => api.cardUpdate(x.id, { suspended: !suspended }))))}
+                >
+                  {suspended ? <Play size={15} /> : <Pause size={15} />}
+                </Button>
+              </li>
+            );
+          }
+          if (!c) return null;
           return (
-            <li key={g[0].id} className={BROWSE_ROW} data-testid="occlusion-group">
+            <li key={c.id} className={BROWSE_ROW}>
               <div className="flex min-w-0 flex-1 flex-col gap-px">
-                <span className={cn("truncate text-body-lg font-medium", suspended ? "text-muted" : "text-fg")}>{s.cards.imageGroup(g.length)}</span>
-                <span className="text-label text-muted">{meta(g[0], suspended)}</span>
+                <span className={cn("truncate text-body-lg font-medium leading-[1.45]", c.suspended ? "text-muted" : "text-fg")}>
+                  {c.kind === "cloze" ? clozeFront(c.front, c.data?.cloze ?? 1) : c.front || c.back}
+                </span>
+                <span className="text-label text-muted">{meta(c, c.suspended)}</span>
               </div>
-              <Button variant="ghost" size="sm" className={REVEAL} onClick={() => setEditing(g)}>
-                {s.common.edit}
+              <Button
+                variant="ghost-muted"
+                size="icon-sm"
+                className={REVEAL}
+                aria-label={s.common.delete}
+                title={s.common.delete}
+                onClick={() => act(() => api.cardDelete(c.id))}
+              >
+                <Trash2 size={15} />
               </Button>
               <Button
                 variant="ghost-muted"
                 size="icon-sm"
-                aria-label={suspended ? s.cards.unsuspend : s.cards.suspend}
-                title={suspended ? s.cards.unsuspend : s.cards.suspend}
-                onClick={() => act(() => Promise.all(g.map((c) => api.cardUpdate(c.id, { suspended: !suspended }))))}
+                aria-label={c.suspended ? s.cards.unsuspend : s.cards.suspend}
+                title={c.suspended ? s.cards.unsuspend : s.cards.suspend}
+                onClick={() => act(() => api.cardUpdate(c.id, { suspended: !c.suspended }))}
               >
-                {suspended ? <Play size={15} /> : <Pause size={15} />}
+                {c.suspended ? <Play size={15} /> : <Pause size={15} />}
               </Button>
             </li>
           );
         })}
-        {shownPlain.map((c: Card) => (
-          <li key={c.id} className={BROWSE_ROW}>
-            <div className="flex min-w-0 flex-1 flex-col gap-px">
-              <span className={cn("truncate text-body-lg font-medium", c.suspended ? "text-muted" : "text-fg")}>
-                {c.kind === "cloze" ? clozeFront(c.front, c.data?.cloze ?? 1) : c.front || c.back}
-              </span>
-              <span className="text-label text-muted">{meta(c, c.suspended)}</span>
-            </div>
-            <Button
-              variant="ghost-muted"
-              size="icon-sm"
-              className={REVEAL}
-              aria-label={s.common.delete}
-              title={s.common.delete}
-              onClick={() => act(() => api.cardDelete(c.id))}
-            >
-              <Trash2 size={15} />
-            </Button>
-            <Button
-              variant="ghost-muted"
-              size="icon-sm"
-              aria-label={c.suspended ? s.cards.unsuspend : s.cards.suspend}
-              title={c.suspended ? s.cards.unsuspend : s.cards.suspend}
-              onClick={() => act(() => api.cardUpdate(c.id, { suspended: !c.suspended }))}
-            >
-              {c.suspended ? <Play size={15} /> : <Pause size={15} />}
-            </Button>
-          </li>
-        ))}
       </ul>
       {editing && <OcclusionEditor spaceId={space.id} open onOpenChange={(o) => !o && setEditing(null)} cards={editing} />}
     </Dialog>

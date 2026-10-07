@@ -881,6 +881,7 @@ export const s = {
     drop: "Drop an image here or paste it with ⌘V",
     chooseFile: "Choose an image",
     notImage: "That file isn't an image.",
+    needImage: "Choose or take a photo first.",
     removeImage: "Remove image",
     photoAlt: "Photo of your work",
     readModel: "Model that reads the photo",

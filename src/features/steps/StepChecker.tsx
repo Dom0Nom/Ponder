@@ -15,7 +15,7 @@ import { invalidateCards, useSpace } from "../../lib/queries";
 import { checkSteps, type StepCheckResult, type StepVerdict } from "../../lib/steps/check";
 import type { Transcription } from "../../lib/steps/vision";
 import { s } from "../../lib/strings";
-import { cn } from "../../lib/utils";
+import { cn, plainMath } from "../../lib/utils";
 import { imageFromClipboard } from "./image";
 import { PhotoDialog } from "./PhotoDialog";
 
@@ -35,6 +35,7 @@ const linesOf = (text: string) =>
     .filter(Boolean);
 
 function Tex({ tex, className }: { tex: string; className?: string }) {
+  const plain = plainMath(tex);
   const html = useMemo(() => {
     const t = tex.trim().replace(/^\$+|\$+$/g, "");
     try {
@@ -43,6 +44,7 @@ function Tex({ tex, className }: { tex: string; className?: string }) {
       return null;
     }
   }, [tex]);
+  if (plain != null) return <span className={cn("font-math", className)}>{plain}</span>;
   return html ? <span className={className} dangerouslySetInnerHTML={{ __html: html }} /> : <span className={className}>{tex}</span>;
 }
 
@@ -63,7 +65,7 @@ function StepRow({
     <li
       data-testid="step-row"
       data-status={verdict ? (verdict.ok ? "ok" : "wrong") : "unchecked"}
-      className={cn("flex items-center gap-2.5 px-3 py-[9px] [&+&]:border-t [&+&]:border-divider", isFirstWrong && "bg-danger-soft")}
+      className={cn("group/row flex items-center gap-2.5 px-3 py-[9px] [&+&]:border-t [&+&]:border-divider", isFirstWrong && "bg-danger-soft")}
     >
       <span className="w-11 shrink-0 text-label text-muted">{s.steps.stepN(n)}</span>
       <Tex tex={text} className="min-w-0 flex-1 overflow-x-auto text-title-sm" />
@@ -72,50 +74,54 @@ function StepRow({
           —
         </span>
       ) : verdict.ok ? (
-        <span className="flex items-center gap-1 text-success" title={verdict.checkedBy === "calc" ? s.steps.byCalc : undefined}>
-          {verdict.checkedBy === "calc" && <Calculator size={12} aria-hidden />}
+        <span className="flex h-[23.8px] items-center gap-1 text-success" title={verdict.checkedBy === "calc" ? s.steps.byCalc : undefined}>
+          {verdict.checkedBy === "calc" && <Calculator size={12} className="opacity-0 group-hover/row:opacity-100" aria-hidden />}
           <Check size={15} aria-label={s.steps.stepOk} />
         </span>
       ) : (
-        <X size={15} className="text-danger" aria-label={s.steps.stepWrong} />
+        <span className="flex h-[23.8px] items-center">
+          <X size={15} className="text-danger" aria-label={s.steps.stepWrong} />
+        </span>
       )}
     </li>
   );
 }
 
-function FirstWrong({ verdict }: { verdict: StepVerdict }) {
+function FirstWrong({ verdict, note }: { verdict: StepVerdict; note?: string }) {
   const [showHint, setShowHint] = useState(false);
   const [showFix, setShowFix] = useState(false);
   return (
     <div className="flex flex-col gap-1.5" data-testid="first-wrong">
-      {verdict.issue && (
-        <div className="text-fg-secondary">
-          <Markdown text={verdict.issue} />
-        </div>
-      )}
-      {verdict.checkedBy === "calc" && (
-        <p className="flex items-center gap-1.5 text-label text-muted">
-          <Calculator size={12} aria-hidden /> {s.steps.byCalc}
-        </p>
-      )}
-      {(verdict.hint || verdict.fix) && (
-        <div className="-ml-[9px] flex gap-0.5">
+      <div className="-ml-[9px] flex gap-0.5">
+        <Button variant="ghost" size="sm" aria-expanded={showHint} onClick={() => setShowHint(!showHint)}>
+          <Lightbulb size={14} /> {s.steps.hint}
+        </Button>
+        {verdict.fix && (
+          <Button variant="ghost" size="sm" aria-expanded={showFix} onClick={() => setShowFix(!showFix)}>
+            {showFix ? <EyeOff size={14} /> : <Eye size={14} />} {showFix ? s.steps.hideFix : s.steps.showFix}
+          </Button>
+        )}
+      </div>
+      {showHint && (
+        <div className="flex flex-col gap-1.5">
+          {note && <p className="text-label text-muted">{note}</p>}
+          {verdict.issue && (
+            <div className="text-fg-secondary">
+              <Markdown text={verdict.issue} />
+            </div>
+          )}
+          {verdict.checkedBy === "calc" && (
+            <p className="flex items-center gap-1.5 text-label text-muted">
+              <Calculator size={12} aria-hidden /> {s.steps.byCalc}
+            </p>
+          )}
           {verdict.hint && (
-            <Button variant="ghost" size="sm" aria-expanded={showHint} onClick={() => setShowHint(!showHint)}>
-              <Lightbulb size={14} /> {s.steps.hint}
-            </Button>
+            <div className="flex gap-2 text-fg-secondary">
+              <Lightbulb size={14} className="mt-0.5 shrink-0" aria-label={s.steps.hint} />
+              <Markdown text={verdict.hint} />
+            </div>
           )}
-          {verdict.fix && (
-            <Button variant="ghost" size="sm" aria-expanded={showFix} onClick={() => setShowFix(!showFix)}>
-              {showFix ? <EyeOff size={14} /> : <Eye size={14} />} {showFix ? s.steps.hideFix : s.steps.showFix}
-            </Button>
-          )}
-        </div>
-      )}
-      {showHint && verdict.hint && (
-        <div className="flex gap-2 text-fg-secondary">
-          <Lightbulb size={14} className="mt-0.5 shrink-0" aria-label={s.steps.hint} />
-          <Markdown text={verdict.hint} />
+          <p className="text-label text-muted">{s.steps.laterUnchecked}</p>
         </div>
       )}
       {showFix && verdict.fix && (
@@ -124,7 +130,6 @@ function FirstWrong({ verdict }: { verdict: StepVerdict }) {
           <Tex tex={verdict.fix} />
         </div>
       )}
-      <p className="text-label text-muted">{s.steps.laterUnchecked}</p>
     </div>
   );
 }
@@ -154,6 +159,9 @@ export function StepCheckerPanel({
 
   const lines = linesOf(text);
   const fresh = result && result.steps.join("\n") === lines.join("\n") ? result.r : null;
+  const summaryNote = fresh
+    ? [fresh.summary, fresh.finalCorrect != null && (fresh.finalCorrect ? s.steps.finalRight : s.steps.finalWrong)].filter(Boolean).join(" · ")
+    : "";
 
   const check = async () => {
     if (!lines.length) return setError(new Error(s.steps.needSteps));
@@ -247,11 +255,11 @@ export function StepCheckerPanel({
           <span className={LABEL}>{s.steps.problem}</span>
           <Input value={problem} placeholder={s.steps.problemPlaceholder} onChange={(e) => setProblem(e.target.value)} />
         </label>
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center">
+        <div className={cn("group flex flex-col", editing ? "gap-1.5" : "gap-3.5")}>
+          <div className="relative flex items-center">
             <span className={LABEL}>{s.steps.yourSteps}</span>
             {!editing && (
-              <Button variant="ghost" size="sm" className="ml-auto h-6" onClick={() => setEditing(true)}>
+              <Button variant="ghost" size="sm" className="absolute right-0 top-1/2 h-6 -translate-y-1/2 opacity-0 focus-visible:opacity-100 group-hover:opacity-100" onClick={() => setEditing(true)}>
                 <Pencil size={14} /> {s.steps.edit}
               </Button>
             )}
@@ -311,14 +319,11 @@ export function StepCheckerPanel({
             <p className={cn("font-semibold", firstWrong == null ? "text-success" : "text-danger-text")}>
               {firstWrong == null ? s.steps.allGood : s.steps.firstWrong(firstWrong + 1)}
             </p>
-            {(fresh.summary || fresh.finalCorrect != null) && (
-              <p className="text-label text-muted">
-                {[fresh.summary, fresh.finalCorrect != null && (fresh.finalCorrect ? s.steps.finalRight : s.steps.finalWrong)]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
+            {firstWrong != null ? (
+              <FirstWrong verdict={fresh.verdicts[firstWrong]} note={summaryNote} />
+            ) : (
+              summaryNote && <p className="text-label text-muted">{summaryNote}</p>
             )}
-            {firstWrong != null && <FirstWrong verdict={fresh.verdicts[firstWrong]} />}
           </div>
         )}
         <PhotoDialog open={photoOpen} onOpenChange={setPhotoOpen} spaceId={spaceId} initialImage={pasted} onRead={fromPhoto} />

@@ -5,4 +5,4 @@ export function PanelList({ children, inset = 16 }: { children: ReactNode; inset
   return <div className={cn("rounded-card border border-border", inset === 16 ? "px-4" : "px-3.5")}>{children}</div>;
 }
 
-export const panelRow = "flex items-center [&+&]:border-t [&+&]:border-divider";
+export const panelRow = "flex items-center [&+&]:box-content [&+&]:border-t [&+&]:border-divider";

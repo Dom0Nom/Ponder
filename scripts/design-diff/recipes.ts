@@ -123,6 +123,7 @@ const studioInCard = (p: Page) =>
   p.addStyleTag({
     content: `[data-testid=pane-studio]{top:2px!important;right:9px!important;bottom:9px!important;width:341px!important;border-top:0!important;z-index:20}`,
   });
+const SPACE_BACKDROP = "the design draws the dialog over a static reduced copy of the space (no Sources row or thread list, other chat text), not the real screen 2";
 const BACKDROP = "the design draws 9a/10a over a static copy of Home (shifted, no New space button), not the real screen 1";
 
 const OLD_BACKDROP = "old-backdrop artboard: the component box only; the backdrop is gated by screen 2";
@@ -144,10 +145,6 @@ export const SCREENS: Record<number, Screen> = {
     title: "Review (cards)",
     query: "cards=review",
     native: true,
-    masks: [
-      { x: 420, y: 274, w: 640, h: 22, reason: "queue count is fixture data (mock counts rows); space name is a kept feature, DECISIONS #14" },
-      { x: 420, y: 636, w: 640, h: 24, reason: "scheduler previews depend on fixture card state" },
-    ],
     setup: async (p) => {
       await nav(p, { name: "review" });
       await p.getByText("When should you solve", { exact: false }).first().waitFor({ timeout: 5000 }).catch(() => undefined);
@@ -251,6 +248,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   11: {
     title: "Quiz",
+    region: { x: 359, y: 189, w: 562, h: 422, reason: "the design draws this dialog over an older space screen (no thread list, 592px chat column, old composer); the backdrop follows 2a and is gated by screen 2, so only the dialog is compared" },
     query: "curriculum=plan",
     setup: async (p) => {
       await space(p);
@@ -258,6 +256,7 @@ export const SCREENS: Record<number, Screen> = {
       await p.getByTestId("topic-row").filter({ hasText: "Systems of equations" }).first().click();
       await click(p, /start this topic/i, "menuitem");
       await p.getByTestId("quiz-question").waitFor({ timeout: 8000 }).catch(() => undefined);
+      await p.getByRole("radio").first().click().catch(() => undefined);
       await settle(p, 500);
     },
   },
@@ -265,11 +264,6 @@ export const SCREENS: Record<number, Screen> = {
     title: "Practice problem",
     query: "curriculum=practice",
     native: true,
-    masks: [
-      { x: 412, y: 170, w: 456, h: 108, reason: "math is KaTeX, the design draws STIX Two Text; the map keeps KaTeX (03 §2)" },
-      { x: 1000, y: 380, w: 90, h: 22, reason: "skill change kept after answering, not drawn; DECISIONS #14" },
-      { x: 412, y: 92, w: 140, h: 22, reason: "problem count is fixture data and increments after grading" },
-    ],
     setup: async (p) => {
       await nav(p, { name: "practice", spaceId: SPACE, topicKey: "systems" });
       await p.getByText(/Solve the system/).first().waitFor({ timeout: 8000 }).catch(() => undefined);
@@ -281,15 +275,21 @@ export const SCREENS: Record<number, Screen> = {
   },
   13: {
     title: "Check my steps",
-    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the design draws this panel inside the chat card at 340px; the app's Studio is the 2a column outside the card (DECISIONS #2), so only the panel is compared, re-laid into the design's box" },
     setup: async (p) => {
       await space(p);
       await studio(p, "steps", "Check my steps");
+      await p.getByPlaceholder(/e\.g\. Solve/).fill("Solve 2(x\u22123)+4=10");
+      await p.getByLabel("Your steps, one per line").fill("2x-6+4=10\n2x-2=10\n2x=8\nx=4");
+      await click(p, /^check my steps$/i).catch(() => undefined);
+      await p.getByTestId("step-summary").waitFor({ timeout: 5000 }).catch(() => undefined);
+      await p.addStyleTag({ content: "[data-sonner-toaster]{display:none!important}" });
       await studioInCard(p);
     },
   },
   14: {
     title: "Use a photo of your work",
+    region: { x: 379, y: 182, w: 522, h: 437, reason: "the design draws this dialog over an older space screen (no thread list, 592px chat column, old composer); the backdrop follows 2a and is gated by screen 2, so only the dialog is compared" },
     setup: async (p) => {
       await space(p);
       await studio(p, "steps", "Check my steps");
@@ -299,9 +299,9 @@ export const SCREENS: Record<number, Screen> = {
   },
   15: {
     title: "Flashcards",
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the design draws this panel inside the chat card at 340px; the app's Studio is the 2a column outside the card (DECISIONS #2), so only the panel is compared, re-laid into the design's box" },
     query: "cards=browse",
     native: true,
-    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
     setup: async (p) => {
       await space(p);
       await studio(p, "flashcards", "Flashcards");
@@ -310,48 +310,71 @@ export const SCREENS: Record<number, Screen> = {
   },
   16: {
     title: "Make flashcards",
+    region: { x: 409, y: 261, w: 462, h: 278, reason: "the design draws this dialog over an older space screen (no thread list, 592px chat column, old composer); the backdrop follows 2a and is gated by screen 2, so only the dialog is compared" },
     setup: async (p) => {
       await space(p);
       await studio(p, "flashcards", "Flashcards");
       await click(p, /make cards from sources/i).catch(() => undefined);
+      await p.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
       await settle(p, 400);
     },
   },
   17: {
     title: "Add a card",
+    region: { x: 399, y: 200, w: 482, h: 400, reason: "the design draws this dialog over an older space screen (no thread list, 592px chat column, old composer); the backdrop follows 2a and is gated by screen 2, so only the dialog is compared" },
     setup: async (p) => {
       await space(p);
       await studio(p, "flashcards", "Flashcards");
       await click(p, /^add card$/i).catch(() => undefined);
       await p.getByLabel("Front", { exact: true }).fill("What does substitution need?");
       await p.getByLabel("Back", { exact: true }).fill("One equation with a variable already on its own.");
+      await p.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
       await settle(p, 400);
     },
   },
   18: {
     title: "Browse cards",
+    region: { x: 329, y: 225, w: 622, h: 350, reason: "the design draws this dialog over an older space screen (no thread list, 592px chat column, old composer); the backdrop follows 2a and is gated by screen 2, so only the dialog is compared" },
     query: "cards=browse",
     setup: async (p) => {
       await space(p);
       await studio(p, "flashcards", "Flashcards");
       await click(p, /browse cards/i).catch(() => undefined);
+      await p.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
       await settle(p, 400);
     },
   },
   19: {
     title: "Image card (occlusion)",
+    region: { x: 209, y: 137, w: 862, h: 526, reason: "the design draws this dialog over an older space screen (no thread list, 592px chat column, old composer); the backdrop follows 2a and is gated by screen 2, so only the dialog is compared" },
     setup: async (p) => {
       await space(p);
       await studio(p, "flashcards", "Flashcards");
       await p.getByTestId("occlusion-editor-button").click();
       await click(p, /choose image/i).catch(() => undefined);
+      await settle(p, 300);
+      const boxes: [number, number, number, number][] = [
+        [297.2, 282.6, 125.4, 54.4],
+        [551.2, 325.8, 147.5, 47.2],
+        [396.6, 455.4, 169.6, 54.4],
+      ];
+      for (const [x, y, w, h] of boxes) {
+        await p.mouse.move(x, y);
+        await p.mouse.down();
+        await p.mouse.move(x + w / 2, y + h / 2, { steps: 3 });
+        await p.mouse.move(x + w, y + h, { steps: 3 });
+        await p.mouse.up();
+      }
+      await p.getByLabel("Label for box 2").fill("Nucleus").catch(() => undefined);
+      await p.getByLabel("Label for box 1").fill("Mitochondria").catch(() => undefined);
+      await p.mouse.move(5, 5);
       await settle(p, 600);
     },
   },
   20: {
     title: "Learning plan",
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the design draws this panel inside the chat card at 340px; the app's Studio is the 2a column outside the card (DECISIONS #2), so only the panel is compared, re-laid into the design's box" },
     query: "curriculum=plan",
-    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
     setup: async (p) => {
       await space(p);
       await studio(p, "plan", "Learning plan");
@@ -360,7 +383,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   21: {
     title: "Course",
-    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the design draws this panel inside the chat card at 340px; the app's Studio is the 2a column outside the card (DECISIONS #2), so only the panel is compared, re-laid into the design's box" },
     setup: async (p) => {
       await space(p);
       await studio(p, "course", "Course");
@@ -468,6 +491,7 @@ export const SCREENS: Record<number, Screen> = {
     setup: async (p) => {
       await nav(p, { name: "review", tab: "mistakes" });
       await click(p, /mistake notebook/i, "tab").catch(() => undefined);
+      await p.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
       await settle(p, 400);
     },
   },

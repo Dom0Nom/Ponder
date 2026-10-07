@@ -121,9 +121,9 @@ function FileView({ onFile }: { onFile: (f: File) => void }) {
       )}
       data-testid="photo-drop"
     >
-      <Image size={20} aria-hidden />
+      <span className="flex h-[29px] items-center"><Image size={20} aria-hidden /></span>
       <p>{s.steps.drop}</p>
-      <Button variant="secondary" onClick={() => input.current?.click()}>
+      <Button variant="secondary" className="text-fg-secondary" onClick={() => input.current?.click()}>
         {s.steps.chooseFile}
       </Button>
       <input
@@ -197,7 +197,7 @@ export function PhotoDialog({
   }, [open, initialImage]);
 
   const read = async () => {
-    if (!photo) return;
+    if (!photo) return setError(s.steps.needImage);
     setReading(true);
     setError(null);
     const ac = new AbortController();
@@ -233,7 +233,7 @@ export function PhotoDialog({
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
             {s.common.cancel}
           </Button>
-          <Button variant="primary" disabled={!photo || reading} onClick={read}>
+          <Button variant="primary" disabled={reading} onClick={read}>
             {reading && <Spinner size={14} className="text-on-primary" />}
             {reading ? s.steps.reading : s.steps.read}
           </Button>

@@ -6,14 +6,17 @@ import rehypeKatex from "rehype-katex";
 import rehypeHighlight from "rehype-highlight";
 import { remarkCitations } from "./remarkCitations";
 import { remarkHtmlBreaks } from "./remarkHtmlBreaks";
+import { remarkPlainMath } from "./remarkPlainMath";
 
 export const Markdown = memo(function Markdown({
   text,
   knownCitations = 0,
   renderCite,
+  plainInlineMath,
 }: {
   text: string;
   knownCitations?: number;
+  plainInlineMath?: boolean;
   renderCite?: (ns: number[], inferred: boolean) => ReactNode;
 }) {
   const components = {
@@ -28,7 +31,7 @@ export const Markdown = memo(function Markdown({
   return (
     <div className="prose-chat">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath, remarkHtmlBreaks, [remarkCitations, { known: knownCitations }]]}
+        remarkPlugins={[remarkGfm, remarkMath, ...(plainInlineMath ? [remarkPlainMath] : []), remarkHtmlBreaks, [remarkCitations, { known: knownCitations }]]}
         rehypePlugins={[rehypeKatex, [rehypeHighlight, { detect: true, ignoreMissing: true }]]}
         components={components}
       >

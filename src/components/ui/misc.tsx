@@ -191,13 +191,7 @@ export function Kbd({
         className,
       )}
     >
-      {keys
-        ? keys.map((k, i) => (
-            <span key={i} className={[...k].length === 1 ? "flex w-2.5 justify-center" : "px-0.5"}>
-              {k}
-            </span>
-          ))
-        : children}
+      {keys ? keys.join("") : children}
     </kbd>
   );
 }
