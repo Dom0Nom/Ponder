@@ -18,6 +18,7 @@ import { useUi } from "../../stores/ui";
 
 export const PLAIN_SEARCH_THRESHOLD = 8;
 
+const scrollClass = "max-h-[248px] overflow-y-auto";
 const rowClass = "flex h-[34px] w-full items-center gap-2.5 rounded-item px-2.5 text-left outline-none hover:bg-fill focus-visible:bg-fill";
 
 export const providerModels = (p: Provider) =>
@@ -69,10 +70,12 @@ function PlainList({ provider, selected, onPick }: { provider: Provider; selecte
   return (
     <>
       {all.length > PLAIN_SEARCH_THRESHOLD && <SearchBox value={query} onChange={setQuery} label={s.models.search(all.length)} />}
-      {models.map((m) => (
-        <Row key={m} id={m} on={m === selected} onPick={onPick} />
-      ))}
-      {models.length === 0 && <p className="px-3 py-3 text-muted">{all.length ? s.models.noResults : s.models.noModels}</p>}
+      <div className={scrollClass}>
+        {models.map((m) => (
+          <Row key={m} id={m} on={m === selected} onPick={onPick} />
+        ))}
+        {models.length === 0 && <p className="px-3 py-3 text-muted">{all.length ? s.models.noResults : s.models.noModels}</p>}
+      </div>
     </>
   );
 }
@@ -96,8 +99,10 @@ function OpenRouterList({ provider, selected, onPick }: { provider: Provider; se
   const recents = useMemo(() => {
     const ids = [...(recent ?? [])];
     if (selected && !ids.includes(selected)) ids.unshift(selected);
+    const fallback = provider.config.defaultModel;
+    if (!ids.length && fallback) ids.push(fallback);
     return ids.slice(0, 8);
-  }, [recent, selected]);
+  }, [recent, selected, provider.config.defaultModel]);
   const recommended = useMemo(
     () => (list ? recommendedModels(list).filter((m) => !recents.includes(m.id)) : []),
     [list, recents],
@@ -149,6 +154,7 @@ function OpenRouterList({ provider, selected, onPick }: { provider: Provider; se
         </p>
       )}
 
+      <div className={scrollClass}>
       {list && !searching && (
         <>
           {recents.length > 0 && <Heading>{s.models.recent}</Heading>}
@@ -171,6 +177,7 @@ function OpenRouterList({ provider, selected, onPick }: { provider: Provider; se
           {results.length > SEARCH_LIMIT && <p className="px-3 pb-2 pt-1 text-label text-muted">{s.models.topResults(SEARCH_LIMIT)}</p>}
         </>
       )}
+      </div>
     </>
   );
 }

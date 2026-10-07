@@ -87,9 +87,13 @@ export function ModelMenu({ space }: { space: Space }) {
     pushRecent(providerId, model);
     setOpen(false);
   };
-  const showToggle = caps.reasoningToggle || caps.thinkingToggle;
-  const showTemperature = offersTemperature(current.provider, caps);
-  const hasControls = !!caps.reasoningLevels || caps.verbosity || showTemperature || showToggle;
+  // controls belong to the model in use, so they only show next to its own provider's list
+  const own = viewed.id === current.provider.id;
+  const showToggle = own && (caps.reasoningToggle || caps.thinkingToggle);
+  const showTemperature = own && offersTemperature(current.provider, caps);
+  const showLevels = own && !!caps.reasoningLevels;
+  const showVerbosity = own && caps.verbosity;
+  const hasControls = showLevels || showVerbosity || showTemperature || showToggle;
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const root = content.current;
@@ -164,7 +168,7 @@ export function ModelMenu({ space }: { space: Space }) {
             onPick={(m) => pick(viewed.id, m)}
           />
           {hasControls && <div className="my-1 h-px bg-divider" />}
-          {caps.reasoningLevels && (
+          {showLevels && caps.reasoningLevels && (
             <Segmented
               label={caps.reasoningLabel}
               value={stored?.reasoning}
@@ -172,7 +176,7 @@ export function ModelMenu({ space }: { space: Space }) {
               onChange={(v) => setControls(key, { reasoning: v as never })}
             />
           )}
-          {caps.verbosity && (
+          {showVerbosity && (
             <Segmented
               label={s.models.verbosity}
               value={stored?.verbosity}

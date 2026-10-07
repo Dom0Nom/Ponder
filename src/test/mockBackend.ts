@@ -1846,5 +1846,10 @@ export function installMockBackend() {
   (window as unknown as { __mock: MockControls }).__mock = controls;
   if (new URLSearchParams(location.search).has("seed")) seedProvider();
   if (new URLSearchParams(location.search).has("openrouter")) seedOpenRouter();
+  if (new URLSearchParams(location.search).has("manymodels")) {
+    const p = seedProvider();
+    p.config = { ...p.config, models: ["mock-model", ...Array.from({ length: 11 }, (_, i) => `local-model-${i + 1}`)] };
+    save();
+  }
   setInterval(focusTick, 1000);
 }
