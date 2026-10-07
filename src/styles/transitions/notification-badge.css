@@ -1,0 +1,30 @@
+/* Transitions.dev — Notification badge */
+/* transitions.dev free tier, Transitions.dev License. Modified: .t-badge is inline (position: static), because our badge is the Review count text in a nav row, not a dot on an icon; slide offsets 0 / 4px to match; :root mapped. */
+:root {
+  --badge-slide-dur: 260ms;
+  --badge-pop-dur: var(--motion-emph);
+  --badge-pop-close-dur: 180ms;
+  --badge-fade-dur: var(--motion-slow);
+  --badge-fade-close-dur: 180ms;
+  --badge-blur: var(--motion-blur-sm);
+  --badge-offset-x: 0px;
+  --badge-offset-y: 4px;
+  --badge-slide-ease: var(--motion-ease-smooth);
+  --badge-pop-ease: var(--motion-ease-bounce);
+  --badge-close-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes t-badge-slide-in { from { transform: translate(var(--badge-offset-x), var(--badge-offset-y)); } to { transform: translate(0, 0); } }
+.t-badge { position: static; display: inline-block; pointer-events: none; will-change: transform; }
+.t-badge[data-open="true"] { animation: t-badge-slide-in var(--badge-slide-dur) var(--badge-slide-ease); }
+.t-badge-dot {
+  display: block; transform-origin: center; transform: scale(1); opacity: 1; filter: blur(0);
+  transition: transform var(--badge-pop-dur) var(--badge-pop-ease), opacity var(--badge-fade-dur) var(--badge-pop-ease), filter var(--badge-pop-dur) var(--badge-pop-ease);
+  will-change: transform, opacity, filter;
+}
+.t-badge[data-open="false"] .t-badge-dot {
+  transform: scale(0); opacity: 0; filter: blur(var(--badge-blur));
+  transition: transform var(--badge-pop-close-dur) var(--badge-close-ease), opacity var(--badge-fade-close-dur) var(--badge-close-ease), filter var(--badge-pop-close-dur) var(--badge-close-ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-badge, .t-badge-dot { animation: none !important; transition: none !important; }
+}

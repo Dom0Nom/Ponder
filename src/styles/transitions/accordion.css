@@ -1,0 +1,30 @@
+/* Transitions.dev — Accordion expand */
+/* transitions.dev free tier, Transitions.dev License. Modified: added @starting-style so a panel mounted already open grows in; added .t-acc-chevron--right (the design's ChevronRight turns 90deg instead of the v→^ flip); added .t-acc--noblur for wide panels (review answer); :root mapped. */
+:root {
+  --acc-expand: var(--motion-fast);
+  --acc-collapse: var(--motion-fast);
+  --acc-chevron: var(--motion-fast);
+  --acc-ease: var(--motion-ease-smooth);
+}
+.t-acc-panel { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--acc-collapse) var(--acc-ease); }
+.t-acc[data-open="true"] .t-acc-panel { grid-template-rows: 1fr; transition: grid-template-rows var(--acc-expand) var(--acc-ease); }
+.t-acc-panel-inner {
+  overflow: hidden; opacity: 0; filter: blur(2px);
+  transition: opacity var(--acc-collapse) var(--acc-ease), filter var(--acc-collapse) var(--acc-ease);
+}
+.t-acc[data-open="true"] .t-acc-panel-inner {
+  opacity: 1; filter: blur(0);
+  transition: opacity var(--acc-expand) var(--acc-ease), filter var(--acc-expand) var(--acc-ease);
+}
+.t-acc-chevron { display: inline-flex; transform: scaleY(1); transform-origin: center; transition: transform var(--acc-chevron) var(--acc-ease); }
+.t-acc-chevron path { vector-effect: non-scaling-stroke; }
+.t-acc[data-open="true"] .t-acc-chevron { transform: scaleY(-1); }
+.t-acc[data-open="true"] .t-acc-chevron--right { transform: rotate(90deg); }
+.t-acc--noblur .t-acc-panel-inner { filter: none !important; }
+@starting-style {
+  .t-acc[data-open="true"] .t-acc-panel { grid-template-rows: 0fr; }
+  .t-acc[data-open="true"] .t-acc-panel-inner { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-acc-panel, .t-acc-panel-inner, .t-acc-chevron { transition: none !important; }
+}

@@ -1,0 +1,23 @@
+/* Transitions.dev — Texts reveal */
+/* transitions.dev free tier, Transitions.dev License. Modified: a third line (the action button) staggered by 2x; @starting-style so an empty state mounted already shown animates in; exit (.is-hiding) not used; :root mapped. */
+:root {
+  --stagger-dur: var(--motion-emph);
+  --stagger-distance: 12px;
+  --stagger-stagger: var(--motion-stagger);
+  --stagger-blur: var(--motion-blur-md);
+  --stagger-ease: var(--motion-ease-smooth);
+}
+.t-stagger-line {
+  display: block; opacity: 0; transform: translateY(var(--stagger-distance)); filter: blur(var(--stagger-blur));
+  transition: opacity var(--stagger-dur) var(--stagger-ease), transform var(--stagger-dur) var(--stagger-ease), filter var(--stagger-dur) var(--stagger-ease);
+  will-change: transform, opacity, filter;
+}
+.t-stagger-line--2 { transition-delay: var(--stagger-stagger); }
+.t-stagger-line--3 { transition-delay: calc(var(--stagger-stagger) * 2); }
+.t-stagger.is-shown .t-stagger-line { opacity: 1; transform: translateY(0); filter: blur(0); }
+@starting-style {
+  .t-stagger.is-shown .t-stagger-line { opacity: 0; transform: translateY(var(--stagger-distance)); filter: blur(var(--stagger-blur)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-stagger-line { transition: none !important; }
+}

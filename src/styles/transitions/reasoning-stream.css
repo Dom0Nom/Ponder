@@ -1,0 +1,17 @@
+/* Transitions.dev — Reasoning stream */
+/* transitions.dev free tier, Transitions.dev License. Modified: drives the offset from live reasoning text growth (one line-height step per new line) instead of the vendor's looping clone; --reason-fade 6px for a 2-line viewport; :root mapped. */
+:root {
+  --reason-step: var(--motion-emph);
+  --reason-fade: 6px;
+  --reason-ease: var(--motion-ease-smooth);
+}
+.t-reason { position: relative; overflow: hidden; }
+.t-reason-viewport {
+  position: absolute; inset: 0; overflow: hidden;
+  -webkit-mask-image: linear-gradient(transparent 0, black var(--reason-fade), black calc(100% - var(--reason-fade)), transparent 100%);
+  mask-image: linear-gradient(transparent 0, black var(--reason-fade), black calc(100% - var(--reason-fade)), transparent 100%);
+}
+.t-reason-scroll { position: absolute; left: 0; right: 0; transform: translateY(0); will-change: transform; }
+@media (prefers-reduced-motion: reduce) {
+  .t-reason-scroll { transition: none !important; transform: none !important; }
+}

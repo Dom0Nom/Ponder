@@ -1,0 +1,12 @@
+/* Transitions.dev — Streaming text */
+/* transitions.dev free tier, Transitions.dev License. Modified: words arrive at model speed, so no JS stagger (--stream-gap unused) — each new word span fades in once via @starting-style; the per-word blur is dropped (opacity only): a long answer holds 1,000+ word spans and a filter on each is a compositing cost in WebKit; :root mapped. */
+:root {
+  --stream-fade: var(--motion-medium);
+  --stream-ease: var(--motion-ease-smooth);
+}
+.t-stream-w { opacity: 0; transition: opacity var(--stream-fade) var(--stream-ease); }
+.t-stream-w.is-in { opacity: 1; }
+@starting-style { .t-stream-w.is-in { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .t-stream-w { transition: none !important; filter: none !important; opacity: 1 !important; }
+}

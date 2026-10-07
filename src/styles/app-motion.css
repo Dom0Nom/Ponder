@@ -1,0 +1,35 @@
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important; transition-delay: 0ms !important; scroll-behavior: auto !important;
+  }
+}
+[data-motion="reduce"] *, [data-motion="reduce"] *::before, [data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; animation-delay: 0ms !important;
+  transition-duration: 0.01ms !important; transition-delay: 0ms !important; scroll-behavior: auto !important;
+}
+[data-motion="reduce"] [data-sonner-toast], [data-motion="reduce"] [data-sonner-toast] > * { transition: none !important; animation: none !important; }
+[data-motion="reduce"] .t-think-text::before { display: none !important; }
+[data-motion="reduce"] .t-stream-w { opacity: 1 !important; filter: none !important; }
+
+/* Studio timer paused state — design SSv2:223 opacity {{ timerOpacity }} 1 / .4 */
+.m-timer { transition: opacity var(--motion-quick) var(--motion-ease-smooth); }
+
+/* Break overlay — calm full-screen fade-in; exit is instant (return to work) */
+.m-break { transition: opacity var(--motion-slow) ease-in-out; }
+@starting-style { .m-break { opacity: 0; } }
+
+/* Determinate progress fills (micro-steps 25a, course 21a, embedder, source %) */
+.m-progress { transition: width var(--motion-slow) var(--motion-ease-smooth); }
+
+/* Calculator keys — design SSv2:269/280 style-active; press is instant, release springs back in 80ms */
+.m-key { transition: transform 80ms ease-out, box-shadow 80ms ease-out; }
+.m-key:active, .m-key[data-pressed] { transform: translateY(2px); box-shadow: 0 0 0 #08090a, inset 0 1px 0 rgba(255,255,255,.1); transition-duration: 0ms; }
+
+/* Calculator LCD cursor — SSv2:262 8x15 #1f2619 block; blinks like the hardware (500ms on / 500ms off, estimate) */
+@keyframes m-lcd-blink { 50% { opacity: 0; } }
+.m-lcd-cursor { animation: m-lcd-blink 1s steps(1) infinite; }
+
+/* Spinner primitive — design 34a icon-loader (lucide Loader, 8 spokes): stepped rotation, 8 frames/s instead of 60 */
+@keyframes m-spin { to { transform: rotate(360deg); } }
+.m-spin { animation: m-spin 1s steps(8) infinite; }

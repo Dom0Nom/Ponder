@@ -1,0 +1,22 @@
+/* Transitions.dev — Error state shake */
+/* transitions.dev free tier, Transitions.dev License. Modified: only the input rules are kept (the result callout is a separate element, so .t-error-msg/.t-input-wrap and the timed revert are not used; the red border stays until the next try, as in the design); :root mapped. */
+:root {
+  --shake-distance: 6px;
+  --shake-overshoot: 4px;
+  --shake-dur-a: var(--motion-micro);
+  --shake-dur-b: 60ms;
+  --shake-ease: var(--motion-ease-smooth);
+}
+.t-input { transition: border-color 150ms ease-out; will-change: transform; }
+.t-input.is-error { transition: border-color 280ms ease-out; }
+.t-input.is-shaking { animation: t-input-shake calc(var(--shake-dur-a) * 2 + var(--shake-dur-b) * 2) linear; }
+@keyframes t-input-shake {
+  0%      { transform: translateX(0);                                 animation-timing-function: var(--shake-ease); }
+  28.57%  { transform: translateX(var(--shake-distance));             animation-timing-function: var(--shake-ease); }
+  57.14%  { transform: translateX(calc(var(--shake-distance) * -1)); animation-timing-function: var(--shake-ease); }
+  78.57%  { transform: translateX(var(--shake-overshoot));            animation-timing-function: var(--shake-ease); }
+  100%    { transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-input { animation: none !important; transform: none !important; }
+}

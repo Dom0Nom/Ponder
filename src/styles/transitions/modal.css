@@ -1,0 +1,21 @@
+/* Transitions.dev — Modal open / close */
+/* transitions.dev free tier, Transitions.dev License (see THIRD_PARTY_NOTICES.md). Modified: .is-open/.is-closing class transitions became keyframes on Radix data-state (Radix Presence only waits for animationend, so a transition would cut the exit); added the .t-modal-scrim overlay rules with the same clocks; :root mapped to --motion-*. */
+:root {
+  --modal-open-dur: var(--motion-fast);
+  --modal-close-dur: var(--motion-quick);
+  --modal-scale: 0.96;
+  --modal-scale-close: 0.96;
+  --modal-ease: var(--motion-ease-smooth);
+}
+@keyframes t-modal-open  { from { transform: scale(var(--modal-scale)); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes t-modal-close { from { transform: scale(1); opacity: 1; } to { transform: scale(var(--modal-scale-close)); opacity: 0; } }
+@keyframes t-modal-scrim-open  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes t-modal-scrim-close { from { opacity: 1; } to { opacity: 0; } }
+.t-modal { transform-origin: center; will-change: transform, opacity; }
+.t-modal[data-state="open"]   { animation: t-modal-open var(--modal-open-dur) var(--modal-ease) both; }
+.t-modal[data-state="closed"] { animation: t-modal-close var(--modal-close-dur) var(--modal-ease) both; pointer-events: none; }
+.t-modal-scrim[data-state="open"]   { animation: t-modal-scrim-open var(--modal-open-dur) var(--modal-ease) both; }
+.t-modal-scrim[data-state="closed"] { animation: t-modal-scrim-close var(--modal-close-dur) var(--modal-ease) both; }
+@media (prefers-reduced-motion: reduce) {
+  .t-modal, .t-modal-scrim { animation: none !important; }
+}

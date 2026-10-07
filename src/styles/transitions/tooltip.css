@@ -1,0 +1,62 @@
+/* Transitions.dev — Tooltip open/close */
+/* transitions.dev free tier, Transitions.dev License. Modified: bubble look set to the design (SSv2:83: #111/#ececec, 6px radius, 7px 10px, 12px/1.35, no shadow, two lines up to 220px wide, 6px above the trigger); added .t-tt-radix keyframes so every other (Radix) tooltip uses the same in/out clocks; :root mapped. */
+:root {
+  --tt-in-dur: var(--motion-quick);
+  --tt-out-dur: 50ms;
+  --tt-scale: 0.98;
+  --tt-delay: var(--motion-micro);
+  --tt-in-ease: var(--motion-ease-tip);
+  --tt-out-ease: var(--motion-ease-tip);
+  --tt-move-dur: 160ms;
+  --tt-move-ease: var(--motion-ease-smooth);
+  --tt-bg: var(--primary);
+  --tt-fg: var(--on-primary);
+}
+.t-tt-group { position: relative; display: inline-flex; }
+.t-tt {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  box-sizing: border-box;
+  display: block;
+  width: 0;
+  overflow: hidden;
+  translate: var(--tt-x, 0px) 0;
+  scale: var(--tt-scale);
+  transform-origin: 50% 100%;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: var(--tt-bg);
+  color: var(--tt-fg);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity   var(--tt-out-dur) var(--tt-out-ease),
+    scale     var(--tt-out-dur) var(--tt-out-ease),
+    translate var(--tt-move-dur) var(--tt-move-ease),
+    width     var(--tt-move-dur) var(--tt-move-ease);
+}
+.t-tt[data-show="true"] {
+  opacity: 1;
+  scale: 1;
+  transition:
+    opacity   var(--tt-in-dur) var(--tt-in-ease) var(--tt-delay),
+    scale     var(--tt-in-dur) var(--tt-in-ease) var(--tt-delay),
+    translate var(--tt-move-dur) var(--tt-move-ease),
+    width     var(--tt-move-dur) var(--tt-move-ease);
+}
+.t-tt-text b { display: block; font-weight: 600; }
+.t-tt-text span { color: var(--tooltip-muted); }
+@keyframes t-tt-in  { from { opacity: 0; scale: var(--tt-scale); } to { opacity: 1; scale: 1; } }
+@keyframes t-tt-out { from { opacity: 1; } to { opacity: 0; } }
+.t-tt-radix { transform-origin: var(--radix-tooltip-content-transform-origin); }
+.t-tt-radix[data-state="delayed-open"], .t-tt-radix[data-state="instant-open"] { animation: t-tt-in var(--tt-in-dur) var(--tt-in-ease) both; }
+.t-tt-radix[data-state="closed"] { animation: t-tt-out var(--tt-out-dur) var(--tt-out-ease) both; }
+@media (prefers-reduced-motion: reduce) {
+  .t-tt { transition: none !important; }
+  .t-tt-radix { animation: none !important; }
+}

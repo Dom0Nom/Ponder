@@ -1,0 +1,15 @@
+/* Transitions.dev — Checkbox check */
+/* transitions.dev free tier, Transitions.dev License. Modified: [aria-checked="true"] → :has(> input:checked) to work on 02's native Checkbox16; box fill transition moved onto the input (that's where checked:bg-primary is painted); :root mapped. */
+:root {
+  --check-box: var(--motion-quick);
+  --check-draw: var(--motion-medium);
+  --check-delay: 0ms;
+  --check-uncheck: var(--motion-quick);
+  --check-ease: var(--motion-ease-smooth);
+}
+.t-check > input { transition: background-color var(--check-box) var(--check-ease), border-color var(--check-box) var(--check-ease); }
+.t-check svg path { stroke-dasharray: var(--check-len, 15); stroke-dashoffset: var(--check-len, 15); transition: stroke-dashoffset var(--check-uncheck) var(--check-ease); }
+.t-check:has(> input:checked) svg path { stroke-dashoffset: 0; transition: stroke-dashoffset var(--check-draw) var(--check-ease) var(--check-delay); }
+@media (prefers-reduced-motion: reduce) {
+  .t-check > input, .t-check svg path { transition: none !important; }
+}

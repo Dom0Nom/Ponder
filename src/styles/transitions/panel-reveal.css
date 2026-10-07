@@ -1,0 +1,36 @@
+/* Transitions.dev — Panel reveal */
+/* transitions.dev free tier, Transitions.dev License. Modified: transform takes an X offset too (--panel-translate-x) so side panels slide sideways; --panel-blur 0px (large panels, Intel GPU); added @starting-style so a block mounted already open animates in; :root mapped (200ms per the design's .2s panel clock). */
+:root {
+  --panel-open-dur: var(--motion-panel);
+  --panel-close-dur: var(--motion-panel);
+  --panel-translate-y: 6px;
+  --panel-blur: 0px;
+  --panel-ease: var(--motion-ease-smooth);
+}
+.t-panel-slide {
+  transform: translate(var(--panel-translate-x, 0px), var(--panel-translate-y));
+  opacity: 0;
+  filter: blur(var(--panel-blur));
+  pointer-events: none;
+  transition:
+    transform var(--panel-close-dur) var(--panel-ease),
+    opacity   var(--panel-close-dur) var(--panel-ease),
+    filter    var(--panel-close-dur) var(--panel-ease);
+  will-change: transform, opacity, filter;
+}
+.t-panel-slide[data-open="true"] {
+  transform: translate(0, 0);
+  opacity: 1;
+  filter: blur(0);
+  pointer-events: auto;
+  transition:
+    transform var(--panel-open-dur) var(--panel-ease),
+    opacity   var(--panel-open-dur) var(--panel-ease),
+    filter    var(--panel-open-dur) var(--panel-ease);
+}
+@starting-style {
+  .t-panel-slide[data-open="true"] { transform: translate(var(--panel-translate-x, 0px), var(--panel-translate-y)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-panel-slide { transition: none !important; }
+}

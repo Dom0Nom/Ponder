@@ -1,0 +1,25 @@
+/* Transitions.dev — Toast open / close */
+/* transitions.dev free tier, Transitions.dev License. Modified: added @starting-style so a pill mounted with .is-open rises in; --toast-distance is overridable per element (top pills use -16px and drop down instead of rising); :root mapped. */
+:root {
+  --toast-open: var(--motion-medium);
+  --toast-close: var(--motion-fast);
+  --toast-distance: 16px;
+  --toast-blur: var(--motion-blur-sm);
+  --toast-scale: 0.97;
+  --toast-ease: var(--motion-ease-smooth);
+}
+.t-toast {
+  opacity: 0;
+  transform: translateY(var(--toast-distance)) scale(var(--toast-scale));
+  filter: blur(var(--toast-blur));
+  will-change: transform, opacity, filter;
+  transition: opacity var(--toast-close) var(--toast-ease), transform var(--toast-close) var(--toast-ease), filter var(--toast-close) var(--toast-ease);
+}
+.t-toast.is-open {
+  opacity: 1; transform: translateY(0) scale(1); filter: blur(0);
+  transition: opacity var(--toast-open) var(--toast-ease), transform var(--toast-open) var(--toast-ease), filter var(--toast-open) var(--toast-ease);
+}
+@starting-style { .t-toast.is-open { opacity: 0; transform: translateY(var(--toast-distance)) scale(var(--toast-scale)); filter: blur(var(--toast-blur)); } }
+@media (prefers-reduced-motion: reduce) {
+  .t-toast { transition: none !important; }
+}

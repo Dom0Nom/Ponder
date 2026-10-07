@@ -1,0 +1,55 @@
+# Third-party notices
+
+This app is MIT-licensed. The components below are included under their own licenses.
+
+## Transitions.dev snippets (not MIT)
+
+The files in `src/styles/transitions/` contain CSS transitions from the free tier of
+Transitions.dev, modified for this app. They are © 2026 Jakub Antalik / Transitions.dev
+and are used under the Transitions.dev License (https://transitions.dev/terms.html),
+**not** under this repository's MIT license. You may use them as part of this app. You may
+not extract and redistribute them, or a substantial part of the Transitions.dev
+collection, as a transitions library, motion pack or animation kit.
+
+Transitions used: Accordion expand, Checkbox check, Error state shake, Icon swap,
+Learn more hover, Menu dropdown, Modal open / close, Notification badge, Number pop-in,
+Page side-by-side, Panel reveal, Reasoning stream, Skeleton loader and reveal,
+Streaming text, Success check, Tabs sliding, Text states swap, Texts reveal,
+Thinking states, Toast open / close, Tooltip open/close.
+
+## thinking-orbs, border-beam, metal-fx (MIT)
+
+Copyright (c) 2026 Jakub Antalik
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## metal-fx: Paper Shaders (Apache-2.0)
+
+metal-fx
+Copyright (c) Jakub Antalik
+
+This product includes software developed by Paper Design, Inc.
+
+  Paper Shaders (https://github.com/paper-design/shaders)
+  Copyright (c) Paper Design, Inc.
+  Licensed under the Apache License, Version 2.0
+  http://www.apache.org/licenses/LICENSE-2.0
+
+The `liquidMetal` fragment shader and the sizing vertex shader are included unmodified
+in the metal-fx bundle.

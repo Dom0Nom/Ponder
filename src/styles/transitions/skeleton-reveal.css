@@ -1,0 +1,22 @@
+/* Transitions.dev — Skeleton loader and reveal */
+/* transitions.dev free tier, Transitions.dev License. Modified: absolute stacking scoped to .t-skel > children (so a stand-alone .t-skel-skeleton can be used as the Skeleton primitive); --pulse-count infinite (loads can take longer than one pulse); replay (.is-resetting) not used; :root mapped. */
+:root {
+  --pulse-dur: 1000ms;
+  --pulse-count: infinite;
+  --pulse-min: 0.5;
+  --reveal-dur: var(--motion-slow);
+  --reveal-blur: var(--motion-blur-sm);
+  --reveal-ease: var(--motion-ease-swap);
+}
+.t-skel { position: relative; }
+.t-skel > .t-skel-skeleton, .t-skel > .t-skel-content { position: absolute; inset: 0; }
+.t-skel-skeleton { z-index: 1; opacity: 1; filter: blur(0); transition: opacity var(--reveal-dur) var(--reveal-ease), filter var(--reveal-dur) var(--reveal-ease); }
+.t-skel-content { z-index: 2; opacity: 0; filter: blur(var(--reveal-blur)); transition: opacity var(--reveal-dur) var(--reveal-ease), filter var(--reveal-dur) var(--reveal-ease); }
+.t-skel.is-revealed .t-skel-skeleton { opacity: 0; filter: blur(var(--reveal-blur)); }
+.t-skel.is-revealed .t-skel-content { opacity: 1; filter: blur(0); }
+.t-skel-skeleton.is-pulsing > * { animation: t-skel-pulse var(--pulse-dur) ease-in-out var(--pulse-count); }
+@keyframes t-skel-pulse { 0%, 100% { opacity: 1; } 50% { opacity: var(--pulse-min); } }
+@media (prefers-reduced-motion: reduce) {
+  .t-skel-skeleton, .t-skel-content { transition: none !important; }
+  .t-skel-skeleton.is-pulsing > * { animation: none !important; }
+}
