@@ -132,9 +132,11 @@ export function ModelMenu({ space }: { space: Space }) {
           side="top"
           align="start"
           sideOffset={8}
+          collisionPadding={12}
+          avoidCollisions
           data-testid="model-menu"
           onKeyDown={onKeyDown}
-          className="t-dropdown z-50 max-h-[min(520px,var(--radix-popover-content-available-height))] w-[300px] overflow-y-auto rounded-pane border border-border bg-surface p-1 text-body text-fg shadow-popover outline-none"
+          className="t-dropdown z-50 flex max-h-[min(560px,var(--radix-popover-content-available-height))] w-[300px] flex-col overflow-hidden [&>*:not([data-list])]:shrink-0 rounded-pane border border-border bg-surface p-1 text-body text-fg shadow-popover outline-none"
         >
           <Menu>
             <MenuTrigger asChild disabled={list.length < 2}>

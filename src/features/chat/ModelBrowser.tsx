@@ -18,7 +18,8 @@ import { useUi } from "../../stores/ui";
 
 export const PLAIN_SEARCH_THRESHOLD = 8;
 
-const scrollClass = "max-h-[248px] overflow-y-auto";
+const scrollClass = "min-h-[72px] flex-1 overflow-y-auto";
+const wrapClass = "flex min-h-0 flex-1 flex-col";
 const rowClass = "flex h-[34px] w-full items-center gap-2.5 rounded-item px-2.5 text-left outline-none hover:bg-fill focus-visible:bg-fill";
 
 export const providerModels = (p: Provider) =>
@@ -68,7 +69,7 @@ function PlainList({ provider, selected, onPick }: { provider: Provider; selecte
   const q = query.trim().toLowerCase();
   const models = all.filter((m) => !q || m.toLowerCase().includes(q));
   return (
-    <>
+    <div data-list className={wrapClass}>
       {all.length > PLAIN_SEARCH_THRESHOLD && <SearchBox value={query} onChange={setQuery} label={s.models.search(all.length)} />}
       <div className={scrollClass}>
         {models.map((m) => (
@@ -76,7 +77,7 @@ function PlainList({ provider, selected, onPick }: { provider: Provider; selecte
         ))}
         {models.length === 0 && <p className="px-3 py-3 text-muted">{all.length ? s.models.noResults : s.models.noModels}</p>}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -109,7 +110,7 @@ function OpenRouterList({ provider, selected, onPick }: { provider: Provider; se
   );
 
   return (
-    <>
+    <div data-list className={wrapClass}>
       <SearchBox value={query} onChange={setQuery} label={s.models.searchOpenRouter} />
       <div role="group" aria-label={s.models.filterByAuthor} className="mx-1.5 mb-1 flex gap-0.5">
         <button
@@ -178,7 +179,7 @@ function OpenRouterList({ provider, selected, onPick }: { provider: Provider; se
         </>
       )}
       </div>
-    </>
+    </div>
   );
 }
 

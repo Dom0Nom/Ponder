@@ -73,7 +73,7 @@ be reused in forks without permission.
 
 The icons in `src/assets/providers/` are the logos or favicons of the services the app connects to. They are trademarks of their owners, used only to identify the provider, and are not covered by this repository's MIT license. Downscaled to 64 px from the sources below.
 
-- OpenRouter: https://openrouter.ai/apple-touch-icon.png
+- OpenRouter: https://openrouter.ai/favicon/glyph.png
 - LM Studio: https://lmstudio.ai/assets/marketing/logo-192x192.png
 - Ollama: https://ollama.com/public/apple-touch-icon.png
 - llama.cpp (ggml-org): https://github.com/ggml-org.png
