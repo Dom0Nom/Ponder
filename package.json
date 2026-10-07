@@ -18,7 +18,7 @@
     "@ai-sdk/openai": "^4.0.84",
     "@ai-sdk/openai-compatible": "^3.0.63",
     "@ai-sdk/xai": "^5.0.15",
-    "@fontsource-variable/ibm-plex-sans": "5.3.0",
+    "@fontsource/ibm-plex-sans": "5",
     "@fontsource/opendyslexic": "^5.3.0",
     "@mozilla/readability": "^0.6.0",
     "@radix-ui/react-dialog": "^1.2.0",

@@ -92,7 +92,7 @@ function ThreadView({ space, thread, ensureThread }: { space: Space; thread?: Th
           const el = e.currentTarget;
           stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
         }}
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto tracking-[-0.01em] transition-[padding] duration-200"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto transition-[padding] duration-200"
         style={{ paddingLeft: sourcesOpen ? 340 : 0 }}
         data-testid="message-list"
       >
