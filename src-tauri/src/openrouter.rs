@@ -7,7 +7,7 @@ use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const URL: &str = "https://openrouter.ai/api/v1/models";
-const CACHE_FILE: &str = "openrouter-models.json";
+const CACHE_FILE: &str = "openrouter-chat-models.json";
 const TTL: Duration = Duration::from_secs(24 * 60 * 60);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -31,12 +31,25 @@ fn now_secs() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
 
+/// Chat models only: text in, text-only out (drops image generators such as Gemini image models).
+fn is_text_chat(m: &Value) -> bool {
+    let Some(arch) = m.get("architecture") else { return true };
+    let list = |k: &str| -> Vec<&str> {
+        arch.get(k).and_then(Value::as_array).map(|a| a.iter().filter_map(Value::as_str).collect()).unwrap_or_default()
+    };
+    let (input, output) = (list("input_modalities"), list("output_modalities"));
+    (input.is_empty() || input.contains(&"text")) && (output.is_empty() || output == ["text"])
+}
+
 pub fn parse(body: &str) -> AppResult<Vec<OpenRouterModel>> {
     let v: Value = serde_json::from_str(body)?;
     let data = v.get("data").and_then(Value::as_array).ok_or_else(|| AppError::Other("Unexpected OpenRouter response".into()))?;
     let mut out: Vec<OpenRouterModel> = data
         .iter()
         .filter_map(|m| {
+            if !is_text_chat(m) {
+                return None;
+            }
             let id = m.get("id")?.as_str()?.to_string();
             let name = m.get("name").and_then(Value::as_str).unwrap_or(&id).to_string();
             let supported_parameters = m
@@ -116,6 +129,17 @@ mod tests {
         assert_eq!(m[0].name, "anthropic/claude-haiku-4.5");
         assert_eq!(m[1].supported_parameters, vec!["temperature", "reasoning"]);
         assert!(parse("{}").is_err());
+    }
+
+    #[test]
+    fn drops_image_output_models() {
+        let body = r#"{"data":[
+            {"id":"google/gemini-3-pro-image","architecture":{"input_modalities":["text","image"],"output_modalities":["image","text"]}},
+            {"id":"google/gemini-3.1-pro","architecture":{"input_modalities":["text","image"],"output_modalities":["text"]}},
+            {"id":"openai/whisper","architecture":{"input_modalities":["audio"],"output_modalities":["text"]}}
+        ]}"#;
+        let ids: Vec<String> = parse(body).unwrap().into_iter().map(|m| m.id).collect();
+        assert_eq!(ids, vec!["google/gemini-3.1-pro"]);
     }
 
     #[test]
