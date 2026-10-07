@@ -5,6 +5,8 @@ import * as D from "@radix-ui/react-dialog";
 import { Button } from "../../components/ui/button";
 import { Input, Textarea } from "../../components/ui/input";
 import { ErrorState, Skeleton } from "../../components/ui/misc";
+import { Collapse, Reveal } from "../../components/motion/Reveal";
+import { TextSwap } from "../../components/motion/TextSwap";
 import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { toast } from "../../components/ui/toast";
 import { Markdown } from "../chat/Markdown";
@@ -62,7 +64,10 @@ function StepRow({
   isFirstWrong: boolean;
 }) {
   return (
-    <li
+    <Reveal
+      as="li"
+      active={!!verdict}
+      index={n - 1}
       data-testid="step-row"
       data-status={verdict ? (verdict.ok ? "ok" : "wrong") : "unchecked"}
       className={cn("group/row flex items-center gap-2.5 px-3 py-[9px] [&+&]:border-t [&+&]:border-divider", isFirstWrong && "bg-danger-soft")}
@@ -83,7 +88,7 @@ function StepRow({
           <X size={15} className="text-danger" aria-label={s.steps.stepWrong} />
         </span>
       )}
-    </li>
+    </Reveal>
   );
 }
 
@@ -102,7 +107,7 @@ function FirstWrong({ verdict, note }: { verdict: StepVerdict; note?: string }) 
           </Button>
         )}
       </div>
-      {showHint && (
+      <Collapse open={showHint} noblur>
         <div className="flex flex-col gap-1.5">
           {note && <p className="text-label text-muted">{note}</p>}
           {verdict.issue && (
@@ -123,12 +128,14 @@ function FirstWrong({ verdict, note }: { verdict: StepVerdict; note?: string }) 
           )}
           <p className="text-label text-muted">{s.steps.laterUnchecked}</p>
         </div>
-      )}
-      {showFix && verdict.fix && (
-        <div className="flex flex-wrap items-center gap-2 rounded-pane bg-fill-subtle px-3 py-2" data-testid="step-fix">
-          <span className="text-label text-muted">{s.steps.fix}:</span>
-          <Tex tex={verdict.fix} />
-        </div>
+      </Collapse>
+      {verdict.fix && (
+        <Collapse open={showFix} noblur>
+          <div className="flex flex-wrap items-center gap-2 rounded-pane bg-fill-subtle px-3 py-2" data-testid="step-fix">
+            <span className="text-label text-muted">{s.steps.fix}:</span>
+            <Tex tex={verdict.fix} />
+          </div>
+        </Collapse>
       )}
     </div>
   );
@@ -315,16 +322,16 @@ export function StepCheckerPanel({
           <ErrorState size="sm" title={s.steps.checkFailed} error={error} onRetry={lines.length ? check : undefined} />
         )}
         {fresh && !editing && !busy && (
-          <div className="flex flex-col gap-1.5" data-testid="step-summary">
+          <Reveal className="flex flex-col gap-1.5" data-testid="step-summary">
             <p className={cn("font-semibold", firstWrong == null ? "text-success" : "text-danger-text")}>
-              {firstWrong == null ? s.steps.allGood : s.steps.firstWrong(firstWrong + 1)}
+              <TextSwap text={firstWrong == null ? s.steps.allGood : s.steps.firstWrong(firstWrong + 1)} />
             </p>
             {firstWrong != null ? (
               <FirstWrong verdict={fresh.verdicts[firstWrong]} note={summaryNote} />
             ) : (
               summaryNote && <p className="text-label text-muted">{summaryNote}</p>
             )}
-          </div>
+          </Reveal>
         )}
         <PhotoDialog open={photoOpen} onOpenChange={setPhotoOpen} spaceId={spaceId} initialImage={pasted} onRead={fromPhoto} />
       </StudioSubpanel>

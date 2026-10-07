@@ -100,7 +100,7 @@ export function EmptyState({
   size = "md",
 }: {
   icon?: ReactNode;
-  title: string;
+  title: ReactNode;
   body?: ReactNode;
   action?: ReactNode;
   className?: string;

@@ -8,7 +8,7 @@ export function useSlidingPill(list: RefObject<HTMLElement | null>, pill: RefObj
     const p = pill.current;
     if (!l || !p) return;
     const place = (animate: boolean) => {
-      const tab = l.querySelector<HTMLElement>('[aria-checked="true"]');
+      const tab = l.querySelector<HTMLElement>('[aria-checked="true"],[aria-selected="true"]');
       if (!tab) return;
       if (!animate) p.style.transition = "none";
       p.style.transform = `translateX(${tab.offsetLeft}px)`;

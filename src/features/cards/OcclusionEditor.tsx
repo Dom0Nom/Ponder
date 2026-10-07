@@ -23,6 +23,10 @@ import {
 import { Dialog } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
 import { fieldLabel, Input } from "../../components/ui/input";
+import { Reveal } from "../../components/motion/Reveal";
+import { TextSwap } from "../../components/motion/TextSwap";
+import { useFlip } from "../../lib/useFlip";
+import { useFreshKeys } from "../../lib/useFreshKeys";
 import { EmptyState, ErrorState, Segmented, Skeleton, Spinner } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { useImageUrl } from "./OcclusionCardView";
@@ -145,7 +149,7 @@ export function OcclusionEditor({
           )}
           <Button variant="primary" onClick={save} disabled={!image || !masks.length || saving}>
             {saving && <Spinner size={14} className="text-on-primary" />}
-            {editing ? s.common.save : s.occlusion.saveN(masks.length)}
+            <TextSwap text={editing ? s.common.save : s.occlusion.saveN(masks.length)} />
           </Button>
         </>
       }
@@ -387,12 +391,15 @@ function MaskList({
   selected: string | null;
   setSelected: (id: string | null) => void;
 }) {
+  const listRef = useRef<HTMLUListElement>(null);
+  const isFresh = useFreshKeys(masks.map((m) => m.id));
+  useFlip(listRef, [masks.length]);
   return (
     <div className="flex min-w-0 flex-col gap-2">
       {!masks.length && <p className="text-body text-muted">{s.occlusion.noMasks}</p>}
-      <ul className="flex flex-col gap-3">
+      <ul ref={listRef} className="relative flex flex-col gap-3">
         {masks.map((m, i) => (
-          <li key={m.id} className="flex items-center gap-2">
+          <Reveal as="li" key={m.id} active={isFresh(m.id)} data-flip-key={m.id} className="flex items-center gap-2">
             <button
               type="button"
               aria-pressed={m.id === selected}
@@ -425,7 +432,7 @@ function MaskList({
             >
               <X size={15} />
             </Button>
-          </li>
+          </Reveal>
         ))}
       </ul>
     </div>

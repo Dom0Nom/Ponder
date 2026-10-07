@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, CircleCheck, CircleX, Lightbulb, ListChecks, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowRight, CircleX, Lightbulb, ListChecks, TrendingDown, TrendingUp } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { invalidateCards, qk, useCurriculum, useSpace } from "../../lib/queries";
 import { s } from "../../lib/strings";
@@ -11,6 +11,10 @@ import { levelFor, levelFromTheta, skillPercent, targetDifficulty, updateTheta }
 import { classifyError, generateProblem, generateVariation, gradeResponse, type Grade, type TopicSpec, type VariationMode } from "../../lib/practice/problems";
 import { curriculumById } from "../../lib/placement/curricula";
 import { useUi } from "../../stores/ui";
+import { NumberPop } from "../../components/motion/NumberPop";
+import { Collapse, Reveal } from "../../components/motion/Reveal";
+import { SuccessCircleCheck } from "../../components/motion/SuccessCheck";
+import { useShake } from "../../components/motion/useShake";
 import { Button } from "../../components/ui/button";
 import { ChoiceOption } from "../../components/ui/choice";
 import { Input } from "../../components/ui/input";
@@ -95,6 +99,7 @@ function Session({
   const [item, setItem] = useState<PracticeItem | null>(null);
   const [response, setResponse] = useState("");
   const [result, setResult] = useState<Result | null>(null);
+  const shake = useShake();
   const [busy, setBusy] = useState<"new" | "grade" | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [theta, setTheta] = useState(ability?.theta ?? 0);
@@ -118,6 +123,7 @@ function Session({
     setBusy("new");
     setError(null);
     setResult(null);
+    shake.reset();
     setResponse("");
     setShowHint(false);
     const pending = prefetched.current;
@@ -190,6 +196,7 @@ function Session({
       qc.invalidateQueries({ queryKey: qkAbilities(space.id) });
       qc.invalidateQueries({ queryKey: ["errorPatterns"] });
       setResult({ grade, before: theta, after, errorType, errorNote });
+      if (!grade.correct) shake.shake();
       prefetched.current = makeNext(after);
       prefetched.current.catch(() => {});
       setTheta(after);
@@ -227,7 +234,7 @@ function Session({
           )}
           {error != null && busy !== "new" && <ErrorState title={s.practice.loadFailed} error={error} onRetry={() => load()} />}
           {item && busy !== "new" && (
-            <>
+            <div key={item.id} className="t-page-enter flex flex-col gap-[18px]">
               <div className="practice-question text-[1.125rem] font-medium leading-[1.5] [&_.prose-chat]:leading-[1.5]" data-testid="practice-question">
                 <Markdown text={item.question} />
               </div>
@@ -262,9 +269,10 @@ function Session({
                     value={response}
                     disabled={!!result}
                     onChange={(e) => setResponse(e.target.value)}
+                    {...shake.props}
                     placeholder={item.kind === "numeric" ? s.practice.numericPlaceholder : s.practice.shortPlaceholder}
                     aria-label={s.practice.yourAnswer}
-                    className={cn("min-w-0 flex-1 disabled:opacity-100", result && (ok ? "border-success" : "border-danger"))}
+                    className={cn(shake.cls(!!result && !ok), "min-w-0 flex-1 disabled:opacity-100", result && (ok ? "border-success" : "border-danger"))}
                   />
                   <Button type="submit" variant="primary" disabled={!response.trim() || !!result || busy === "grade"}>
                     {s.practice.check}
@@ -281,18 +289,18 @@ function Session({
                   <Button variant="ghost" size="sm" className="-ml-[9px] self-start" aria-expanded={showHint} onClick={() => setShowHint(!showHint)}>
                     <Lightbulb size={14} /> {s.practice.hint}
                   </Button>
-                  {showHint && (
+                  <Collapse open={showHint} noblur>
                     <div className="flex gap-2 text-fg-secondary" data-testid="practice-hint">
                       <Lightbulb size={14} className="mt-0.5 shrink-0" aria-hidden />
                       <Markdown text={item.hint} />
                     </div>
-                  )}
+                  </Collapse>
                 </div>
               )}
               {busy === "grade" && <GeneratingStatus label={s.practice.grading} className="text-muted" />}
               {result && (
                 <>
-                  <div
+                  <Reveal
                     data-testid="practice-result"
                     className={cn(
                       "flex flex-col gap-1.5 rounded-card border px-4 pb-3.5 pt-3.5",
@@ -300,11 +308,11 @@ function Session({
                     )}
                   >
                     <div className={cn("flex h-[23px] items-center gap-2.5 text-input font-semibold", ok ? "text-success-text" : "text-danger-text")}>
-                      {ok ? <CircleCheck size={16} /> : <CircleX size={16} />}
+                      {ok ? <SuccessCircleCheck size={16} /> : <CircleX size={16} />}
                       {ok ? s.practice.correct : s.practice.notQuite}
                       <span className="ml-auto flex items-center gap-1 text-label font-normal tabular-nums text-muted" data-testid="skill-change">
                         {result.after >= result.before ? <TrendingUp size={14} className="text-success" /> : <TrendingDown size={14} className="text-danger" />}
-                        {skillPercent(result.before)} → {skillPercent(result.after)}
+                        {skillPercent(result.before)} → <NumberPop text={String(skillPercent(result.after))} popKey={result.after} onMount />
                       </span>
                     </div>
                     {!ok && (
@@ -317,13 +325,13 @@ function Session({
                     {(result.grade.feedback || result.errorNote) && (
                       <p className="text-fg-secondary">{[result.grade.feedback, result.errorNote].filter(Boolean).join(" ")}</p>
                     )}
-                  </div>
-                  <div className="flex flex-col gap-2 rounded-card border border-border px-4 pb-3.5 pt-3.5">
+                  </Reveal>
+                  <Reveal className="flex flex-col gap-2 rounded-card border border-border px-4 pb-3.5 pt-3.5" index={1}>
                     <p className="text-label font-semibold text-muted">{s.practice.solution}</p>
                     <div className="practice-solution text-input leading-[1.7] [&_.prose-chat]:leading-[1.7] [&_p]:m-0">
                       <Markdown text={item.solution} plainInlineMath />
                     </div>
-                  </div>
+                  </Reveal>
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={() => load()}>
                       <ArrowRight size={15} /> {s.practice.next}
@@ -340,7 +348,7 @@ function Session({
                   </div>
                 </>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>

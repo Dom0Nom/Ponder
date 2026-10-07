@@ -1,5 +1,6 @@
+import { LearnChevron } from "../../components/motion/LearnChevron";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, ExternalLink, HardDrive, KeyRound, LogIn } from "lucide-react";
+import { ArrowLeft, ExternalLink, HardDrive, KeyRound, LogIn } from "lucide-react";
 import { Fragment, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Input, Label } from "../../components/ui/input";
@@ -28,14 +29,14 @@ function Tile({ type, onPick }: { type: ProviderType; onPick: (t: ProviderType) 
   return (
     <button
       onClick={() => onPick(type)}
-      className="flex h-12 items-center gap-3 rounded-tile border border-border px-3 text-left hover:bg-fill-faint"
+      className="t-learn flex h-12 items-center gap-3 rounded-tile border border-border px-3 text-left hover:bg-fill-faint"
     >
       <Icon size={15} aria-hidden />
       <span className="flex flex-1 flex-col">
         <span className="font-semibold">{catalog[type].tileLabel ?? catalog[type].label}</span>
         {hint && <span className="text-label text-muted">{hint}</span>}
       </span>
-      <ChevronRight size={14} aria-hidden />
+      <LearnChevron size={14} />
     </button>
   );
 }

@@ -10,13 +10,20 @@ import { cn, relativeShort } from "../../lib/utils";
 import { GRADES, previewIntervals, schedule } from "../../lib/srs/scheduler";
 import { useUi } from "../../stores/ui";
 import { useFocusStore } from "../focus/focusStore";
+import { NumberPop } from "../../components/motion/NumberPop";
+import { Reveal } from "../../components/motion/Reveal";
+import { SuccessCheck } from "../../components/motion/SuccessCheck";
+import { useSlidingPill } from "../../components/motion/useSlidingPill";
+import { motionReduced } from "../../app/useTheme";
+import { useFlip } from "../../lib/useFlip";
+import { useFreshKeys } from "../../lib/useFreshKeys";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, Skeleton } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
 import { CardFace } from "../cards/CardFace";
 
 const SEGMENT =
-  "flex h-7.5 items-center justify-center whitespace-nowrap rounded-item px-2.5 font-medium text-fg transition-colors hover:bg-fill data-[state=active]:bg-fill-active data-[state=active]:font-semibold";
+  "t-tab flex h-7.5 items-center justify-center whitespace-nowrap rounded-item px-2.5 font-medium text-fg hover:bg-fill data-[state=active]:font-semibold";
 const SESSION_COL = "m-auto flex w-full max-w-[720px] flex-col gap-5 px-10 pb-12 pt-10";
 const STATIC_COL = "mx-auto flex w-full max-w-[760px] flex-col gap-[18px] px-10 pb-12 pt-10";
 const RATE =
@@ -32,6 +39,9 @@ export function ReviewScreen({ spaceId, tab }: { spaceId?: string; tab?: "cards"
   const navigate = useUi((st) => st.navigate);
   const [hasCard, setHasCard] = useState(false);
   const current = tab ?? "cards";
+  const list = useRef<HTMLDivElement>(null);
+  const pill = useRef<HTMLSpanElement>(null);
+  useSlidingPill(list, pill, current);
   return (
     <div className="flex h-full overflow-y-auto">
       <div className={current === "cards" && hasCard ? SESSION_COL : STATIC_COL}>
@@ -41,22 +51,35 @@ export function ReviewScreen({ spaceId, tab }: { spaceId?: string; tab?: "cards"
           onValueChange={(v) => navigate({ name: "review", spaceId, tab: v as "cards" | "mistakes" })}
           className="contents"
         >
-          <Tabs.List className="inline-flex gap-0.5 self-start rounded-control border border-field p-0.5">
+          <Tabs.List ref={list} className="t-tabs inline-flex gap-0.5 self-start rounded-control border border-field p-0.5">
+            <span ref={pill} className="t-tabs-pill" aria-hidden />
             {(["cards", "mistakes"] as const).map((v) => (
               <Tabs.Trigger key={v} value={v} className={SEGMENT}>
                 {v === "cards" ? s.review.cardsTab : s.review.mistakesTab}
               </Tabs.Trigger>
             ))}
           </Tabs.List>
-          <Tabs.Content value="cards" className="contents">
+          <Tabs.Content value="cards" className={cn("t-panel-slide flex flex-col", hasCard ? "gap-5" : "gap-[18px]")} data-open="true">
             <ReviewSession key={spaceId ?? "all"} spaceId={spaceId} onCard={setHasCard} />
           </Tabs.Content>
-          <Tabs.Content value="mistakes" className="contents">
+          <Tabs.Content value="mistakes" className="t-panel-slide flex flex-col gap-[18px]" data-open="true">
             <MistakeNotebook spaceId={spaceId} />
           </Tabs.Content>
         </Tabs.Root>
       </div>
     </div>
+  );
+}
+
+function FinishedTitle({ n }: { n: number }) {
+  const text = s.review.finished(n);
+  const at = text.indexOf(String(n));
+  return (
+    <>
+      {text.slice(0, at)}
+      <NumberPop text={String(n)} popKey={n} onMount />
+      {text.slice(at + String(n).length)}
+    </>
   );
 }
 
@@ -137,8 +160,8 @@ function ReviewSession({ spaceId, onCard }: { spaceId?: string; onCard: (has: bo
       <div className="flex h-[420px]" data-testid="review-empty">
         <EmptyState
           className="flex-1"
-          icon={done ? <CircleCheck size={20} /> : <Layers size={20} />}
-          title={done ? s.review.finished(done) : total ? s.review.nothingDue : s.review.noCards}
+          icon={done ? <SuccessCheck size={20} /> : <Layers size={20} />}
+          title={done ? <FinishedTitle n={done} /> : total ? s.review.nothingDue : s.review.noCards}
           body={done || total ? s.review.comeBack : s.review.noCardsBody}
           action={
             !total && spaceId ? (
@@ -162,7 +185,7 @@ function ReviewSession({ spaceId, onCard }: { spaceId?: string; onCard: (has: bo
         <span className="tabular-nums">{s.review.remaining(queue.length, done)}</span>
         {meta.length > 0 && <span className="ml-auto truncate">{meta.join(" · ")}</span>}
       </div>
-      <div className="flex flex-col rounded-[14px] border border-border">
+      <div key={card.id} className="t-page-enter flex flex-col rounded-[14px] border border-border">
         <CardFace key={card.id} card={card} revealed={revealed} onPick={() => setRevealed(true)} />
         {revealed && card.sourceId && (
           <div className="flex justify-center pb-4">
@@ -182,7 +205,7 @@ function ReviewSession({ spaceId, onCard }: { spaceId?: string; onCard: (has: bo
           </div>
         )}
       </div>
-      <div className="grid grid-cols-4 gap-2.5">
+      <Reveal key={String(revealed)} className="grid grid-cols-4 gap-2.5">
         {!revealed ? (
           <button
             onClick={() => setRevealed(true)}
@@ -201,7 +224,7 @@ function ReviewSession({ spaceId, onCard }: { spaceId?: string; onCard: (has: bo
             </button>
           ))
         )}
-      </div>
+      </Reveal>
     </div>
   );
 }
@@ -210,6 +233,10 @@ function MistakeNotebook({ spaceId }: { spaceId?: string }) {
   const { data, isLoading, error, refetch } = useMistakes(spaceId ?? null);
   const { data: spaces } = useSpaces();
   const [showResolved, setShowResolved] = useState(false);
+  const [leaving, setLeaving] = useState<string | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const isFresh = useFreshKeys(data?.filter((m) => showResolved || !m.resolved).map((m) => m.id));
+  useFlip(listRef, [data, showResolved]);
   if (isLoading) return <Skeleton className="h-40 rounded-card" />;
   if (error) return <ErrorState title={s.errors.generic} error={error} onRetry={() => refetch()} />;
   const open = (data ?? []).filter((m) => !m.resolved);
@@ -232,12 +259,15 @@ function MistakeNotebook({ spaceId }: { spaceId?: string }) {
           </Button>
         )}
       </div>
-      <ul className="rounded-card border border-border px-4">
+      <ul ref={listRef} className="relative rounded-card border border-border px-4">
         {list.map((m) => (
-          <li
+          <Reveal
+            as="li"
             key={m.id}
+            active={isFresh(m.id)}
+            data-flip-key={m.id}
             data-testid="mistake"
-            className={cn("flex gap-3 py-3.5 [&+&]:border-t [&+&]:border-divider", m.resolved && "opacity-60")}
+            className={cn("flex gap-3 py-3.5 transition-opacity duration-(--motion-fast) [&+&]:border-t [&+&]:border-divider", m.resolved && "opacity-60")}
           >
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <p className="text-input font-semibold">{m.question}</p>
@@ -273,14 +303,20 @@ function MistakeNotebook({ spaceId }: { spaceId?: string }) {
               title={m.resolved ? s.mistakes.reopen : s.mistakes.markFixed}
               onClick={async () => {
                 try {
+                  if (!m.resolved && !motionReduced()) {
+                    setLeaving(m.id);
+                    await new Promise((r) => setTimeout(r, 400));
+                  }
                   await api.mistakeSetResolved(m.id, !m.resolved);
+                  setLeaving(null);
                   invalidateCards();
                 } catch (e) {
+                  setLeaving(null);
                   toastError(s.errors.generic, e);
                 }
               }}
             >
-              {m.resolved ? <RotateCcw size={15} /> : <Check size={15} />}
+              {m.resolved ? <RotateCcw size={15} /> : leaving === m.id ? <SuccessCheck size={15} /> : <Check size={15} />}
             </Button>
             <Button
               variant="ghost-muted"
@@ -298,7 +334,7 @@ function MistakeNotebook({ spaceId }: { spaceId?: string }) {
             >
               <Trash2 size={15} />
             </Button>
-          </li>
+          </Reveal>
         ))}
       </ul>
       <p className="text-caption text-muted">{s.mistakes.howItWorks}</p>

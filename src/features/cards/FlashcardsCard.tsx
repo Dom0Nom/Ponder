@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { create } from "zustand";
-import { ChevronRight, Library, Pause, PencilLine, Play, Plus, Search, Sparkles, Trash2 } from "lucide-react";
+import { Library, Pause, PencilLine, Play, Plus, Search, Sparkles, Trash2 } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { invalidateCards, useCards, useDueCounts, useSources } from "../../lib/queries";
 import { s } from "../../lib/strings";
@@ -10,6 +10,7 @@ import { resolveChatModel, NoModelError } from "../../lib/chat/llm";
 import { generateCards, hitsToPassages } from "../../lib/srs/generate";
 import { addGap, clozeFront, clozeNumbers, expandCloze } from "../../lib/srs/cloze";
 import { quizSpace } from "../../lib/srs/quizSpace";
+import { motionReduced } from "../../app/useTheme";
 import { useUi } from "../../stores/ui";
 import { useLowEnergy } from "../focus/useLowEnergy";
 import { Button } from "../../components/ui/button";
@@ -19,6 +20,10 @@ import { EmptyState, Segmented, Skeleton } from "../../components/ui/misc";
 import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { PonderMark } from "../../components/brand/PonderMark";
 import { toast, toastError } from "../../components/ui/toast";
+import { LearnChevron } from "../../components/motion/LearnChevron";
+import { NumberPop } from "../../components/motion/NumberPop";
+import { TextSwap } from "../../components/motion/TextSwap";
+import { useFlip } from "../../lib/useFlip";
 import { PanelList, panelRow } from "../space/PanelList";
 import { StudioSubpanel } from "../space/StudioSubpanel";
 import { OcclusionButtonSlot } from "./occlusionSlot";
@@ -43,7 +48,7 @@ export const useAddCard = create<{ req: AddCardRequest; open: (r: Omit<AddCardRe
   close: () => set({ req: { open: false } }),
 }));
 
-const ROW = cn(panelRow, "h-[42px] w-full gap-3 text-left disabled:opacity-40");
+const ROW = cn(panelRow, "t-learn h-[42px] w-full gap-3 text-left disabled:opacity-40");
 const AREA = "min-h-[72px] leading-[1.6]";
 
 export function FlashcardsPanel({ space, onBack }: { space: Space; onBack: () => void }) {
@@ -76,7 +81,9 @@ export function FlashcardsPanel({ space, onBack }: { space: Space; onBack: () =>
         <div className="flex items-baseline gap-2" data-testid="card-counts">
           {c ? (
             <>
-              <span className="text-[2rem] font-semibold leading-none tabular-nums">{c.due}</span>
+              <span className="text-[2rem] font-semibold leading-none tabular-nums">
+                <NumberPop text={String(c.due)} popKey={c.due} />
+              </span>
               <span className="font-medium text-fg-secondary">{s.cards.countsRest(c.new, c.total)}</span>
             </>
           ) : (
@@ -92,24 +99,24 @@ export function FlashcardsPanel({ space, onBack }: { space: Space; onBack: () =>
           <button className={ROW} disabled={low.active} title={low.reason} onClick={() => setGenerating(true)}>
             <Sparkles size={15} />
             <span className="flex-1 font-medium">{s.cards.generate}</span>
-            <ChevronRight size={14} />
+            <LearnChevron size={14} />
           </button>
           <button className={ROW} disabled={low.active} title={low.reason} onClick={() => openAdd({ spaceId: space.id })}>
             <Plus size={15} />
             <span className="flex-1 font-medium">{s.cards.add}</span>
-            <ChevronRight size={14} />
+            <LearnChevron size={14} />
           </button>
           {!low.active && <OcclusionButtonSlot spaceId={space.id} />}
           <button className={ROW} disabled={quizzing} onClick={quiz}>
             <PencilLine size={15} />
             <span className="flex-1 font-medium">{s.cards.quiz}</span>
-            {quizzing ? <PonderMark size={20} state="generating" /> : <ChevronRight size={14} />}
+            {quizzing ? <PonderMark size={20} state="generating" /> : <LearnChevron size={14} />}
           </button>
           {c?.total ? (
             <button className={ROW} onClick={() => setBrowsing(true)}>
               <Library size={15} />
               <span className="flex-1 font-medium">{s.cards.browse}</span>
-              <ChevronRight size={14} />
+              <LearnChevron size={14} />
             </button>
           ) : null}
         </PanelList>
@@ -201,6 +208,7 @@ export function AddCardDialog({ space }: { space: Space }) {
   const [front, setFront] = useState("");
   const [back, setBack] = useState("");
   const [busy, setBusy] = useState(false);
+  const [added, setAdded] = useState(false);
   const ta = useRef<HTMLTextAreaElement>(null);
   const [lastReq, setLastReq] = useState<AddCardRequest | null>(null);
 
@@ -220,7 +228,14 @@ export function AddCardDialog({ space }: { space: Space }) {
       await api.cardsAdd(space.id, expandCloze(card));
       invalidateCards(space.id);
       toast.success(s.cards.added);
-      close();
+      if (motionReduced()) close();
+      else {
+        setAdded(true);
+        setTimeout(() => {
+          close();
+          setAdded(false);
+        }, 1200);
+      }
     } catch (e) {
       toastError(s.errors.generic, e, save);
     } finally {
@@ -239,8 +254,8 @@ export function AddCardDialog({ space }: { space: Space }) {
           <Button variant="secondary" onClick={close}>
             {s.common.cancel}
           </Button>
-          <Button variant="primary" disabled={!valid || busy} onClick={save}>
-            {s.cards.add}
+          <Button variant="primary" className="min-w-[96px]" disabled={!valid || busy || added} onClick={save}>
+            <TextSwap text={added ? s.cards.added : s.cards.add} />
           </Button>
         </>
       }
@@ -316,6 +331,8 @@ function BrowseCardsDialog({ space, onClose }: { space: Space; onClose: () => vo
     ...shownGroups.map((g) => ({ at: order.get(g[0].id) ?? 0, group: g, card: null as Card | null })),
     ...shownPlain.map((c) => ({ at: order.get(c.id) ?? 0, group: null as Card[] | null, card: c })),
   ].sort((a, b) => a.at - b.at);
+  const listRef = useRef<HTMLUListElement>(null);
+  useFlip(listRef, [data, q]);
   const act = async (fn: () => Promise<unknown>) => {
     try {
       await fn();
@@ -341,14 +358,14 @@ function BrowseCardsDialog({ space, onClose }: { space: Space; onClose: () => vo
       </div>
       {isLoading && <Skeleton className="mx-5 h-40" />}
       {!isLoading && needle && !shownGroups.length && !shownPlain.length && <p className="px-5 pb-4 text-muted">{s.cards.noMatch}</p>}
-      <ul className="px-5 pb-4" data-testid="card-browser">
+      <ul ref={listRef} className="relative px-5 pb-4" data-testid="card-browser">
         {items.map(({ group: g, card: c }) => {
           if (g) {
             const suspended = g.every((x) => x.suspended);
             return (
-              <li key={g[0].id} className={BROWSE_ROW} data-testid="occlusion-group">
+              <li key={g[0].id} data-flip-key={g[0].id} className={BROWSE_ROW} data-testid="occlusion-group">
                 <div className="flex min-w-0 flex-1 flex-col gap-px">
-                  <span className={cn("truncate text-body-lg font-medium leading-[1.45]", suspended ? "text-muted" : "text-fg")}>{s.cards.imageGroup(g.length)}</span>
+                  <span className={cn("truncate text-body-lg font-medium leading-[1.45] transition-colors duration-(--motion-fast)", suspended ? "text-muted" : "text-fg")}>{s.cards.imageGroup(g.length)}</span>
                   <span className="text-label text-muted">{meta(g[0], suspended)}</span>
                 </div>
                 <Button variant="ghost" size="sm" className={REVEAL} onClick={() => setEditing(g)}>
@@ -361,16 +378,19 @@ function BrowseCardsDialog({ space, onClose }: { space: Space; onClose: () => vo
                   title={suspended ? s.cards.unsuspend : s.cards.suspend}
                   onClick={() => act(() => Promise.all(g.map((x) => api.cardUpdate(x.id, { suspended: !suspended }))))}
                 >
-                  {suspended ? <Play size={15} /> : <Pause size={15} />}
+                  <span className="t-icon-swap" data-state={suspended ? "b" : "a"}>
+                    <Pause size={15} data-icon="a" className="t-icon" />
+                    <Play size={15} data-icon="b" className="t-icon" />
+                  </span>
                 </Button>
               </li>
             );
           }
           if (!c) return null;
           return (
-            <li key={c.id} className={BROWSE_ROW}>
+            <li key={c.id} data-flip-key={c.id} className={BROWSE_ROW}>
               <div className="flex min-w-0 flex-1 flex-col gap-px">
-                <span className={cn("truncate text-body-lg font-medium leading-[1.45]", c.suspended ? "text-muted" : "text-fg")}>
+                <span className={cn("truncate text-body-lg font-medium leading-[1.45] transition-colors duration-(--motion-fast)", c.suspended ? "text-muted" : "text-fg")}>
                   {c.kind === "cloze" ? clozeFront(c.front, c.data?.cloze ?? 1) : c.front || c.back}
                 </span>
                 <span className="text-label text-muted">{meta(c, c.suspended)}</span>
@@ -392,7 +412,10 @@ function BrowseCardsDialog({ space, onClose }: { space: Space; onClose: () => vo
                 title={c.suspended ? s.cards.unsuspend : s.cards.suspend}
                 onClick={() => act(() => api.cardUpdate(c.id, { suspended: !c.suspended }))}
               >
-                {c.suspended ? <Play size={15} /> : <Pause size={15} />}
+                <span className="t-icon-swap" data-state={c.suspended ? "b" : "a"}>
+                  <Pause size={15} data-icon="a" className="t-icon" />
+                  <Play size={15} data-icon="b" className="t-icon" />
+                </span>
               </Button>
             </li>
           );

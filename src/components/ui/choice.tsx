@@ -1,5 +1,6 @@
-import { Check, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { X } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { SuccessCheck } from "../motion/SuccessCheck";
 import { cn } from "../../lib/utils";
 
 export function ChoiceOption({
@@ -15,6 +16,10 @@ export function ChoiceOption({
   disabled?: boolean;
   onClick: () => void;
 }) {
+  const [shaking, setShaking] = useState(false);
+  useEffect(() => {
+    if (state === "wrong") setShaking(true);
+  }, [state]);
   return (
     <button
       type="button"
@@ -22,8 +27,10 @@ export function ChoiceOption({
       aria-checked={selected}
       disabled={disabled}
       onClick={onClick}
+      onAnimationEnd={() => setShaking(false)}
       className={cn(
-        "flex min-h-11 w-full items-center gap-3 rounded-tile border px-3.5 py-2.5 text-left text-input font-medium transition-colors",
+        "t-input flex min-h-11 w-full items-center gap-3 rounded-tile border px-3.5 py-2.5 text-left text-input font-medium transition-colors",
+        shaking && "is-shaking",
         state === "correct" && "border-success bg-success-soft",
         state === "wrong" && "border-danger bg-danger-soft",
         state === "idle" && (selected ? "border-fg bg-fill-subtle" : "border-control bg-transparent hover:bg-fill-faint"),
@@ -37,7 +44,11 @@ export function ChoiceOption({
         )}
       />
       <span className="min-w-0 flex-1">{label}</span>
-      {state === "correct" && <Check size={16} className="ml-auto text-success" />}
+      {state === "correct" && (
+        <span className="ml-auto text-success">
+          <SuccessCheck size={16} />
+        </span>
+      )}
       {state === "wrong" && <X size={16} className="ml-auto text-danger" />}
     </button>
   );

@@ -76,7 +76,7 @@ export function OcclusionCardView({ card, revealed, className }: { card: Card; r
               aria-label={tested ? (show && m.label ? m.label : s.occlusion.tested) : s.occlusion.hidden}
               data-tested={tested || undefined}
               className={cn(
-                "absolute rounded-kbd border-2 transition-colors duration-200",
+                "absolute rounded-kbd border-2 transition-colors duration-(--motion-fast) ease-smooth",
                 show ? "border-fg bg-transparent" : tested ? "border-fg bg-fg" : "border-faint bg-border",
               )}
               style={{ left: `${m.x * 100}%`, top: `${m.y * 100}%`, width: `${m.w * 100}%`, height: `${m.h * 100}%` }}

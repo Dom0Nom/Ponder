@@ -21,6 +21,7 @@ export const s = {
   common: {
     cancel: "Cancel",
     save: "Save",
+    saved: "Saved",
     create: "Create",
     delete: "Delete",
     rename: "Rename",
@@ -888,6 +889,7 @@ export const s = {
     readModel: "Model that reads the photo",
     read: "Read my work",
     reading: "Reading your work…",
+    readingBody: "Reading the handwriting",
     readFailed: "Couldn't read the photo",
     nothingRead: "No steps found in the photo. Try a sharper, closer photo.",
     readDone: (n: number) => (n === 1 ? "Read 1 step. Fix anything misread, then check." : `Read ${n} steps. Fix anything misread, then check.`),

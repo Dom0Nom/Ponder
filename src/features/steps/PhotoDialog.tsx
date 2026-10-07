@@ -1,3 +1,5 @@
+import { Reveal } from "../../components/motion/Reveal";
+import { ActivityOrb } from "../../components/motion/ActivityOrb";
 import { useEffect, useRef, useState } from "react";
 import { Camera, Image, RotateCcw, X } from "lucide-react";
 import { Dialog } from "../../components/ui/dialog";
@@ -234,7 +236,6 @@ export function PhotoDialog({
             {s.common.cancel}
           </Button>
           <Button variant="primary" disabled={reading} onClick={read}>
-            {reading && <Spinner size={14} className="text-on-primary" />}
             {reading ? s.steps.reading : s.steps.read}
           </Button>
         </>
@@ -242,14 +243,14 @@ export function PhotoDialog({
     >
       <div className="flex flex-col gap-3.5">
         {photo ? (
-          <div className="relative">
+          <Reveal className="relative">
             <img src={photo.url} alt={s.steps.photoAlt} className="max-h-72 w-full rounded-card bg-fill-subtle object-contain" data-testid="photo-preview" />
             <div className="absolute right-2 top-2 flex gap-1">
               <Button size="icon-sm" variant="secondary" className="bg-surface" aria-label={tab === "camera" ? s.steps.retake : s.steps.removeImage} onClick={() => setPhoto(null)}>
                 {tab === "camera" ? <RotateCcw size={14} /> : <X size={14} />}
               </Button>
             </div>
-          </div>
+          </Reveal>
         ) : (
           <>
             <Segmented
@@ -266,9 +267,15 @@ export function PhotoDialog({
           </>
         )}
         {error && (
-          <p role="alert" className="rounded-card border border-danger-border bg-danger-soft px-3 py-2.5 text-danger-text">
+          <Reveal as="p" role="alert" className="rounded-card border border-danger-border bg-danger-soft px-3 py-2.5 text-danger-text">
             {error}
-          </p>
+          </Reveal>
+        )}
+        {reading && (
+          <Reveal role="status" className="flex items-center gap-2.5 text-label font-medium text-fg-secondary">
+            <ActivityOrb activity="read" size={20} />
+            {s.steps.readingBody}
+          </Reveal>
         )}
         <div className="flex flex-col gap-1.5">
           <span className="text-label font-semibold text-muted">{s.steps.readModel}</span>

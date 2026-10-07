@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { LearnChevron } from "../../components/motion/LearnChevron";
 import { s } from "../../lib/strings";
 import type { Ability } from "../../lib/types";
 import { skillPercent } from "../../lib/practice/irt";
@@ -54,7 +54,7 @@ export function PracticeHub({
                   <li key={t.key}>
                     <button
                       onClick={() => onPick(t.key)}
-                      className="flex w-full items-center gap-3.5 rounded-card border border-border px-4 py-[13px] text-left hover:bg-fill-faint"
+                      className="t-learn flex w-full items-center gap-3.5 rounded-card border border-border px-4 py-[13px] text-left hover:bg-fill-faint"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-input font-semibold">{t.title}</p>
@@ -62,7 +62,7 @@ export function PracticeHub({
                           {a ? s.practice.skill(skillPercent(a.theta), a.n) : s.practice.notPractised}
                         </p>
                       </div>
-                      <ChevronRight size={15} className="shrink-0" />
+                      <span className="shrink-0"><LearnChevron size={15} /></span>
                     </button>
                   </li>
                 );

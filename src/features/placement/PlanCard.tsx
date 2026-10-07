@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { generateText } from "ai";
-import { ChevronRight, Circle, CircleCheck, CircleDashed, Ellipsis, Plus } from "lucide-react";
+import { IconSwap } from "../../components/motion/IconSwap";
+import { TextSwap } from "../../components/motion/TextSwap";
+import { LearnChevron } from "../../components/motion/LearnChevron";
+import { Circle, CircleCheck, CircleDashed, Ellipsis, Plus } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { qk, useCurriculum, useLevels, useSources } from "../../lib/queries";
 import { s } from "../../lib/strings";
@@ -63,9 +66,9 @@ export function CurriculumPicker({ space, onDone }: { space: Space; onDone?: () 
       <p className="text-muted">{s.plan.pickBody}</p>
       <PanelList inset={14}>
         {CURRICULA.map((c) => (
-          <button key={c.id} disabled={busy} onClick={() => choose(c.id)} className={cn(panelRow, "h-[42px] w-full gap-2.5 text-left")}>
+          <button key={c.id} disabled={busy} onClick={() => choose(c.id)} className={cn(panelRow, "t-learn h-[42px] w-full gap-2.5 text-left")}>
             <span className="min-w-0 flex-1 truncate font-medium">{c.title}</span>
-            <ChevronRight size={14} className="flex-none" />
+            <span className="flex-none"><LearnChevron size={14} /></span>
           </button>
         ))}
         <button onClick={() => setCustom(true)} className={cn(panelRow, "h-[42px] w-full gap-2.5 text-left")}>
@@ -235,7 +238,6 @@ function CoverageMap({ space, curriculum }: { space: Space; curriculum: SpaceCur
           {curriculum.topics.map((t) => {
             const cov = coverageLevel(covByTopic.get(t.id));
             const lvl = levelByTopic.get(t.id)?.level ?? "unknown";
-            const CovIcon = COVERAGE_ICON[cov];
             return (
               <Menu key={t.id}>
                 <MenuTrigger asChild>
@@ -245,9 +247,13 @@ function CoverageMap({ space, curriculum }: { space: Space; curriculum: SpaceCur
                     data-coverage={cov}
                     title={s.plan.coverage[cov]}
                   >
-                    <CovIcon size={15} className="flex-none" />
+                    <IconSwap value={cov} icons={COVERAGE_ICON} className="flex-none" />
                     <span className="min-w-0 flex-1 truncate font-medium">{t.title}</span>
-                    {lvl !== "unknown" && <span className="whitespace-nowrap text-label font-semibold text-fg-secondary">{s.plan.levels[lvl]}</span>}
+                    {lvl !== "unknown" && (
+                      <span className="whitespace-nowrap text-label font-semibold text-fg-secondary">
+                        <TextSwap text={s.plan.levels[lvl]} />
+                      </span>
+                    )}
                   </button>
                 </MenuTrigger>
                 <MenuContent align="start" side="left" className="w-64">

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { ConfirmDialog } from "../../components/ui/dialog";
 import { Input, Label } from "../../components/ui/input";
+import { TextSwap } from "../../components/motion/TextSwap";
+import { motionReduced } from "../../app/useTheme";
 import { Segmented, Switch, Tooltip } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { api } from "../../lib/ipc";
@@ -41,6 +43,7 @@ export function SpaceSettingsPanel({ space, onBack }: { space: Space; onBack: ()
   };
   const [draft, setDraft] = useState<Draft>(initial);
   const [saving, setSaving] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
@@ -80,7 +83,11 @@ export function SpaceSettingsPanel({ space, onBack }: { space: Space; onBack: ()
           qc.invalidateQueries({ queryKey: k });
       }
       toast.success(s.space.saved);
-      onBack();
+      if (motionReduced()) onBack();
+      else {
+        setJustSaved(true);
+        setTimeout(onBack, 1200);
+      }
     } catch (e) {
       toastError(s.errors.generic, e, save);
     } finally {
@@ -166,8 +173,8 @@ export function SpaceSettingsPanel({ space, onBack }: { space: Space; onBack: ()
             {s.space.deleteSpace}
           </Button>
         </span>
-        <Button variant="primary" disabled={!dirty || !draft.name.trim() || saving} onClick={save}>
-          {s.common.save}
+        <Button variant="primary" className="min-w-[72px]" disabled={!dirty || !draft.name.trim() || saving || justSaved} onClick={save}>
+          <TextSwap text={justSaved ? s.common.saved : s.common.save} />
         </Button>
       </div>
       <ConfirmDialog

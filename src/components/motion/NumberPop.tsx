@@ -1,8 +1,9 @@
 import { useRef } from "react";
 
-export function NumberPop({ text, popKey, className }: { text: string; popKey: string | number; className?: string }) {
+/** `onMount` also pops the first render (for numbers that appear as a result). */
+export function NumberPop({ text, popKey, className, onMount }: { text: string; popKey: string | number; className?: string; onMount?: boolean }) {
   const first = useRef(popKey);
-  const animate = first.current !== popKey;
+  const animate = onMount || first.current !== popKey;
   const chars = [...text];
   return (
     <span className={className} style={{ position: "relative", display: "inline-flex" }}>

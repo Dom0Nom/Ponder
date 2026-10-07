@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import type { Card } from "../../lib/types";
 import { clozeBack, clozeFront } from "../../lib/srs/cloze";
+import { Collapse } from "../../components/motion/Reveal";
 import { ChoiceOption } from "../../components/ui/choice";
 import { Markdown } from "../chat/Markdown";
 import { OcclusionSlot } from "./occlusionSlot";
@@ -10,7 +11,11 @@ const BACK =
   "border-t border-divider px-12 py-7 text-center text-title leading-[1.55] text-fg-secondary [text-wrap:balance] [&_.prose-chat_p]:leading-[1.55] [&_p]:m-0";
 
 function Back({ children }: { children: ReactNode }) {
-  return <div className={BACK}>{children}</div>;
+  return (
+    <Collapse open noblur>
+      <div className={BACK}>{children}</div>
+    </Collapse>
+  );
 }
 
 /** Question and answer side of any card type. MCQ answers are picked on the card itself. */

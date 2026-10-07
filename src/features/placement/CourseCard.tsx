@@ -8,6 +8,8 @@ import type { Course, Lesson, Space } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { checkLesson, studyLesson } from "../../lib/placement/flows";
 import { NoModelError } from "../../lib/chat/llm";
+import { IconSwap } from "../../components/motion/IconSwap";
+import { TextSwap } from "../../components/motion/TextSwap";
 import { Button } from "../../components/ui/button";
 import { ConfirmDialog } from "../../components/ui/dialog";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "../../components/ui/menu";
@@ -75,17 +77,18 @@ function CourseBlock({ space, course }: { space: Space; course: Course }) {
         </div>
         <div className="flex items-center gap-2.5">
           <span className="block h-1 w-[140px] flex-none rounded-[2px] bg-fill-active">
-            <span className="block h-1 rounded-[2px] bg-fg" style={{ width: `${pct}%` }} />
+            <span className="m-progress block h-1 rounded-[2px] bg-fg" style={{ width: `${pct}%` }} />
           </span>
-          <span className="text-muted">{s.course.progress(done, course.lessons.length)}</span>
+          <span className="text-muted">
+            <TextSwap text={s.course.progress(done, course.lessons.length)} />
+          </span>
         </div>
       </div>
       <PanelList inset={14}>
         {course.lessons.map((l) => {
-          const Icon = STATUS_ICON[l.status];
           return (
             <div key={l.id} className={cn(panelRow, "group h-10 gap-2.5")} data-testid="lesson-row" data-status={l.status}>
-              <Icon size={15} className="flex-none" />
+              <IconSwap value={l.status} icons={STATUS_ICON} className="flex-none" />
               <span className={cn("min-w-0 flex-1 truncate", l.status === "done" ? "font-medium text-muted" : l.status === "doing" ? "font-semibold" : "font-medium")}>
                 {l.title}
               </span>
