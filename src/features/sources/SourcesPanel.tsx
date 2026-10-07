@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Ellipsis, FileText, FolderSync, Plus, RotateCcw } from "lucide-react";
+import { Ellipsis, FileText, FolderSync, Plus, RotateCcw, Sparkles } from "lucide-react";
 import { api, events } from "../../lib/ipc";
 import { qk, useSources, useWatchedFolders } from "../../lib/queries";
 import { s } from "../../lib/strings";
@@ -85,6 +85,17 @@ export function SourcesPanel({ space, open }: { space: Space; open: boolean }) {
     >
       <div className="flex h-[49px] shrink-0 items-center gap-2 border-b border-divider pl-4 pr-2.5">
         <h2 className="flex-1 text-input font-semibold">{s.panes.sources}</h2>
+        <Button
+          size="sm"
+          variant="primary"
+          className="px-2"
+          data-testid="find-sources"
+          disabled={low.active}
+          title={low.reason}
+          onClick={() => setImportDialog({ open: true, tab: "research" })}
+        >
+          {s.sources.findSources}
+        </Button>
         <Tooltip content={s.watch.title}>
           <button
             aria-label={s.watch.open}
@@ -116,7 +127,15 @@ export function SourcesPanel({ space, open }: { space: Space; open: boolean }) {
         </div>
       )}
       {error && <ErrorState title={s.errors.generic} error={error} onRetry={() => refetch()} />}
-      {data && all.length === 0 && <p className="px-4 py-6 text-center text-body text-muted">{s.sources.emptyBody}</p>}
+      {data && all.length === 0 && (
+        <div className="flex flex-col items-center gap-3 px-4 py-6 text-center">
+          <p className="text-body text-muted">{s.sources.emptyBody}</p>
+          <Button variant="primary" disabled={low.active} title={low.reason} onClick={() => setImportDialog({ open: true, tab: "research" })}>
+            <Sparkles size={14} />
+            {s.sources.findSources}
+          </Button>
+        </div>
+      )}
       {all.length > 0 && (
         <ul className="min-h-0 flex-1 overflow-y-auto px-2 py-1.5" data-testid="source-list">
           {all.map((src) => (

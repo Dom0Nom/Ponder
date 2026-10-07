@@ -181,6 +181,8 @@ function applyMasks(png: PNG, masks: Mask[]) {
 // Deliberate deviations the user asked for after the design was drawn; excluded from every full-frame compare.
 const USER_DEVIATIONS: Mask[] = [
   { x: 104, y: 10, w: 100, h: 28, reason: "Ponder mark + wordmark in the sidebar top row, requested by the user 2026-10-07" },
+  { x: 320, y: 56, w: 98, h: 34, reason: "prominent deep research entry in the sources panel header, requested by the user 2026-10-07" },
+  { x: 686, y: 457, w: 132, h: 39, reason: "prominent deep research entry in the empty space state, requested by the user 2026-10-07" },
 ];
 
 function crop(png: PNG, r: Region): PNG {
@@ -196,6 +198,7 @@ function compare(designPath: string, appBuf: Buffer, masks: Mask[], diffPath: st
   if (region) {
     a = crop(a, region);
     b = crop(b, region);
+    masks = [...masks, ...USER_DEVIATIONS.map((m) => ({ ...m, x: m.x - region.x, y: m.y - region.y }))];
   } else {
     masks = [...masks, ...USER_DEVIATIONS];
   }
