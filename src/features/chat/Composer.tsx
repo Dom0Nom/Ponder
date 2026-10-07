@@ -177,7 +177,7 @@ export function Composer({
               aria-label={s.chat.send}
               disabled={disabled || !text.trim()}
               onClick={() => send()}
-              className="flex size-[30px] items-center justify-center rounded-btn bg-primary text-on-primary transition-opacity hover:bg-primary-hover disabled:opacity-30"
+              className="flex size-[30px] items-center justify-center rounded-btn bg-primary text-on-primary transition-opacity hover:bg-primary-hover"
             >
               <ArrowUp size={15} />
             </button>

@@ -115,7 +115,7 @@ function ThreadView({ space, thread, ensureThread }: { space: Space; thread?: Th
           ))}
         </div>
       </div>
-      <div className="shrink-0 pb-[26px] pr-6 transition-[padding] duration-200" style={{ paddingLeft: sourcesOpen ? 364 : 24 }}>
+      <div className="shrink-0 pb-[18px] pr-6 transition-[padding] duration-200" style={{ paddingLeft: sourcesOpen ? 364 : 24 }}>
         <Composer
           space={space}
           thread={thread}

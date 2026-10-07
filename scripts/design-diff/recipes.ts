@@ -94,7 +94,11 @@ export const SCREENS: Record<number, Screen> = {
     query: "chat=v2&focus=work",
     native: true,
     masks: [{ x: 952, y: 48, w: 328, h: 752, reason: "Studio restyled in 02 §10 step" }],
-    setup: (p) => space(p),
+    setup: async (p) => {
+      await space(p);
+      await p.evaluate(() => document.querySelector("[data-testid=message-list]")?.scrollTo(0, 0));
+      await settle(p);
+    },
   },
   3: {
     title: "Review (cards)",

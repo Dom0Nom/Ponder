@@ -406,9 +406,9 @@ function seedGed(db: DB, o: FixtureOptions, at: (n: number) => number, x: <V ext
     const citations = empty
       ? null
       : [
-          cite(1, "src-openstax", "OpenStax Algebra & Trigonometry", 2, paras[1]),
-          cite(2, "src-openstax", "OpenStax Algebra & Trigonometry", 3, paras[2]),
-          cite(3, "src-guide", "GED Math Study Guide", 4, "Elimination is the better choice when both equations are in standard form."),
+          cite(1, "src-openstax", "OpenStax Algebra", 2, paras[1]),
+          cite(2, "src-guide", "GED Study Guide", 3, paras[2]),
+          cite(3, "src-guide", "GED Study Guide", 4, "Elimination is the better choice when both equations are in standard form."),
         ];
     db.messages["msg-user-1"] = {
       id: "msg-user-1",

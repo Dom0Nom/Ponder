@@ -267,7 +267,7 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
               <button
                 type="submit"
                 disabled={!response.trim() || busy === "grade"}
-                className="flex h-9 items-center gap-2.5 rounded-btn bg-primary px-3.5 font-medium text-on-primary hover:bg-primary-hover disabled:opacity-50"
+                className="flex h-9 items-center gap-2.5 rounded-btn bg-primary px-3.5 font-medium text-on-primary hover:bg-primary-hover disabled:cursor-default"
               >
                 {busy === "grade" && <Spinner size={14} className="text-on-primary" />}
                 {s.practice.check}
