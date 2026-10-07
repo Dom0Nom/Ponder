@@ -23,6 +23,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("draws two masks on an image and creates one card per mask", async ({ page }) => {
+  await page.getByRole("button", { name: /^Flashcards/ }).click();
   await page.getByTestId("occlusion-editor-button").click();
   const dialog = page.getByRole("dialog", { name: "Image occlusion" });
   await dialog.getByRole("button", { name: "Choose image" }).click();
@@ -58,6 +59,7 @@ test("draws two masks on an image and creates one card per mask", async ({ page 
 });
 
 test("editing a group updates, adds and deletes cards", async ({ page }) => {
+  await page.getByRole("button", { name: /^Flashcards/ }).click();
   await page.getByTestId("occlusion-editor-button").click();
   const create = page.getByRole("dialog", { name: "Image occlusion" });
   await create.getByRole("button", { name: "Choose image" }).click();

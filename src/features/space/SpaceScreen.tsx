@@ -7,7 +7,7 @@ import { ErrorState, Skeleton } from "../../components/ui/misc";
 import { ContentCard } from "../../app/ContentCard";
 import { SourcesPane } from "../sources/SourcesPane";
 import { ChatPane } from "../chat/ChatPane";
-import { StudioPane } from "./StudioPane";
+import { StudioPanel } from "./StudioPanel";
 import { SourceViewer } from "../sources/SourceViewer";
 import { AddCardDialog } from "../cards/FlashcardsCard";
 import { cn, relativeTime } from "../../lib/utils";
@@ -88,7 +88,7 @@ export function SpaceScreen({ spaceId }: { spaceId: string }) {
           data-testid="pane-studio"
           className="absolute bottom-0 right-0 top-0 flex w-[328px] flex-col overflow-hidden border-l border-t border-border bg-surface"
         >
-          <StudioPane space={space} />
+          <StudioPanel space={space} />
         </section>
       )}
     </div>

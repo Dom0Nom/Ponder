@@ -23,6 +23,7 @@ test("placement check on a new GED space sets topic levels and the prerequisite 
   await app.getByLabel("Exam or course (optional)").selectOption("ged");
   await app.getByRole("button", { name: "Create" }).click();
 
+  await app.getByRole("button", { name: /^Learning plan/ }).click();
   const plan = app.getByTestId("plan-card");
   await expect(plan).toContainText("GED (all four subjects)");
   await expect(plan.getByTestId("coverage-summary")).toContainText("0 covered");
@@ -32,7 +33,9 @@ test("placement check on a new GED space sets topic levels and the prerequisite 
   expect(total).toBe(16);
   await expect(plan.getByText("Strong").first()).toBeVisible();
   await expect(plan.getByText("Needs work").first()).toBeVisible();
+  await app.getByRole("button", { name: "Back to Studio" }).click();
   await expect(app.getByRole("region", { name: "Studio" })).toContainText("Placement check · GED");
+  await app.getByRole("button", { name: /^Learning plan/ }).click();
 
   // start a topic that has prerequisites; get them all right → the chat starts the topic itself
   await plan.getByTestId("topic-row").filter({ hasText: "Percents" }).click();
@@ -53,6 +56,7 @@ test("a book becomes a course with chapters", async ({ app }) => {
   await app.getByRole("button", { name: "Import" }).click();
   await app.locator('[data-testid="source-row"][data-status="ready"]').click();
   await app.getByRole("button", { name: "Make a course" }).click();
+  await app.getByRole("button", { name: /^Course/ }).click();
   const course = app.getByTestId("course-card");
   await expect(course).toContainText("0 of 3 chapters done");
   await expect(course.getByTestId("lesson-row")).toHaveCount(3);

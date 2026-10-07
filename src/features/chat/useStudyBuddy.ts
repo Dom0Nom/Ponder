@@ -8,7 +8,7 @@ import { s as strings } from "../../lib/strings";
 import { runTurn } from "../../lib/chat/runner";
 import { currentStepText } from "../../lib/focus/microSteps";
 import { NoModelError } from "../../lib/chat/llm";
-import { formatMinutes } from "../../lib/utils";
+import { formatShortMinutes } from "../../lib/utils";
 import { CITE_RE } from "../../lib/chat/citations";
 import { useUi } from "../../stores/ui";
 import { useChatStream } from "../../stores/chatStream";
@@ -118,16 +118,17 @@ async function handle(ev: BuddyEvent, prefs: FocusPrefs) {
   if (ev.kind === "session-summary") {
     const p = ev.previous;
     const stats = p
-      ? `${formatMinutes(p.totalFocusMs)} focus · ${p.block} block(s) · ${p.pauseCount} pause(s) · ${p.needAppCount} break interruption(s)`
+      ? `${formatShortMinutes(p.totalFocusMs)} focused${p.pauseCount ? `, ${strings.focus.pauses(p.pauseCount)}` : ""}.`
       : "";
     const clean = content
       .replaceAll("{{general}}", "")
       .replaceAll("{{/general}}", "")
       .replace(CITE_RE, "")
       .replace(/ +([.,;:!?])/g, "$1");
-    const body = [stats, clean].filter(Boolean).join("\n\n");
-    const date = new Date().toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
-    await api.addJournal(spaceId, "session-summary", `Focus session · ${date}`, body || "Session ended.");
+    const body = [stats, clean].filter(Boolean).join(" ");
+    const threadTitle = (await api.listThreads(spaceId).catch(() => [])).find((x) => x.id === threadId)?.title;
+    const title = p?.goal?.trim() || (threadTitle && threadTitle !== "New chat" ? threadTitle : "") || strings.focus.sessionTitle;
+    await api.addJournal(spaceId, "session-summary", title, body || "Session ended.");
     await api.focusSetSummary(ev.sessionId, body).catch(() => {});
     queryClient.invalidateQueries({ queryKey: qk.journal(spaceId) });
     queryClient.invalidateQueries({ queryKey: ["focusHistory"] });
