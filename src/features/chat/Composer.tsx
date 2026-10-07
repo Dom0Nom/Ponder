@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
-import { ArrowUp, Brain, Square } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { ArrowUp, Camera, ChevronDown, FileUp, Library, Plus, Square } from "lucide-react";
+import { storedControls } from "../../lib/chat/controls";
 import { runTurn } from "../../lib/chat/runner";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
 import { useUpdateSpace } from "../../lib/queries";
@@ -9,31 +9,42 @@ import type { Space, Thread, TutorStyle } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
 import { useChatStream } from "../../stores/chatStream";
+import { useComposer } from "../../stores/composer";
 import { useFocusStore } from "../focus/focusStore";
-import { Segmented, Tooltip } from "../../components/ui/misc";
+import { useLowEnergy } from "../focus/useLowEnergy";
+import { StepCheckerDialog } from "../steps/StepChecker";
+import { Menu, MenuContent, MenuItem, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../../components/ui/menu";
+import { Tooltip } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
+import { ModelMenu } from "./ModelMenu";
+
+const iconBtn = "flex size-7 shrink-0 items-center justify-center rounded-btn text-fg hover:bg-fill";
+const textBtn = "flex h-7 items-center gap-1.5 rounded-btn px-2.5 font-medium hover:bg-fill";
 
 export function Composer({
   space,
   thread,
   ensureThread,
-  hasSources,
+  sources,
 }: {
   space: Space;
   thread?: Thread;
   ensureThread: () => Promise<Thread>;
-  hasSources: boolean;
+  sources: { ready: number; inChat: number };
 }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
-  const thinking = useUi((st) => st.thinking);
-  const setThinking = useUi((st) => st.setThinking);
   const navigate = useUi((st) => st.navigate);
+  const setImportDialog = useUi((st) => st.setImportDialog);
+  const sourcesOpen = useUi((st) => st.sourcesOpen[space.id] === true);
+  const setSourcesOpen = useUi((st) => st.setSourcesOpen);
   const running = useChatStream((st) => (thread ? st.running[thread.id] : undefined));
   const stop = useChatStream((st) => st.stop);
+  const registerSend = useComposer((st) => st.register);
   const update = useUpdateSpace();
-  useQueryClient();
+  const low = useLowEnergy(space.id);
 
   const send = async (override?: string) => {
     const msg = (override ?? text).trim();
@@ -43,12 +54,13 @@ export function Composer({
       const llm = await resolveChatModel(space);
       const t = thread ?? (await ensureThread());
       setText("");
+      if (ref.current) ref.current.style.height = "auto";
       await runTurn({
         llm,
         space,
         threadId: t.id,
         tutorStyle: space.tutorStyle,
-        thinking,
+        controls: storedControls(llm),
         focus: useFocusStore.getState().state,
         userText: msg,
       });
@@ -67,16 +79,24 @@ export function Composer({
     }
   };
 
+  const sendRef = useRef(send);
+  sendRef.current = send;
+  useEffect(() => {
+    registerSend((t) => sendRef.current(t));
+    return () => registerSend(null);
+  }, [registerSend]);
+
   const disabled = busy || !!running;
+  const off = sources.ready - sources.inChat;
 
   return (
-    <div className="rounded-[24px] border border-border bg-surface shadow-card transition-colors focus-within:border-accent">
+    <div className="mx-auto max-w-[652px] rounded-pane border border-control bg-surface transition-colors focus-within:border-fg/40">
       <textarea
         ref={ref}
         rows={1}
         value={text}
         aria-label={s.chat.placeholder}
-        placeholder={hasSources ? s.chat.placeholder : s.chat.emptyNoSources}
+        placeholder={sources.inChat > 0 ? s.chat.placeholder : s.chat.emptyNoSources}
         onChange={(e) => {
           setText(e.target.value);
           const el = e.currentTarget;
@@ -89,57 +109,82 @@ export function Composer({
             send();
           }
         }}
-        className="block max-h-[220px] w-full resize-none bg-transparent px-5 pb-1 pt-3.5 text-[0.9375rem] leading-relaxed outline-none placeholder:text-faint focus-visible:outline-none"
+        className="block max-h-[220px] w-full resize-none bg-transparent px-3.5 pb-1.5 pt-3 text-input leading-[1.45] outline-none placeholder:text-faint focus-visible:outline-none"
       />
-      <div className="flex items-center gap-2 px-3 pb-2.5 pt-1">
-        <Segmented<TutorStyle>
-          size="sm"
-          label={s.space.tutorStyle}
-          value={space.tutorStyle}
-          onChange={(v) =>
-            update.mutate({ id: space.id, patch: { tutorStyle: v } }, { onError: (e) => toastError(s.errors.generic, e) })
-          }
-          options={(["direct", "socratic", "mixed"] as const).map((v) => ({
-            value: v,
-            label: s.space.tutorStyles[v],
-            title: s.space.tutorStyleHelp[v],
-          }))}
-        />
-        <Tooltip content={thinking ? "Thinking on: slower, more careful answers" : "Thinking off: faster answers"}>
-          <button
-            role="switch"
-            aria-checked={thinking}
-            aria-label={s.chat.thinkingToggle}
-            onClick={() => setThinking(!thinking)}
-            className={cn(
-              "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors",
-              thinking ? "border-transparent bg-accent-soft text-accent-text" : "border-border text-muted hover:text-fg",
-            )}
-          >
-            <Brain size={14} /> {s.chat.thinkingToggle}
-          </button>
-        </Tooltip>
+      <div className="flex items-center gap-1 px-2 pb-2 pt-1.5">
+        <Menu>
+          <Tooltip content={s.chat.attach} side="top">
+            <MenuTrigger asChild>
+              <button aria-label={s.chat.attach} className={iconBtn}>
+                <Plus size={16} />
+              </button>
+            </MenuTrigger>
+          </Tooltip>
+          <MenuContent side="top" align="start" sideOffset={8} popover className="w-[220px]">
+            <MenuItem disabled={low.active} title={low.reason} onSelect={() => setImportDialog({ open: true })}>
+              <FileUp size={14} /> {s.chat.attachSource}
+            </MenuItem>
+            <MenuItem onSelect={() => setPhotoOpen(true)}>
+              <Camera size={14} /> {s.chat.attachPhoto}
+            </MenuItem>
+          </MenuContent>
+        </Menu>
+        <Menu>
+          <MenuTrigger asChild>
+            <button aria-label={s.chat.tutorStyleTitle} className={cn(textBtn, "pl-2.5 pr-2 data-[state=open]:bg-fill")}>
+              {s.space.tutorStyles[space.tutorStyle]}
+              <ChevronDown size={13} />
+            </button>
+          </MenuTrigger>
+          <MenuContent side="top" align="start" sideOffset={8} popover className="w-[248px]">
+            <p className="pb-1 pl-3 pr-2.5 pt-2 text-label font-semibold text-muted">{s.chat.tutorStyleTitle}</p>
+            <MenuRadioGroup
+              value={space.tutorStyle}
+              onValueChange={(v) =>
+                update.mutate({ id: space.id, patch: { tutorStyle: v as TutorStyle } }, { onError: (e) => toastError(s.errors.generic, e) })
+              }
+            >
+              {(["direct", "socratic", "mixed"] as const).map((v) => (
+                <MenuRadioItem key={v} value={v} className="h-auto items-start py-2">
+                  <span className="flex flex-col">
+                    <span className="font-semibold">{s.space.tutorStyles[v]}</span>
+                    <span className="mt-px text-label font-normal text-fg-secondary">{s.space.tutorStyleHelp[v]}</span>
+                  </span>
+                </MenuRadioItem>
+              ))}
+            </MenuRadioGroup>
+          </MenuContent>
+        </Menu>
+        <ModelMenu space={space} />
+        {sources.ready > 0 && (
+          <Tooltip content={s.chat.sourcesTip} side="top">
+            <button aria-pressed={sourcesOpen} onClick={() => setSourcesOpen(space.id, !sourcesOpen)} className={cn(textBtn, "px-[9px] aria-pressed:bg-fill")}>
+              <Library size={13} /> {off > 0 ? s.chat.sourcesOn(sources.inChat, sources.ready) : s.chat.sourcesCount(sources.inChat)}
+            </button>
+          </Tooltip>
+        )}
         <div className="ml-auto">
           {running ? (
             <button
               aria-label={s.chat.stop}
               onClick={() => thread && stop(thread.id)}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-fg text-bg"
+              className="flex size-[30px] items-center justify-center rounded-btn bg-primary text-on-primary"
             >
-              <Square size={14} fill="currentColor" />
+              <Square size={12} fill="currentColor" />
             </button>
           ) : (
             <button
               aria-label={s.chat.send}
               disabled={disabled || !text.trim()}
               onClick={() => send()}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-on-accent transition-opacity disabled:opacity-30"
+              className="flex size-[30px] items-center justify-center rounded-btn bg-primary text-on-primary transition-opacity hover:bg-primary-hover disabled:opacity-30"
             >
-              <ArrowUp size={18} />
+              <ArrowUp size={15} />
             </button>
           )}
         </div>
       </div>
+      <StepCheckerDialog open={photoOpen} onOpenChange={setPhotoOpen} spaceId={space.id} />
     </div>
   );
 }

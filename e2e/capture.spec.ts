@@ -27,6 +27,7 @@ test("quick capture from the palette saves a note into the current space", async
 
   await expect(dialog).toBeHidden();
   await expect(app.getByText("Saved to Biology")).toBeVisible();
+  await app.keyboard.press("ControlOrMeta+Shift+KeyS");
   const row = app.getByTestId("source-row").filter({ hasText: "Mitosis vs meiosis" });
   await expect(row).toHaveAttribute("data-status", "ready");
 });
@@ -52,11 +53,13 @@ test("quick capture from home defaults to the last opened space and saves into t
   await expect(dialog).toBeHidden();
 
   await paletteCommand(app, "Chemistry");
+  await app.keyboard.press("ControlOrMeta+Shift+KeyS");
   await expect(app.getByTestId("source-row").filter({ hasText: "Avogadro's number" })).toHaveAttribute("data-status", "ready");
 });
 
 test("watched folders: add imports the folder's files, remove keeps the sources", async ({ app }) => {
   await createSpace(app, "Lectures");
+  await app.keyboard.press("ControlOrMeta+Shift+KeyS");
   await app.getByTestId("watched-folders-entry").click();
   const dialog = app.getByRole("dialog", { name: "Watched folders" });
   await expect(dialog.getByText("No watched folders")).toBeVisible();

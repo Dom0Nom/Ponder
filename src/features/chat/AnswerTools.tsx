@@ -13,6 +13,7 @@ import { Dialog } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
 import { Spinner, Tooltip } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
+import { actionIconBtn } from "./actionButton";
 import { ModelPicker } from "../settings/ModelPicker";
 import { Markdown } from "./Markdown";
 
@@ -40,14 +41,9 @@ export function CheckButton({ message, space }: { message: Message; space: Space
   };
   if (!message.citations?.length) return null;
   return (
-    <Tooltip content={s.check.tooltip}>
-      <button
-        aria-label={s.check.run}
-        disabled={busy}
-        onClick={run}
-        className="inline-flex items-center gap-1 rounded-full p-1.5 text-muted hover:bg-surface-2 hover:text-fg"
-      >
-        {busy ? <Spinner size={15} /> : <ShieldCheck size={15} />}
+    <Tooltip content={s.check.run} description={s.check.desc} side="top">
+      <button aria-label={s.check.run} disabled={busy} onClick={run} className={actionIconBtn}>
+        {busy ? <Spinner size={14} /> : <ShieldCheck size={14} />}
       </button>
     </Tooltip>
   );
@@ -60,8 +56,8 @@ export function CheckResults({ message }: { message: Message }) {
   const byN = new Map((message.citations ?? []).map((c) => [c.n, c]));
   const counts = check.items.reduce<Record<string, number>>((acc, i) => ({ ...acc, [i.verdict]: (acc[i.verdict] ?? 0) + 1 }), {});
   return (
-    <div className="mt-3 rounded-2xl border border-border px-4 py-3" data-testid="self-check">
-      <p className="flex flex-wrap items-center gap-x-2 text-xs font-medium text-muted">
+    <div className="rounded-pane border border-border px-4 py-3" data-testid="self-check">
+      <p className="flex flex-wrap items-center gap-x-2 text-label font-semibold text-muted">
         <ShieldCheck size={13} /> {s.check.title}
         <span className="font-normal text-faint">
           {(["supported", "partly", "unsupported", "contradicted"] as const)
@@ -85,7 +81,7 @@ export function CheckResults({ message }: { message: Message }) {
                     <button
                       key={n}
                       onClick={() => openViewer({ sourceId: c.sourceId, start: c.start, end: c.end })}
-                      className="mx-0.5 inline-flex h-[1.05rem] min-w-[1.05rem] items-center justify-center rounded-full bg-accent-soft px-1 text-[0.625rem] font-semibold text-accent-text"
+                      className="mx-0.5 inline-flex h-[1.05rem] min-w-[1.05rem] items-center justify-center rounded-full bg-chip px-1 text-[0.625rem] font-semibold text-fg"
                     >
                       {n}
                     </button>
@@ -137,14 +133,9 @@ export function SecondOpinionButton({ message, space }: { message: Message; spac
 
   return (
     <>
-      <Tooltip content={s.secondOpinion.tooltip}>
-        <button
-          aria-label={s.secondOpinion.run}
-          disabled={busy}
-          onClick={openDialog}
-          className="inline-flex items-center gap-1 rounded-full p-1.5 text-muted hover:bg-surface-2 hover:text-fg"
-        >
-          {busy ? <Spinner size={15} /> : <Scale size={15} />}
+      <Tooltip content={s.secondOpinion.run} description={s.secondOpinion.desc} side="top">
+        <button aria-label={s.secondOpinion.run} disabled={busy} onClick={openDialog} className={actionIconBtn}>
+          {busy ? <Spinner size={14} /> : <Scale size={14} />}
         </button>
       </Tooltip>
       <Dialog
@@ -185,19 +176,19 @@ export function SecondOpinions({
   const [compare, setCompare] = useState<Message | null>(null);
   if (!seconds.length) return null;
   return (
-    <div className="mt-4 space-y-3">
+    <div className="space-y-3">
       {seconds.map((m) => {
         const content = live[m.id]?.content ?? m.content;
         const streaming = m.status === "streaming" && !!live[m.id];
         return (
-          <div key={m.id} className="rounded-2xl bg-surface-2 px-4 py-3" data-testid="second-opinion">
+          <div key={m.id} className="rounded-pane bg-fill px-4 py-3" data-testid="second-opinion">
             <div className="mb-1.5 flex items-center gap-2 text-xs font-medium text-muted">
               <Scale size={13} /> {s.secondOpinion.label(m.meta?.model?.model ?? "")}
               {streaming && <Spinner size={12} />}
               {!streaming && m.status === "complete" && (
                 <button
                   onClick={() => setCompare(m)}
-                  className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 hover:bg-surface-3 hover:text-fg"
+                  className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 hover:bg-fill-active hover:text-fg"
                 >
                   <Columns2 size={13} /> {s.secondOpinion.compare}
                 </button>
@@ -222,7 +213,7 @@ export function SecondOpinions({
         {compare && (
           <div className="grid grid-cols-2 gap-4 pb-4">
             {[original, compare].map((m) => (
-              <div key={m.id} className="min-w-0 rounded-2xl border border-border p-4">
+              <div key={m.id} className="min-w-0 rounded-card border border-border p-4">
                 <p className="mb-2 text-xs font-medium text-muted">{m.meta?.model?.model ?? ""}</p>
                 {renderAnswer(m, m.content)}
               </div>
@@ -239,21 +230,21 @@ export function RememberedChips({ message }: { message: Message }) {
   const facts = message.meta?.remembered;
   if (!facts?.length) return null;
   return (
-    <div className="mt-2 flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap gap-1.5">
       {facts.map((f) => (
-        <span key={f} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted">
+        <span key={f} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-fill px-2.5 py-1 text-xs text-muted">
           <Brain size={12} className="shrink-0" />
           <span className="truncate">
             {s.memory.remembered}: {f}
           </span>
           <button
-            className="shrink-0 font-medium text-accent-text hover:underline"
+            className="shrink-0 font-medium text-fg underline-offset-2 hover:underline"
             onClick={() => navigate({ name: "settings", section: "memory" })}
           >
             {s.common.edit}
           </button>
           <button
-            className="shrink-0 font-medium text-accent-text hover:underline"
+            className="shrink-0 font-medium text-fg underline-offset-2 hover:underline"
             onClick={async () => {
               try {
                 const items = await api.listMemory();

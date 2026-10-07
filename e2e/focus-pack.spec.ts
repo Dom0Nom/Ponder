@@ -65,6 +65,7 @@ test("low-energy session shows the review-only card and blocks new material", as
   await expect(card.getByRole("button", { name: /Review due cards/ })).toBeVisible();
   await expect(app.getByRole("button", { name: "Make cards from sources" })).toBeDisabled();
   await expect(app.getByRole("button", { name: "Add card" })).toBeDisabled();
+  await app.keyboard.press("ControlOrMeta+Shift+KeyS");
   await expect(app.getByRole("button", { name: "Add source" })).toBeDisabled();
 
   await card.getByRole("button", { name: /Re-test mistakes/ }).click();

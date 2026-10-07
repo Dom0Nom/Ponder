@@ -26,7 +26,7 @@ test("create space → import source → chat with citation → open cited passa
   const answer = app.getByTestId("msg-assistant");
   await expect(answer).toContainText("chloroplasts");
   await expect(answer.getByTestId("general-block")).toContainText("Not from your sources");
-  await expect(answer.getByTestId("cited-sources")).toContainText("Photosynthesis notes");
+  await expect(answer.getByTestId("cite-chip").first()).toContainText("Photosynthesis notes");
 
   await answer.getByTestId("cite-chip").first().click();
   const viewer = app.getByTestId("source-viewer");
