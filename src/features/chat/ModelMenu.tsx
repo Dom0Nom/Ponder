@@ -52,7 +52,7 @@ function Segmented({
             aria-checked={value === o.value}
             onClick={() => onChange(o.value)}
             className={cn(
-              "h-[26px] flex-1 rounded-kbd text-label",
+              "h-[26px] flex-auto whitespace-nowrap rounded-kbd px-1 text-label",
               value === o.value ? "bg-fill-active font-semibold text-fg" : "font-medium text-fg hover:bg-fill",
             )}
           >
