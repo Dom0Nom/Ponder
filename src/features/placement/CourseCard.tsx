@@ -1,29 +1,35 @@
 import { useState } from "react";
-import { BookOpenCheck, CheckCircle2, Circle, CircleDot, Trash2 } from "lucide-react";
+import { Circle, CircleCheck, CircleDot, Ellipsis } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/ipc";
 import { qk, useCourses } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Course, Lesson, Space } from "../../lib/types";
+import { cn } from "../../lib/utils";
 import { checkLesson, studyLesson } from "../../lib/placement/flows";
 import { NoModelError } from "../../lib/chat/llm";
+import { Button } from "../../components/ui/button";
 import { ConfirmDialog } from "../../components/ui/dialog";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "../../components/ui/menu";
 import { Skeleton } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
+import { PanelList, panelRow } from "../space/PanelList";
+import { StudioSubpanel } from "../space/StudioSubpanel";
 
-const STATUS_ICON = { todo: Circle, doing: CircleDot, done: CheckCircle2 } as const;
+const STATUS_ICON = { todo: Circle, doing: CircleDot, done: CircleCheck } as const;
+const REVEAL = "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100";
 
-export function CourseCard({ space }: { space: Space }) {
+export function CoursePanel({ space, onBack }: { space: Space; onBack: () => void }) {
   const { data, isLoading, error } = useCourses(space.id);
-  if (isLoading) return <Skeleton className="h-16 rounded-[var(--radius-card)]" />;
-  if (error) return <p className="text-xs text-danger">{(error as Error).message}</p>;
-  if (!data?.length) return null;
   return (
-    <>
-      {data.map((c) => (
+    <StudioSubpanel title={s.course.title} onBack={onBack} testId="course-panel">
+      {isLoading && <Skeleton className="h-16 rounded-card" />}
+      {error && <p className="text-danger">{(error as Error).message}</p>}
+      {data && !data.length && <p className="text-muted">{s.course.makeHelp}</p>}
+      {data?.map((c) => (
         <CourseBlock key={c.id} space={space} course={c} />
       ))}
-    </>
+    </StudioSubpanel>
   );
 }
 
@@ -32,6 +38,7 @@ function CourseBlock({ space, course }: { space: Space; course: Course }) {
   const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const done = course.lessons.filter((l) => l.status === "done").length;
+  const pct = (done / Math.max(1, course.lessons.length)) * 100;
 
   const act = async (lesson: Lesson, kind: "study" | "check") => {
     setBusy(lesson.id);
@@ -49,39 +56,49 @@ function CourseBlock({ space, course }: { space: Space; course: Course }) {
   };
 
   return (
-    <div className="rounded-[var(--radius-card)] border border-border p-4" data-testid="course-card">
-      <div className="mb-2 flex items-start gap-2">
-        <BookOpenCheck size={15} className="mt-0.5 shrink-0 text-muted" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{course.title}</p>
-          <p className="text-xs text-muted">{s.course.progress(done, course.lessons.length)}</p>
+    <div className="flex flex-col gap-3.5" data-testid="course-card">
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-2">
+          <span className="flex-1 truncate text-input font-semibold">{course.title}</span>
+          <Menu>
+            <MenuTrigger asChild>
+              <Button variant="ghost-muted" size="icon-sm" title={s.course.options} aria-label={s.course.options}>
+                <Ellipsis size={15} />
+              </Button>
+            </MenuTrigger>
+            <MenuContent align="end" className="w-[180px]">
+              <MenuItem danger onSelect={() => setDeleting(true)}>
+                {s.common.delete}
+              </MenuItem>
+            </MenuContent>
+          </Menu>
         </div>
-        <button aria-label={s.common.delete} onClick={() => setDeleting(true)} className="rounded-full p-1 text-muted hover:bg-danger-soft hover:text-danger">
-          <Trash2 size={14} />
-        </button>
+        <div className="flex items-center gap-2.5">
+          <span className="block h-1 w-[140px] flex-none rounded-sm bg-fill-active">
+            <span className="block h-1 rounded-sm bg-fg" style={{ width: `${pct}%` }} />
+          </span>
+          <span className="text-muted">{s.course.progress(done, course.lessons.length)}</span>
+        </div>
       </div>
-      <div className="mb-2 h-1 overflow-hidden rounded-full bg-surface-3">
-        <div className="h-full bg-accent" style={{ width: `${(done / Math.max(1, course.lessons.length)) * 100}%` }} />
-      </div>
-      <ol className="space-y-0.5">
+      <PanelList inset={14}>
         {course.lessons.map((l) => {
           const Icon = STATUS_ICON[l.status];
           return (
-            <li key={l.id} className="group flex items-center gap-2 rounded-lg px-1 py-1 text-xs hover:bg-surface-2" data-testid="lesson-row" data-status={l.status}>
-              <Icon size={13} className={l.status === "done" ? "shrink-0 text-success" : "shrink-0 text-muted"} />
-              <span className="min-w-0 flex-1 truncate">{l.title}</span>
-              <span className="flex shrink-0 gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-                <button disabled={!!busy} onClick={() => act(l, "study")} className="rounded-full px-2 py-0.5 font-medium text-accent-text hover:bg-accent-soft">
-                  {s.course.study}
-                </button>
-                <button disabled={!!busy} onClick={() => act(l, "check")} className="rounded-full px-2 py-0.5 font-medium text-accent-text hover:bg-accent-soft">
-                  {s.course.check}
-                </button>
+            <div key={l.id} className={cn(panelRow, "group h-10 gap-2.5")} data-testid="lesson-row" data-status={l.status}>
+              <Icon size={15} className="flex-none" />
+              <span className={cn("min-w-0 flex-1 truncate", l.status === "done" ? "font-medium text-muted" : l.status === "doing" ? "font-semibold" : "font-medium")}>
+                {l.title}
               </span>
-            </li>
+              <Button variant="ghost" size="sm" className={REVEAL} disabled={!!busy} onClick={() => act(l, "study")}>
+                {s.course.study}
+              </Button>
+              <Button variant="ghost" size="sm" className={l.status === "doing" ? "" : REVEAL} disabled={!!busy} onClick={() => act(l, "check")}>
+                {s.course.check}
+              </Button>
+            </div>
           );
         })}
-      </ol>
+      </PanelList>
       <ConfirmDialog
         open={deleting}
         onOpenChange={setDeleting}

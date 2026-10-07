@@ -1,58 +1,57 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Tabs from "@radix-ui/react-tabs";
-import { BookOpen, CheckCircle2, Layers, RotateCcw, Trash2 } from "lucide-react";
+import { BookOpen, Check, CircleCheck, Layers, RotateCcw, Trash2 } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { invalidateCards, qk, useDueCounts, useMistakes, useSpaces } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Card } from "../../lib/types";
-import { cn, relativeTime } from "../../lib/utils";
+import { cn, relativeShort } from "../../lib/utils";
 import { GRADES, previewIntervals, schedule } from "../../lib/srs/scheduler";
 import { useUi } from "../../stores/ui";
 import { useFocusStore } from "../focus/focusStore";
 import { Button } from "../../components/ui/button";
-import { EmptyState, ErrorState, Kbd, Skeleton } from "../../components/ui/misc";
+import { EmptyState, ErrorState, Skeleton } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
 import { CardFace } from "../cards/CardFace";
-import { ErrorPatterns } from "../practice/ErrorPatterns";
+
+const SEGMENT =
+  "flex h-7.5 items-center justify-center whitespace-nowrap rounded-item px-2.5 font-medium text-fg transition-colors hover:bg-fill data-[state=active]:bg-fill-active data-[state=active]:font-semibold";
+const SESSION_COL = "m-auto flex w-full max-w-[720px] flex-col gap-5 px-10 pb-12 pt-10";
+const STATIC_COL = "mx-auto flex w-full max-w-[760px] flex-col gap-[18px] px-10 pb-12 pt-10";
+const RATE =
+  "flex flex-col items-center gap-0.5 rounded-tile border py-2.5 transition-colors disabled:opacity-50";
+const TONE: Record<number, string> = {
+  1: "border-danger-outline text-danger hover:bg-fill-subtle",
+  2: "border-control text-fg hover:bg-fill-subtle",
+  3: "border-primary bg-primary text-on-primary hover:opacity-90",
+  4: "border-control text-fg hover:bg-fill-subtle",
+};
 
 export function ReviewScreen({ spaceId, tab }: { spaceId?: string; tab?: "cards" | "mistakes" }) {
   const navigate = useUi((st) => st.navigate);
-  const { data: spaces } = useSpaces();
-  const space = spaces?.find((x) => x.id === spaceId);
+  const [hasCard, setHasCard] = useState(false);
+  const current = tab ?? "cards";
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-3xl px-8 pb-16 pt-6">
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <div>
-            <h1 className="text-[1.75rem] font-semibold tracking-tight">{s.review.title}</h1>
-            <p className="mt-1 text-muted">{space ? s.review.inSpace(space.name) : s.review.allSpaces}</p>
-          </div>
-          {space && (
-            <Button variant="ghost" size="sm" onClick={() => navigate({ name: "review", tab })}>
-              {s.review.showAll}
-            </Button>
-          )}
-        </div>
+    <div className="flex h-full overflow-y-auto">
+      <div className={current === "cards" && hasCard ? SESSION_COL : STATIC_COL}>
+        <h1 className="text-page font-semibold">{s.review.title}</h1>
         <Tabs.Root
-          value={tab ?? "cards"}
+          value={current}
           onValueChange={(v) => navigate({ name: "review", spaceId, tab: v as "cards" | "mistakes" })}
+          className="contents"
         >
-          <Tabs.List className="mb-5 flex gap-1">
+          <Tabs.List className="inline-flex gap-0.5 self-start rounded-control border border-field p-0.5">
             {(["cards", "mistakes"] as const).map((v) => (
-              <Tabs.Trigger
-                key={v}
-                value={v}
-                className="h-8 rounded-full px-3.5 text-[0.8125rem] font-medium text-muted hover:bg-surface-2 data-[state=active]:bg-accent-soft data-[state=active]:text-accent-text"
-              >
+              <Tabs.Trigger key={v} value={v} className={SEGMENT}>
                 {v === "cards" ? s.review.cardsTab : s.review.mistakesTab}
               </Tabs.Trigger>
             ))}
           </Tabs.List>
-          <Tabs.Content value="cards">
-            <ReviewSession key={spaceId ?? "all"} spaceId={spaceId} />
+          <Tabs.Content value="cards" className="contents">
+            <ReviewSession key={spaceId ?? "all"} spaceId={spaceId} onCard={setHasCard} />
           </Tabs.Content>
-          <Tabs.Content value="mistakes">
+          <Tabs.Content value="mistakes" className="contents">
             <MistakeNotebook spaceId={spaceId} />
           </Tabs.Content>
         </Tabs.Root>
@@ -61,7 +60,7 @@ export function ReviewScreen({ spaceId, tab }: { spaceId?: string; tab?: "cards"
   );
 }
 
-function ReviewSession({ spaceId }: { spaceId?: string }) {
+function ReviewSession({ spaceId, onCard }: { spaceId?: string; onCard: (has: boolean) => void }) {
   const due = useQuery({ queryKey: qk.due(spaceId ?? null), queryFn: () => api.cardsDue(spaceId), staleTime: Infinity });
   const counts = useDueCounts();
   const [queue, setQueue] = useState<Card[] | null>(null);
@@ -79,6 +78,11 @@ function ReviewSession({ spaceId }: { spaceId?: string }) {
 
   const card = queue?.[0];
   const previews = useMemo(() => (card ? previewIntervals(card) : {}), [card]);
+
+  useEffect(() => {
+    onCard(!!card);
+    return () => onCard(false);
+  }, [card, onCard]);
 
   useEffect(() => {
     shownAt.current = Date.now();
@@ -123,16 +127,17 @@ function ReviewSession({ spaceId }: { spaceId?: string }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [revealed, rate, locked]);
 
-  if (due.isLoading || queue == null) return <Skeleton className="h-72 rounded-[var(--radius-pane)]" />;
+  if (due.isLoading || queue == null) return <Skeleton className="h-[264px] rounded-[14px]" />;
   if (due.error) return <ErrorState title={s.review.loadFailed} error={due.error} onRetry={() => due.refetch()} />;
 
   if (!card) {
     const totals = (counts.data ?? []).filter((c) => !spaceId || c.spaceId === spaceId);
     const total = totals.reduce((n, c) => n + c.total, 0);
     return (
-      <div className="rounded-[var(--radius-pane)] bg-surface py-6 shadow-card" data-testid="review-empty">
+      <div className="flex h-[420px]" data-testid="review-empty">
         <EmptyState
-          icon={done ? <CheckCircle2 size={22} /> : <Layers size={22} />}
+          className="flex-1"
+          icon={done ? <CircleCheck size={20} /> : <Layers size={20} />}
           title={done ? s.review.finished(done) : total ? s.review.nothingDue : s.review.noCards}
           body={done || total ? s.review.comeBack : s.review.noCardsBody}
           action={
@@ -147,49 +152,50 @@ function ReviewSession({ spaceId }: { spaceId?: string }) {
     );
   }
 
+  const meta = [!spaceId && card.spaceName, card.state === 0 && s.review.new, card.origin === "mistake" && s.review.fromMistake].filter(
+    Boolean,
+  );
+
   return (
-    <div data-testid="review-session">
-      <div className="mb-3 flex items-center justify-between text-xs text-muted">
-        <span>{s.review.remaining(queue.length, done)}</span>
-        <span className="flex items-center gap-2">
-          {!spaceId && <span className="rounded-full bg-surface-2 px-2 py-0.5">{card.spaceName}</span>}
-          {card.state === 0 && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-accent-text">{s.review.new}</span>}
-          {card.origin === "mistake" && <span className="rounded-full bg-warn-soft px-2 py-0.5 text-warn">{s.review.fromMistake}</span>}
-        </span>
+    <div className="contents" data-testid="review-session">
+      <div className="flex items-center gap-2 text-muted">
+        <span className="tabular-nums">{s.review.remaining(queue.length, done)}</span>
+        {meta.length > 0 && <span className="ml-auto truncate">{meta.join(" · ")}</span>}
       </div>
-      <div className="min-h-64 rounded-[var(--radius-pane)] bg-surface p-8 shadow-card">
+      <div className="flex flex-col rounded-[14px] border border-border">
         <CardFace key={card.id} card={card} revealed={revealed} onPick={() => setRevealed(true)} />
         {revealed && card.sourceId && (
-          <button
-            onClick={() => {
-              navigate({ name: "space", spaceId: card.spaceId });
-              setTimeout(() => openViewer({ sourceId: card.sourceId!, start: card.chunkStart ?? undefined, end: card.chunkEnd ?? undefined }), 50);
-            }}
-            className="mt-5 inline-flex items-center gap-1.5 text-xs font-medium text-accent-text hover:underline"
-          >
-            <BookOpen size={13} /> {s.review.showSource}
-          </button>
+          <div className="flex justify-center pb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                navigate({ name: "space", spaceId: card.spaceId });
+                setTimeout(
+                  () => openViewer({ sourceId: card.sourceId!, start: card.chunkStart ?? undefined, end: card.chunkEnd ?? undefined }),
+                  50,
+                );
+              }}
+            >
+              <BookOpen size={14} /> {s.review.showSource}
+            </Button>
+          </div>
         )}
       </div>
-      <div className="mt-5 flex justify-center gap-2">
+      <div className="grid grid-cols-4 gap-2.5">
         {!revealed ? (
-          <Button variant="primary" size="lg" onClick={() => setRevealed(true)}>
-            {s.review.show} <Kbd>Space</Kbd>
-          </Button>
+          <button
+            onClick={() => setRevealed(true)}
+            className={cn(RATE, "col-span-4 border-primary bg-primary text-on-primary hover:opacity-90")}
+          >
+            <span className="text-input font-semibold">{s.review.show}</span>
+            <span className="text-label opacity-75">{s.review.spaceKey}</span>
+          </button>
         ) : (
           GRADES.map((g) => (
-            <button
-              key={g.rating}
-              disabled={busy}
-              onClick={() => rate(g.rating)}
-              className={cn(
-                "flex min-w-24 flex-col items-center rounded-2xl border px-4 py-2 text-sm font-medium transition-colors",
-                g.rating === 1 ? "border-danger/40 text-danger hover:bg-danger-soft" : "border-border hover:bg-surface-2",
-                g.rating === 3 && "border-accent bg-accent-soft text-accent-text",
-              )}
-            >
-              {g.label}
-              <span className="text-[0.6875rem] font-normal text-muted">
+            <button key={g.rating} disabled={busy} onClick={() => rate(g.rating)} className={cn(RATE, TONE[g.rating])}>
+              <span className="text-input font-semibold">{g.label}</span>
+              <span className="text-label tabular-nums opacity-75">
                 {previews[g.rating]} · {g.key}
               </span>
             </button>
@@ -202,87 +208,100 @@ function ReviewSession({ spaceId }: { spaceId?: string }) {
 
 function MistakeNotebook({ spaceId }: { spaceId?: string }) {
   const { data, isLoading, error, refetch } = useMistakes(spaceId ?? null);
+  const { data: spaces } = useSpaces();
   const [showResolved, setShowResolved] = useState(false);
-  if (isLoading) return <Skeleton className="h-40" />;
+  if (isLoading) return <Skeleton className="h-40 rounded-card" />;
   if (error) return <ErrorState title={s.errors.generic} error={error} onRetry={() => refetch()} />;
   const open = (data ?? []).filter((m) => !m.resolved);
   const resolved = (data ?? []).filter((m) => m.resolved);
   const list = showResolved ? data ?? [] : open;
   if (!data?.length)
     return (
-      <div className="rounded-[var(--radius-pane)] bg-surface py-6 shadow-card">
-        <EmptyState icon={<CheckCircle2 size={22} />} title={s.mistakes.emptyTitle} body={s.mistakes.emptyBody} />
+      <div className="flex h-[420px]">
+        <EmptyState className="flex-1" icon={<CircleCheck size={20} />} title={s.mistakes.emptyTitle} body={s.mistakes.emptyBody} />
       </div>
     );
+  const spaceName = new Map((spaces ?? []).map((x) => [x.id, x.name]));
   return (
-    <div data-testid="mistake-notebook">
-      <div className="mb-4 rounded-2xl bg-surface p-4 shadow-card">
-        <ErrorPatterns spaceId={spaceId ?? null} />
-      </div>
-      <div className="mb-3 flex items-center justify-between text-xs text-muted">
-        <span>{s.mistakes.summary(open.length, resolved.length)}</span>
+    <div className="contents" data-testid="mistake-notebook">
+      <div className="flex items-center gap-2 text-muted">
+        <span className="tabular-nums">{s.mistakes.summary(open.length, resolved.length)}</span>
         {resolved.length > 0 && (
-          <button className="font-medium text-accent-text hover:underline" onClick={() => setShowResolved(!showResolved)}>
+          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setShowResolved(!showResolved)}>
             {showResolved ? s.mistakes.hideFixed : s.mistakes.showFixed}
-          </button>
+          </Button>
         )}
       </div>
-      <ul className="space-y-2">
+      <ul className="rounded-card border border-border px-4">
         {list.map((m) => (
-          <li key={m.id} className={cn("rounded-2xl bg-surface p-4 shadow-card", m.resolved && "opacity-60")} data-testid="mistake">
-            <div className="flex items-start gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">{m.question}</p>
-                <p className="mt-1.5 text-xs">
-                  {m.given != null && (
-                    <span className="mr-3 text-danger">
+          <li
+            key={m.id}
+            data-testid="mistake"
+            className={cn("flex gap-3 py-3.5 [&+&]:border-t [&+&]:border-divider", m.resolved && "opacity-60")}
+          >
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <p className="text-input font-semibold">{m.question}</p>
+              <p>
+                {m.given != null && (
+                  <>
+                    <span className="text-danger">
                       {s.mistakes.yours}: {m.given}
                     </span>
-                  )}
-                  <span className="text-success">
-                    {s.mistakes.correct}: {m.correct}
-                  </span>
-                </p>
-                {m.explanation && <p className="mt-1 text-xs text-muted">{m.explanation}</p>}
-                <p className="mt-1.5 text-[0.6875rem] text-faint">
-                  {[m.origin, m.topic, m.errorType && s.errorTypes[m.errorType], relativeTime(m.createdAt)].filter(Boolean).join(" · ")}
-                  {m.resolved && ` · ${s.mistakes.fixed}`}
-                </p>
-              </div>
-              <button
-                aria-label={m.resolved ? s.mistakes.reopen : s.mistakes.markFixed}
-                title={m.resolved ? s.mistakes.reopen : s.mistakes.markFixed}
-                onClick={async () => {
-                  try {
-                    await api.mistakeSetResolved(m.id, !m.resolved);
-                    invalidateCards();
-                  } catch (e) {
-                    toastError(s.errors.generic, e);
-                  }
-                }}
-                className="rounded-full p-1.5 text-muted hover:bg-surface-2 hover:text-fg"
-              >
-                {m.resolved ? <RotateCcw size={15} /> : <CheckCircle2 size={15} />}
-              </button>
-              <button
-                aria-label={s.common.delete}
-                onClick={async () => {
-                  try {
-                    await api.mistakeDelete(m.id);
-                    invalidateCards();
-                  } catch (e) {
-                    toastError(s.errors.generic, e);
-                  }
-                }}
-                className="rounded-full p-1.5 text-muted hover:bg-danger-soft hover:text-danger"
-              >
-                <Trash2 size={15} />
-              </button>
+                    <span className="text-muted"> · </span>
+                  </>
+                )}
+                <span className="text-success">
+                  {s.mistakes.correct}: {m.correct}
+                </span>
+              </p>
+              {m.explanation && <p className="text-fg-secondary">{m.explanation}</p>}
+              <p className="text-label text-muted">
+                {[
+                  !spaceId && spaceName.get(m.spaceId),
+                  m.errorType && s.errorTypes[m.errorType],
+                  relativeShort(m.createdAt),
+                  m.resolved && s.mistakes.fixed,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
             </div>
+            <Button
+              variant="ghost-muted"
+              size="icon-sm"
+              aria-label={m.resolved ? s.mistakes.reopen : s.mistakes.markFixed}
+              title={m.resolved ? s.mistakes.reopen : s.mistakes.markFixed}
+              onClick={async () => {
+                try {
+                  await api.mistakeSetResolved(m.id, !m.resolved);
+                  invalidateCards();
+                } catch (e) {
+                  toastError(s.errors.generic, e);
+                }
+              }}
+            >
+              {m.resolved ? <RotateCcw size={15} /> : <Check size={15} />}
+            </Button>
+            <Button
+              variant="ghost-muted"
+              size="icon-sm"
+              aria-label={s.common.delete}
+              title={s.common.delete}
+              onClick={async () => {
+                try {
+                  await api.mistakeDelete(m.id);
+                  invalidateCards();
+                } catch (e) {
+                  toastError(s.errors.generic, e);
+                }
+              }}
+            >
+              <Trash2 size={15} />
+            </Button>
           </li>
         ))}
       </ul>
-      <p className="mt-4 text-xs text-muted">{s.mistakes.howItWorks}</p>
+      <p className="text-caption text-muted">{s.mistakes.howItWorks}</p>
     </div>
   );
 }

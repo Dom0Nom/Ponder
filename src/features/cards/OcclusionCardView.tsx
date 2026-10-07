@@ -49,7 +49,7 @@ export function useImageUrl(name: string | null | undefined) {
   return { ...state, retry };
 }
 
-/** Image-occlusion card for review: the tested box is accent-filled until `revealed`. */
+/** Image-occlusion card for review: the tested box is solid until `revealed`. */
 export function OcclusionCardView({ card, revealed, className }: { card: Card; revealed: boolean; className?: string }) {
   const image = card.data?.image;
   const masks = card.data?.masks ?? [];
@@ -59,12 +59,12 @@ export function OcclusionCardView({ card, revealed, className }: { card: Card; r
   if (!image) return <ErrorState title={s.occlusion.missingImage} error="" className={className} />;
   if (error) return <ErrorState title={s.occlusion.imageFailed} error={error} onRetry={retry} className={className} />;
   if (loading || !url)
-    return <Skeleton className={cn("mx-auto aspect-[4/3] w-full max-w-xl rounded-card", className)} />;
+    return <Skeleton className={cn("mx-auto aspect-[4/3] w-full max-w-xl rounded-pane", className)} />;
 
   return (
     <div className={cn("flex justify-center", className)} data-testid="occlusion-card">
       <div className="relative inline-block max-w-full">
-        <img src={url} alt="" draggable={false} className="block max-h-[60vh] max-w-full select-none rounded-xl" />
+        <img src={url} alt="" draggable={false} className="block max-h-[60vh] max-w-full select-none rounded-pane" />
         {masks.map((m) => {
           const tested = m.id === card.data?.mask;
           if (!tested && !hideAll) return null;
@@ -76,19 +76,15 @@ export function OcclusionCardView({ card, revealed, className }: { card: Card; r
               aria-label={tested ? (show && m.label ? m.label : s.occlusion.tested) : s.occlusion.hidden}
               data-tested={tested || undefined}
               className={cn(
-                "absolute rounded-md transition-colors duration-200",
-                show
-                  ? "bg-transparent outline outline-2 outline-offset-1 outline-accent"
-                  : tested
-                    ? "bg-accent shadow-sm"
-                    : "border border-border bg-surface-3",
+                "absolute rounded-kbd border-2 transition-colors duration-200",
+                show ? "border-fg bg-transparent" : tested ? "border-fg bg-fg" : "border-faint bg-border",
               )}
               style={{ left: `${m.x * 100}%`, top: `${m.y * 100}%`, width: `${m.w * 100}%`, height: `${m.h * 100}%` }}
             >
               {show && m.label && (
                 <span
                   className={cn(
-                    "absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-on-accent shadow",
+                    "absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary px-2 py-0.5 text-label font-semibold text-on-primary",
                     m.y + m.h > 0.85 ? "bottom-full mb-1" : "top-full mt-1",
                   )}
                 >

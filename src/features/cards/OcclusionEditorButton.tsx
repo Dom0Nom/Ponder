@@ -1,27 +1,23 @@
 import { useState } from "react";
-import { ImagePlus } from "lucide-react";
+import { ChevronRight, Image } from "lucide-react";
 import { s } from "../../lib/strings";
-import { Button, type ButtonProps } from "../../components/ui/button";
+import { cn } from "../../lib/utils";
+import { panelRow } from "../space/PanelList";
 import { OcclusionEditor } from "./OcclusionEditor";
 
-export function OcclusionEditorButton({
-  spaceId,
-  variant = "secondary",
-  size = "sm",
-  className,
-}: {
-  spaceId: string;
-  variant?: ButtonProps["variant"];
-  size?: ButtonProps["size"];
-  className?: string;
-}) {
+export function OcclusionEditorButton({ spaceId, className }: { spaceId: string; className?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant={variant} size={size} className={className} data-testid="occlusion-editor-button" onClick={() => setOpen(true)}>
-        <ImagePlus size={14} />
-        {s.occlusion.open}
-      </Button>
+      <button
+        className={cn(panelRow, "h-[42px] w-full gap-3 text-left", className)}
+        data-testid="occlusion-editor-button"
+        onClick={() => setOpen(true)}
+      >
+        <Image size={15} />
+        <span className="flex-1 font-medium">{s.occlusion.open}</span>
+        <ChevronRight size={14} />
+      </button>
       <OcclusionEditor spaceId={spaceId} open={open} onOpenChange={setOpen} />
     </>
   );

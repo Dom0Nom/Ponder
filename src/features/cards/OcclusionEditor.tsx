@@ -22,7 +22,7 @@ import {
 } from "../../lib/srs/occlusion";
 import { Dialog } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
+import { fieldLabel, Input } from "../../components/ui/input";
 import { EmptyState, ErrorState, Segmented, Skeleton, Spinner } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { useImageUrl } from "./OcclusionCardView";
@@ -135,67 +135,68 @@ export function OcclusionEditor({
       onOpenChange={onOpenChange}
       title={editing ? s.occlusion.editTitle : s.occlusion.title}
       description={s.occlusion.description}
-      className="max-h-[92vh] w-[min(1000px,calc(100vw-32px))]"
+      className="max-h-[min(720px,92vh)] w-[min(862px,calc(100vw-32px))]"
       footer={
         <>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            {s.common.cancel}
-          </Button>
+          {!editing && image && (
+            <Button variant="secondary" onClick={pickImage} disabled={picking}>
+              {s.occlusion.replaceImage}
+            </Button>
+          )}
           <Button variant="primary" onClick={save} disabled={!image || !masks.length || saving}>
-            {saving && <Spinner size={14} className="text-on-accent" />}
+            {saving && <Spinner size={14} className="text-on-primary" />}
             {editing ? s.common.save : s.occlusion.saveN(masks.length)}
           </Button>
         </>
       }
     >
-      {!image ? (
-        <EmptyState
-          icon={<ImagePlus size={20} />}
-          title={s.occlusion.noImage}
-          body={s.occlusion.noImageBody}
-          action={
-            <Button variant="primary" onClick={pickImage} disabled={picking}>
-              {picking ? <Spinner size={14} className="text-on-accent" /> : <ImagePlus size={16} />}
-              {s.occlusion.chooseImage}
-            </Button>
-          }
-        />
-      ) : (
-        <div className="flex flex-col gap-3 pb-2">
-          <div className="flex flex-wrap items-center gap-2">
+      <span id="occlusion-hint" className="sr-only">
+        {s.occlusion.drawHint}
+      </span>
+      <div className="flex min-h-0 gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <div className="relative flex h-[360px] items-center justify-center overflow-hidden rounded-pane border border-border bg-fill">
+            {!image ? (
+              <EmptyState
+                icon={<ImagePlus size={20} />}
+                title={s.occlusion.noImage}
+                body={s.occlusion.noImageBody}
+                action={
+                  <Button variant="primary" onClick={pickImage} disabled={picking}>
+                    {picking && <Spinner size={14} className="text-on-primary" />}
+                    {s.occlusion.chooseImage}
+                  </Button>
+                }
+              />
+            ) : (
+              <MaskStage image={image} masks={masks} setMasks={setMasks} selected={selected} setSelected={setSelected} />
+            )}
+          </div>
+        </div>
+        {image && (
+          <div className="flex w-[250px] flex-none flex-col gap-3">
+            <span className={fieldLabel}>{s.occlusion.mode}</span>
             <Segmented
               label={s.occlusion.mode}
               value={mode}
               onChange={setMode}
-              size="sm"
+              block
               options={[
                 { value: "one", label: s.occlusion.hideOne, title: s.occlusion.hideOneHint },
                 { value: "all", label: s.occlusion.hideAll, title: s.occlusion.hideAllHint },
               ]}
             />
-            <div className="flex-1" />
-            <Button size="sm" variant="secondary" onClick={addMask}>
-              <Plus size={14} />
-              {s.occlusion.addMask}
-            </Button>
-            {!editing && (
-              <Button size="sm" variant="ghost" onClick={pickImage} disabled={picking}>
-                {picking ? <Spinner size={14} /> : <ImagePlus size={14} />}
-                {s.occlusion.replaceImage}
-              </Button>
-            )}
-          </div>
-          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_240px]">
-            <div className="flex min-w-0 flex-col items-center gap-2">
-              <MaskStage image={image} masks={masks} setMasks={setMasks} selected={selected} setSelected={setSelected} />
-              <p id="occlusion-hint" className="text-center text-xs text-muted">
-                {s.occlusion.drawHint}
-              </p>
-            </div>
+            <span className={fieldLabel}>{s.occlusion.masks}</span>
             <MaskList masks={masks} setMasks={setMasks} selected={selected} setSelected={setSelected} />
+            <span className="-ml-[9px]">
+              <Button variant="ghost" size="sm" onClick={addMask}>
+                <Plus size={14} />
+                {s.occlusion.addMask}
+              </Button>
+            </span>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </Dialog>
   );
 }
@@ -327,7 +328,7 @@ function MaskStage({
   };
 
   if (error) return <ErrorState title={s.occlusion.imageFailed} error={error} onRetry={retry} />;
-  if (loading || !url) return <Skeleton className="aspect-[4/3] w-full rounded-xl" />;
+  if (loading || !url) return <Skeleton className="size-full" />;
 
   return (
     <div
@@ -336,8 +337,9 @@ function MaskStage({
       role="group"
       aria-label={s.occlusion.stage}
       aria-describedby="occlusion-hint"
+      title={s.occlusion.drawHint}
       data-testid="occlusion-stage"
-      className="relative inline-block max-w-full touch-none select-none rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+      className="relative inline-block max-w-full touch-none select-none outline-none focus-visible:ring-2 focus-visible:ring-ring"
       style={{ cursor }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -345,8 +347,8 @@ function MaskStage({
       onPointerCancel={onPointerUp}
       onKeyDown={onKeyDown}
     >
-      <img src={url} alt="" draggable={false} className="pointer-events-none block max-h-[55vh] max-w-full rounded-xl" />
-      {masks.map((m, i) => {
+      <img src={url} alt="" draggable={false} className="pointer-events-none block max-h-[358px] max-w-full" />
+      {masks.map((m) => {
         const active = m.id === selected;
         return (
           <div
@@ -354,19 +356,16 @@ function MaskStage({
             data-testid="occlusion-mask"
             aria-hidden
             className={cn(
-              "pointer-events-none absolute rounded-md border-2 border-accent",
-              active ? "bg-accent/85 shadow-lg" : "bg-accent/60",
+              "pointer-events-none absolute rounded-kbd border-2",
+              active ? "border-fg bg-mask-active" : "border-faint bg-mask",
             )}
             style={{ left: `${m.x * 100}%`, top: `${m.y * 100}%`, width: `${m.w * 100}%`, height: `${m.h * 100}%` }}
           >
-            <span className="absolute left-1 top-0.5 max-w-[calc(100%-8px)] truncate text-[0.6875rem] font-semibold text-on-accent">
-              {m.label?.trim() || i + 1}
-            </span>
             {active &&
               HANDLES.map((h) => (
                 <span
                   key={h}
-                  className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-sm border border-accent bg-surface"
+                  className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-sm border border-fg bg-surface"
                   style={{ left: `${HANDLE_POS[h][0]}%`, top: `${HANDLE_POS[h][1]}%` }}
                 />
               ))}
@@ -390,25 +389,18 @@ function MaskList({
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <p className="text-[0.8125rem] font-medium text-muted">{s.occlusion.masks}</p>
-      {!masks.length && <p className="text-sm text-faint">{s.occlusion.noMasks}</p>}
-      <ul className="flex flex-col gap-1.5">
+      {!masks.length && <p className="text-body text-muted">{s.occlusion.noMasks}</p>}
+      <ul className="flex flex-col gap-3">
         {masks.map((m, i) => (
-          <li
-            key={m.id}
-            className={cn(
-              "flex items-center gap-1.5 rounded-xl border p-1.5 transition-colors",
-              m.id === selected ? "border-accent bg-accent-soft" : "border-border",
-            )}
-          >
+          <li key={m.id} className="flex items-center gap-2">
             <button
               type="button"
               aria-pressed={m.id === selected}
               aria-label={s.occlusion.mask(i + 1)}
               onClick={() => setSelected(m.id)}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-on-accent"
+              className="w-[42px] text-left text-label text-muted"
             >
-              {i + 1}
+              {s.occlusion.mask(i + 1)}
             </button>
             <Input
               aria-label={s.occlusion.maskLabel(i + 1)}
@@ -419,18 +411,19 @@ function MaskList({
                 const label = e.target.value;
                 setMasks((ms) => ms.map((x) => (x.id === m.id ? { ...x, label } : x)));
               }}
-              className="h-8 min-w-0 flex-1"
+              className="min-w-0 flex-1"
             />
             <Button
               size="icon-sm"
-              variant="ghost"
+              variant="ghost-muted"
+              title={s.occlusion.removeMask(i + 1)}
               aria-label={s.occlusion.removeMask(i + 1)}
               onClick={() => {
                 setMasks((ms) => ms.filter((x) => x.id !== m.id));
                 if (selected === m.id) setSelected(null);
               }}
             >
-              <X size={14} />
+              <X size={15} />
             </Button>
           </li>
         ))}

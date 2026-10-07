@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { Check, X } from "lucide-react";
 import { useQuiz } from "../../stores/quiz";
 import { s } from "../../lib/strings";
-import { cn } from "../../lib/utils";
 import { Dialog } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
+import { ChoiceOption } from "../../components/ui/choice";
 import { Spinner } from "../../components/ui/misc";
 
 /** Global quiz runner: one question at a time, answer feedback, then a score screen. */
@@ -24,8 +23,8 @@ export function QuizLayer() {
 
   if (!current) {
     return preparing ? (
-      <div role="status" className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full bg-fg px-5 py-3 text-sm text-bg shadow-xl">
-        <Spinner className="text-bg" /> {preparing}
+      <div role="status" className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2.5 rounded-pane border border-border bg-surface px-4 py-2.5 shadow-menu">
+        <Spinner /> {preparing}
       </div>
     ) : null;
   }
@@ -41,8 +40,7 @@ export function QuizLayer() {
       open
       onOpenChange={(o) => !o && finish(null)}
       title={current.title}
-      description={done ? undefined : current.intro}
-      className="w-[min(640px,calc(100vw-32px))]"
+      className="w-[min(562px,calc(100vw-32px))]"
       footer={
         done ? (
           <Button variant="primary" onClick={() => finish(answers)}>
@@ -62,6 +60,8 @@ export function QuizLayer() {
           <>
             <Button
               variant="ghost"
+              size="sm"
+              className="mr-auto"
               onClick={() => {
                 setRevealed(true);
               }}
@@ -77,41 +77,28 @@ export function QuizLayer() {
     >
       {done ? (
         <div className="py-6 text-center" data-testid="quiz-result">
-          <p className="text-4xl font-semibold tabular-nums">
+          <p className="text-timer font-semibold tabular-nums">
             {correct} / {qs.length}
           </p>
-          <p className="mt-2 text-sm text-muted">{s.quiz.resultBody(correct, qs.length)}</p>
+          <p className="mt-3 text-muted">{s.quiz.resultBody(correct, qs.length)}</p>
         </div>
       ) : (
-        <div className="pb-2" data-testid="quiz-question">
-          <p className="mb-1 text-xs font-medium text-muted">{s.quiz.progress(i + 1, qs.length)}</p>
-          <p className="text-[0.9375rem] font-medium leading-relaxed">{q.question}</p>
-          <div role="radiogroup" aria-label={q.question} className="mt-4 space-y-2">
-            {q.options.map((opt, k) => {
-              const isAnswer = revealed && k === q.answer;
-              const isWrongPick = revealed && picked === k && k !== q.answer;
-              return (
-                <button
-                  key={k}
-                  role="radio"
-                  aria-checked={picked === k}
-                  disabled={revealed}
-                  onClick={() => setAnswers(answers.map((a, n) => (n === i ? k : a)))}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm transition-colors",
-                    picked === k && !revealed ? "border-accent bg-accent-soft" : "border-border hover:bg-surface-2",
-                    isAnswer && "border-success bg-success/10",
-                    isWrongPick && "border-danger bg-danger-soft",
-                  )}
-                >
-                  <span className="flex-1">{opt}</span>
-                  {isAnswer && <Check size={16} className="text-success" />}
-                  {isWrongPick && <X size={16} className="text-danger" />}
-                </button>
-              );
-            })}
+        <div className="flex flex-col gap-3" data-testid="quiz-question">
+          <p className="text-label font-semibold text-muted">{s.quiz.progress(i + 1, qs.length)}</p>
+          <p className="text-title font-medium">{q.question}</p>
+          <div role="radiogroup" aria-label={q.question} className="flex flex-col gap-3">
+            {q.options.map((opt, k) => (
+              <ChoiceOption
+                key={k}
+                label={opt}
+                selected={picked === k}
+                state={revealed && k === q.answer ? "correct" : revealed && picked === k ? "wrong" : "idle"}
+                disabled={revealed}
+                onClick={() => setAnswers(answers.map((a, n) => (n === i ? k : a)))}
+              />
+            ))}
           </div>
-          {revealed && q.explanation && <p className="mt-3 rounded-xl bg-surface-2 px-3 py-2 text-sm text-muted">{q.explanation}</p>}
+          {revealed && q.explanation && <p className="rounded-pane bg-fill-subtle px-3 py-2.5 text-fg-secondary">{q.explanation}</p>}
         </div>
       )}
     </Dialog>

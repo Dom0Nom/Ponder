@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { s } from "./strings";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -55,6 +56,28 @@ export function relativeTime(ts: number, now = Date.now()): string {
   if (days === 1) return "yesterday";
   if (days < 7) return `${days} days ago`;
   return new Date(ts).toLocaleDateString();
+}
+
+export function relativeShort(ts: number, now = Date.now()): string {
+  const m = Math.floor((now - ts) / 60_000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d ago`;
+  if (d < 60) return `${Math.floor(d / 7)}w ago`;
+  return new Date(ts).toLocaleDateString();
+}
+
+export function dueLabel(due: number, now = new Date()): string {
+  const day = (t: number) => {
+    const x = new Date(t);
+    x.setHours(0, 0, 0, 0);
+    return x.getTime();
+  };
+  const diff = Math.round((day(due) - day(now.getTime())) / 86_400_000);
+  return diff <= 0 ? s.cards.dueToday : diff === 1 ? s.cards.dueTomorrow : s.cards.dueIn(diff);
 }
 
 export function uid(): string {

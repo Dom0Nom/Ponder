@@ -15,10 +15,11 @@ async function spaceWithSource(app: Page) {
 
 test("make cards from sources, review them, and see them leave the queue", async ({ app }) => {
   await spaceWithSource(app);
+  await app.getByRole("button", { name: "Flashcards", exact: true }).click();
   const card = app.getByTestId("flashcards-card");
   await card.getByRole("button", { name: "Make cards from sources" }).click();
-  await app.getByRole("dialog").getByRole("button", { name: "Make cards from sources" }).click();
-  await expect(card.getByTestId("card-counts")).toContainText("0 due · 2 new · 2 total");
+  await app.getByRole("dialog").getByRole("button", { name: "Make flashcards" }).click();
+  await expect(card.getByTestId("card-counts")).toContainText("2 new / 2 total");
 
   await card.getByRole("button", { name: "Review" }).click();
   const session = app.getByTestId("review-session");
@@ -36,6 +37,7 @@ test("make cards from sources, review them, and see them leave the queue", async
 
 test("quiz mistakes go to the notebook and come back as review cards", async ({ app }) => {
   await spaceWithSource(app);
+  await app.getByRole("button", { name: "Flashcards", exact: true }).click();
   await app.getByTestId("flashcards-card").getByRole("button", { name: "Quiz me" }).click();
   const dialog = app.getByRole("dialog");
   for (let i = 0; i < 5; i++) {
@@ -46,14 +48,15 @@ test("quiz mistakes go to the notebook and come back as review cards", async ({ 
   await dialog.getByRole("button", { name: "Done" }).click();
   await expect(app.getByText("2 saved to your mistake notebook")).toBeVisible();
 
-  await app.getByTestId("flashcards-card").getByRole("button", { name: "Mistakes" }).click();
+  await app.getByTestId("flashcards-card").getByRole("button", { name: "Review" }).click();
+  await app.getByRole("tab", { name: "Mistake notebook" }).click();
   await expect(app.getByTestId("mistake")).toHaveCount(2);
   await expect(app.getByTestId("mistake").first()).toContainText("Your answer: Wrong A");
 
   await app.getByRole("tab", { name: "Cards" }).click();
   const session = app.getByTestId("review-session");
   await expect(session).toContainText("From a mistake");
-  await session.getByRole("button", { name: "Correct answer" }).click();
+  await session.getByRole("radio", { name: "Correct answer" }).click();
   await session.getByRole("button", { name: /Good/ }).click();
   await expect(session).toContainText("1 reviewed");
 });
@@ -80,7 +83,8 @@ test("select text in a source to make a cloze card", async ({ app }) => {
   });
   await app.getByRole("button", { name: "Make card", exact: true }).click();
   await expect(app.getByLabel("Text with gaps")).toHaveValue("Photosynthesis happens in the {{c1::chloroplasts}} of plant cells.");
-  await app.getByRole("button", { name: "Save" }).click();
+  await app.getByRole("dialog").getByRole("button", { name: "Add card" }).click();
+  await app.getByRole("button", { name: "Flashcards", exact: true }).click();
   await expect(app.getByTestId("card-counts")).toContainText("1 total");
   const card = await app.evaluate(() => Object.values((window as any).__mock.db().cards)[0] as any);
   expect(card.kind).toBe("cloze");
