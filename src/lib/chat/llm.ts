@@ -31,7 +31,7 @@ export async function resolveChatModel(space?: Pick<Space, "modelOverride"> | nu
     provider: picked.provider,
     modelId: picked.modelId,
     model: createLanguageModel(picked.provider, picked.modelId),
-    options: (o) => callOptions(picked.provider, o),
+    options: (o) => callOptions(picked.provider, picked.modelId, o),
   };
 }
 

@@ -163,15 +163,27 @@ export const useUi = create<UiState>()(
     }),
     {
       name: "ui",
-      version: 2,
+      version: 3,
       migrate: (st: unknown, v: number) => {
-        const o = { ...(st as { font?: string; panes?: unknown; thinking?: unknown }) };
+        const o = { ...(st as { font?: string; panes?: unknown; thinking?: unknown; modelControls?: Record<string, Record<string, unknown>> }) };
+        if (v < 3 && o.modelControls) {
+          // controls used to store one generic `reasoning` level; keep what maps onto an effort, drop the rest
+          o.modelControls = Object.fromEntries(
+            Object.entries(o.modelControls).map(([k, c]) => {
+              const { reasoning, ...rest } = c;
+              const next: Record<string, unknown> = { ...rest };
+              if (reasoning === "none") next.thinking = false;
+              else if (typeof reasoning === "string") next.effort = reasoning;
+              return [k, next];
+            }),
+          );
+        }
         if (v < 1 && o.font === "inter") o.font = "default";
         if (v < 2) {
           delete o.panes;
           delete o.thinking;
         }
-        return o as UiState;
+        return o as unknown as UiState;
       },
       partialize: (st) => ({
         route: st.route,

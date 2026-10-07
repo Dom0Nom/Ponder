@@ -251,8 +251,6 @@ export const s = {
       sec < 60 ? `Thought for ${sec} second${sec === 1 ? "" : "s"}` : `Thought for ${Math.round(sec / 60)} min`,
     streamBroke: (cause: string) =>
       `The connection to the model broke off mid-answer${cause ? ` (${cause})` : ""}. Retry to get the full answer.`,
-    thinkingToggle: "Thinking",
-    extendedThinking: "Extended thinking",
     notFromSources: "Not from your sources",
     noSourceCited: "No source cited",
     inferredCitation: "Matched to this passage by the app; the model didn't cite it.",
@@ -703,6 +701,13 @@ export const s = {
     temperature: "Temperature",
     verbosity: "Verbosity",
     verbosityLevels: { low: "Low", medium: "Medium", high: "High" },
+    effort: "Effort",
+    reasoningEffort: "Reasoning effort",
+    thinkingLevel: "Thinking level",
+    thinking: "Thinking",
+    extendedThinking: "Extended thinking",
+    effortLevels: { none: "Off", minimal: "Minimal", low: "Low", medium: "Medium", high: "High", xhigh: "Extra high", max: "Max" },
+    modelDefault: "Model default",
   },
   palette: {
     placeholder: "Type a command or search…",

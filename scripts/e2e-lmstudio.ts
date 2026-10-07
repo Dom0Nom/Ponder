@@ -25,7 +25,7 @@ async function run(thinking: boolean) {
   const result = streamText({
     model,
     prompt: "What is 17 times 3? Reply with one short sentence.",
-    ...callOptions(provider, { thinking }),
+    ...callOptions(provider, modelId, { thinking }),
   });
   let text = "";
   let reasoning = "";

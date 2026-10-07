@@ -37,7 +37,7 @@ export async function resolveVisionModel(space?: Pick<Space, "modelOverride"> | 
       provider,
       modelId: ref.model,
       model: createLanguageModel(provider, ref.model),
-      options: (o) => callOptions(provider, o),
+      options: (o) => callOptions(provider, ref.model, o),
     };
   }
   return resolveChatModel(space);

@@ -1,66 +1,58 @@
-import { capabilitiesOf, catalog, type Capabilities, type ReasoningLevel, type Verbosity } from "./catalog";
-import type { CallOptionInput } from "./model";
-import { cachedOpenRouterModel } from "./openrouter";
 import type { OpenRouterModel, Provider } from "../types";
+import { cachedOpenRouterModel } from "./openrouter";
+import { effortRank, resolveModelCaps, type Effort, type ModelCaps, type Verbosity } from "./modelCaps";
 
 export interface ModelControls {
-  reasoning?: ReasoningLevel;
+  effort?: Effort;
+  thinking?: boolean;
   verbosity?: Verbosity;
   temperature?: number;
 }
 
 export const controlsKey = (providerId: string, model: string) => `${providerId}:${model}`;
 
-/** OpenRouter lists what each model accepts; map that onto the controls the menu can show. */
-export function openRouterCapabilities(model: OpenRouterModel): Capabilities {
-  const base = catalog.openrouter.capabilities;
-  const params = model.supportedParameters;
-  const reasons = params.includes("reasoning") || params.includes("reasoning_effort");
-  return {
-    ...base,
-    reasoningToggle: reasons,
-    thinkingToggle: reasons,
-    reasoningLevels: params.includes("reasoning_effort") ? base.reasoningLevels : null,
-    temperature: params.includes("temperature"),
-  };
+/** What the chosen model supports; OpenRouter models use the endpoint's own parameter list once it is loaded. */
+export function modelCapabilities(provider: Pick<Provider, "type">, modelId: string, orModel?: OpenRouterModel): ModelCaps {
+  return resolveModelCaps(provider, modelId, orModel ?? (provider.type === "openrouter" ? cachedOpenRouterModel(modelId) : undefined));
 }
 
-/** What the chosen model supports: OpenRouter's per-model parameters when known, else the provider catalog. */
-export function modelCapabilities(provider: Provider, modelId?: string): Capabilities {
-  if (provider.type === "openrouter" && modelId) {
-    const m = cachedOpenRouterModel(modelId);
-    if (m) return openRouterCapabilities(m);
-  }
-  return capabilitiesOf(provider);
-}
-
-/**
- * Stored controls for a model with defaults filled in. Models with a thinking switch default to
- * reasoning off; values the model can't take are dropped.
- */
-export function resolveControls(provider: Provider, stored?: ModelControls, caps: Capabilities = capabilitiesOf(provider)): CallOptionInput {
-  const out: CallOptionInput = { ...stored };
-  if (out.reasoning === undefined && caps.reasoningToggle) out.reasoning = "none";
-  if (!caps.reasoningLevels && !caps.reasoningToggle && !caps.thinkingToggle) delete out.reasoning;
-  if (!caps.temperature) delete out.temperature;
-  if (!caps.verbosity) delete out.verbosity;
+/** Stored controls with every value the model doesn't offer dropped. No defaults are filled in: unset means the model's own default. */
+export function sanitizeControls(caps: ModelCaps, stored?: ModelControls): ModelControls {
+  const out: ModelControls = {};
+  if (!stored) return out;
+  if (stored.effort && caps.effort?.options.some((o) => o.value === stored.effort)) out.effort = stored.effort;
+  if (typeof stored.thinking === "boolean" && caps.thinking) out.thinking = stored.thinking;
+  if (stored.verbosity && caps.verbosity?.options.some((o) => o.value === stored.verbosity)) out.verbosity = stored.verbosity;
+  if (stored.temperature != null && caps.temperature?.presets.includes(stored.temperature)) out.temperature = stored.temperature;
   return out;
+}
+
+export const effectiveEffort = (caps: ModelCaps, stored?: ModelControls): Effort | undefined =>
+  (stored?.effort ?? caps.effort?.default) || undefined;
+
+export const effectiveThinking = (caps: ModelCaps, stored?: ModelControls): boolean => stored?.thinking ?? caps.thinking?.default ?? true;
+
+/** The thinking switch can't go off at this effort (the model rejects the combination). */
+export function thinkingOffBlocked(caps: ModelCaps, stored?: ModelControls): boolean {
+  const limit = caps.thinking?.offMaxEffort;
+  const e = effectiveEffort(caps, stored);
+  return !!limit && !!e && effortRank(e) > effortRank(limit);
+}
+
+/** Whether sampling controls apply right now: not while a thinking mode that forbids them is active. */
+export function temperatureAvailable(caps: ModelCaps, stored?: ModelControls): boolean {
+  const t = caps.temperature;
+  if (!t) return false;
+  if (!t.offWhenThinking) return true;
+  if (caps.thinking) return !effectiveThinking(caps, stored);
+  return effectiveEffort(caps, stored) === "none";
 }
 
 /** Model id without its vendor prefix, e.g. "anthropic/claude-haiku-4.5" -> "claude-haiku-4.5". */
 export const modelLabel = (modelId: string) => modelId.slice(modelId.lastIndexOf("/") + 1);
 
-/** Short effort text for the model button: the chosen level's label, "Thinking" for a bare switch, or nothing. */
-export function effortLabel(provider: Provider, stored?: ModelControls, caps: Capabilities = capabilitiesOf(provider)): string {
-  const { reasoning } = resolveControls(provider, stored, caps);
-  const level = caps.reasoningLevels?.find((l) => l.value === reasoning);
-  if (level) return level.label;
-  if ((caps.reasoningToggle || caps.thinkingToggle) && reasoning && reasoning !== "none") return "Thinking";
-  return "";
-}
-
-/** Whether the thinking switch is on. Providers without levels store "medium" as the on value. */
-export function thinkingOn(provider: Provider, stored?: ModelControls, caps: Capabilities = capabilitiesOf(provider)): boolean {
-  const { reasoning } = resolveControls(provider, stored, caps);
-  return reasoning !== "none";
+/** Short effort text for the model button: the learner's chosen level, or nothing. */
+export function effortLabel(caps: ModelCaps, stored?: ModelControls): string {
+  const e = sanitizeControls(caps, stored).effort;
+  return caps.effort?.options.find((o) => o.value === e)?.label ?? "";
 }

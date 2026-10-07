@@ -69,7 +69,7 @@ export async function space(p: Page, panes = { sources: false, studio: true }) {
     activeThread: { [SPACE]: THREAD },
     studioOpen: panes.studio,
     sourcesOpen: { [SPACE]: panes.sources },
-    modelControls: { "prov-anthropic:Sonnet 5.5": { reasoning: "high" } },
+    modelControls: { "prov-anthropic:Sonnet 5.5": { effort: "high" } },
   });
   await nav(p, { name: "space", spaceId: SPACE });
   await p.getByText("How do I know when to use substitution").first().waitFor({ timeout: 8000 }).catch(() => undefined);
@@ -548,7 +548,7 @@ export const SCREENS: Record<number, Screen> = {
     query: "chat=none&sources=empty",
     native: true,
     setup: async (p) => {
-      await setUi(p, { studioOpen: false, sourcesOpen: {}, modelControls: { "prov-anthropic:Sonnet 5.5": { reasoning: "high" } } });
+      await setUi(p, { studioOpen: false, sourcesOpen: {}, modelControls: { "prov-anthropic:Sonnet 5.5": { effort: "high" } } });
       await nav(p, { name: "space", spaceId: SPACE });
       await settle(p, 600);
     },

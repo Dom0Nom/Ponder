@@ -3,8 +3,18 @@ import * as Popover from "@radix-ui/react-popover";
 import { ChevronDown, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { ProviderIcon } from "../../components/ProviderIcon";
 import { Menu, MenuContent, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../../components/ui/menu";
-import { TEMPERATURE_VALUES, offersTemperature } from "../../lib/providers/catalog";
-import { controlsKey, effortLabel, modelCapabilities, modelLabel, thinkingOn } from "../../lib/providers/controls";
+import {
+  controlsKey,
+  effectiveEffort,
+  effectiveThinking,
+  effortLabel,
+  modelCapabilities,
+  modelLabel,
+  sanitizeControls,
+  temperatureAvailable,
+  thinkingOffBlocked,
+} from "../../lib/providers/controls";
+import { effortRank, type Effort } from "../../lib/providers/modelCaps";
 import { resolveModel } from "../../lib/providers/model";
 import { authorOf } from "../../lib/providers/openrouter";
 import { useOpenRouterModels, useProviders, useSettings, useUpdateSpace } from "../../lib/queries";
@@ -79,9 +89,9 @@ export function ModelMenu({ space }: { space: Space }) {
     );
 
   const key = controlsKey(current.provider.id, current.modelId);
-  const stored = controls[key];
   const caps = modelCapabilities(current.provider, current.modelId);
-  const effort = effortLabel(current.provider, stored, caps);
+  const stored = sanitizeControls(caps, controls[key]);
+  const effort = effortLabel(caps, stored);
   const viewed = list.find((p) => p.id === viewId) ?? current.provider;
   const pick = (providerId: string, model: string) => {
     update.mutate({ id: space.id, patch: { modelOverride: { providerId, model } } }, { onError: (e) => toastError(s.errors.generic, e) });
@@ -90,11 +100,13 @@ export function ModelMenu({ space }: { space: Space }) {
   };
   // controls belong to the model in use, so they only show next to its own provider's list
   const own = viewed.id === current.provider.id;
-  const showToggle = own && (caps.reasoningToggle || caps.thinkingToggle);
-  const showTemperature = own && offersTemperature(current.provider, caps);
-  const showLevels = own && !!caps.reasoningLevels;
-  const showVerbosity = own && caps.verbosity;
+  const showToggle = own && !!caps.thinking;
+  const showTemperature = own && temperatureAvailable(caps, stored);
+  const showLevels = own && !!caps.effort;
+  const showVerbosity = own && !!caps.verbosity;
   const hasControls = showLevels || showVerbosity || showTemperature || showToggle;
+  const thinking = effectiveThinking(caps, stored);
+  const thinkingLabel = caps.thinking?.label ?? s.models.thinking;
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const root = content.current;
@@ -176,40 +188,43 @@ export function ModelMenu({ space }: { space: Space }) {
             onPick={(m) => pick(viewed.id, m)}
           />
           {hasControls && <div className="my-1 h-px bg-divider" />}
-          {showLevels && caps.reasoningLevels && (
+          {showLevels && caps.effort && (
             <Segmented
-              label={caps.reasoningLabel}
-              value={stored?.reasoning}
-              options={caps.reasoningLevels}
-              onChange={(v) => setControls(key, { reasoning: v as never })}
+              label={caps.effort.label}
+              value={effectiveEffort(caps, stored)}
+              options={caps.effort.options}
+              onChange={(v) => {
+                const limit = caps.thinking?.offMaxEffort;
+                const raisesAboveOff = !!limit && effortRank(v as Effort) > effortRank(limit);
+                setControls(key, { effort: v as Effort, ...(raisesAboveOff && stored.thinking === false ? { thinking: true } : {}) });
+              }}
             />
           )}
-          {showVerbosity && (
+          {showVerbosity && caps.verbosity && (
             <Segmented
               label={s.models.verbosity}
-              value={stored?.verbosity}
-              options={(["low", "medium", "high"] as const).map((v) => ({ value: v, label: s.models.verbosityLevels[v] }))}
+              value={stored.verbosity ?? caps.verbosity.default ?? undefined}
+              options={caps.verbosity.options}
               onChange={(v) => setControls(key, { verbosity: v as never })}
             />
           )}
-          {showTemperature && (
+          {showTemperature && caps.temperature && (
             <Segmented
               label={s.models.temperature}
-              value={stored?.temperature != null ? String(stored.temperature) : undefined}
-              options={TEMPERATURE_VALUES.map((t) => ({ value: String(t), label: t === 1 ? "1.0" : String(t) }))}
+              value={String(stored.temperature ?? caps.temperature.default ?? "")}
+              options={caps.temperature.presets.map((t) => ({ value: String(t), label: t === 1 ? "1.0" : String(t) }))}
               onChange={(v) => setControls(key, { temperature: Number(v) })}
             />
           )}
           {showToggle && (
             <div className="flex h-[34px] items-center gap-2.5 rounded-item px-2.5">
-              <span className="flex-1 font-semibold">{caps.thinkingToggle ? s.chat.extendedThinking : s.chat.thinkingToggle}</span>
+              <span className="flex-1 font-semibold">{thinkingLabel}</span>
               <Switch
                 size="sm"
-                label={caps.thinkingToggle ? s.chat.extendedThinking : s.chat.thinkingToggle}
-                checked={thinkingOn(current.provider, stored, caps)}
-                onCheckedChange={(on) =>
-                  setControls(key, { reasoning: on ? (stored?.reasoning && stored.reasoning !== "none" ? stored.reasoning : "medium") : "none" })
-                }
+                label={thinkingLabel}
+                checked={thinking}
+                disabled={thinking && thinkingOffBlocked(caps, stored)}
+                onCheckedChange={(on) => setControls(key, { thinking: on })}
               />
             </div>
           )}
