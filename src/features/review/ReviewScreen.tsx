@@ -158,7 +158,7 @@ function ReviewSession({ spaceId, onCard }: { spaceId?: string; onCard: (has: bo
 
   return (
     <div className="contents" data-testid="review-session">
-      <div className="mt-2 flex items-center gap-2 text-muted">
+      <div className="flex items-center gap-2 text-muted">
         <span className="tabular-nums">{s.review.remaining(queue.length, done)}</span>
         {meta.length > 0 && <span className="ml-auto truncate">{meta.join(" · ")}</span>}
       </div>

@@ -100,6 +100,10 @@ export const SCREENS: Record<number, Screen> = {
     title: "Review (cards)",
     query: "cards=review",
     native: true,
+    masks: [
+      { x: 420, y: 274, w: 640, h: 22, reason: "queue count is fixture data (mock counts rows); space name is a kept feature, DECISIONS #14" },
+      { x: 420, y: 636, w: 640, h: 24, reason: "scheduler previews depend on fixture card state" },
+    ],
     setup: async (p) => {
       await nav(p, { name: "review" });
       await p.getByText("When should you solve", { exact: false }).first().waitFor({ timeout: 5000 }).catch(() => undefined);
@@ -179,11 +183,16 @@ export const SCREENS: Record<number, Screen> = {
     title: "Practice problem",
     query: "curriculum=practice",
     native: true,
+    masks: [
+      { x: 412, y: 170, w: 456, h: 108, reason: "math is KaTeX, the design draws STIX Two Text; the map keeps KaTeX (03 §2)" },
+      { x: 1000, y: 380, w: 90, h: 22, reason: "skill change kept after answering, not drawn; DECISIONS #14" },
+      { x: 412, y: 92, w: 140, h: 22, reason: "problem count is fixture data and increments after grading" },
+    ],
     setup: async (p) => {
       await nav(p, { name: "practice", spaceId: SPACE, topicKey: "systems" });
       await p.getByText(/Solve the system/).first().waitFor({ timeout: 8000 }).catch(() => undefined);
       const input = p.getByRole("textbox").last();
-      await input.fill("6").catch(() => undefined);
+      await input.fill("x = 6").catch(() => undefined);
       await click(p, /^check$/i).catch(() => undefined);
       await settle(p, 800);
     },

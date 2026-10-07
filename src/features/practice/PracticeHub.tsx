@@ -22,7 +22,7 @@ export function PracticeHub({
   const [free, setFree] = useState("");
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-[960px] flex-col gap-5 px-10 pb-12 pt-10">
+      <div className="mx-auto flex max-w-[1040px] flex-col gap-5 px-10 pb-12 pt-10">
         <h1 className="text-page font-semibold">{s.practice.title}</h1>
         <form
           className="flex gap-2"

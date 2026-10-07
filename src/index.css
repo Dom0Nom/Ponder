@@ -382,4 +382,5 @@ input[type="range"].slider { -webkit-appearance: none; appearance: none; height:
 .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: var(--surface); border: 1px solid var(--control-off); box-sizing: border-box; }
 
 .practice-question p { margin: 0; }
-.practice-question .katex-display { margin: 18px 0 0; padding: 22px; border-radius: 8px; background: var(--fill-subtle); font-size: 1.125rem; line-height: 1.6; }
+.practice-question .katex-display { margin: 18px 0 0; padding: 22px 22px 19px; border-radius: 8px; background: var(--fill-subtle); font-size: 1.125rem; line-height: 1.6; }
+.practice-question .katex-display > .katex { font-size: 1.07em; }

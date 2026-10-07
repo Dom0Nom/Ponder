@@ -229,7 +229,7 @@ function Session({
           {error != null && busy !== "new" && <ErrorState title={s.practice.loadFailed} error={error} onRetry={() => load()} />}
           {item && busy !== "new" && (
             <>
-              <div className="practice-question text-[1.125rem] font-medium leading-[1.5]" data-testid="practice-question">
+              <div className="practice-question text-[1.125rem] font-medium leading-[1.5] [&_.prose-chat]:leading-[1.5]" data-testid="practice-question">
                 <Markdown text={item.question} />
               </div>
               {item.kind === "mcq" ? (
@@ -297,11 +297,11 @@ function Session({
                   <div
                     data-testid="practice-result"
                     className={cn(
-                      "flex flex-col gap-1.5 rounded-card border px-4 py-3.5",
+                      "flex flex-col gap-1.5 rounded-card border px-4 pb-3.5 pt-3.5",
                       ok ? "border-success-border bg-success-soft" : "border-danger-border bg-danger-soft",
                     )}
                   >
-                    <div className={cn("flex items-center gap-2.5 text-input font-semibold", ok ? "text-success-text" : "text-danger-text")}>
+                    <div className={cn("flex h-[23px] items-center gap-2.5 text-input font-semibold", ok ? "text-success-text" : "text-danger-text")}>
                       {ok ? <CircleCheck size={16} /> : <CircleX size={16} />}
                       {ok ? s.practice.correct : s.practice.notQuite}
                       <span className="ml-auto flex items-center gap-1 text-label font-normal tabular-nums text-muted" data-testid="skill-change">
@@ -320,9 +320,9 @@ function Session({
                       <p className="text-fg-secondary">{[result.grade.feedback, result.errorNote].filter(Boolean).join(" ")}</p>
                     )}
                   </div>
-                  <div className="flex flex-col gap-2 rounded-card border border-border px-4 py-3.5">
+                  <div className="flex flex-col gap-2 rounded-card border border-border px-4 pb-3 pt-[15px]">
                     <p className="text-label font-semibold text-muted">{s.practice.solution}</p>
-                    <div className="text-input leading-[1.7] [&_p]:m-0">
+                    <div className="text-input leading-[1.7] [&_.prose-chat]:leading-[1.7] [&_p]:m-0">
                       <Markdown text={item.solution} />
                     </div>
                   </div>
