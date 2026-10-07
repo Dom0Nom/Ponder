@@ -585,8 +585,8 @@ function seedGed(db: DB, o: FixtureOptions, at: (n: number) => number, x: <V ext
       questions: FIXTURE_QUIZ.questions.map((q) => ({ ...q, topicId: "slope" })),
       answers: [0, 0, 0],
       score: 1,
-      createdAt: at(3 * H),
-      completedAt: at(3 * H),
+      createdAt: at(90 * MIN),
+      completedAt: at(90 * MIN),
     };
     db.settings["design.recent"] = [
       { title: "Linear systems", kind: "flashcards", at: at(4 * H) },
@@ -649,6 +649,7 @@ function seedCards(db: DB, o: FixtureOptions, at: (n: number) => number, spaceNa
       front: "When should you solve a system by substitution?",
       back: "When one equation already has a variable on its own, or can get there in one step.",
       due: due(3),
+      createdAt: at(5 * H),
       sourceId: "src-openstax",
       chunkStart: 0,
       chunkEnd: 100,
