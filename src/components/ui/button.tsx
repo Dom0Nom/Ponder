@@ -1,22 +1,27 @@
 import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { cn } from "../../lib/utils";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger" | "tonal";
-type Size = "sm" | "md" | "lg" | "icon" | "icon-sm";
+type Variant = "primary" | "secondary" | "ghost" | "ghost-muted" | "chrome" | "danger" | "success" | "tonal";
+type Size = "sm" | "md" | "lg" | "icon" | "icon-sm" | "icon-xs";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-on-accent hover:bg-accent-hover",
-  tonal: "bg-accent-soft text-accent-text hover:brightness-95 dark:hover:brightness-110",
-  secondary: "border border-border bg-surface text-fg hover:bg-surface-2",
-  ghost: "text-muted hover:bg-surface-2 hover:text-fg",
-  danger: "bg-danger text-white hover:brightness-110 dark:text-black",
+  primary: "bg-primary text-on-primary font-semibold hover:bg-primary-hover",
+  secondary: "border border-control bg-transparent text-fg font-semibold hover:bg-fill-subtle",
+  ghost: "text-fg font-medium hover:bg-fill",
+  "ghost-muted": "text-muted font-medium hover:bg-fill hover:text-fg",
+  chrome: "text-fg font-medium hover:bg-fill-active aria-pressed:bg-pressed aria-pressed:hover:bg-pressed",
+  danger: "bg-danger text-on-danger font-semibold hover:brightness-110",
+  success: "bg-success text-on-success font-medium hover:brightness-110",
+  // transitional: screens not yet restyled still pass "tonal"
+  tonal: "border border-control bg-transparent text-fg font-semibold hover:bg-fill-subtle",
 };
 const sizes: Record<Size, string> = {
-  sm: "h-8 px-3 text-[0.8125rem] gap-1.5",
-  md: "h-9 px-4 text-sm gap-2",
-  lg: "h-11 px-5 text-[0.9375rem] gap-2",
-  icon: "h-9 w-9",
-  "icon-sm": "h-7 w-7",
+  sm: "h-7.5 px-2.25 gap-1.5 rounded-btn",
+  md: "h-8.5 px-3.5 gap-2 rounded-control",
+  lg: "h-9 px-3.5 gap-2 rounded-control",
+  icon: "size-8 rounded-btn",
+  "icon-sm": "size-7 rounded-btn",
+  "icon-xs": "size-6 rounded-item",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -33,7 +38,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       type={type}
       className={cn(
-        "inline-flex shrink-0 select-none items-center justify-center rounded-full font-medium transition-colors disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap text-body transition-colors disabled:pointer-events-none disabled:opacity-50",
         variants[variant],
         sizes[size],
         className,

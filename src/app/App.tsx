@@ -3,7 +3,7 @@ import * as Tip from "@radix-ui/react-tooltip";
 import { Toaster } from "sonner";
 import { queryClient } from "../lib/queries";
 import { useUi } from "../stores/ui";
-import { useApplyAppearance } from "./useTheme";
+import { useApplyAppearance, useIsDark } from "./useTheme";
 import { Header } from "./Header";
 import { HomeScreen } from "../features/home/HomeScreen";
 import { SpaceScreen } from "../features/space/SpaceScreen";
@@ -47,11 +47,26 @@ function Shell() {
 }
 
 export function App() {
+  const isDark = useIsDark();
   return (
     <QueryClientProvider client={queryClient}>
       <Tip.Provider>
         <Shell />
-        <Toaster position="bottom-right" richColors closeButton theme="system" />
+        <Toaster
+          position="bottom-right"
+          closeButton
+          theme={isDark ? "dark" : "light"}
+          toastOptions={{
+            classNames: {
+              toast: "!rounded-pane !border !border-border !bg-surface !text-fg !shadow-menu !font-sans !text-body",
+              description: "!text-muted",
+              actionButton: "!rounded-control !bg-primary !text-on-primary !font-semibold",
+              cancelButton: "!rounded-control !bg-fill !text-fg",
+              closeButton: "!border-border !bg-surface !text-muted hover:!text-fg",
+              error: "[&_[data-icon]]:!text-danger [&_[data-title]]:!text-danger",
+            },
+          }}
+        />
       </Tip.Provider>
     </QueryClientProvider>
   );

@@ -1,6 +1,6 @@
 import { Command } from "cmdk";
 import * as D from "@radix-ui/react-dialog";
-import { Brain, FilePlus2, Dumbbell, FolderSync, GraduationCap, Home, ListX, MessageSquarePlus, Moon, NotebookPen, Plus, Settings, Timer } from "lucide-react";
+import { Brain, FilePlus2, Dumbbell, FolderSync, GraduationCap, Home, ListX, MessageSquarePlus, Moon, NotebookPen, Plus, Settings, Sparkles, Timer, Zap } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces, qk, useCaptureStatus } from "../../lib/queries";
 import { formatShortcut } from "../../lib/capture/shortcut";
@@ -99,6 +99,12 @@ export function CommandPalette() {
                   onSelect={() => run(() => ui.setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"))}
                 >
                   <Moon size={17} className="text-muted" /> {s.palette.toggleTheme}
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => ui.setReduceMotion(!ui.reduceMotion))} keywords={["animation"]}>
+                  <Zap size={17} className="text-muted" /> {s.palette.toggleMotion}
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => ui.setVisualEffects(!ui.visualEffects))} keywords={["animation"]}>
+                  <Sparkles size={17} className="text-muted" /> {s.palette.toggleEffects}
                 </Command.Item>
               </Command.Group>
               {spaces && spaces.length > 0 && (

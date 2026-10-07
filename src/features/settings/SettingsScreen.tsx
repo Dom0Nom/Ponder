@@ -1,6 +1,8 @@
 import { s } from "../../lib/strings";
 import { useUi, type FontPref, type ThemePref } from "../../stores/ui";
-import { Segmented } from "../../components/ui/misc";
+import { Segmented, Switch } from "../../components/ui/misc";
+import { Slider } from "../../components/ui/slider";
+import { motionReduced, useReducedMotion } from "../../app/useTheme";
 import { ProvidersSection } from "./ProvidersSection";
 import { ModelPicker } from "./ModelPicker";
 import { MemorySection } from "./MemorySection";
@@ -33,11 +35,12 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 export function SettingsScreen() {
   const ui = useUi();
+  const reduced = useReducedMotion();
   const { data: settings } = useSettings();
   const setSetting = useSetSetting();
   const section = ui.route.name === "settings" ? ui.route.section : undefined;
   useEffect(() => {
-    if (section) document.getElementById(`settings-${section}`)?.scrollIntoView({ behavior: "smooth" });
+    if (section) document.getElementById(`settings-${section}`)?.scrollIntoView({ behavior: motionReduced() ? "auto" : "smooth" });
   }, [section]);
   return (
     <div className="h-full overflow-y-auto">
@@ -54,26 +57,33 @@ export function SettingsScreen() {
           </Row>
           <Row label={s.settings.font}>
             <Segmented<FontPref>
-              label={s.settings.font}
+              label={s.settings.fontOptions}
               value={ui.font}
               onChange={ui.setFont}
-              options={(["inter", "dyslexic"] as const).map((v) => ({ value: v, label: s.settings.fonts[v] }))}
+              options={(["default", "dyslexic"] as const).map((v) => ({ value: v, label: s.settings.fonts[v] }))}
             />
           </Row>
           <Row label={s.settings.textSize}>
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min={0.875}
-                max={1.375}
-                step={0.0625}
-                value={ui.textScale}
-                aria-label={s.settings.textSize}
-                onChange={(e) => ui.setTextScale(Number(e.target.value))}
-                className="w-40 accent-[var(--accent)]"
-              />
-              <span className="w-10 text-right text-sm tabular-nums text-muted">{Math.round(ui.textScale * 100)}%</span>
-            </div>
+            <Slider
+              label={s.settings.textSize}
+              value={ui.textScale}
+              min={0.875}
+              max={1.375}
+              step={0.0625}
+              onChange={ui.setTextScale}
+              format={(v) => `${Math.round(v * 100)}%`}
+            />
+          </Row>
+          <Row label={s.settings.reduceMotion}>
+            <Switch checked={ui.reduceMotion} onCheckedChange={ui.setReduceMotion} label={s.settings.reduceMotion} />
+          </Row>
+          <Row label={s.settings.visualEffects}>
+            <Switch
+              checked={ui.visualEffects && !reduced}
+              disabled={reduced}
+              onCheckedChange={ui.setVisualEffects}
+              label={s.settings.visualEffects}
+            />
           </Row>
         </Section>
         <Section id="settings-focus" title={s.settings.focusPack} body={s.settings.focusPackBody}>
