@@ -94,6 +94,19 @@ function newerThanDesign(file: string) {
   return ["App Screens.dc.html", "Space Screen v2.dc.html", "support.js"].every((f) => statSync(join(DESIGN_DIR, f)).mtimeMs <= m);
 }
 
+// Corrections to the design artboards themselves, confirmed by the user.
+const DESIGN_FIXES: Record<string, { reason: string; arg: string; run: (root: Element, text: string) => void }> = {
+  // 31b kept a subtitle that was removed from 31a; the user confirmed the dark artboard is the mistake (2026-10-07).
+  "31b": {
+    reason: "remove the leftover subtitle from the dark mistake notebook artboard",
+    arg: "Due cards from all your spaces.",
+    run: (root, text) => {
+      const hit = [...root.querySelectorAll("*")].find((e) => e.children.length === 0 && e.textContent?.trim() === text);
+      hit?.remove();
+    },
+  },
+};
+
 async function shootDesign(browser: Browser, recipes: Recipe[], refresh: boolean) {
   mkdirSync(DESIGN_OUT, { recursive: true });
   const todo = recipes.filter((r) => refresh || !newerThanDesign(join(DESIGN_OUT, `${r.id}.png`)));
@@ -114,6 +127,8 @@ async function shootDesign(browser: Browser, recipes: Recipe[], refresh: boolean
         const el = handle.asElement();
         if (!el) throw new Error(`artboard ${r.id} not found in ${FILES[source]}`);
         await el.scrollIntoViewIfNeeded();
+        const fix = DESIGN_FIXES[r.id];
+        if (fix) await el.evaluate(fix.run, fix.arg);
         await page.evaluate(() => document.fonts.ready);
         const clip = await el.evaluate((e) => {
           const b = e.getBoundingClientRect();
