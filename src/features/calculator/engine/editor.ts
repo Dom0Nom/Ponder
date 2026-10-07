@@ -56,14 +56,13 @@ export function insert(ed: Ed, els: El[], enter?: { at: number; slot: number; en
   }
 }
 
-const OPERAND = /^([0-9.]|π|e|Ans|[xyztabc])$/;
+const OPERAND = /^([0-9.]|π|e|ans|[xyztabc])$/;
 
 /** Remove and return the number/constant run just before the cursor (it becomes a numerator, index, or unit). */
 export function takeOperand(ed: Ed): El[] {
   const l = listAt(ed);
   let i = ed.pos;
   while (i > 0 && isTok(l[i - 1]) && OPERAND.test((l[i - 1] as { v: string }).v)) i--;
-  if (i < ed.pos && i > 0 && isTok(l[i - 1], "⁻")) i--;
   const taken = l.splice(i, ed.pos - i);
   ed.pos = i;
   return taken;
@@ -162,10 +161,9 @@ export function del(ed: Ed) {
 /** Depth of template nesting at the cursor. */
 export const depth = (ed: Ed) => ed.path.length;
 
-export function tokText(v: string, mathprint: boolean): string {
+export function tokText(v: string, _mathprint: boolean): string {
   if (!v.startsWith("stat:")) return v;
   const name = v.slice(5);
-  if (name.endsWith("²") && mathprint) return name.slice(0, -1) + "^{2}";
   return name;
 }
 
@@ -174,7 +172,15 @@ export function markup(els: El[], mathprint = true, cursor?: Ed): string {
   const walk = (list: El[], path: { i: number; s: number }[], here: boolean): string => {
     let out = "";
     const curPos = here && cursor && path.length === cursor.path.length ? cursor.pos : -1;
+    const starts: number[] = [];
     list.forEach((e, i) => {
+      starts.push(out.length);
+      if (e.k === "pow" && list[i - 1]?.k === "pow") {
+        // repeated powers show automatic parentheses: (3^{2})^{2}
+        let b = i - 1;
+        while (b > 0 && isTok(list[b - 1]) && OPERAND.test((list[b - 1] as { v: string }).v)) b--;
+        out = out.slice(0, starts[b]) + "(" + out.slice(starts[b]) + ")";
+      }
       if (i === curPos) out += cursor!.ins ? CURSOR_INS : CURSOR;
       const sub = (s: number) => {
         const next = cursor && here && cursor.path[path.length];

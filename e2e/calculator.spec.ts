@@ -12,7 +12,7 @@ async function open(page: Page) {
 test("keys on the keypad evaluate and show history", async ({ page }) => {
   await open(page);
   for (const k of ["1", "add", "1", "enter"]) await page.locator(`[data-key="${k}"]`).click();
-  expect(await text(page)).toEqual({ lines: ["1+1\t2"], indicators: ["DEG", "↑"] });
+  expect(await text(page)).toEqual({ lines: ["1+1\t2"], indicators: ["DEG", "↑", "↓"] });
   for (const k of ["3", "frac", "4", "enter", "toggle"]) await page.locator(`[data-key="${k}"]`).click();
   expect((await text(page)).lines).toEqual(["\\f{3}{4}\t\\f{3}{4}", "\\f{3}{4}◂▸\t0.75"]);
 });
@@ -65,5 +65,5 @@ test("display canvas renders at the device size", async ({ page }) => {
   await open(page);
   const box = await page.getByTestId("calc-lcd").boundingBox();
   expect(box && Math.round(box.width)).toBe(243);
-  expect(box && Math.round(box.height)).toBe(104);
+  expect(box && Math.round(box.height)).toBe(100);
 });

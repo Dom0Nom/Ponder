@@ -131,7 +131,7 @@ export const THREADS = [
 ] as const;
 
 export const SOURCES = [
-  { id: "src-openstax", title: "OpenStax Algebra & Trigonometry", kind: "pdf", chars: 2_841_300, origin: "~/Documents/GED/openstax-algebra-trigonometry.pdf", on: true },
+  { id: "src-openstax", title: "OpenStax Algebra & Trigonometry", kind: "pdf", chars: 2_841_300, origin: "https://openstax.org/details/books/algebra-and-trigonometry-2e", on: true },
   { id: "src-guide", title: "GED Math Study Guide", kind: "pdf", chars: 412_880, origin: "~/Documents/GED/ged-math-study-guide.pdf", on: true },
   { id: "src-khan", title: "Khan Academy: Systems intro", kind: "youtube", chars: 18_240, origin: "https://www.youtube.com/watch?v=pAmGuFvIW2M", on: true },
   { id: "src-purple", title: "Purplemath: substitution", kind: "url", chars: 9_420, origin: "https://www.purplemath.com/modules/systsubs.htm", on: true },
@@ -366,7 +366,7 @@ function seedGed(db: DB, o: FixtureOptions, at: (n: number) => number, x: <V ext
         progress: processing ? 0.4 : 1,
         charCount: s.chars,
         chunkCount: processing ? 0 : 3,
-        createdAt: at((20 - SOURCES.findIndex((q) => q.id === s.id)) * D),
+        createdAt: at((3 + SOURCES.findIndex((q) => q.id === s.id)) * D),
         updatedAt: at(2 * D),
       } as T.Source;
     }

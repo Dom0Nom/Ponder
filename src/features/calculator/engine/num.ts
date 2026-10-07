@@ -109,6 +109,9 @@ export const dec = (x: number): Val => ({ d: t13(x) });
 export const ZERO = int(0);
 export const PI: Val = { d: PI13, q: { n: 1, m: 1, r: 1, pi: 1 } };
 
+/** Division and percent give decimals unless the result is a whole number (BEHAVIOR §7.4). */
+export const decimal = (v: Val): Val => (v.q && !(v.q.r === 1 && v.q.pi === 0 && v.q.m === 1) ? { d: v.d } : v);
+
 export const isRational = (v: Val) => !!v.q && v.q.r === 1 && v.q.pi === 0;
 export const isInteger = (v: Val) => (v.q ? isRational(v) && v.q.m === 1 : Number.isInteger(v.d));
 export const isZero = (v: Val) => v.d === 0;
@@ -161,7 +164,7 @@ function ipow(a: Val, k: number): Val {
 export function pow(a: Val, b: Val): Val {
   if (a.d === 0) {
     if (b.d === 0) err("DOMAIN");
-    if (b.d < 0) err("DIVIDE BY 0");
+    if (b.d < 0) err("DOMAIN");
     return ZERO;
   }
   if (a.q && isInteger(b) && b.q && Math.abs(b.q.n) <= 400) {
@@ -174,8 +177,8 @@ export function pow(a: Val, b: Val): Val {
 
 export function sqrt(a: Val): Val {
   if (a.d < 0) err("DOMAIN");
-  if (a.q && isRational(a)) {
-    const q = normQ(1, a.q.m, a.q.n * a.q.m);
+  if (a.q && isRational(a) && a.q.m === 1) {
+    const q = normQ(1, 1, a.q.n);
     if (q) return fromQ(q);
   }
   return dec(Math.sqrt(a.d));
@@ -203,7 +206,8 @@ export function root(idx: Val, x: Val): Val {
 
 export function factorial(a: Val): Val {
   const n = a.d;
-  if (!Number.isInteger(n) || n < 0 || n > 69) err("DOMAIN");
+  if (!Number.isInteger(n) || n < 0) err("DOMAIN");
+  if (n > 69) err("OVERFLOW");
   let r = 1;
   for (let i = 2; i <= n; i++) r *= i;
   return int(r);
@@ -258,7 +262,7 @@ export function exp(a: Val): Val {
   return dec(Math.exp(a.d));
 }
 
-/** Find a simple exact form for a decimal (answer toggle, ▸F◂▸D). */
+/** Find a simple exact form for a decimal (answer toggle, ▸F◂▸d). */
 export function findExact(d: number, opts: { rationalOnly?: boolean } = {}): Q | undefined {
   if (d === 0) return { n: 0, m: 1, r: 1, pi: 0 };
   const near = (x: number) => Math.abs(x - Math.round(x)) < 1e-9 * Math.max(1, Math.abs(x));

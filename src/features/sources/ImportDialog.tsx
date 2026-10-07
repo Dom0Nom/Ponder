@@ -41,7 +41,7 @@ export function useImportFooter(f: ImportFooter | null) {
   }, [key, set]);
 }
 
-const WIDTH: Record<string, number> = { file: 520, paste: 520, url: 520, youtube: 520, research: 600, gdrive: 680, dropbox: 680 };
+const WIDTH: Record<string, number> = { file: 522, paste: 522, url: 522, youtube: 522, research: 602, gdrive: 682, dropbox: 682 };
 
 const TABS = [
   { id: "file", label: s.sources.tabs.file },
@@ -67,6 +67,7 @@ export function ImportDialog({
   const [tab, setTab] = useState(initialTab ?? "file");
   const [footer, setFooter] = useState<ImportFooter | null>(null);
   const query = useUi((st) => st.importDialog.query);
+  const found = useUi((st) => st.importDialog.found);
   const setSourcesOpen = useUi((st) => st.setSourcesOpen);
   const done = () => {
     setSourcesOpen(space.id, true);
@@ -102,7 +103,7 @@ export function ImportDialog({
               <Tabs.Trigger
                 key={t.id}
                 value={t.id}
-                className="inline-flex h-7.5 items-center rounded-btn px-2.5 font-medium text-fg hover:bg-fill data-[state=active]:bg-fill-active data-[state=active]:font-semibold"
+                className="inline-flex h-7 items-center rounded-btn px-2.5 font-medium text-fg hover:bg-fill data-[state=active]:bg-fill-active data-[state=active]:font-semibold"
               >
                 {t.label}
               </Tabs.Trigger>
@@ -127,7 +128,7 @@ export function ImportDialog({
             <CloudTab service="dropbox" space={space} done={done} />
           </Tabs.Content>
           <Tabs.Content value="research">
-            <ResearchPanel key={query ?? ""} space={space} initialQuery={query} done={done} />
+            <ResearchPanel key={query ?? ""} space={space} initialQuery={query} initialFound={found} done={done} />
           </Tabs.Content>
         </Tabs.Root>
       </FooterCtx.Provider>
@@ -143,15 +144,17 @@ function FileTab({ space, done }: { space: Space; done: () => void }) {
     try {
       const paths = await pickFiles();
       if (paths.length) setStaged((cur) => [...new Set([...cur, ...paths])]);
+      return paths;
     } catch (e) {
       toastError(s.sources.importFailed, e, choose);
+      return [];
     }
   };
-  const run = async () => {
+  const importPaths = async (paths: string[]) => {
     setBusy(true);
     try {
       const failures: string[] = [];
-      for (const p of staged) {
+      for (const p of paths) {
         try {
           await fileImporter.import(space.id, p);
         } catch (e) {
@@ -160,7 +163,7 @@ function FileTab({ space, done }: { space: Space; done: () => void }) {
       }
       qc.invalidateQueries({ queryKey: qk.sources(space.id) });
       if (failures.length) toastError(s.sources.importFailed, new Error(failures.join("\n")));
-      if (failures.length < staged.length) {
+      if (failures.length < paths.length) {
         setStaged([]);
         done();
       }
@@ -168,11 +171,14 @@ function FileTab({ space, done }: { space: Space; done: () => void }) {
       setBusy(false);
     }
   };
-  useImportFooter({ label: s.sources.import, disabled: !staged.length, busy, status: staged.length ? s.sources.chosen(staged.length) : undefined, run });
+  const run = async () => importPaths(staged.length ? staged : await choose());
+  useImportFooter({ label: s.sources.import, busy, status: staged.length ? s.sources.chosen(staged.length) : undefined, run });
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col items-center gap-2.5 rounded-card border border-dashed border-control-off p-7 text-muted transition-colors duration-(--motion-quick)">
-        <Upload size={20} />
+      <div className="flex flex-col items-center gap-2.5 rounded-card border border-dashed border-control-off p-7 text-fg-secondary transition-colors duration-(--motion-quick)">
+        <span className="flex h-[29px] items-center">
+          <Upload size={20} />
+        </span>
         <p>{s.sources.fileHelp}</p>
         <Button variant="secondary" onClick={choose}>
           {s.sources.chooseFiles}

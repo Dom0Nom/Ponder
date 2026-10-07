@@ -132,8 +132,8 @@ export function MainLegend({ text, w, h }: { text: string; w: number; h: number 
       );
   }
   const digit = /^[0-9.]$/.test(text);
-  const size = digit ? 20 : text === "enter" ? 12 : 13;
-  const y = digit ? 28 : text === "enter" ? 26 : 28;
+  const size = digit ? 19 : 13;
+  const y = digit ? 26.8 : 27;
   return <TextLine segs={segments(text)} x={cx} y={y} size={size} />;
 }
 
@@ -151,6 +151,6 @@ export function SecondLegend({ text, w }: { text: string; w: number }) {
     );
   }
   const plain = text.replace(/\{nd\}/g, "n/d").replace(/\{Und\}/g, "Un/d");
-  const size = plain.length > 7 ? 7.5 : 9;
-  return <TextLine segs={segments(plain)} x={cx} y={12} size={size} />;
+  const size = plain.length > 7 ? 8 : 10;
+  return <TextLine segs={segments(plain)} x={cx} y={11.5} size={size} />;
 }

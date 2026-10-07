@@ -1,97 +1,40 @@
 # Calculator: builder questions
 
-Questions from the builder for the next spec pass. Each entry says what the spec leaves open or where vectors conflict, what the build does meanwhile, and which vectors are marked as expected failures (`src/features/calculator/engine/divergences.ts`).
+These are questions from the builder for the spec. All 625 verified vectors pass, so no vector is marked as an expected failure (`src/features/calculator/engine/divergences.ts` is empty).
 
-## Q1. `↓` indicator rule
+## Answered by the verification pass (closed)
 
-**Conflict.** No single rule satisfies every vector:
-- `trig-asinhByEdit`, `const-kSquare`, `const-kOff` expect `↑ ↓` on screens where nothing is scrolled off and nothing is being pasted.
-- `ans-upPasteEvaluate`, `var-varCycleY` and `const-kApplyTwice` expect only `↑` in the same kinds of situations.
-- The guidebook images are not consistent either. GB p.3 shows the same `12345` SCI result with `↑ ↓` in Classic and only `↑` in MathPrint. GB p.21 shows `↑ ↓` after `5*cos(60)` but only `↑` after `tan(45)` on the same kind of screen.
+The verified spec answered all of these. The build now follows it.
+- Q1: the `↓` rule. `↓` is lit after a calculation while the entry line is still empty, and while browsing history.
+- Q2: tall rows and scrolling by dot rows (§2.3).
+- Q3: 10 significant digits in stat menus.
+- Q4: four data-editor rows; empty grid rows are omitted.
+- Q5: a stray `)` is SYNTAX.
+- Q6: `var` cycling.
+- Q7: `sto` inside a fraction gives SYNTAX. Variables store the decimal value.
+- Q8: the same-row rule (cells ≤ 14, with the two exceptions).
+- Q9: FLOAT goes scientific below 1×10⁻⁹.
+- Q12: indicators on application screens.
 
-**Build.** `↑` is lit whenever history exists. `↓` is lit while browsing history, while an entry pasted from history is still being edited, or when the entry line is empty and earlier rows have scrolled off the top.
+## Open
 
-**Expected failures:** `trig-asinhByEdit`, `const-kSquare`, `const-kOff`.
+### Q10. Internal arithmetic rounds down
 
-## Q2. How many tall MathPrint rows fit
+The build truncates each arithmetic result to 13 significant digits. That is the only way GB p.19's `39.43972222221` comes out. Exact values (fractions, π, √) are rounded once when they become decimals, so 2/3 toggles to `0.6666666666667`. Every vector agrees with this. It has not been checked separately on the reference.
 
-**Conflict.** `trig-radAtan1Toggle` (GB p.21, high) needs the `tan⁻¹(1)` row to scroll off when the `π/4` fraction row is added, so a stacked fraction is about two text rows tall. `frac-mpToggleBack` (low) and `trig-radFiveCosToggle` (low) expect three or four rows with fractions to stay visible at once. GB p.21 shows only the last two rows for `trig-radFiveCosToggle`.
+### Q11. rand generator
 
-**Build.** The text area is 34 dot rows. A plain row is 8, a row with a superscript is 11, a √ row is 10, and a stacked fraction is 17. Rows are filled from the bottom.
+The seeded vectors pass with this generator: s ← 40014·s mod 2147483563, rand = s / 2147483563, where `n→rand` sets s = n. Unseeded rand starts from a fixed seed (12345) after a reset. The reference does not do this: it gives a different sequence on each run (BEHAVIOR §14).
 
-**Expected failures:** `frac-mpToggleBack`, `trig-radFiveCosToggle`.
+### Q13. Rules fitted to single vectors (please confirm with more probes)
 
-## Q3. Trailing zeros in stat values
+- **Raised minus sign:** `\f{3}{5}^{⁻1}` and `(4^{⁻1})^{⁻1}` read as a separate `⁻` row above the entry. The build splits off the minus of any superscript whose base is a fraction, or a parenthesis group containing a power or fraction. This only affects the text encoding.
+- **Fraction-with-radical result:** `sin(45)` / `\t\f{√{2}}{2}` goes to its own row, but `5*cos(\f{π}{4})\t\f{5√{2}}{2}` stays on the same row. The build moves such a result to its own row only when the entry has no fraction.
+- **`2√{2}◂▸` and `3.142857142857◂▸`** follow the general cell rule. None of the vectors cover a toggle row exactly at the 14-cell limit.
+- **Data editor and stats:** picking a stat result after starting from the data editor pastes it into the edit line. `enter` then stores it, and the stored value becomes `ans` (`stat-oneVarAnsTimes2`). `data` in the CLEAR/FORMULA menu returns to the editor at row 1 (`stat-editorClearAll`).
 
-**Conflict.** GB p.28 shows `D:a=0.677325190`, which keeps a trailing zero after rounding. `stat-oneToFiveResults` and `stat-oneToFiveScroll` (medium) expect `Sx=1.58113883`, which strips it, even though √2.5 = 1.5811388300… is also rounded.
+### Q14. Not covered by vectors; the build's choice
 
-**Build.** As in GB: a value that is exact at 10 digits is shown stripped (`52.5`). A value that has to be rounded keeps all of its digits, and it is cut to 11 characters (`⁻18.6663732`).
-
-**Expected failures:** `stat-oneToFiveResults`, `stat-oneToFiveScroll`.
-
-## Q4. Data editor rows
-
-**Conflict.** GB p.32 and p.28 show four list rows plus the edit line (`1/2`, `3/4`, `1`, `------`, then `L1(5)=`), and `stat-dataEditorAfterEntry` agrees. `stat-formulaResult` (low) shows only three list rows.
-
-**Build.** Four list rows, per GB.
-
-**Expected failure:** `stat-formulaResult`. Its cell values (`46.4`, `30.2`, `39.2`) do match.
-
-## Q5. Stray `)` after deleting a function token
-
-**Conflict.** `edit-deleteFunctionToken` (low) expects `30)` to evaluate to `30`. GB p.38 lists a misplaced parenthesis as `SYNTAX`, and `err-syntaxLoneParen` expects `SYNTAX` for `)` alone.
-
-**Build.** A `)` without a matching `(` is `SYNTAX`.
-
-**Expected failure:** `edit-deleteFunctionToken`.
-
-## Q6. `var` cycling right after `enter`
-
-**Conflict.** `var-varTimesVar` (low) expects `4 sto var enter var var enter` to show `x` = `4`. `var-cycle2` (high) and `var-useYThenDivide` say that `var var` gives `y`.
-
-**Build.** Two `var` presses in a row give `y`, whatever came before.
-
-**Expected failure:** `var-varTimesVar`.
-
-## Q7. Do variables keep fractions?
-
-**Conflict.** GB p.11 stores `Ans→y` with Ans = 225, then evaluates `y`, then `Ans÷4`, and shows `56.25`, a decimal. Meanwhile `ans-implicitAnsDiv` shows `10 enter`, `÷4` as `5/2`. Both hold only if a value read back from a variable is a decimal. `var-recallFraction` (low) expects the recall menu to show `x=1/4`.
-
-**Build.** Variables store the decimal value. Ans keeps the exact form. Lists keep a fraction only when it was entered with the fraction key (GB p.32: "except fractional elements").
-
-**Expected failure:** `var-recallFraction`.
-
-## Q8. Same-row rule for results (needs confirmation, all vectors pass)
-
-The pixel rule could not be fitted: `e^{.5}` + `1.648721271` wraps (GB p.23), while the wider `√{2}◂▸` + `1.414213562` stays on one row (GB p.7). A cell count fits every vector:
-- entry cells + result cells ≤ 14 puts the result on the same row;
-- a superscript counts one extra cell (its caret) in the entry, but not in the result;
-- a stacked fraction counts as its wider part;
-- `√` counts one cell, `◂▸` counts one cell.
-
-Please confirm this with longer entries and results.
-
-## Q9. FLOAT switch to scientific for small numbers (open item 1)
-
-**Build.** A value with |x| < 1 is shown with 9 decimals when that is exact, or when |x| ≥ 1×10⁻⁵ (this keeps GB p.30's `0.000093165`). Anything smaller and inexact goes to scientific (`1.234*10^{⁻7}`). The 10⁻⁵ threshold is a guess.
-
-## Q10. Internal arithmetic rounds down
-
-GB p.19 pastes `39.43972222221` for `12°31'45"+26°54'38"`. This only comes out if each step is truncated to 13 digits, not rounded. The build truncates every arithmetic result to 13 significant digits. Exact values (fractions, π, √) are rounded once when they turn into decimals (`0.6666666666667` when 2/3 is toggled). Please confirm with `2÷3`, then `◂▸`, then `◂▸`.
-
-## Q11. rand generator
-
-`5→rand` followed by `rand` gives `0.000093165` (GB p.30), and the next `randint(3,5)` gives `5`. Both match a multiplicative generator: s ← 40014·s mod 2147483563, rand = s / 2147483563, seeded with s = 5. The seed after a reset is unknown; the build uses 12345.
-
-## Q12. Indicators on application screens
-
-GB p.34 shows the function-table entry screen and the table with `↑` and no `DEG`, while the vectors expect `DEG`. GB p.28 shows the data editor with `↑` and no `DEG`. **Build:** follows the vectors (angle indicator shown, no arrows).
-
-## Q13. Not covered by the spec; the build's choice
-
-- Error screen: only `clear` (back to the entry, cursor at the end) and `2nd`, `mode` (quit) do anything. Other keys are ignored.
-- `MEMORY CLEARED`: `clear` dismisses it. Any other key dismisses it and then acts.
-- Data editor: `clear` empties the edit line. `delete` removes the selected element.
-- Function table, Auto: `up` above Start keeps going to smaller x values. `clear` returns to the setup screen.
-- ENG/SCI results that are non-integer fractions are shown as decimals; π and √ forms stay exact (`fmt-sciPi`).
-- Overflow inside the data editor or table shows the error screen and then returns to that screen.
+- Error screen: only `clear` (back to the entry) and `2nd`, `mode` act. An errored entry goes into history without a result, and the screen above the entry is cleared (`err-historyAfterError`).
+- Function table: `left`/`right` switch the selected column, and the edit line shows `y=` for the y column. In Auto mode, `up` above Start continues to smaller x values.
+- Tall parentheses (9 and 13 dots) are drawn at normal height. Only the text encoding was verified for them.

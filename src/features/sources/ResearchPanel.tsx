@@ -10,13 +10,19 @@ import { deepResearch, type FoundSource, type ResearchStage } from "../../lib/re
 import { proxyHttp } from "../../lib/importers/http";
 import { ActivityOrb, type Activity } from "../../components/motion/ActivityOrb";
 import { Button } from "../../components/ui/button";
-import { Checkbox16 } from "../../components/ui/Checkbox16";
+import { Checkbox16 } from "../../components/ui/checkbox";
 import { Input } from "../../components/ui/input";
 import { EmptyState } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { useImportFooter } from "./ImportDialog";
 
-const STAGE_ORB: Record<ResearchStage, Activity> = { planning: "plan", searching: "search", fetching: "research", ranking: "grade", done: "research" };
+const STAGE_ORB: Record<ResearchStage, Activity> = {
+  planning: "plan",
+  searching: "search",
+  fetching: "research",
+  ranking: "grade",
+  done: "research",
+};
 
 const STAGE_LABEL: Record<ResearchStage, string> = {
   planning: s.research.planning,
@@ -26,12 +32,22 @@ const STAGE_LABEL: Record<ResearchStage, string> = {
   done: "",
 };
 
-export function ResearchPanel({ space, done, initialQuery }: { space: Space; done: () => void; initialQuery?: string }) {
+export function ResearchPanel({
+  space,
+  done,
+  initialQuery,
+  initialFound,
+}: {
+  space: Space;
+  done: () => void;
+  initialQuery?: string;
+  initialFound?: FoundSource[];
+}) {
   const [q, setQ] = useState(initialQuery ?? "");
   const [stage, setStage] = useState<ResearchStage | null>(null);
   const [detail, setDetail] = useState("");
-  const [found, setFound] = useState<FoundSource[] | null>(null);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [found, setFound] = useState<FoundSource[] | null>(initialFound ?? null);
+  const [selected, setSelected] = useState<Set<string>>(new Set(initialFound?.map((f) => f.id)));
   const [importing, setImporting] = useState(false);
   const abort = useRef<AbortController | null>(null);
   const qc = useQueryClient();
@@ -94,24 +110,32 @@ export function ResearchPanel({ space, done, initialQuery }: { space: Space; don
 
   return (
     <div className="flex flex-col gap-3.5">
-      <div className="flex flex-col gap-2">
-        <form
-          className="flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (q.trim() && !stage) run();
-          }}
-        >
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.research.placeholder} aria-label={s.research.placeholder} className="flex-1" />
-          <Button type="submit" variant="secondary" disabled={!q.trim() || !!stage}>
-            {s.research.start}
-          </Button>
-        </form>
-        <p className="text-label text-muted">{s.research.hint}</p>
-      </div>
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (q.trim() && !stage) run();
+        }}
+      >
+        <Input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={s.research.placeholder}
+          aria-label={s.research.placeholder}
+          className="flex-1"
+        />
+        <Button type="submit" variant="secondary" disabled={!q.trim() || !!stage} title={s.research.hint}>
+          {s.research.start}
+        </Button>
+      </form>
 
       {stage && (
-        <div data-testid="research-running" data-stage={stage} className="flex items-center gap-3 rounded-card border border-border px-4 py-3" aria-live="polite">
+        <div
+          data-testid="research-running"
+          data-stage={stage}
+          className="flex items-center gap-3 rounded-card border border-border px-4 py-3"
+          aria-live="polite"
+        >
           <ActivityOrb activity={STAGE_ORB[stage]} size={32} />
           <div className="min-w-0">
             <p className="font-medium">{STAGE_LABEL[stage]}</p>
@@ -125,15 +149,17 @@ export function ResearchPanel({ space, done, initialQuery }: { space: Space; don
 
       {found && found.length === 0 && <EmptyState title={s.research.noResults} />}
       {found && found.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <p className="font-semibold">{s.research.reviewTitle}</p>
-          <p className="mb-1 text-body leading-[1.5] text-muted">{s.research.reviewBody}</p>
+        <>
+          <div className="flex flex-col gap-1">
+            <p className="font-semibold">{s.research.reviewTitle}</p>
+            <p className="text-body leading-[1.5] text-muted">{s.research.reviewBody}</p>
+          </div>
           <ul className="rounded-card border border-border px-3.5" data-testid="research-results">
             {found.map((f) => {
               const host = new URL(f.url).hostname.replace(/^www\./, "");
               return (
-                <li key={f.id} className="group flex h-[42px] items-center gap-2.5 border-divider [&+&]:border-t">
-                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5" title={f.summary}>
+                <li key={f.id} className="group flex h-[42px] items-center gap-2.5 border-divider [&+&]:h-[43px] [&+&]:border-t">
+                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5" title={`${host}\n${f.summary}`}>
                     <Checkbox16
                       checked={selected.has(f.id)}
                       onChange={(e) => {
@@ -143,7 +169,7 @@ export function ResearchPanel({ space, done, initialQuery }: { space: Space; don
                         setSelected(next);
                       }}
                     />
-                    <span className="min-w-0 flex-1 truncate font-medium">{`${f.title} – ${host}`}</span>
+                    <span className="min-w-0 flex-1 truncate font-medium">{f.title}</span>
                   </label>
                   <a
                     href={f.url}
@@ -159,7 +185,7 @@ export function ResearchPanel({ space, done, initialQuery }: { space: Space; don
               );
             })}
           </ul>
-        </div>
+        </>
       )}
     </div>
   );
@@ -169,7 +195,7 @@ function Credibility({ value }: { value: number }) {
   const level = value >= 75 ? s.research.levels.high : value >= 50 ? s.research.levels.medium : s.research.levels.low;
   return (
     <span title={String(value)} className="shrink-0 text-label text-muted">
-      {s.research.credibility}: {level}
+      {`${s.research.credibility}: ${level}`}
     </span>
   );
 }

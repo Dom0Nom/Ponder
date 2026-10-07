@@ -63,6 +63,7 @@ export function Calculator({ scale: fixed = 1, fit = false, popOut = false, glob
   const bump = useCallback(() => setVersion((v) => v + 1), []);
   const reduced = useReducedMotion();
   const [pressed, setPressed] = useState<ReadonlySet<string>>(new Set());
+  const [last, setLast] = useState<string | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const [fitScale, setFitScale] = useState(1);
   const scale = fit ? fitScale : fixed;
@@ -116,8 +117,10 @@ export function Calculator({ scale: fixed = 1, fit = false, popOut = false, glob
   const keys: KeyHandlers = useMemo(
     () => ({
       pressed,
+      last,
       onDown: (id) => {
-        if (!reduced) setPressed((p) => new Set(p).add(id));
+        setPressed((p) => new Set(p).add(id));
+        setLast(id);
         if (!globalKeys && document.activeElement !== wrap.current) wrap.current?.focus({ preventScroll: true });
         press(id);
       },
@@ -129,7 +132,7 @@ export function Calculator({ scale: fixed = 1, fit = false, popOut = false, glob
           return n;
         }),
     }),
-    [pressed, press, reduced, globalKeys],
+    [pressed, last, press, globalKeys],
   );
 
   const onKeyDown = useCallback(
@@ -182,11 +185,11 @@ export function Calculator({ scale: fixed = 1, fit = false, popOut = false, glob
       tabIndex={globalKeys ? -1 : 0}
       onKeyDown={globalKeys ? undefined : onKeyDown}
       onKeyUp={globalKeys ? undefined : onKeyUp}
-      className={cn("relative shrink-0 select-none overflow-hidden", className)}
+      className={cn("calc-root relative shrink-0 select-none overflow-hidden", className)}
       style={{ width: fit ? "100%" : CALC_W * scale, height: CALC_H * scale }}
     >
       <div className="absolute left-0 top-0 origin-top-left" style={{ width: CALC_W, height: CALC_H, transform: `scale(${scale})` }}>
-        <div className="absolute" style={{ left: 66, top: 30, width: 268, height: 520, borderRadius: 8, background: "var(--calc-body)" }} />
+        <div className="absolute" style={{ left: 66, top: 30, width: 267.9, height: 519.1, borderRadius: 8.5, background: "var(--calc-body)" }} />
         <Lcd model={model} text={text} scale={scale} reduced={reduced} />
         <Keypad h={keys} />
       </div>

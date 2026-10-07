@@ -408,18 +408,22 @@ input[type="range"].slider { -webkit-appearance: none; appearance: none; height:
   --calc-legend-2nd-key: #414344;
   --calc-second-on-dark: #dbf78d;
   --calc-second-on-light: #64820a;
-  --calc-highlight-dark: #7d878c;
-  --calc-highlight-light: #d0d0d0;
-  --calc-highlight-pad: #9da5aa;
+  --calc-key-ring: #9da5aa;
+  --calc-key-ring-light: #d0d0d0;
+  --calc-key-pressed: #b82e2e;
+  --calc-key-pressed-ring: #ffffff;
+  --calc-focus: #ff1229;
 }
 .calc-key {
-  transition: transform 80ms ease-out, filter 80ms ease-out;
+  transition: transform 80ms ease-out;
 }
 .calc-key[data-pressed] {
   transform: translateY(2px);
-  filter: brightness(0.92);
   transition-duration: 0ms;
 }
+.calc-key .calc-focus { display: none; }
+.calc-root:focus-visible .calc-key[data-last] .calc-focus { display: inline; }
+.calc-root:focus-visible { outline: none; }
 [data-motion="reduce"] .calc-key[data-pressed] { transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .calc-key[data-pressed] { transform: none; }

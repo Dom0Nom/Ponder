@@ -8,6 +8,7 @@ import { api } from "../../lib/ipc";
 import { qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import { buildPieces } from "../../lib/sources/pieces";
+import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
 import { ErrorState, Skeleton, Tooltip } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
@@ -87,7 +88,7 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
       <ReadingRuler enabled={reading.ruler}>
       <div className="h-full overflow-y-auto">
         {(source.isLoading || text.isLoading) && (
-          <div className="mx-auto max-w-[680px] space-y-3 px-10 py-9">
+          <div className="mx-auto max-w-[760px] space-y-3 px-10 py-9">
             <Skeleton className="h-16" />
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-4" />
@@ -105,9 +106,9 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
           />
         )}
         {source.data && text.data && (
-          <div className="mx-auto flex max-w-[680px] flex-col gap-4 px-10 py-9 text-base leading-[1.75]">
+          <div className="mx-auto flex max-w-[760px] flex-col gap-4 px-10 py-9 text-base leading-[1.75]">
             <div className="flex flex-col gap-1 rounded-card border border-border px-3.5 py-3">
-              <p className="text-label font-semibold leading-[1.45] text-muted">{s.sources.summary}</p>
+              <p className="text-label font-semibold leading-[1.75] text-muted">{s.sources.summary}</p>
               <p className="text-[0.84375rem] leading-[1.55] text-fg-secondary">{source.data.summary ?? s.sources.noSummary}</p>
             </div>
             <SelectionToCard source={source.data} text={text.data.text} />
@@ -115,13 +116,16 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
               {pieces.map((p, i) => (
                 <span key={i}>
                   {p.page != null && (
-                    <span className="mb-2 mt-4 block select-none text-label font-semibold leading-[1.45] text-muted">
+                    <span className="mb-4 mt-4 block select-none text-label font-semibold leading-[1.75] text-muted [div>span:first-child>&]:mt-0">
                       {s.sources.page(p.page)}
                     </span>
                   )}
                   {p.mark ? (
                     <mark
-                      className="cite-highlight"
+                      className={cn(
+                        "cite-highlight",
+                        (i === 0 || pieces[i - 1].text.endsWith("\n\n")) && (i === pieces.length - 1 || pieces[i + 1].text.startsWith("\n\n")) && "block",
+                      )}
                       data-testid="cite-highlight"
                       ref={(() => {
                         const isFirst = firstMark;
@@ -129,12 +133,10 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
                         return isFirst ? markRef : undefined;
                       })()}
                     >
-                      {reading.bionic ? <BionicText text={p.text} /> : p.text}
+                      <Paragraphs text={p.text} bionic={reading.bionic} />
                     </mark>
-                  ) : reading.bionic ? (
-                    <BionicText text={p.text} />
                   ) : (
-                    p.text
+                    <Paragraphs text={p.text} bionic={reading.bionic} />
                   )}
                 </span>
               ))}
@@ -144,6 +146,20 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
       </div>
       </ReadingRuler>
     </div>
+  );
+}
+
+/** Blank lines become a 16px gap, like separate paragraphs in the design. */
+function Paragraphs({ text, bionic }: { text: string; bionic: boolean }) {
+  return (
+    <>
+      {text.split(/\n{2,}/).map((seg, i) => (
+        <span key={i}>
+          {i > 0 && <span aria-hidden className="block h-4" />}
+          {bionic ? <BionicText text={seg} /> : seg}
+        </span>
+      ))}
+    </>
   );
 }
 
@@ -188,7 +204,7 @@ function SelectionToCard({ source, text }: { source: Source; text: string }) {
         return;
       }
       const rect = s2.getRangeAt(0).getBoundingClientRect();
-      setSel({ text: str, top: rect.top - 38, left: rect.left + rect.width / 2 });
+      setSel({ text: str, top: rect.top - 44, left: rect.left + rect.width / 2 });
     };
     document.addEventListener("mouseup", onUp);
     return () => document.removeEventListener("mouseup", onUp);

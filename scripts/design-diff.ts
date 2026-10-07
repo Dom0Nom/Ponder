@@ -29,7 +29,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "no
 import { createInterface } from "node:readline/promises";
 import { join, resolve } from "node:path";
 import process from "node:process";
-import { buildRecipes, type Mask, type Recipe } from "./design-diff/recipes";
+import { buildRecipes, type Mask, type Recipe, type Region } from "./design-diff/recipes";
 
 const ROOT = resolve(import.meta.dir, "..");
 const DESIGN_DIR = join(ROOT, "design");
@@ -178,9 +178,20 @@ function applyMasks(png: PNG, masks: Mask[]) {
   }
 }
 
-function compare(designPath: string, appBuf: Buffer, masks: Mask[], diffPath: string) {
-  const a = PNG.sync.read(readFileSync(designPath));
-  const b = PNG.sync.read(appBuf);
+function crop(png: PNG, r: Region): PNG {
+  const x0 = Math.round(r.x * SCALE), y0 = Math.round(r.y * SCALE);
+  const out = new PNG({ width: Math.round(r.w * SCALE), height: Math.round(r.h * SCALE) });
+  PNG.bitblt(png, out, x0, y0, out.width, out.height, 0, 0);
+  return out;
+}
+
+function compare(designPath: string, appBuf: Buffer, masks: Mask[], diffPath: string, region?: Region) {
+  let a = PNG.sync.read(readFileSync(designPath));
+  let b = PNG.sync.read(appBuf);
+  if (region) {
+    a = crop(a, region);
+    b = crop(b, region);
+  }
   if (a.width !== b.width || a.height !== b.height) {
     throw new Error(`size mismatch: design ${a.width}x${a.height}, app ${b.width}x${b.height}`);
   }
@@ -285,7 +296,7 @@ async function main() {
           buf = await shootApp(browser, r);
         }
         writeFileSync(appPath, buf);
-        row.pct = compare(join(DESIGN_OUT, `${r.id}.png`), buf, r.masks, join(OUT, `${r.id}-diff.png`));
+        row.pct = compare(join(DESIGN_OUT, `${r.id}.png`), buf, r.masks, join(OUT, `${r.id}-diff.png`), r.region);
         row.status = row.pct <= THRESHOLD_PCT ? "pass" : r.pending ? "pending" : "fail";
         if (r.pending) row.note = r.pending;
       } catch (e) {
