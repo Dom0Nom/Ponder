@@ -198,15 +198,15 @@ function crop(png: PNG, r: Region): PNG {
   return out;
 }
 
-function compare(designPath: string, appBuf: Buffer, masks: Mask[], diffPath: string, region: Region | undefined, n: number) {
+function compare(designPath: string, appBuf: Buffer, masks: Mask[], diffPath: string, region: Region | undefined, screen: number) {
   let a = PNG.sync.read(readFileSync(designPath));
   let b = PNG.sync.read(appBuf);
   if (region) {
     a = crop(a, region);
     b = crop(b, region);
-    masks = [...masks, ...deviationsFor(n).map((m) => ({ ...m, x: m.x - region.x, y: m.y - region.y }))];
+    masks = [...masks, ...deviationsFor(screen).map((m) => ({ ...m, x: m.x - region.x, y: m.y - region.y }))];
   } else {
-    masks = [...masks, ...deviationsFor(n)];
+    masks = [...masks, ...deviationsFor(screen)];
   }
   if (a.width !== b.width || a.height !== b.height) {
     throw new Error(`size mismatch: design ${a.width}x${a.height}, app ${b.width}x${b.height}`);
