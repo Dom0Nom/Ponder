@@ -835,7 +835,6 @@ export const s = {
     skill: (pct: number, n: number) => `Skill ${pct}/100 · ${n} ${n === 1 ? "problem" : "problems"}`,
     cardHint: "Endless problems at your level, with worked solutions.",
     problems: (n: number) => `${n} ${n === 1 ? "problem" : "problems"}`,
-    hint: "Hint",
     level: (l: number) => `Level ${l} of 5`,
     writing: "Writing a problem…",
     loadFailed: "Couldn't make a problem",

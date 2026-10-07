@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import katex from "katex";
 import { Calculator, Camera, Check, Eye, EyeOff, Lightbulb, Pencil, X } from "lucide-react";
+import * as D from "@radix-ui/react-dialog";
 import { Button } from "../../components/ui/button";
 import { Input, Textarea } from "../../components/ui/input";
 import { ErrorState, Skeleton, Spinner } from "../../components/ui/misc";
@@ -320,5 +321,30 @@ export function StepCheckerPanel({
         <PhotoDialog open={photoOpen} onOpenChange={setPhotoOpen} spaceId={spaceId} initialImage={pasted} onRead={fromPhoto} />
       </StudioSubpanel>
     </div>
+  );
+}
+
+export function StepCheckerDialog({
+  open,
+  onOpenChange,
+  spaceId,
+  problem,
+  expectedAnswer,
+  onResult,
+}: StepCheckerProps & { open: boolean; onOpenChange: (o: boolean) => void }) {
+  return (
+    <D.Root open={open} onOpenChange={onOpenChange}>
+      <D.Portal>
+        <D.Overlay className="t-modal-scrim fixed inset-0 z-40 bg-scrim" />
+        <D.Content
+          onFocusOutside={(e) => e.preventDefault()}
+          className="t-modal fixed left-1/2 top-1/2 z-50 h-[min(640px,calc(100vh-48px))] w-[min(420px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-dialog border border-border bg-surface shadow-dialog outline-none"
+        >
+          <D.Title className="sr-only">{s.steps.title}</D.Title>
+          <D.Description className="sr-only">{s.steps.title}</D.Description>
+          <StepCheckerPanel spaceId={spaceId} problem={problem} expectedAnswer={expectedAnswer} onResult={onResult} onClose={() => onOpenChange(false)} />
+        </D.Content>
+      </D.Portal>
+    </D.Root>
   );
 }
