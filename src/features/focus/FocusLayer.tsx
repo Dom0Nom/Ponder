@@ -1,7 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { StickyNote } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
+import { cn } from "../../lib/utils";
+import { useStayMounted } from "../../components/motion/useStayMounted";
 import { Kbd } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { events } from "../../lib/ipc";
@@ -36,12 +38,18 @@ function ParkingCapture() {
     if (!active || locked) setOpen(false);
   }, [active, locked, setOpen]);
 
-  if (!open) return null;
+  const mounted = useStayMounted(open, 250);
+  if (!mounted) return null;
   return createPortal(
     <div
       role="dialog"
       aria-label={s.focus.parking}
-      className="fixed left-1/2 top-16 z-[80] w-[min(440px,calc(100vw-32px))] -translate-x-1/2 rounded-[var(--radius-card)] border border-border bg-surface p-3 shadow-2xl"
+      inert={!open}
+      style={{ "--toast-distance": "-16px" } as CSSProperties}
+      className={cn(
+        "t-toast fixed left-1/2 top-16 z-[80] w-[min(440px,calc(100vw-32px))] -translate-x-1/2 rounded-[var(--radius-card)] border border-border bg-surface p-3 shadow-2xl",
+        open && "is-open",
+      )}
     >
       <p className="mb-2 flex items-center justify-between px-1 text-xs font-medium text-muted">
         <span className="flex items-center gap-1.5">

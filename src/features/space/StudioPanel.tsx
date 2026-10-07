@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import {
-  ChevronRight,
   FileText,
   GraduationCap,
   Layers,
@@ -15,11 +14,12 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Skeleton } from "../../components/ui/misc";
+import { LearnChevron } from "../../components/motion/LearnChevron";
 import { api } from "../../lib/ipc";
 import { useCourses, useCurriculum, useDueCounts, useJournal } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Space } from "../../lib/types";
-import { dayLabel } from "../../lib/utils";
+import { cn, dayLabel } from "../../lib/utils";
 import { useUi, type StudioView } from "../../stores/ui";
 import { usePageSlide } from "../../components/motion/usePageSlide";
 import { CoursePanel } from "../placement/CourseCard";
@@ -44,9 +44,16 @@ const RECENT_ICON: Record<RecentItem["kind"], LucideIcon> = {
 };
 
 function Meta({ loading, error, children }: { loading: boolean; error: boolean; children: ReactNode }) {
-  if (loading) return <Skeleton className="mt-1 h-3 w-16" />;
-  if (error) return <span className="mt-px text-label leading-[1.3] text-danger">{s.studio.loadFailed}</span>;
-  return <span className="mt-px max-w-full truncate text-label leading-[1.3] text-muted">{children}</span>;
+  return (
+    <span className={cn("t-skel mt-px block h-[15.6px] min-w-20 max-w-full", !loading && "is-revealed")}>
+      <Skeleton className="rounded-[3px]" />
+      <span
+        className={cn("t-skel-content !static block truncate text-label leading-[1.3]", error ? "text-danger" : "text-muted")}
+      >
+        {loading ? null : error ? s.studio.loadFailed : children}
+      </span>
+    </span>
+  );
 }
 
 function Tile({
@@ -176,14 +183,14 @@ function LowEnergyRow() {
     <button
       type="button"
       onClick={() => setStudioView("lowEnergy")}
-      className="mx-4 mt-4 flex min-h-13 shrink-0 items-center gap-3 rounded-card border border-border px-3.5 text-left text-body hover:bg-fill-subtle"
+      className="t-learn mx-4 mt-4 flex min-h-13 shrink-0 items-center gap-3 rounded-card border border-border px-3.5 text-left text-body hover:bg-fill-subtle"
     >
       <Leaf size={15} />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="font-medium">{s.studio.lowEnergyRow}</span>
         <span className="text-label text-muted">{s.studio.lowEnergyMeta}</span>
       </span>
-      <ChevronRight size={14} />
+      <LearnChevron size={14} />
     </button>
   );
 }

@@ -1,4 +1,4 @@
-import { Coffee, Pause, Play } from "lucide-react";
+import { Coffee, Play } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/misc";
 import { s } from "../../lib/strings";
@@ -6,7 +6,9 @@ import { cn, formatDuration } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
 import { useFocusActions } from "./controls";
 import { useFocusStore } from "./focusStore";
-import { clockText } from "./timer";
+import { clockText, popKeyOf } from "./timer";
+import { PauseLabel } from "./PauseLabel";
+import { NumberPop } from "../../components/motion/NumberPop";
 
 const IDLE_MS = 25 * 60_000;
 
@@ -36,11 +38,11 @@ export function StudioTimer() {
         aria-label={s.focus.details}
         onClick={() => setStudioView("focus")}
         className={cn(
-          "text-timer font-medium tabular-nums transition-opacity hover:opacity-80",
+          "m-timer text-timer font-medium tabular-nums hover:opacity-80",
           dim && "opacity-40 hover:opacity-50",
         )}
       >
-        {state ? clockText(state) : formatDuration(IDLE_MS)}
+        <NumberPop text={state ? clockText(state) : formatDuration(IDLE_MS)} popKey={popKeyOf(state)} />
       </button>
       {!state ? (
         <Button variant="primary" className="h-10 w-28 rounded-pane" onClick={() => setFocusDialogOpen(true)}>
@@ -53,7 +55,7 @@ export function StudioTimer() {
           disabled={!!pending}
           onClick={() => run(state.paused ? "resume" : "pause")}
         >
-          {state.paused ? <Play size={15} /> : <Pause size={15} />} {state.paused ? s.focus.resume : s.focus.pause}
+          <PauseLabel paused={state.paused} />
         </Button>
       ) : (
         needApp && (

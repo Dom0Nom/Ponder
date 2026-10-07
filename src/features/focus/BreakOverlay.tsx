@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Coffee } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../components/ui/button";
 import { Spinner } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
+import { cn } from "../../lib/utils";
 import { useFocusPrefs } from "../../lib/focusPrefs";
 import { api } from "../../lib/ipc";
 import { qk } from "../../lib/queries";
@@ -12,7 +13,9 @@ import { s } from "../../lib/strings";
 import type { FocusState } from "../../lib/types";
 import { ParkingList } from "./controls";
 import { isBreakPhase, useFocusStore } from "./focusStore";
-import { clockText } from "./timer";
+import { clockText, popKeyOf } from "./timer";
+import { NumberPop } from "../../components/motion/NumberPop";
+import { useStayMounted } from "../../components/motion/useStayMounted";
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const TIP_EVERY_MS = 45_000;
@@ -96,12 +99,12 @@ function LockedBreak({ state }: { state: FocusState }) {
       aria-labelledby="break-title"
       aria-describedby="break-body"
       tabIndex={-1}
-      className="pointer-events-auto fixed inset-0 z-[2147483000] grid grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] justify-items-center bg-chrome px-6 outline-none"
+      className="m-break pointer-events-auto fixed inset-0 z-[2147483000] grid grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] justify-items-center bg-chrome px-6 outline-none"
     >
       <div />
       <div className="flex flex-col items-center text-center">
         <p className="mt-3.5 text-timer-xl font-medium tabular-nums" aria-live="off">
-          {clockText(state)}
+          <NumberPop text={clockText(state)} popKey={popKeyOf(state)} />
         </p>
         <h1 id="break-title" className="mt-9 text-[1.5rem] font-semibold">
           {title}
@@ -163,7 +166,7 @@ function LockedBreak({ state }: { state: FocusState }) {
   );
 }
 
-function PausedBanner({ state }: { state: FocusState }) {
+function PausedBanner({ state, open }: { state: FocusState; open: boolean }) {
   const setState = useFocusStore((st) => st.setState);
   const [busy, setBusy] = useState(false);
   const resume = async () => {
@@ -179,7 +182,12 @@ function PausedBanner({ state }: { state: FocusState }) {
   return createPortal(
     <div
       role="status"
-      className="fixed left-1/2 top-2 z-[70] flex h-10 -translate-x-1/2 items-center gap-3 rounded-pane border border-border bg-surface pl-3.5 pr-1 text-body shadow-menu"
+      inert={!open}
+      style={{ "--toast-distance": "-16px" } as CSSProperties}
+      className={cn(
+        "t-toast fixed left-1/2 top-2 z-[70] flex h-10 -translate-x-1/2 items-center gap-3 rounded-pane border border-border bg-surface pl-3.5 pr-1 text-body shadow-menu",
+        open && "is-open",
+      )}
     >
       <Coffee size={15} />
       <span className="font-medium">{s.focus.breakPaused}</span>
@@ -196,7 +204,12 @@ function PausedBanner({ state }: { state: FocusState }) {
 export function BreakOverlay() {
   const state = useFocusStore((st) => st.state);
   const locked = useFocusStore((st) => st.breakLocked);
-  if (!state || !isBreakPhase(state)) return null;
-  if (locked) return <LockedBreak state={state} />;
-  return <PausedBanner state={state} />;
+  const onBreak = !!state && isBreakPhase(state);
+  const banner = onBreak && !locked;
+  const mounted = useStayMounted(banner, 250);
+  const last = useRef(state);
+  if (state && isBreakPhase(state)) last.current = state;
+  if (onBreak && locked) return <LockedBreak state={state} />;
+  if (!mounted || !last.current) return null;
+  return <PausedBanner state={last.current} open={banner} />;
 }

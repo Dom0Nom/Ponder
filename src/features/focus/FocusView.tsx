@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Coffee, Pause, Play } from "lucide-react";
+import { Coffee, Play } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { ErrorState, Kbd, Skeleton } from "../../components/ui/misc";
 import { api } from "../../lib/ipc";
@@ -13,7 +13,9 @@ import { ParkingInput, ParkingList, useFocusActions } from "./controls";
 import { loadFocusState, useFocusStore } from "./focusStore";
 import { MicroEntryRow } from "./MicroSteps";
 import { TimeBar } from "./TimeBar";
-import { clockText, phaseLabel } from "./timer";
+import { clockText, phaseLabel, popKeyOf } from "./timer";
+import { PauseLabel } from "./PauseLabel";
+import { NumberPop } from "../../components/motion/NumberPop";
 
 function Running({ state }: { state: FocusState }) {
   const { run, pending } = useFocusActions();
@@ -26,7 +28,9 @@ function Running({ state }: { state: FocusState }) {
         {phaseLabel(state)} · {s.focus.block(state.block)}
       </p>
       {state.goal && <p className="-mt-2 text-label text-muted">{state.goal}</p>}
-      <p className={cn("text-timer font-medium tabular-nums", state.paused && "opacity-40")}>{clockText(state)}</p>
+      <p className={cn("m-timer text-timer font-medium tabular-nums", state.paused && "opacity-40")}>
+        <NumberPop text={clockText(state)} popKey={popKeyOf(state)} />
+      </p>
       <TimeBar state={state} />
       <div className="grid grid-cols-2 gap-2">
         {isWork || needApp ? (
@@ -35,8 +39,13 @@ function Running({ state }: { state: FocusState }) {
             disabled={!!pending}
             onClick={() => run(isWork && !state.paused ? "pause" : "resume")}
           >
-            {needApp ? <Coffee size={15} /> : state.paused ? <Play size={15} /> : <Pause size={15} />}
-            {needApp ? s.focus.resumeBreak : state.paused ? s.focus.resume : s.focus.pause}
+            {needApp ? (
+              <>
+                <Coffee size={15} /> {s.focus.resumeBreak}
+              </>
+            ) : (
+              <PauseLabel paused={state.paused} />
+            )}
           </Button>
         ) : (
           <span />

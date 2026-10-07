@@ -1,4 +1,5 @@
-import { BookOpen, ChevronRight, Layers, RotateCcw, type LucideIcon } from "lucide-react";
+import { BookOpen, Layers, RotateCcw, type LucideIcon } from "lucide-react";
+import { LearnChevron } from "../../components/motion/LearnChevron";
 import type { ReactNode } from "react";
 import { ErrorState, Skeleton } from "../../components/ui/misc";
 import { useDueCounts, useMistakes, useSources } from "../../lib/queries";
@@ -19,14 +20,14 @@ function Row({ icon: Icon, title, disabled, onClick, children }: { icon: LucideI
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="flex min-h-13 w-full items-center gap-3 text-left not-first:border-t not-first:border-divider disabled:opacity-50"
+      className="t-learn flex min-h-13 w-full items-center gap-3 text-left not-first:border-t not-first:border-divider disabled:opacity-50"
     >
       <Icon size={15} className="shrink-0" />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="font-medium">{title}</span>
         <span className="truncate text-label text-muted">{children}</span>
       </span>
-      <ChevronRight size={14} className="shrink-0" />
+      <span className="shrink-0"><LearnChevron size={14} /></span>
     </button>
   );
 }

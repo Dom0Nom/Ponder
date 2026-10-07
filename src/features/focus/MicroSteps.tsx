@@ -1,6 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Check, ListChecks, Pencil, Sparkles, X } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { NumberPop } from "../../components/motion/NumberPop";
+import { useFlip } from "../../lib/useFlip";
+import { useFreshKeys } from "../../lib/useFreshKeys";
 import { Button } from "../../components/ui/button";
 import { Checkbox16 } from "../../components/ui/checkbox";
 import { Input } from "../../components/ui/input";
@@ -53,7 +56,7 @@ export function MicroEntryRow({ spaceId, onOpen }: { spaceId: string; onOpen: ()
   );
 }
 
-function StepRow({ step, current, onChanged }: { step: MicroStep; current: boolean; onChanged: () => void }) {
+function StepRow({ step, current, fresh, onChanged }: { step: MicroStep; current: boolean; fresh: boolean; onChanged: () => void }) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(step.text);
@@ -80,9 +83,11 @@ function StepRow({ step, current, onChanged }: { step: MicroStep; current: boole
   return (
     <li
       data-testid="micro-step"
+      data-flip-key={step.id}
+      data-open={fresh || undefined}
       data-done={step.done}
       data-current={current}
-      className="group relative flex min-h-10.5 items-start gap-2.5 py-2.5 not-first:border-t not-first:border-divider"
+      className={cn("group relative flex min-h-10.5 items-start gap-2.5 py-2.5 not-first:border-t not-first:border-divider", fresh && "t-panel-slide")}
     >
       <Checkbox16
         className={cn("mt-0.5", !step.done && "-mt-px h-[19.7px] w-[2px]")}
@@ -131,6 +136,7 @@ function StepRow({ step, current, onChanged }: { step: MicroStep; current: boole
           <span
             className={cn(
               "min-w-0 flex-1 leading-[1.45]",
+              "transition-colors duration-(--motion-quick)",
               step.done && "text-muted line-through",
               current && "font-semibold",
             )}
@@ -170,6 +176,9 @@ export function MicroStepsView({ space, onBack }: { space: Space; onBack: () => 
   const state = useFocusStore((st) => st.state);
   const { generate, busy } = useGenerateMicroSteps(spaceId);
   const [topic, setTopic] = useState("");
+  const listRef = useRef<HTMLUListElement>(null);
+  const isFresh = useFreshKeys(data?.map((x) => x.id));
+  useFlip(listRef, [data]);
 
   const sessionGoal = state && (state.spaceId === spaceId || state.spaceId == null) ? state.goal?.trim() || null : null;
   const refresh = () => qc.invalidateQueries({ queryKey: qk.microSteps(spaceId) });
@@ -251,10 +260,11 @@ export function MicroStepsView({ space, onBack }: { space: Space; onBack: () => 
           {goalOfList && <p className="text-body leading-[1.45] text-muted">{s.focus.micro.forGoal(goalOfList)}</p>}
           <div className="flex items-center gap-2.5">
             <span className="h-1 w-30 rounded-[2px] bg-fill-active">
-              <span className="block h-full rounded-[2px] bg-primary" style={{ width: `${(done / total) * 100}%` }} />
+              <span className="m-progress block h-full rounded-[2px] bg-primary" style={{ width: `${(done / total) * 100}%` }} />
             </span>
             <span className="font-semibold tabular-nums" data-testid="micro-progress">
-              {s.focus.micro.progress(done, total)}
+              <NumberPop text={String(done)} popKey={done} />
+              {s.focus.micro.progress(done, total).slice(String(done).length)}
             </span>
           </div>
           {done === total && (
@@ -263,9 +273,9 @@ export function MicroStepsView({ space, onBack }: { space: Space; onBack: () => 
               <p className="text-label text-muted">{s.focus.micro.doneBody}</p>
             </div>
           )}
-          <ul className="rounded-card border border-border px-3.5">
+          <ul ref={listRef} className="relative rounded-card border border-border px-3.5">
             {data.map((x) => (
-              <StepRow key={x.id} step={x} current={x.id === current?.id} onChanged={() => void refresh()} />
+              <StepRow key={x.id} step={x} current={x.id === current?.id} fresh={isFresh(x.id)} onChanged={() => void refresh()} />
             ))}
           </ul>
         </>

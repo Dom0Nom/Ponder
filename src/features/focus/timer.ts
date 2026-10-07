@@ -48,3 +48,6 @@ export function timeColor(st: FocusState): string {
   if (warm === 0) return "var(--text)";
   return `color-mix(in oklab, var(--timer-warm) ${Math.round(warm * 85)}%, var(--text))`;
 }
+
+/** Digits pop only when this changes: a new session, phase or block (never every second). */
+export const popKeyOf = (st: FocusState | null) => (st ? `${st.sessionId}:${st.phase}:${st.block}` : "idle");

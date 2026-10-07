@@ -8,6 +8,7 @@ export function Reveal({
   as: Tag = "div",
   index,
   y,
+  active = true,
   ...rest
 }: {
   children?: ReactNode;
@@ -15,12 +16,20 @@ export function Reveal({
   as?: ElementType;
   index?: number;
   y?: number;
+  /** false renders the element without the enter animation (rows that were already there) */
+  active?: boolean;
   [key: string]: unknown;
 }) {
   const style = {
     "--panel-translate-y": `${y ?? 6}px`,
     ...(index ? { transitionDelay: `${Math.min(index, 8) * 40}ms` } : {}),
   } as CSSProperties;
+  if (!active)
+    return (
+      <Tag {...rest} className={className}>
+        {children}
+      </Tag>
+    );
   return (
     <Tag {...rest} className={cn("t-panel-slide", className)} data-open="true" style={style}>
       {children}

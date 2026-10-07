@@ -1,6 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Coffee, Pause, Play, Square } from "lucide-react";
-import { useState, type KeyboardEvent } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
+import { Reveal } from "../../components/motion/Reveal";
+import { useFlip } from "../../lib/useFlip";
+import { useFreshKeys } from "../../lib/useFreshKeys";
 import { Button } from "../../components/ui/button";
 import { Checkbox16 } from "../../components/ui/checkbox";
 import { Input } from "../../components/ui/input";
@@ -131,6 +134,9 @@ export function ParkingInput({
 
 export function ParkingList({ items }: { items: ParkingItem[] }) {
   const qc = useQueryClient();
+  const listRef = useRef<HTMLUListElement>(null);
+  const isFresh = useFreshKeys(items.map((p) => p.id));
+  useFlip(listRef, [items]);
   const resolve = async (id: string) => {
     try {
       await api.parkingResolve(id);
@@ -140,12 +146,12 @@ export function ParkingList({ items }: { items: ParkingItem[] }) {
     }
   };
   return (
-    <ul className="flex flex-col gap-2">
+    <ul ref={listRef} className="relative flex flex-col gap-2">
       {items.map((p) => (
-        <li key={p.id} className="flex items-center gap-2.5">
+        <Reveal as="li" key={p.id} active={isFresh(p.id)} data-flip-key={p.id} className="flex items-center gap-2.5">
           <Checkbox16 aria-label={s.focus.parkingResolve} title={s.focus.parkingResolve} checked={false} onChange={() => resolve(p.id)} />
           <span className="min-w-0 flex-1 break-words">{p.text}</span>
-        </li>
+        </Reveal>
       ))}
     </ul>
   );
