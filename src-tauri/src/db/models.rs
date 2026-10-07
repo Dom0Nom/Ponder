@@ -297,6 +297,7 @@ pub struct Thread {
     pub title: String,
     pub created_at: i64,
     pub updated_at: i64,
+    pub pinned: bool,
 }
 
 fn thread_from_row(r: &Row) -> rusqlite::Result<Thread> {
@@ -306,11 +307,12 @@ fn thread_from_row(r: &Row) -> rusqlite::Result<Thread> {
         title: r.get("title")?,
         created_at: r.get("created_at")?,
         updated_at: r.get("updated_at")?,
+        pinned: r.get::<_, i64>("pinned")? != 0,
     })
 }
 
 pub fn list_threads(c: &Connection, space_id: &str) -> AppResult<Vec<Thread>> {
-    let mut st = c.prepare("SELECT * FROM threads WHERE space_id=?1 ORDER BY updated_at DESC")?;
+    let mut st = c.prepare("SELECT * FROM threads WHERE space_id=?1 ORDER BY pinned DESC, updated_at DESC")?;
     let rows = st.query_map([space_id], thread_from_row)?;
     Ok(rows.collect::<Result<_, _>>()?)
 }
@@ -337,6 +339,11 @@ pub fn rename_thread(c: &Connection, id: &str, title: &str) -> AppResult<Thread>
         return Err(invalid("Title can't be empty"));
     }
     c.execute("UPDATE threads SET title=?2, updated_at=?3 WHERE id=?1", params![id, t, now_ms()])?;
+    get_thread(c, id)
+}
+
+pub fn set_thread_pinned(c: &Connection, id: &str, pinned: bool) -> AppResult<Thread> {
+    c.execute("UPDATE threads SET pinned=?2 WHERE id=?1", params![id, pinned as i64])?;
     get_thread(c, id)
 }
 
@@ -721,6 +728,17 @@ mod tests {
         assert!(update_space(&c, &s.id, SpacePatch { tutor_style: Some("yelling".into()), ..Default::default() }).is_err());
 
         let t = create_thread(&c, &s.id, None).unwrap();
+        assert!(!t.pinned);
+        c.execute("UPDATE threads SET updated_at=updated_at-1000 WHERE id=?1", [&t.id]).unwrap();
+        let t = get_thread(&c, &t.id).unwrap();
+        let t_new = create_thread(&c, &s.id, Some("Newer".into())).unwrap();
+        assert_eq!(list_threads(&c, &s.id).unwrap()[0].id, t_new.id);
+        let pinned = set_thread_pinned(&c, &t.id, true).unwrap();
+        assert!(pinned.pinned);
+        assert_eq!(pinned.updated_at, t.updated_at);
+        assert_eq!(list_threads(&c, &s.id).unwrap()[0].id, t.id);
+        assert!(!set_thread_pinned(&c, &t.id, false).unwrap().pinned);
+        delete_thread(&c, &t_new.id).unwrap();
         let m = add_message(
             &c,
             NewMessage {

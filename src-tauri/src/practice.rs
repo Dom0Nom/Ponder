@@ -34,6 +34,8 @@ pub struct PracticeItem {
     pub difficulty: f64,
     pub parent_id: Option<String>,
     #[serde(default)]
+    pub hint: Option<String>,
+    #[serde(default)]
     pub created_at: i64,
 }
 
@@ -89,11 +91,12 @@ pub fn add_item(c: &Connection, space_id: &str, item: &PracticeItem) -> AppResul
     if item.kind == "mcq" && item.options.as_ref().map(|o| o.len() < 2).unwrap_or(true) {
         return Err(invalid("A multiple-choice item needs options"));
     }
+    let hint = item.hint.as_ref().map(|h| h.trim().to_string()).filter(|h| !h.is_empty());
     let id = new_id();
     let now = now_ms();
     c.execute(
-        "INSERT INTO practice_items (id, space_id, topic_key, kind, question, options, answer, solution, difficulty, parent_id, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        "INSERT INTO practice_items (id, space_id, topic_key, kind, question, options, answer, solution, difficulty, parent_id, hint, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
         params![
             id,
             space_id,
@@ -105,10 +108,11 @@ pub fn add_item(c: &Connection, space_id: &str, item: &PracticeItem) -> AppResul
             item.solution.trim(),
             item.difficulty.clamp(-4.0, 4.0),
             item.parent_id,
+            hint,
             now
         ],
     )?;
-    Ok(PracticeItem { id, created_at: now, ..item.clone() })
+    Ok(PracticeItem { id, hint, created_at: now, ..item.clone() })
 }
 
 /// Recent questions in a topic, newest first, so new items don't repeat them.
@@ -238,6 +242,7 @@ mod tests {
             solution: "0.15 × 80 = 12".into(),
             difficulty: 9.0,
             parent_id: None,
+            hint: None,
             created_at: 0,
         }
     }
@@ -250,7 +255,12 @@ mod tests {
         assert!(add_item(&c, &sp.id, &PracticeItem { options: None, ..item("mcq") }).is_err());
         assert!(add_item(&c, &sp.id, &item("essay")).is_err());
         let it = add_item(&c, &sp.id, &item("numeric")).unwrap();
-        assert_eq!(recent_questions(&c, &sp.id, "ged.math.percents", 5).unwrap(), vec!["15% of 80?"]);
+        assert!(it.hint.is_none());
+        let hinted = add_item(&c, &sp.id, &PracticeItem { hint: Some("  Convert 15% to 0.15  ".into()), ..item("numeric") }).unwrap();
+        assert_eq!(hinted.hint.as_deref(), Some("Convert 15% to 0.15"));
+        let stored: Option<String> = c.query_row("SELECT hint FROM practice_items WHERE id=?1", [&hinted.id], |r| r.get(0)).unwrap();
+        assert_eq!(stored.as_deref(), Some("Convert 15% to 0.15"));
+        assert_eq!(recent_questions(&c, &sp.id, "ged.math.percents", 5).unwrap().len(), 2);
 
         let attempt = |correct: bool, before: f64, after: f64, et: Option<&str>| NewAttempt {
             item_id: it.id.clone(),

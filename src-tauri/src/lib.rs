@@ -68,6 +68,7 @@ pub fn run() {
             commands::core::list_threads,
             commands::core::create_thread,
             commands::core::rename_thread,
+            commands::core::pin_thread,
             commands::core::delete_thread,
             commands::core::list_messages,
             commands::core::add_message,

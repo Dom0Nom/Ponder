@@ -22,6 +22,7 @@ for (const [cid, match] of [["ged", /percent/i], ["ihk-fiae", /subnet|IP/i]] as 
     const p = asItem(await generateProblem(llm, { topic, level, avoid: seen, language: c.language }), level);
     seen.push(p.question);
     console.log(`  L${level}→${levelFor(p.difficulty)} ${p.kind} (${Date.now() - start} ms): ${p.question.replace(/\s+/g, " ").slice(0, 400)}`);
+    console.log(`     hint: ${p.hint ?? "!! none"}${p.hint && p.hint.includes(p.answer) ? "   !! hint leaks answer" : ""}`);
     console.log(`     answer: ${p.kind === "mcq" ? p.options![Number(p.answer)] : p.answer}`);
     const right = p.kind === "mcq" ? p.answer : p.answer;
     const wrong = p.kind === "mcq" ? String((Number(p.answer) + 1) % p.options!.length) : p.kind === "numeric" ? String(Number(p.answer.replace(",", ".")) + 7) : "I don't know";

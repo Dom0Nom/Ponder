@@ -77,6 +77,11 @@ pub async fn rename_thread(state: State<'_, AppState>, id: String, title: String
 }
 
 #[tauri::command]
+pub async fn pin_thread(state: State<'_, AppState>, id: String, pinned: bool) -> AppResult<Thread> {
+    m::set_thread_pinned(&state.db.conn()?, &id, pinned)
+}
+
+#[tauri::command]
 pub async fn delete_thread(state: State<'_, AppState>, id: String) -> AppResult<()> {
     m::delete_thread(&state.db.conn()?, &id)
 }

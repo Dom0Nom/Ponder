@@ -64,6 +64,14 @@ export function useUpdateSpace() {
   });
 }
 
+export function usePinThread(spaceId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, pinned }: { id: string; pinned: boolean }) => api.pinThread(id, pinned),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.threads(spaceId) }),
+  });
+}
+
 export function useSetSetting() {
   const qc = useQueryClient();
   return useMutation({

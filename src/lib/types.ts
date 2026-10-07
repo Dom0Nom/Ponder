@@ -73,6 +73,7 @@ export interface Thread {
   title: string;
   createdAt: number;
   updatedAt: number;
+  pinned: boolean;
 }
 
 export type MessageRole = "user" | "assistant" | "buddy" | "system";
@@ -97,6 +98,10 @@ export interface MessageMeta {
   buddyKind?: BuddyEventKind;
   focus?: FocusState | null;
   thinking?: boolean;
+  /** how long the model reasoned before answering */
+  thinkingMs?: number;
+  /** model-written follow-up questions */
+  followUps?: string[];
   stopped?: boolean;
   retrievalError?: string;
   /** facts the tutor saved to learner memory during this reply */
@@ -635,6 +640,8 @@ export interface PracticeItem {
   /** Rasch difficulty on the logit scale */
   difficulty: number;
   parentId: string | null;
+  /** one-sentence nudge that doesn't give the answer away */
+  hint: string | null;
   createdAt: number;
 }
 

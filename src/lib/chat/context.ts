@@ -1,4 +1,5 @@
 import type { FocusState, Message, Space, TutorStyle } from "../types";
+import { FOLLOWUP_INSTRUCTION } from "./followUps";
 import { MEMORY_INSTRUCTION } from "./memory";
 
 export interface Passage {
@@ -79,6 +80,7 @@ export function buildSystemPrompt(input: ContextInput): string {
     );
   }
   parts.push(MEMORY_INSTRUCTION);
+  parts.push(FOLLOWUP_INSTRUCTION);
 
   if (passages.length > 0) {
     parts.push(

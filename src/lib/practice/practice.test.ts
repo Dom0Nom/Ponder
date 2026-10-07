@@ -71,6 +71,11 @@ describe("problem parsing", () => {
     const s = parseProblem('Sure! {"kind":"short","question":"Define ATP","answer":"energy carrier","solution":"ATP stores energy"}', "t", 3, "parent");
     expect(s.parentId).toBe("parent");
   });
+  it("reads the hint, empty means none", () => {
+    const h = parseProblem('{"kind":"numeric","question":"Q","answer":"1","solution":"s","hint":" Convert the percent first. "}', "t", 3);
+    expect(h.hint).toBe("Convert the percent first.");
+    expect(parseProblem('{"kind":"numeric","question":"Q","answer":"1","solution":"s"}', "t", 3).hint).toBeNull();
+  });
   it("rejects unusable problems", () => {
     expect(() => parseProblem('{"kind":"numeric","question":"Q","answer":"twelve","solution":"s"}', "t", 3)).toThrow();
     expect(() => parseProblem('{"kind":"mcq","question":"Q","options":["a","b"],"answer":"z","solution":"s"}', "t", 3)).toThrow();
