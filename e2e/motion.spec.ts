@@ -83,8 +83,7 @@ test.describe("motion allowed", () => {
     await newSpace(app);
     await startFocus(app);
     await expect(app.getByTestId("pane-studio").locator(".m-timer .t-digit").first()).toBeVisible();
-    await app.waitForTimeout(1100);
-    expect(await running(app, ".m-timer .t-digit")).toBe(false);
+    await expect.poll(() => running(app, ".m-timer .t-digit"), { timeout: 5000 }).toBe(false);
     await advance(app, 3_000);
     await advance(app, 3_000);
     await app.waitForTimeout(100);

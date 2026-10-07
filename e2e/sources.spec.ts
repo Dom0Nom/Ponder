@@ -59,6 +59,6 @@ test("import dialog: one footer action per tab, chosen tab sets the width", asyn
   await expect(dialog.getByRole("button", { name: "Import" })).toBeEnabled();
   const narrow = (await dialog.boundingBox())!.width;
   await dialog.getByRole("tab", { name: "Deep research" }).click();
-  expect((await dialog.boundingBox())!.width).toBeGreaterThan(narrow);
+  await expect.poll(async () => (await dialog.boundingBox())!.width).toBeGreaterThan(narrow);
   await expect(dialog.getByRole("button", { name: "Import" })).toBeDisabled();
 });
