@@ -157,7 +157,7 @@ export function ThreadList({ spaceId }: { spaceId: string }) {
   if (!threads.isLoading && !threads.error && !threads.data?.length) return null;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col" data-testid="thread-list">
+    <div className="flex min-h-0 flex-1 flex-col gap-0.5" data-testid="thread-list">
       <div className="relative h-[38px] shrink-0">
         <span aria-hidden className="absolute -inset-x-3 top-2.5 h-px bg-border" />
         <Tooltip content={s.chat.newThread}>

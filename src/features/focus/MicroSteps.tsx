@@ -85,7 +85,8 @@ function StepRow({ step, current, onChanged }: { step: MicroStep; current: boole
       className="group relative flex min-h-10.5 items-start gap-2.5 py-2.5 not-first:border-t not-first:border-divider"
     >
       <Checkbox16
-        className="mt-0.5"
+        className={cn("mt-0.5", !step.done && "-mt-px h-[19.7px] w-[2px]")}
+        inputClassName={cn(!step.done && "h-full w-full")}
         aria-label={s.focus.micro.markDone(step.text)}
         checked={step.done}
         onChange={(e) => {

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Command } from "cmdk";
 import * as D from "@radix-ui/react-dialog";
 import { Brain, FilePlus2, FolderSync, Gauge, House, Layers, Notebook, PencilLine, Plus, Search, Settings, Sparkles, SquarePen, SunMoon, Timer, Zap } from "lucide-react";
@@ -25,6 +26,11 @@ export function CommandPalette() {
   const qc = useQueryClient();
   const spaceId = ui.route.name === "space" ? ui.route.spaceId : null;
   const { data: capture } = useCaptureStatus();
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    if (!open) setQuery("");
+  }, [open]);
+  const listed = query.trim() ? (spaces ?? []) : [...(spaces ?? [])].sort((a, b) => (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0)).slice(0, 2);
 
   const run = (fn: () => void | Promise<void>) => {
     setOpen(false);
@@ -38,15 +44,17 @@ export function CommandPalette() {
         <D.Content
           onFocusOutside={(e) => e.preventDefault()}
           aria-label={s.palette.placeholder}
-          className="t-modal fixed left-1/2 top-[96px] z-50 w-[min(600px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden rounded-dialog border border-border bg-surface text-body shadow-dialog outline-none"
+          className="t-modal fixed left-1/2 top-[96px] z-50 w-[min(602px,calc(100vw-30px))] -translate-x-1/2 overflow-hidden rounded-dialog border border-border bg-surface text-body shadow-dialog outline-none"
         >
           <D.Title className="sr-only">{s.palette.placeholder}</D.Title>
           <D.Description className="sr-only">{s.palette.placeholder}</D.Description>
           <Command loop>
-            <div className="flex h-13 items-center gap-2.5 border-b border-divider px-4.5 text-faint">
+            <div className="flex h-[53px] items-center gap-2.5 border-b border-divider px-4.5 text-faint">
               <Search size={16} />
               <Command.Input
                 autoFocus
+                value={query}
+                onValueChange={setQuery}
                 placeholder={s.palette.placeholder}
                 className="h-full flex-1 bg-transparent text-title-sm text-fg outline-none placeholder:text-faint"
               />
@@ -55,7 +63,7 @@ export function CommandPalette() {
               <Command.Empty className="px-3 py-6 text-center text-body text-muted">{s.palette.empty}</Command.Empty>
               {spaces && spaces.length > 0 && (
                 <Command.Group heading={s.palette.spaces} className={group}>
-                  {spaces.map((sp) => (
+                  {listed.map((sp) => (
                     <Command.Item
                       key={sp.id}
                       value={`space ${sp.name} ${sp.id}`}

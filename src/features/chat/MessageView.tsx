@@ -172,7 +172,7 @@ function Thinking({ text, active, ms }: { text: string; active: boolean; ms?: nu
       <button
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="group/think inline-flex h-5 items-center gap-1.5 self-start text-label font-medium leading-[1.65] text-fg-secondary hover:text-fg"
+        className="group/think inline-flex h-[21.45px] items-center gap-1.5 self-start text-label font-medium leading-[1.65] text-fg-secondary hover:text-fg"
       >
         {active ? <PonderMark size={20} state="generating" /> : <Brain size={13} />}
         {label}
@@ -221,7 +221,7 @@ function CiteChip({ citations, inferred, spaceId }: { citations: Citation[]; inf
         aria-label={s.chat.citation(titles.join(", "))}
         onClick={() => openViewer({ sourceId: first.sourceId, start: first.start, end: first.end })}
         className={cn(
-          "-my-[3px] ml-1 inline-flex h-5 max-w-[220px] items-center gap-[5px] whitespace-nowrap rounded-full pl-[3px] pr-2 align-[1px] text-label font-medium leading-none text-fg",
+          "ml-1 inline-flex h-5 max-w-[220px] items-center gap-[5px] whitespace-nowrap rounded-full pl-[3px] pr-2 align-[1px] text-label font-medium leading-none text-fg",
           inferred ? "border border-dashed border-control-off" : "bg-chip hover:bg-fill-active",
         )}
       >

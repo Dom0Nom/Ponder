@@ -63,7 +63,7 @@ export function SpaceScreen({ spaceId }: { spaceId: string }) {
   return (
     <div className="relative h-full">
       <AddCardDialog space={space} />
-      <ContentCard scroll={false} className={cn("transition-[left,right] duration-200", studioOpen ? "right-[336px]" : "right-2")}>
+      <ContentCard scroll={false} className={cn("border-0 after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded-pane after:border after:border-border transition-[left,right] duration-200", studioOpen ? "right-[336px]" : "right-2")}>
         <section aria-label={s.panes.chat} data-testid="pane-chat" className="relative flex h-full min-w-0 flex-col">
           {viewer ? (
             <div className="flex min-h-0 flex-1 flex-col transition-[padding] duration-200" style={{ paddingLeft: sourcesOpen ? 340 : 0 }}>

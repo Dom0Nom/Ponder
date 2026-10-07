@@ -90,7 +90,7 @@ export function Composer({
   const off = sources.ready - sources.inChat;
 
   return (
-    <div className="mx-auto max-w-[652px] rounded-pane border border-control bg-surface transition-colors focus-within:border-fg/40">
+    <div className="mx-auto max-w-[654px] rounded-pane border border-control bg-surface transition-colors focus-within:border-fg/40">
       <textarea
         ref={ref}
         rows={1}

@@ -69,7 +69,7 @@ export function QuickCaptureDialog() {
       open={open}
       onOpenChange={setOpen}
       title={s.capture.title}
-      className="w-[min(480px,calc(100vw-32px))]"
+      className="w-[min(482px,calc(100vw-30px))]"
       bodyClassName="pb-4"
       footer={
         <>

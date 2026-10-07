@@ -193,7 +193,7 @@
   --color-timer-warm: var(--timer-warm);
   --color-timer-break: var(--timer-break);
   --color-timer-track: var(--timer-track);
-  --color-kbd: var(--kbd-bg);
+  --color-keycap: var(--kbd-bg);
   --color-tooltip-muted: var(--tooltip-muted);
   --color-scrim: var(--scrim);
   --color-ring: var(--ring);
@@ -322,6 +322,8 @@ body {
   line-height: 1.65;
   overflow-wrap: anywhere;
 }
+.prose-chat p { text-wrap: pretty; }
+.prose-chat strong { font-weight: 600; }
 .prose-chat > * + * {
   margin-top: 0.625rem;
 }
@@ -360,6 +362,10 @@ body {
 }
 .prose-chat table { border-collapse: collapse; }
 .prose-chat th, .prose-chat td { border: 1px solid var(--border); padding: 0.3em 0.6em; }
+/* KaTeX 0.19 lets inline math break after relations; keep each expression on one line */
+.katex { white-space: nowrap; }
+.katex .base { display: inline-block; position: relative; white-space: nowrap; width: min-content; }
+.katex .strut { display: inline-block; }
 .prose-chat .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.2em 0; }
 
 /* highlight.js, theme-aware */

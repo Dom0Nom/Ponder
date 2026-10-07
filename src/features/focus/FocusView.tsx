@@ -104,7 +104,7 @@ function HistoryRow({ x }: { x: FocusSessionSummary }) {
       ? s.focus.inProgress
       : [s.focus.focusedShort(formatShortMinutes(x.focusMs)), x.pauses ? s.focus.pauses(x.pauses) : null].filter(Boolean).join(" · ");
   return (
-    <li className="flex min-h-[65px] items-center gap-3 py-2 not-first:border-t not-first:border-divider">
+    <li className="flex min-h-[60px] items-center gap-3 py-2 not-first:min-h-[61px] not-first:border-t not-first:border-divider">
       <div className="flex min-w-0 flex-1 flex-col gap-px">
         <span className="text-body-lg font-medium">{dayLabel(x.startedAt)}</span>
         {x.goal && <span className="truncate text-label text-muted">{x.goal}</span>}
@@ -131,7 +131,7 @@ function HistorySection({ spaceId }: { spaceId: string }) {
       {error && <ErrorState className="py-4" title={s.focus.historyFailed} error={error} onRetry={() => refetch()} />}
       {data && data.length === 0 && <p className="text-label text-muted">{s.focus.historyEmpty}</p>}
       {data && data.length > 0 && (
-        <ul>
+        <ul className="flex flex-col gap-1">
           {data.slice(0, 20).map((x) => (
             <HistoryRow key={x.id} x={x} />
           ))}

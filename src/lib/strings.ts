@@ -69,6 +69,11 @@ export const s = {
       socratic: "Asks guiding questions, no answers",
       mixed: "Hints first, answer if you're stuck",
     },
+    tutorStyleSettingsHelp: {
+      direct: "Gives the answer and explains it",
+      socratic: "Asks guiding questions, no answers",
+      mixed: "Asks first, explains when you're stuck.",
+    },
     strict: "Sources only",
     strictHelp: "Answer only from this space's sources",
     model: "Model",
