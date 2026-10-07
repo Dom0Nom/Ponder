@@ -84,13 +84,22 @@ test.describe("motion allowed", () => {
     await startFocus(app);
     await expect(app.getByTestId("pane-studio").locator(".m-timer .t-digit").first()).toBeVisible();
     await expect.poll(() => running(app, ".m-timer .t-digit"), { timeout: 5000 }).toBe(false);
+    await app.evaluate(() => {
+      const w = window as unknown as { __pops: string[] };
+      w.__pops = [];
+      document.addEventListener("animationstart", (e) => {
+        const el = e.target as Element;
+        if (el.matches(".t-digit")) w.__pops.push(el.closest("[role=dialog]") ? "break" : "timer");
+      });
+    });
+    const pops = () => app.evaluate(() => (window as unknown as { __pops: string[] }).__pops);
     await advance(app, 3_000);
     await advance(app, 3_000);
-    await app.waitForTimeout(100);
-    expect(await running(app, ".m-timer .t-digit")).toBe(false);
+    await app.waitForTimeout(300);
+    expect(await pops()).toEqual([]);
     await advance(app, 60_000);
     await expect(app.getByRole("dialog", { name: "Break time" })).toBeVisible();
-    await expect.poll(() => running(app, "[role=dialog] .t-digit"), { timeout: 3000 }).toBe(true);
+    await expect.poll(async () => (await pops()).includes("break"), { timeout: 5000 }).toBe(true);
   });
 
   test("streamed answers fade words in and settle to plain text", async ({ app }) => {
