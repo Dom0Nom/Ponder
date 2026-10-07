@@ -9,7 +9,7 @@ pub const AUTH_BASE: &str = "https://auth.openai.com";
 pub const RESOURCE: &str = "https://api.openai.com/v1";
 pub const SCOPE: &str = "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct";
 pub const DYNAMIC_CLIENT: &str = "dynamic_agent_client";
-pub const AGENT_NAME: &str = "AI Learning App";
+pub const AGENT_NAME: &str = "Ponder";
 pub const REFRESH_SKEW_MS: i64 = 5 * 60 * 1000;
 
 #[derive(Debug, Clone)]

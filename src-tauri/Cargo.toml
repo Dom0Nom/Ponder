@@ -1,7 +1,7 @@
 [package]
-name = "ai-learning-app"
+name = "ponder"
 version = "0.1.0"
-description = "Local-first AI learning app"
+description = "Ponder: local-first AI learning app"
 authors = ["Dom0Nom"]
 license = "MIT"
 edition = "2021"

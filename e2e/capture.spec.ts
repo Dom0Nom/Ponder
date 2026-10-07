@@ -33,9 +33,9 @@ test("quick capture from the palette saves a note into the current space", async
 
 test("quick capture from home defaults to the last opened space and saves into the chosen one", async ({ app }) => {
   await createSpace(app, "Chemistry");
-  await app.getByRole("button", { name: "AI Learning App" }).click();
+  await app.getByRole("button", { name: "Ponder" }).click();
   await createSpace(app, "History");
-  await app.getByRole("button", { name: "AI Learning App" }).click();
+  await app.getByRole("button", { name: "Ponder" }).click();
 
   await paletteCommand(app, "Quick capture");
   const dialog = app.getByRole("dialog", { name: "Quick capture" });

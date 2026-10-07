@@ -1,4 +1,4 @@
-# AI Learning App (name TBD)
+# Ponder
 
 Free, open-source (MIT) AI learning platform. Desktop-first, starting on macOS.
 

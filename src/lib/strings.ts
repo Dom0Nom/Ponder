@@ -2,7 +2,7 @@ import type { ErrorType } from "./types";
 
 /** All UI strings live here so they can be translated later. */
 export const s = {
-  appName: "AI Learning App",
+  appName: "Ponder",
   common: {
     cancel: "Cancel",
     save: "Save",

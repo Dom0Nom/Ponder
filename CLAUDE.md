@@ -1,4 +1,4 @@
-# ai-learning-app
+# Ponder (ai-learning-app)
 
 Local-first AI learning desktop app (Tauri 2 + React + TS). Specs: `docs/SPEC.md` (source of truth), `docs/PLAN.md` (how it's built + deviations), `docs/OAUTH.md`, `docs/HANDOFF.md` (current state).
 

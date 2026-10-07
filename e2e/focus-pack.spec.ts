@@ -43,7 +43,7 @@ test("hyperfocus guard stays quiet when switched off in settings", async ({ app 
   await expect(guard).toBeChecked();
   await guard.click();
   await expect(guard).not.toBeChecked();
-  await app.getByRole("button", { name: "AI Learning App" }).click();
+  await app.getByRole("button", { name: "Ponder" }).click();
   await app.getByRole("button", { name: "New space" }).first().click();
   await app.getByLabel("Name").fill("Biology");
   await app.getByRole("button", { name: "Create" }).click();

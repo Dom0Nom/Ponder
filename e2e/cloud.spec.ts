@@ -11,7 +11,7 @@ test("set up Google Drive, connect, browse a folder and import a PDF", async ({ 
   await card.getByRole("button", { name: "Connect" }).click();
   await expect(card.getByText("Connected as you@example.com")).toBeVisible();
 
-  await app.getByRole("button", { name: "AI Learning" }).first().click();
+  await app.getByRole("button", { name: "Ponder" }).first().click();
   await app.getByRole("button", { name: "New space" }).first().click();
   await app.getByLabel("Name").fill("Biology");
   await app.getByRole("button", { name: "Create" }).click();

@@ -1,6 +1,6 @@
 # Spec
 
-Free, MIT-licensed, local-first AI learning platform. Desktop app, macOS first, later Windows, Linux, web. Name not chosen yet; codename `ai-learning-app`.
+Free, MIT-licensed, local-first AI learning platform. Desktop app, macOS first, later Windows, Linux, web. Name: Ponder (repo folder and bundle identifier keep the old codename `ai-learning-app` / `dev.ponder.app`).
 
 NotebookLM is the baseline, not the ceiling: sources + grounded AI + generated study material, plus focus sessions the AI is part of, study plans, and real learning-science tools.
 

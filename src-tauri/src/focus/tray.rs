@@ -30,7 +30,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     let mut builder = TrayIconBuilder::with_id(TRAY_ID)
         .menu(&menu)
         .show_menu_on_left_click(true)
-        .tooltip("AI Learning App")
+        .tooltip("Ponder")
         .on_menu_event(|app, event| {
             let id = event.id().as_ref().to_string();
             let app = app.clone();
