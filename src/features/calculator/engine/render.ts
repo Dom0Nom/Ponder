@@ -1,4 +1,4 @@
-import { BLINK_OFF, BLINK_ON, CUR, CUR_INS, type MNode, cells, measure, parse, parseItems } from "../lcd/layout";
+import { BLINK_OFF, BLINK_ON, CUR, CUR_INS, type MNode, cells, measure, parse, serialize } from "../lcd/layout";
 import { type State, MODE_ROWS, fmtOf, menuTabs, modeSelected, tableRows } from "./calc";
 import { isEmpty, markup } from "./editor";
 import { formatFit, formatPlain } from "./format";
@@ -9,7 +9,7 @@ export const LCD_W = 96;
 export const TEXT_H = 32;
 /** An entry and its result share a row when together they take at most this many cells (BEHAVIOR §3.2). */
 export const ROW_CELLS = 14;
-const MARK_W = 6;
+const CELLS = 16;
 
 export interface Row {
   l: string;
@@ -67,43 +67,65 @@ function modeInd(s: State): string[] {
   return out;
 }
 
-/** Cut a row that is wider than the LCD at item boundaries and add the ▸ overflow mark. */
+/** Cut a history row at the 16th cell, also inside a superscript, and mark it with ▸ (BEHAVIOR §3.2). */
 function cutRight(m: string): string {
-  const items = parseItems(m);
-  let w = 0;
-  let out = "";
-  for (const it of items) {
-    const iw = width(it.src || " ");
-    if (w + iw > LCD_W - MARK_W) break;
-    w += iw;
-    out += it.src;
-  }
-  return out + "▸";
+  let budget = CELLS - 1;
+  const take = (ns: MNode[]): string => {
+    let out = "";
+    for (const n of ns) {
+      if (budget <= 0) break;
+      if (n.t === "sup") {
+        out += `^{${take(n.a)}}`;
+        continue;
+      }
+      const c = n.t === "g" ? 1 : cells([n]);
+      if (c > budget) {
+        budget = 0;
+        break;
+      }
+      budget -= c;
+      out += serialize([n]);
+    }
+    return out;
+  };
+  return take(parse(m)) + "▸";
 }
 
-/** Horizontal scroll of the entry being typed so the cursor stays visible. */
+/** Horizontal scroll of the entry being typed: the cursor keeps a cell of its own (BEHAVIOR §3.2). */
 function scrollEntry(m: string): string {
-  const endCursor = m.endsWith(CUR) || m.endsWith(CUR_INS);
-  if (width(m) + (endCursor ? MARK_W : 0) <= LCD_W) return m;
-  const items = parseItems(m).filter((it) => it.src);
-  const isCur = (src: string) => src === CUR || src === CUR_INS;
-  const ws = items.map((it, i) => (isCur(it.src) ? (i === items.length - 1 ? MARK_W : 0) : width(it.src)));
-  const cur = Math.max(0, items.findIndex((it) => it.src.includes(CUR) || it.src.includes(CUR_INS)));
-  const fits = (a: number) => {
-    let w = a > 0 ? MARK_W : 0;
-    let i = a;
+  const nodes = parse(m);
+  const endsWithCursor = (ns: MNode[]): boolean => {
+    const last = ns[ns.length - 1];
+    if (!last) return false;
+    if (last.t === "cur") return true;
+    if (last.t === "sup" || last.t === "sqrt") return endsWithCursor(last.a);
+    if (last.t === "frac") return endsWithCursor(last.a) || endsWithCursor(last.b);
+    if (last.t === "root") return endsWithCursor(last.a);
+    return false;
+  };
+  const hasCursor = (n: MNode): boolean =>
+    n.t === "cur" || ("a" in n && (n.a.some(hasCursor) || (n.t === "frac" && n.b.some(hasCursor)) || (n.t === "root" && n.i.some(hasCursor))));
+  const items = nodes.map((n) => ({ n, w: n.t === "cur" ? 0 : cells([n]) }));
+  const endsInToken = /[a-z]{2,}(⁻¹)?\(?$/.test(m.split(CUR).join("").split(CUR_INS).join(""));
+  if (endsWithCursor(nodes) && !endsInToken) items[items.length - 1].w += 1;
+  const total = items.reduce((a, it) => a + it.w, 0);
+  if (total <= CELLS) return m;
+  const cur = Math.max(0, items.findIndex((it) => hasCursor(it.n)));
+  const window = (start: number) => {
+    let used = start > 0 ? 1 : 0;
+    let i = start;
     for (; i < items.length; i++) {
-      const tail = items.slice(i + 1).some((it) => !isCur(it.src)) ? MARK_W : 0;
-      if (w + ws[i] + tail > LCD_W) break;
-      w += ws[i];
+      const tail = items.slice(i + 1).some((it) => it.w > 0) ? 1 : 0;
+      if (used + items[i].w + tail > CELLS) break;
+      used += items[i].w;
     }
     return i;
   };
   let start = 0;
-  while (fits(start) <= cur && start < items.length - 1) start++;
-  const stop = fits(start);
-  const rest = items.slice(stop).some((it) => !isCur(it.src));
-  return (start > 0 ? "◂" : "") + items.slice(start, stop).map((it) => it.src).join("") + (rest ? "▸" : "");
+  while (window(start) <= cur && start < items.length - 1) start++;
+  const stop = window(start);
+  const rest = items.slice(stop).some((it) => it.w > 0);
+  return (start > 0 ? "◂" : "") + serialize(items.slice(start, stop).map((it) => it.n)) + (rest ? "▸" : "");
 }
 
 const contains = (ns: MNode[], t: MNode["t"]): boolean =>
@@ -299,32 +321,7 @@ function cellText(v: { d: number; q?: { n: number; m: number; r: number; pi: num
 export function text(s: State): { lines: string[]; indicators: string[] } {
   const m = model(s);
   const lines = m.rows
-    .flatMap((r) => (m.kind === "rows" ? splitHighMinus(r) : [r]))
     .map((r) => stripMarks(r.r !== undefined ? `${r.l}\t${r.r}` : r.l).replace(/ +$/, ""));
   while (lines.length && lines[lines.length - 1] === "") lines.pop();
   return { lines, indicators: m.ind };
-}
-
-/** A superscript on a tall base (a fraction, or parentheses around a power) sits so high that its minus
- * sign reads as a row of its own (BEHAVIOR vectors `frac-mpReciprocalFraction`, `pow-recipRecip`). */
-function splitHighMinus(r: Row): Row[] {
-  const l = r.l;
-  for (let i = l.indexOf("^{⁻"); i > 0; i = l.indexOf("^{⁻", i + 1)) {
-    const base = l[i - 1];
-    let tall = false;
-    if (base === "}") tall = true;
-    if (base === ")") {
-      let depth = 0;
-      for (let j = i - 1; j >= 0; j--) {
-        if (l[j] === ")") depth++;
-        if (l[j] === "(") depth--;
-        if (depth === 0) {
-          tall = /\^\{|\\f\{/.test(l.slice(j, i));
-          break;
-        }
-      }
-    }
-    if (tall) return [{ l: "⁻" }, { l: l.slice(0, i + 2) + l.slice(i + 3), r: r.r }];
-  }
-  return [r];
 }

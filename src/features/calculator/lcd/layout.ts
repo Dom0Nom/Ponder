@@ -203,3 +203,29 @@ export function cells(nodes: MNode[]): number {
   }
   return c;
 }
+
+/** Markup text of parsed nodes (inverse of `parse`). */
+export function serialize(nodes: MNode[]): string {
+  return nodes
+    .map((n) => {
+      switch (n.t) {
+        case "g":
+          return n.key;
+        case "cur":
+          return n.under ? CUR_INS : CUR;
+        case "frac":
+          return `\\f{${serialize(n.a)}}{${serialize(n.b)}}`;
+        case "root":
+          return `\\r{${serialize(n.i)}}{${serialize(n.a)}}`;
+        case "sqrt":
+          return `√{${serialize(n.a)}}`;
+        case "sup":
+          return `^{${serialize(n.a)}}`;
+        case "inv":
+          return `«${serialize(n.a)}»`;
+        case "blink":
+          return BLINK_ON + serialize(n.a) + BLINK_OFF;
+      }
+    })
+    .join("");
+}

@@ -3,6 +3,7 @@ import {
   type El,
   VARS,
   clone,
+  clearTemplate,
   del,
   end,
   fromMarkup,
@@ -367,12 +368,16 @@ function homeKey(s: State, k: string) {
       return homeEnter(s);
     case "clear":
       s.done = false;
+      if (clearTemplate(s.ed)) return;
       if (!isEmpty(s.ed)) s.ed = newEd();
       else s.start = s.history.length;
       s.pasted = false;
       return;
     case "toggle":
-      return toggle(s);
+      if (isEmpty(s.ed) && s.history.at(-1)?.rm) return toggle(s);
+      insert(s.ed, [tok("◂▸")]);
+      s.done = false;
+      return;
     case "up":
     case "2nd+up":
       if (vertical(s.ed, -1)) return;
