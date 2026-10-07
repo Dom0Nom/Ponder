@@ -79,7 +79,7 @@ export function SourcesPanel({ space, open }: { space: Space; open: boolean }) {
         if (e.key === "Escape" && !e.defaultPrevented) setSourcesOpen(space.id, false);
       }}
       className={cn(
-        "t-panel-slide group/panel absolute inset-y-0 left-0 z-10 flex w-[340px] flex-col overflow-hidden border-r border-border bg-surface",
+        "t-panel-slide group/panel absolute inset-y-px left-px z-10 flex w-[341px] flex-col overflow-hidden border-r border-border bg-surface",
         dragging && "ring-2 ring-inset ring-fg/30",
       )}
     >

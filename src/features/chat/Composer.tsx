@@ -39,6 +39,7 @@ export function Composer({
   const navigate = useUi((st) => st.navigate);
   const setImportDialog = useUi((st) => st.setImportDialog);
   const sourcesOpen = useUi((st) => st.sourcesOpen[space.id] === true);
+  const studioOpen = useUi((st) => st.studioOpen);
   const setSourcesOpen = useUi((st) => st.setSourcesOpen);
   const running = useChatStream((st) => (thread ? st.running[thread.id] : undefined));
   const stop = useChatStream((st) => st.stop);
@@ -90,7 +91,7 @@ export function Composer({
   const off = sources.ready - sources.inChat;
 
   return (
-    <div className="mx-auto max-w-[654px] rounded-pane border border-control bg-surface transition-colors focus-within:border-fg/40">
+    <div className={cn("mx-auto rounded-pane border border-control bg-surface transition-colors focus-within:border-fg/40", studioOpen ? "max-w-[654px]" : "max-w-[652px]")}>
       <textarea
         ref={ref}
         rows={1}

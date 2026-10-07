@@ -203,7 +203,7 @@ export function Header() {
           >
             <PanelRight size={14} />
             {s.panes.studio}
-            <Kbd keys={["⌘", "⇧", "T"]} className="text-fg" />
+            <Kbd keys={["⌘", "⇧", "T"]} className={studioOpen ? "text-fg" : undefined} />
           </Button>
         )}
       </div>
