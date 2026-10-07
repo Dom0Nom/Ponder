@@ -50,7 +50,12 @@ const hasUiKey = (p: Page, k: string) => p.evaluate((key) => key in (window as u
 
 /** Go to the GED Math space with the Systems of equations thread open. */
 export async function space(p: Page, panes = { sources: false, studio: true }) {
-  await setUi(p, { activeThread: { [SPACE]: THREAD }, studioOpen: panes.studio, sourcesOpen: { [SPACE]: panes.sources } });
+  await setUi(p, {
+    activeThread: { [SPACE]: THREAD },
+    studioOpen: panes.studio,
+    sourcesOpen: { [SPACE]: panes.sources },
+    modelControls: { "prov-anthropic:Sonnet 5.5": { reasoning: "high" } },
+  });
   await nav(p, { name: "space", spaceId: SPACE });
   await p.getByText("How do I know when to use substitution").first().waitFor({ timeout: 8000 }).catch(() => undefined);
   await settle(p);
@@ -102,7 +107,10 @@ export const SCREENS: Record<number, Screen> = {
     source: "space-v2",
     query: "chat=v2&focus=work",
     native: true,
-    masks: [{ x: 952, y: 48, w: 328, h: 752, reason: "Studio restyled in 02 §10 step" }],
+    masks: [
+      { x: 952, y: 48, w: 328, h: 752, reason: "Studio restyled in 02 §10 step" },
+      { x: 1036, y: 6, w: 92, h: 36, reason: "Calculator button arrives with the calculator in the Studio step (02 §10.7)" },
+    ],
     setup: async (p) => {
       await space(p);
       await p.evaluate(() => document.querySelector("[data-testid=message-list]")?.scrollTo(0, 0));
@@ -429,8 +437,12 @@ export const SCREENS: Record<number, Screen> = {
     title: "Empty space",
     query: "chat=none&sources=empty",
     native: true,
+    masks: [
+      { x: 700, y: 250, w: 110, h: 90, reason: "Ponder mark replaces the chat-icon tile, 05-brand.md" },
+      { x: 1036, y: 6, w: 92, h: 36, reason: "Calculator button arrives with the calculator in the Studio step (02 §10.7)" },
+    ],
     setup: async (p) => {
-      await setUi(p, { studioOpen: false, sourcesOpen: {} });
+      await setUi(p, { studioOpen: false, sourcesOpen: {}, modelControls: { "prov-anthropic:Sonnet 5.5": { reasoning: "high" } } });
       await nav(p, { name: "space", spaceId: SPACE });
       await settle(p, 600);
     },

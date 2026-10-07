@@ -202,7 +202,7 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
         <div className="flex flex-col gap-3 px-4 py-3.5">
           {parts.map((p, i) =>
             p.kind === "math" ? (
-              <div key={i} className="flex justify-center rounded-btn bg-fill-subtle py-[18px] text-title-sm">
+              <div key={i} className="flex justify-center rounded-btn bg-fill-subtle py-[18px] text-title-sm [&_.katex-display]:!my-0 [&_.katex-display]:!py-0">
                 <Markdown text={p.text} />
               </div>
             ) : (
