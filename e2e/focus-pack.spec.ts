@@ -9,7 +9,7 @@ async function createSpace(app: Page) {
   await app.getByRole("button", { name: "New space" }).first().click();
   await app.getByLabel("Name").fill("Biology");
   await app.getByRole("button", { name: "Create" }).click();
-  await expect(app.getByTestId("flashcards-card")).toBeVisible();
+  await expect(app.getByRole("button", { name: "Flashcards", exact: true })).toBeVisible();
 }
 
 async function startSession(app: Page, technique: RegExp, lowEnergy = false) {
@@ -55,7 +55,9 @@ test("hyperfocus guard stays quiet when switched off in settings", async ({ app 
 
 test("low-energy session shows the review-only card and blocks new material", async ({ app }) => {
   await createSpace(app);
+  await app.getByRole("button", { name: "Flashcards", exact: true }).click();
   await expect(app.getByRole("button", { name: "Make cards from sources" })).toBeEnabled();
+  await app.getByRole("button", { name: "Back to Studio" }).click();
   await startSession(app, /^Pomodoro/, true);
 
   const card = app.getByTestId("low-energy-card");
@@ -63,9 +65,11 @@ test("low-energy session shows the review-only card and blocks new material", as
   await expect(card).toContainText("Low-energy session");
   await expect(card.getByRole("button", { name: /Re-test mistakes/ })).toBeEnabled();
   await expect(card.getByRole("button", { name: /Review due cards/ })).toBeVisible();
+  await expect(app.getByRole("button", { name: "Add source" })).toBeDisabled();
+  await app.getByRole("button", { name: "Flashcards", exact: true }).click();
   await expect(app.getByRole("button", { name: "Make cards from sources" })).toBeDisabled();
   await expect(app.getByRole("button", { name: "Add card" })).toBeDisabled();
-  await expect(app.getByRole("button", { name: "Add source" })).toBeDisabled();
+  await app.getByRole("button", { name: "Back to Studio" }).click();
 
   await card.getByRole("button", { name: /Re-test mistakes/ }).click();
   await expect(app.getByRole("tab", { name: "Mistake notebook", selected: true })).toBeVisible();
