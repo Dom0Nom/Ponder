@@ -31,6 +31,7 @@ export const s = {
     loading: "Loading…",
     settings: "Settings",
     back: "Back",
+    backTo: (name: string) => `Back to ${name}`,
     done: "Done",
     add: "Add",
     remove: "Remove",

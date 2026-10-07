@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useUi } from "../stores/ui";
 import { useFocusStore } from "../features/focus/focusStore";
+import { goBack } from "./back";
 
 export function useGlobalShortcuts() {
   useEffect(() => {
@@ -23,6 +24,8 @@ export function useGlobalShortcuts() {
         e.preventDefault();
         if (e.key.toLowerCase() === "s") ui.setSourcesOpen(ui.route.spaceId, !ui.sourcesOpen[ui.route.spaceId]);
         else ui.toggleStudio();
+      } else if (e.key === "[" && !e.shiftKey) {
+        if (goBack()) e.preventDefault();
       } else if (e.key === "\\") {
         e.preventDefault();
         ui.toggleSidebar();

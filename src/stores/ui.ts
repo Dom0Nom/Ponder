@@ -39,6 +39,8 @@ interface UiState {
   sidebarOpen: boolean;
   /** route Settings returns to */
   settingsReturn: Route;
+  /** Where Practice/Review was opened from, for the header back button. */
+  backRoute: Route | null;
   spaceDialogOpen: boolean;
   renamingThreadId: string | null;
   justAddedProvider: string | null;
@@ -97,6 +99,7 @@ export const useUi = create<UiState>()(
       visualEffects: true,
       sidebarOpen: true,
       settingsReturn: { name: "home" },
+      backRoute: null,
       spaceDialogOpen: false,
       renamingThreadId: null,
       justAddedProvider: null,
@@ -130,6 +133,12 @@ export const useUi = create<UiState>()(
             route.name === "space" && st.route.name === "space" && route.spaceId === st.route.spaceId ? st.studioView : null,
           studioFrom: route.name === "space" && st.route.name === "space" && route.spaceId === st.route.spaceId ? st.studioFrom : null,
           settingsReturn: route.name === "settings" && st.route.name !== "settings" ? st.route : st.settingsReturn,
+          backRoute:
+            route.name === "practice" || route.name === "review"
+              ? st.route.name === route.name
+                ? st.backRoute
+                : st.route
+              : null,
         })),
       setTheme: (theme) => set({ theme }),
       setFont: (font) => set({ font }),

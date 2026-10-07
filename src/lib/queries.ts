@@ -41,7 +41,7 @@ export const qk = {
 };
 
 export const useSpaces = () => useQuery({ queryKey: qk.spaces, queryFn: api.listSpaces });
-export const useSpace = (id: string) => useQuery({ queryKey: qk.space(id), queryFn: () => api.getSpace(id) });
+export const useSpace = (id: string) => useQuery({ queryKey: qk.space(id), queryFn: () => api.getSpace(id), enabled: !!id });
 export const useSources = (spaceId: string) =>
   useQuery({ queryKey: qk.sources(spaceId), queryFn: () => api.listSources(spaceId) });
 export const useThreads = (spaceId: string) =>

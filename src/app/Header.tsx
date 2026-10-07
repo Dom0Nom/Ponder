@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calculator, ChevronDown, Pencil, PanelLeft, PanelRight, Pin, PinOff, Trash2 } from "lucide-react";
+import { ArrowLeft, Calculator, ChevronDown, Pencil, PanelLeft, PanelRight, Pin, PinOff, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "../components/ui/button";
 import { ConfirmDialog } from "../components/ui/dialog";
@@ -12,6 +12,7 @@ import { s } from "../lib/strings";
 import { useUi } from "../stores/ui";
 import { FocusHeaderTimer } from "../features/focus/FocusHeaderTimer";
 import { useActiveThread } from "../features/chat/useActiveThread";
+import { backTarget } from "./back";
 
 const Sep = () => (
   <span aria-hidden className="text-faint">
@@ -94,6 +95,54 @@ function SpaceTitle({ spaceId }: { spaceId: string }) {
   );
 }
 
+function BackButton() {
+  const route = useUi((st) => st.route);
+  const backRoute = useUi((st) => st.backRoute);
+  const navigate = useUi((st) => st.navigate);
+  const target = backTarget(route, backRoute);
+  const spaceId = target && "spaceId" in target ? target.spaceId : undefined;
+  const { data: space } = useSpace(spaceId ?? "");
+  if (!target) return null;
+  const label =
+    target.name === "space" && space ? s.common.backTo(space.name)
+    : target.name === "practice" ? s.common.backTo(s.practice.title)
+    : target.name === "home" ? s.common.backTo(s.shell.home)
+    : s.common.back;
+  return (
+    <Tooltip
+      content={
+        <>
+          {label} <Kbd keys={["⌘", "["]} />
+        </>
+      }
+    >
+      <Button variant="chrome" size="icon-sm" aria-label={label} onClick={() => navigate(target)}>
+        <ArrowLeft size={16} />
+      </Button>
+    </Tooltip>
+  );
+}
+
+function ReviewCrumbs({ spaceId }: { spaceId?: string }) {
+  const navigate = useUi((st) => st.navigate);
+  const { data: space } = useSpace(spaceId ?? "");
+  return (
+    <>
+      {spaceId && space && (
+        <>
+          <button className={crumbLink} onClick={() => navigate({ name: "space", spaceId })}>
+            {space.name}
+          </button>
+          <Sep />
+        </>
+      )}
+      <span className={crumbCurrent} data-tauri-drag-region>
+        {s.review.title}
+      </span>
+    </>
+  );
+}
+
 function PracticeCrumbs({ spaceId, topicTitle }: { spaceId: string; topicTitle?: string }) {
   const navigate = useUi((st) => st.navigate);
   const { data: space } = useSpace(spaceId);
@@ -160,6 +209,7 @@ export function Header() {
           <PanelLeft size={16} />
         </Button>
       </Tooltip>
+      <BackButton />
       <div className="flex min-w-0 items-center gap-3" data-tauri-drag-region>
         {route.name === "home" && (
           <span className={crumbCurrent} data-tauri-drag-region>
@@ -171,11 +221,7 @@ export function Header() {
             {s.common.settings}
           </span>
         )}
-        {route.name === "review" && (
-          <span className={crumbCurrent} data-tauri-drag-region>
-            {s.review.title}
-          </span>
-        )}
+        {route.name === "review" && <ReviewCrumbs spaceId={route.spaceId} />}
         {route.name === "practice" && <PracticeCrumbs spaceId={route.spaceId} topicTitle={route.topicTitle} />}
         {route.name === "space" && <SpaceTitle spaceId={route.spaceId} />}
       </div>

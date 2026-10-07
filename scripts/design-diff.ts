@@ -183,6 +183,10 @@ const USER_DEVIATIONS: Mask[] = [
   { x: 104, y: 10, w: 100, h: 28, reason: "Ponder mark + wordmark in the sidebar top row, requested by the user 2026-10-07" },
 ];
 
+// Header back button on Practice and Review (it shifts the breadcrumb), requested by the user 2026-10-07.
+const BACK_BUTTON_SCREENS = new Set([3, 4, 12, 31, 37]);
+const BACK_BUTTON: Mask = { x: 268, y: 8, w: 460, h: 32, reason: "header back button + shifted breadcrumb on Practice/Review, requested by the user 2026-10-07" };
+
 function crop(png: PNG, r: Region): PNG {
   const x0 = Math.round(r.x * SCALE), y0 = Math.round(r.y * SCALE);
   const out = new PNG({ width: Math.round(r.w * SCALE), height: Math.round(r.h * SCALE) });
@@ -303,7 +307,7 @@ async function main() {
           buf = await shootApp(browser, r);
         }
         writeFileSync(appPath, buf);
-        row.pct = compare(join(DESIGN_OUT, `${r.id}.png`), buf, r.masks, join(OUT, `${r.id}-diff.png`), r.region);
+        row.pct = compare(join(DESIGN_OUT, `${r.id}.png`), buf, BACK_BUTTON_SCREENS.has(r.n) ? [...r.masks, BACK_BUTTON] : r.masks, join(OUT, `${r.id}-diff.png`), r.region);
         row.status = row.pct <= THRESHOLD_PCT ? "pass" : r.pending ? "pending" : "fail";
         if (r.pending) row.note = r.pending;
       } catch (e) {
