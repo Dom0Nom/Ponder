@@ -135,6 +135,18 @@ describe("author logos", () => {
     }
   });
 
+  it("every author in the OpenRouter list is mapped or bundled", async () => {
+    const { AUTHOR_DOMAINS, baseAuthor } = await import("./openrouter");
+    const { authorIconUrl } = await import("./icons");
+    const authors = `aion-labs amazon anthracite-org anthropic apodex arcee-ai baidu bytedance bytedance-seed cognitivecomputations cohere deepseek
+      dots-studio fireworks google gryphe ibm-granite inception inclusionai inference-net liquid mancer meituan meta meta-llama microsoft minimax
+      mistralai moonshotai morph nex-agi nousresearch nvidia openai openrouter perceptron perplexity poolside prism-ml qwen rekaai relace sakana
+      sao10k stepfun tencent thedrummer thinkingmachines typesafe unbiased undi95 upstage writer x-ai xiaomi z-ai ~anthropic ~deepseek ~google
+      ~moonshotai ~openai ~x-ai ~z-ai`.split(/\s+/);
+    const missing = authors.filter((a) => !authorIconUrl(a) && !(baseAuthor(a) in AUTHOR_DOMAINS));
+    expect(missing).toEqual([]);
+  });
+
   it("bundled authors resolve without a site lookup", async () => {
     const { authorIconUrl } = await import("./icons");
     expect(authorIconUrl("~anthropic")).toBeTruthy();

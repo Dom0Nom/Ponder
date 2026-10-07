@@ -86,3 +86,7 @@ The icons in `src/assets/providers/` are the logos or favicons of the services t
 - DeepSeek: https://www.deepseek.com/favicon.ico
 - Meta: https://ai.meta.com (site icon, SVG)
 - Qwen: https://qwen.ai (site icon)
+
+## Logos fetched at runtime
+
+Model authors and custom providers without a bundled logo get their icon from the owner's own website at runtime (its favicon or touch icon, found from the homepage). Icons are cached locally in the app data directory and are never redistributed with the app. They are trademarks of their owners, used only to identify the provider or model author.

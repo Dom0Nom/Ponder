@@ -36,7 +36,7 @@ export const SEARCH_LIMIT = 50;
 
 export const authorOf = (modelId: string) => (modelId.includes("/") ? modelId.slice(0, modelId.indexOf("/")) : "");
 
-/** Site to take each OpenRouter author's logo from. Authors without a site of their own (Hugging Face profiles) are omitted. */
+/** Site to take each OpenRouter author's logo from. Empty = no site of their own that identifies them (Hugging Face profiles, parked domains); those keep the plug. */
 export const AUTHOR_DOMAINS: Record<string, string> = {
   "aion-labs": "aionlabs.ai",
   amazon: "aws.amazon.com",
@@ -49,10 +49,13 @@ export const AUTHOR_DOMAINS: Record<string, string> = {
   cohere: "cohere.com",
   "dots-studio": "xiaohongshu.com",
   fireworks: "fireworks.ai",
-  gryphe: "gryphe.com",
+  gryphe: "",
   "ibm-granite": "ibm.com",
   inception: "inceptionlabs.ai",
-  inclusionai: "inclusion.ai",
+  inclusionai: "",
+  "anthracite-org": "",
+  sao10k: "",
+  undi95: "",
   "inference-net": "inference.net",
   liquid: "liquid.ai",
   mancer: "mancer.tech",
@@ -90,6 +93,7 @@ export const baseAuthor = (author: string) => author.replace(/^~/, "");
 export function authorSites(author: string): string[] {
   const a = baseAuthor(author);
   const mapped = AUTHOR_DOMAINS[a];
+  if (mapped === "") return [];
   if (mapped) return [mapped];
   return /^[a-z0-9-]+$/.test(a) ? [`${a}.com`, `${a}.ai`] : [];
 }
