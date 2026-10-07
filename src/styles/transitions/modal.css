@@ -11,7 +11,7 @@
 @keyframes t-modal-close { from { transform: scale(1); opacity: 1; } to { transform: scale(var(--modal-scale-close)); opacity: 0; } }
 @keyframes t-modal-scrim-open  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes t-modal-scrim-close { from { opacity: 1; } to { opacity: 0; } }
-.t-modal { transform-origin: center; will-change: transform, opacity; }
+.t-modal { transform-origin: center; }
 .t-modal[data-state="open"]   { animation: t-modal-open var(--modal-open-dur) var(--modal-ease) both; }
 .t-modal[data-state="closed"] { animation: t-modal-close var(--modal-close-dur) var(--modal-ease) both; pointer-events: none; }
 .t-modal-scrim[data-state="open"]   { animation: t-modal-scrim-open var(--modal-open-dur) var(--modal-ease) both; }

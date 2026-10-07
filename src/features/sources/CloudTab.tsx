@@ -158,7 +158,7 @@ function CloudBrowser({ service, space, done }: { service: CloudService; space: 
                   type="button"
                   onClick={() => setTrail(backTo(trail, i))}
                   aria-current={i === trail.length - 1 ? "page" : undefined}
-                  className={cn("truncate font-medium hover:text-fg", i === trail.length - 1 ? "text-fg" : "text-muted")}
+                  className={cn("truncate font-medium hover:text-fg", i === trail.length - 1 ? "text-fg" : "text-fg-secondary")}
                 >
                   {c.name}
                 </button>

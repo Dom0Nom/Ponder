@@ -36,12 +36,21 @@ export function importKind(item: Pick<CloudItem, "name" | "folder" | "mimeType">
   return MIME_KINDS[mime] ?? null;
 }
 
+const MIME_LABELS: Record<string, string> = {
+  "application/pdf": "pdf",
+  "application/epub+zip": "epub",
+  "image/jpeg": "jpeg",
+  "image/png": "png",
+  "text/plain": "txt",
+  "text/markdown": "md",
+};
+
 export function typeLabel(item: Pick<CloudItem, "name" | "folder" | "mimeType">): string {
   if (item.folder) return "Folder";
   const g = item.mimeType ? GOOGLE_EXPORTS[item.mimeType] : undefined;
   if (g) return g.label;
   if (item.mimeType?.startsWith("application/vnd.google-apps.")) return "Google file";
-  const ext = extensionOf(item.name);
+  const ext = extensionOf(item.name) || MIME_LABELS[item.mimeType ?? ""] || "";
   return ext ? ext.toUpperCase() : "File";
 }
 
