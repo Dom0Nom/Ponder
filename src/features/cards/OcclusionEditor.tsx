@@ -155,7 +155,7 @@ export function OcclusionEditor({
       </span>
       <div className="flex min-h-0 gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <div className="relative flex h-[360px] items-center justify-center overflow-hidden rounded-pane border border-border bg-fill">
+          <div className="relative box-content flex h-[360px] items-center justify-center overflow-hidden rounded-pane border border-border bg-fill">
             {!image ? (
               <EmptyState
                 icon={<ImagePlus size={20} />}
@@ -339,7 +339,7 @@ function MaskStage({
       aria-describedby="occlusion-hint"
       title={s.occlusion.drawHint}
       data-testid="occlusion-stage"
-      className="relative inline-block max-w-full touch-none select-none outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group relative inline-block max-w-full touch-none select-none outline-none focus-visible:ring-2 focus-visible:ring-ring"
       style={{ cursor }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -365,7 +365,7 @@ function MaskStage({
               HANDLES.map((h) => (
                 <span
                   key={h}
-                  className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-sm border border-fg bg-surface"
+                  className="absolute hidden size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-sm border border-fg bg-surface group-hover:block group-focus:block"
                   style={{ left: `${HANDLE_POS[h][0]}%`, top: `${HANDLE_POS[h][1]}%` }}
                 />
               ))}

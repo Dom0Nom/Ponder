@@ -197,7 +197,7 @@ export function PhotoDialog({
   }, [open, initialImage]);
 
   const read = async () => {
-    if (!photo) return;
+    if (!photo) return setError(s.steps.needImage);
     setReading(true);
     setError(null);
     const ac = new AbortController();
@@ -233,7 +233,7 @@ export function PhotoDialog({
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
             {s.common.cancel}
           </Button>
-          <Button variant="primary" disabled={!photo || reading} onClick={read}>
+          <Button variant="primary" disabled={reading} onClick={read}>
             {reading && <Spinner size={14} className="text-on-primary" />}
             {reading ? s.steps.reading : s.steps.read}
           </Button>

@@ -7,7 +7,7 @@ export function FollowUps({ items, onAsk }: { items: string[]; onAsk: (text: str
         <button
           key={f}
           onClick={() => onAsk(f)}
-          className="flex h-9 items-center gap-2.5 border-b border-divider text-left text-body-lg text-fg hover:bg-fill-faint"
+          className="flex h-[37px] items-center gap-2.5 border-b border-divider text-left text-body-lg text-fg hover:bg-fill-faint"
         >
           <CornerDownRight size={14} className="shrink-0 text-faint" />
           <span className="flex-1">{f}</span>

@@ -758,6 +758,12 @@ function seedCommon(db: DB, o: FixtureOptions, at: (n: number) => number, _x: <V
   if (o.drive) db.cloud.google = { clientId: "design-client.apps.googleusercontent.com", hasSecret: true, state: "signedIn", account: "me@example.com", error: null };
 }
 
+const PLACEHOLDER_IMAGE =
+  "data:image/svg+xml;base64," +
+  btoa(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="552" height="358"><text x="276" y="184" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="#8a8a8a" text-anchor="middle">Your image</text></svg>',
+  );
+
 type Args = Record<string, unknown>;
 
 /** Handlers that replace the mock's own when the fixture is active. */
@@ -779,6 +785,8 @@ export function fixtureOverrides(): Record<string, (a: Args) => unknown> {
         keywordHits: COVERAGE[t.id]?.keywordHits ?? 0,
         best: null,
       })),
+    image_store: () => "your-image.svg",
+    image_read: () => PLACEHOLDER_IMAGE,
     lan_scan: () => LAN_SERVERS,
     cloud_list: () => ({ items: DRIVE_ITEMS, nextPageToken: null }),
     oauth_xai_device_start: () => ({
@@ -799,7 +807,9 @@ export function fixtureScript(fallback: Script): Script {
     const text = typeof last?.content === "string" ? last.content : JSON.stringify(last?.content ?? "");
     if (/multiple-choice quiz/i.test(text)) {
       const tid = text.match(/id \\?"([^"\\]+)\\?"/)?.[1] ?? null;
-      return { content: JSON.stringify(FIXTURE_QUIZ.questions.map((q) => ({ ...q, topicId: tid }))) };
+      // the app shuffles options with the seeded random; this pre-order shows 3, −4, 4, −3
+      const qs = FIXTURE_QUIZ.questions.map((q, i) => (i === 0 ? { ...q, options: ["−4", "4", "3", "−3"], answer: 2 } : q));
+      return { content: JSON.stringify(qs.map((q) => ({ ...q, topicId: tid }))) };
     }
     if (/Write ONE (practice|new) problem/i.test(text)) {
       return { content: JSON.stringify({ kind: "numeric", ...FIXTURE_PRACTICE, level: 3 }) };

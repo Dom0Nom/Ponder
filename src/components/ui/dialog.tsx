@@ -51,7 +51,7 @@ export function Dialog({
             <div className="min-w-0 flex-1">
               <D.Title className="text-title font-semibold">{title}</D.Title>
               {description ? (
-                <D.Description className="mt-1 text-body text-muted">{description}</D.Description>
+                <D.Description className="mt-1 text-body leading-[1.5] text-muted">{description}</D.Description>
               ) : (
                 <D.Description className="sr-only">{title}</D.Description>
               )}

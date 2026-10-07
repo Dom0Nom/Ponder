@@ -112,9 +112,9 @@ const SPACE_BACKDROP = "the design draws the dialog over a static reduced copy o
  * (Home/Review/Practice only, 640px chat column, Studio inside the card). This restyles the real screen into that
  * state so the diff covers the whole frame; it changes the recipe's page only, not the app.
  */
-async function legacySpace(p: Page, withStudio: boolean) {
+async function legacySpace(p: Page, withStudio: boolean, column = 640) {
   await p.addStyleTag({
-    content: `[data-testid=message-list]>div{max-width:640px!important;gap:22px!important}
+    content: `[data-testid=message-list]>div{max-width:${column}px!important;gap:22px!important}
 [data-testid=message-list] *{line-height:1.65}
 [data-testid=message-list] .prose-chat p+p{margin-top:22px!important}
 [data-testid=msg-assistant]{gap:22px!important}
@@ -261,7 +261,8 @@ export const SCREENS: Record<number, Screen> = {
       await p.getByTestId("topic-row").filter({ hasText: "Systems of equations" }).first().click();
       await click(p, /start this topic/i, "menuitem");
       await p.getByTestId("quiz-question").waitFor({ timeout: 8000 }).catch(() => undefined);
-      await legacySpace(p, false);
+      await p.getByRole("radio").first().click().catch(() => undefined);
+      await legacySpace(p, false, 700);
       await settle(p, 500);
     },
   },
@@ -359,7 +360,23 @@ export const SCREENS: Record<number, Screen> = {
       await studio(p, "flashcards", "Flashcards");
       await p.getByTestId("occlusion-editor-button").click();
       await click(p, /choose image/i).catch(() => undefined);
+      await settle(p, 300);
+      const boxes: [number, number, number, number][] = [
+        [297.2, 282.6, 125.4, 54.4],
+        [551.2, 325.8, 147.5, 47.2],
+        [396.6, 455.4, 169.6, 54.4],
+      ];
+      for (const [x, y, w, h] of boxes) {
+        await p.mouse.move(x, y);
+        await p.mouse.down();
+        await p.mouse.move(x + w / 2, y + h / 2, { steps: 3 });
+        await p.mouse.move(x + w, y + h, { steps: 3 });
+        await p.mouse.up();
+      }
+      await p.getByLabel("Label for box 2").fill("Nucleus").catch(() => undefined);
+      await p.getByLabel("Label for box 1").fill("Mitochondria").catch(() => undefined);
       await legacySpace(p, false);
+      await p.mouse.move(5, 5);
       await settle(p, 600);
     },
   },
