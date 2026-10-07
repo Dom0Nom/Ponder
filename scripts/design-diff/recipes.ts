@@ -121,7 +121,7 @@ const STUDIO_IN_CARD =
 /** Moves the real Studio panel into the 340px slot inside the chat card that screens 22-26 draw. */
 const studioInCard = (p: Page) =>
   p.addStyleTag({
-    content: `[data-testid=pane-studio]{top:2px!important;right:9px!important;bottom:9px!important;width:340px!important;border-top:0!important;z-index:20}`,
+    content: `[data-testid=pane-studio]{top:2px!important;right:9px!important;bottom:9px!important;width:341px!important;border-top:0!important;z-index:20}`,
   });
 const BACKDROP = "the design draws 9a/10a over a static copy of Home (shifted, no New space button), not the real screen 1";
 
@@ -239,12 +239,13 @@ export const SCREENS: Record<number, Screen> = {
   },
   10: {
     title: "Quick capture",
-    region: { x: 395, y: 229, w: 490, h: 342, reason: "the artboard draws an older Home (no New space button) behind the capture dialog" },
+    region: { x: 399, y: 233, w: 482, h: 334, reason: "the artboard draws an older Home (no New space button) behind the capture dialog" },
     query: "cards=review",
     setup: async (p) => {
       await home(p);
       await setUi(p, { captureOpen: true });
       await settle(p, 400);
+      await p.getByRole("textbox").first().fill(".");
       await p.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     },
   },
@@ -382,6 +383,7 @@ export const SCREENS: Record<number, Screen> = {
     setup: async (p) => {
       await space(p);
       await studio(p, "settings", "Space settings");
+      await p.getByRole("switch", { name: /sources only/i }).click();
       await studioInCard(p);
     },
   },
@@ -542,7 +544,7 @@ export function buildRecipes(): Recipe[] {
         query: o.query ?? "",
         source: o.source ?? "app-screens",
         pending: o.pending,
-        masks: process.env.NOMASK ? [] : (o.masks ?? []),
+        masks: o.masks ?? [],
         region: o.region,
         native: !!o.native,
         setup: o.setup,
