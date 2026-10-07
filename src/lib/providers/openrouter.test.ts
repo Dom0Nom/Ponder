@@ -7,8 +7,7 @@ import { storedControls } from "../chat/controls";
 import type { ResolvedModel } from "../chat/llm";
 import { useUi } from "../../stores/ui";
 import { openRouterFixture } from "../../test/openrouterFixture";
-import { catalog } from "./catalog";
-import { controlsKey, effortLabel, modelCapabilities, openRouterCapabilities, resolveControls } from "./controls";
+import { controlsKey } from "./controls";
 import { RECOMMENDED_MODELS, authorOf, recommendedModels, searchModels, setOpenRouterModels } from "./openrouter";
 
 const m = (id: string, supportedParameters: string[], created = 1): OpenRouterModel => ({
@@ -27,49 +26,16 @@ beforeEach(() => {
   useUi.setState({ modelControls: {} });
 });
 
-describe("per-model capabilities", () => {
-  it("derives controls from OpenRouter's supported parameters", () => {
-    const effort = openRouterCapabilities(m("a/x", ["reasoning", "reasoning_effort", "temperature"]));
-    expect(effort.reasoningLevels?.map((l) => l.value)).toEqual(["low", "medium", "high"]);
-    expect(effort.thinkingToggle).toBe(true);
-    expect(effort.temperature).toBe(true);
-
-    const toggleOnly = openRouterCapabilities(m("a/y", ["reasoning"]));
-    expect(toggleOnly.reasoningLevels).toBeNull();
-    expect(toggleOnly.thinkingToggle).toBe(true);
-    expect(toggleOnly.temperature).toBe(false);
-
-    const plain = openRouterCapabilities(m("a/z", ["temperature"]));
-    expect(plain.thinkingToggle).toBe(false);
-    expect(plain.reasoningToggle).toBe(false);
-  });
-
-  it("uses the catalog for other providers and unknown OpenRouter models", () => {
-    expect(modelCapabilities({ ...provider, type: "anthropic" }, "claude")).toBe(catalog.anthropic.capabilities);
-    expect(modelCapabilities(provider, "not/listed")).toBe(catalog.openrouter.capabilities);
-    expect(modelCapabilities(provider, "meta-llama/llama-4-maverick").thinkingToggle).toBe(false);
-    expect(modelCapabilities(provider, "deepseek/deepseek-v4.1-flash").reasoningLevels).not.toBeNull();
-  });
-
-  it("drops stored values the model can't take and defaults reasoning off only where it reasons", () => {
-    const plainCaps = modelCapabilities(provider, "meta-llama/llama-4-maverick");
-    expect(resolveControls(provider, { reasoning: "high", temperature: 0.3 }, plainCaps)).toEqual({ temperature: 0.3 });
-    const reasoningCaps = modelCapabilities(provider, "deepseek/deepseek-v4.1-flash");
-    expect(resolveControls(provider, undefined, reasoningCaps)).toEqual({ reasoning: "none" });
-    expect(effortLabel(provider, { reasoning: "high" }, reasoningCaps)).toBe("High");
-  });
-});
-
 describe("controls are stored per provider and model", () => {
   it("keeps separate values and runTurn input follows the model in use", () => {
     const a = "deepseek/deepseek-v4.1-flash";
     const b = "qwen/qwen3.8-flash";
-    useUi.getState().setModelControls(controlsKey("or", a), { reasoning: "high", temperature: 0.7 });
-    expect(storedControls(llm(a))).toMatchObject({ reasoning: "high", temperature: 0.7 });
-    expect(storedControls(llm(b))).toEqual({ reasoning: "none" });
-    useUi.getState().setModelControls(controlsKey("or", b), { reasoning: "medium" });
-    expect(storedControls(llm(a))).toMatchObject({ reasoning: "high" });
-    expect(storedControls(llm(b))).toMatchObject({ reasoning: "medium" });
+    useUi.getState().setModelControls(controlsKey("or", a), { effort: "low", temperature: 0.7 });
+    expect(storedControls(llm(a))).toEqual({ effort: "low", temperature: 0.7 });
+    expect(storedControls(llm(b))).toEqual({});
+    useUi.getState().setModelControls(controlsKey("or", b), { thinking: false, effort: "high" });
+    expect(storedControls(llm(a))).toEqual({ effort: "low", temperature: 0.7 });
+    expect(storedControls(llm(b))).toEqual({ thinking: false });
     expect(storedControls(llm("meta-llama/llama-4-maverick"))).toEqual({});
   });
 

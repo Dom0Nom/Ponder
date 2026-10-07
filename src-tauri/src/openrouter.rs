@@ -7,8 +7,19 @@ use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const URL: &str = "https://openrouter.ai/api/v1/models";
-const CACHE_FILE: &str = "openrouter-chat-models.json";
+const CACHE_FILE: &str = "openrouter-chat-models-v2.json";
 const TTL: Duration = Duration::from_secs(24 * 60 * 60);
+
+/// What OpenRouter reports about a model's reasoning controls.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct OpenRouterReasoning {
+    pub mandatory: bool,
+    pub supported_efforts: Option<Vec<String>>,
+    pub default_effort: Option<String>,
+    pub default_enabled: Option<bool>,
+    pub supports_max_tokens: bool,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -18,6 +29,8 @@ pub struct OpenRouterModel {
     pub context_length: Option<u64>,
     pub supported_parameters: Vec<String>,
     pub created: Option<u64>,
+    #[serde(default)]
+    pub reasoning: Option<OpenRouterReasoning>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,6 +52,20 @@ fn is_text_chat(m: &Value) -> bool {
     };
     let (input, output) = (list("input_modalities"), list("output_modalities"));
     (input.is_empty() || input.contains(&"text")) && (output.is_empty() || output == ["text"])
+}
+
+fn parse_reasoning(r: &Value) -> Option<OpenRouterReasoning> {
+    let obj = r.as_object()?;
+    let strings = |k: &str| -> Option<Vec<String>> {
+        obj.get(k).and_then(Value::as_array).map(|a| a.iter().filter_map(|x| x.as_str().map(str::to_string)).collect())
+    };
+    Some(OpenRouterReasoning {
+        mandatory: obj.get("mandatory").and_then(Value::as_bool).unwrap_or(false),
+        supported_efforts: strings("supported_efforts"),
+        default_effort: obj.get("default_effort").and_then(Value::as_str).map(str::to_string),
+        default_enabled: obj.get("default_enabled").and_then(Value::as_bool),
+        supports_max_tokens: obj.get("supports_max_tokens").and_then(Value::as_bool).unwrap_or(false),
+    })
 }
 
 pub fn parse(body: &str) -> AppResult<Vec<OpenRouterModel>> {
@@ -63,6 +90,7 @@ pub fn parse(body: &str) -> AppResult<Vec<OpenRouterModel>> {
                 context_length: m.get("context_length").and_then(Value::as_u64),
                 supported_parameters,
                 created: m.get("created").and_then(Value::as_u64),
+                reasoning: m.get("reasoning").and_then(parse_reasoning),
             })
         })
         .collect();
@@ -118,7 +146,7 @@ mod tests {
 
     const BODY: &str = r#"{"data":[
       {"id":"openai/gpt-5","name":"OpenAI: GPT-5","context_length":400000,"created":1,"supported_parameters":["temperature","reasoning"]},
-      {"id":"anthropic/claude-haiku-4.5","context_length":200000,"supported_parameters":["reasoning","include_reasoning"]},
+      {"id":"anthropic/claude-haiku-4.5","context_length":200000,"supported_parameters":["reasoning","include_reasoning"],"reasoning":{"mandatory":true,"supported_efforts":["high","low"],"default_effort":"high"}},
       {"name":"no id"}]}"#;
 
     #[test]
@@ -128,6 +156,11 @@ mod tests {
         assert_eq!(m[0].id, "anthropic/claude-haiku-4.5");
         assert_eq!(m[0].name, "anthropic/claude-haiku-4.5");
         assert_eq!(m[1].supported_parameters, vec!["temperature", "reasoning"]);
+        let r = m[0].reasoning.as_ref().unwrap();
+        assert!(r.mandatory);
+        assert_eq!(r.supported_efforts.as_deref(), Some(&["high".to_string(), "low".to_string()][..]));
+        assert_eq!(r.default_effort.as_deref(), Some("high"));
+        assert!(m[1].reasoning.is_none());
         assert!(parse("{}").is_err());
     }
 

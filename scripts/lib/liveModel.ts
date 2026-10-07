@@ -21,7 +21,7 @@ export function liveModel(modelId?: string): ResolvedModel {
     provider,
     modelId: id,
     model: createLanguageModel(provider, id, { fetch: fetchWithKey as typeof fetch }),
-    options: (o) => callOptions(provider, o),
+    options: (o) => callOptions(provider, id, o),
   };
 }
 

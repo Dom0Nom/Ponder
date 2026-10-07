@@ -1859,5 +1859,10 @@ export function installMockBackend() {
     p.config = { ...p.config, models: ["mock-model", ...Array.from({ length: 11 }, (_, i) => `local-model-${i + 1}`)] };
     save();
   }
+  if (new URLSearchParams(location.search).has("localqwen")) {
+    const p = seedProvider();
+    p.config = { ...p.config, models: ["mock-model", "qwen3.5-9b"] };
+    save();
+  }
   setInterval(focusTick, 1000);
 }

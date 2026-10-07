@@ -4,30 +4,9 @@ export interface Capabilities {
   webSearch: "builtin" | "none";
   tts: boolean;
   images: boolean;
-  temperature: boolean;
   maxOutputTokens: boolean;
-  /** `reasoning: "none"` reliably turns thinking off */
-  reasoningToggle: boolean;
   embeddings: boolean;
-  /** reasoning levels the composer offers, in order; null = no effort control */
-  reasoningLevels: ReasoningLevelOption[] | null;
-  reasoningLabel: string;
-  /** an on/off "thinking" switch (off sends reasoning: "none") */
-  thinkingToggle: boolean;
-  /** OpenAI text verbosity */
-  verbosity: boolean;
 }
-
-export type ReasoningLevel = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
-export type Verbosity = "low" | "medium" | "high";
-export interface ReasoningLevelOption {
-  value: ReasoningLevel;
-  label: string;
-}
-
-export const TEMPERATURE_VALUES = [0, 0.3, 0.7, 1] as const;
-
-const levels = (...v: [ReasoningLevel, string][]): ReasoningLevelOption[] => v.map(([value, label]) => ({ value, label }));
 
 export type SdkKind = "anthropic" | "openai" | "google" | "xai" | "chatgpt" | "openai-compatible";
 
@@ -50,14 +29,8 @@ const cloud = (c: Partial<Capabilities> = {}): Capabilities => ({
   webSearch: "none",
   tts: false,
   images: false,
-  temperature: true,
   maxOutputTokens: true,
-  reasoningToggle: false,
   embeddings: false,
-  reasoningLevels: null,
-  reasoningLabel: "Reasoning effort",
-  thinkingToggle: false,
-  verbosity: false,
   ...c,
 });
 
@@ -74,9 +47,6 @@ export const catalog: Record<ProviderType, CatalogEntry> = {
     docsUrl: "https://console.anthropic.com/settings/keys",
     capabilities: cloud({
       webSearch: "builtin",
-      thinkingToggle: true,
-      reasoningLabel: "Effort",
-      reasoningLevels: levels(["low", "Low"], ["medium", "Medium"], ["high", "High"], ["xhigh", "Max"]),
     }),
   },
   openai: {
@@ -93,8 +63,6 @@ export const catalog: Record<ProviderType, CatalogEntry> = {
       tts: true,
       images: true,
       embeddings: true,
-      verbosity: true,
-      reasoningLevels: levels(["minimal", "Minimal"], ["low", "Low"], ["medium", "Medium"], ["high", "High"]),
     }),
   },
   google: {
@@ -111,8 +79,6 @@ export const catalog: Record<ProviderType, CatalogEntry> = {
       tts: true,
       images: true,
       embeddings: true,
-      reasoningLabel: "Thinking",
-      reasoningLevels: levels(["none", "Off"], ["low", "Low"], ["medium", "Medium"], ["high", "High"]),
     }),
   },
   openrouter: {
@@ -124,12 +90,8 @@ export const catalog: Record<ProviderType, CatalogEntry> = {
     baseUrlEditable: false,
     needsKey: true,
     docsUrl: "https://openrouter.ai/keys",
-    // OpenRouter accepts reasoning_effort "none" for reasoning models and ignores it elsewhere
     capabilities: cloud({
       webSearch: "builtin",
-      reasoningToggle: true,
-      thinkingToggle: true,
-      reasoningLevels: levels(["low", "Low"], ["medium", "Medium"], ["high", "High"]),
     }),
   },
   xai: {
@@ -145,7 +107,6 @@ export const catalog: Record<ProviderType, CatalogEntry> = {
       webSearch: "builtin",
       tts: true,
       images: true,
-      reasoningLevels: levels(["low", "Low"], ["high", "High"]),
     }),
   },
   groq: {
@@ -202,7 +163,7 @@ export const catalog: Record<ProviderType, CatalogEntry> = {
     baseUrlEditable: true,
     needsKey: false,
     docsUrl: "https://lmstudio.ai/docs/app/api",
-    capabilities: cloud({ reasoningToggle: true, thinkingToggle: true, embeddings: true }),
+    capabilities: cloud({ embeddings: true }),
   },
   ollama: {
     type: "ollama",
@@ -213,7 +174,7 @@ export const catalog: Record<ProviderType, CatalogEntry> = {
     baseUrlEditable: true,
     needsKey: false,
     docsUrl: "https://docs.ollama.com/api/openai-compatibility",
-    capabilities: cloud({ reasoningToggle: true, thinkingToggle: true, embeddings: true }),
+    capabilities: cloud({ embeddings: true }),
   },
   llamacpp: {
     type: "llamacpp",
@@ -239,10 +200,7 @@ export const catalog: Record<ProviderType, CatalogEntry> = {
     // preview limits: Responses API only, no temperature / max_output_tokens / images / audio
     capabilities: cloud({
       webSearch: "builtin",
-      temperature: false,
       maxOutputTokens: false,
-      verbosity: true,
-      reasoningLevels: levels(["minimal", "Minimal"], ["low", "Low"], ["medium", "Medium"], ["high", "High"]),
     }),
   },
   "xai-oauth": {
@@ -259,7 +217,6 @@ export const catalog: Record<ProviderType, CatalogEntry> = {
       webSearch: "builtin",
       tts: true,
       images: true,
-      reasoningLevels: levels(["low", "Low"], ["high", "High"]),
     }),
   },
 };
@@ -303,9 +260,4 @@ const NON_CHAT = /(embed|embedding|whisper|tts|rerank|moderation|dall-e|image)/i
 export function pickDefaultModel(models: string[], current?: string | null): string | undefined {
   if (current && models.includes(current)) return current;
   return models.find((m) => !NON_CHAT.test(m)) ?? models[0];
-}
-
-/** Temperature is only a user control on OpenAI-compatible endpoints. */
-export function offersTemperature(provider: Provider, caps: Capabilities = capabilitiesOf(provider)): boolean {
-  return caps.temperature && catalog[provider.type].sdk === "openai-compatible";
 }

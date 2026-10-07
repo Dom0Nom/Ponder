@@ -12,8 +12,8 @@ vi.mock("./proxyFetch", () => ({
 }));
 
 import { callOptions, createLanguageModel, listModels, resolveModel, chatgptFetch } from "./model";
-import { catalog, offersTemperature } from "./catalog";
-import { controlsKey, effortLabel, modelLabel, resolveControls, thinkingOn } from "./controls";
+import { catalog } from "./catalog";
+import { effortLabel, modelCapabilities, modelLabel } from "./controls";
 
 function prov(type: ProviderType, extra: Partial<Provider> = {}): Provider {
   return {
@@ -112,107 +112,6 @@ describe("chatgptFetch", () => {
   });
 });
 
-describe("callOptions", () => {
-  it("turns reasoning off for LM Studio when thinking is off", () => {
-    expect(callOptions(prov("lmstudio"), { thinking: false })).toEqual({ reasoning: "none" });
-    expect(callOptions(prov("lmstudio"), { thinking: true })).toEqual({});
-    expect(callOptions(prov("ollama"), { thinking: false }).reasoning).toBe("none");
-  });
-
-  it("does not send reasoning none to providers without the toggle", () => {
-    expect(callOptions(prov("anthropic"), { thinking: false }).reasoning).toBeUndefined();
-  });
-
-  it("omits temperature and max tokens for ChatGPT OAuth and forces store false", () => {
-    const o = callOptions(prov("chatgpt-oauth"), { thinking: false, temperature: 0.2, maxOutputTokens: 4000 });
-    expect(o.temperature).toBeUndefined();
-    expect(o.maxOutputTokens).toBeUndefined();
-    expect(o.providerOptions).toEqual({ openai: { store: false } });
-  });
-
-  it("passes temperature through where supported and never adds a token limit", () => {
-    expect(callOptions(prov("openai"), { temperature: 0.2 })).toEqual({ temperature: 0.2 });
-    expect(callOptions(prov("lmstudio"), {})).toEqual({});
-  });
-});
-
-describe("model controls", () => {
-  const eff = (t: ProviderType, reasoning: Parameters<typeof callOptions>[1] extends infer I ? (I extends { reasoning?: infer R } ? R : never) : never) =>
-    callOptions(prov(t), { reasoning }).reasoning;
-
-  it("anthropic: low to Max, plus off via the thinking toggle", () => {
-    expect(catalog.anthropic.capabilities.reasoningLevels?.map((l) => l.label)).toEqual(["Low", "Medium", "High", "Max"]);
-    expect(catalog.anthropic.capabilities.reasoningLabel).toBe("Effort");
-    expect(eff("anthropic", "xhigh")).toBe("xhigh");
-    expect(eff("anthropic", "none")).toBe("none");
-    expect(eff("anthropic", "minimal")).toBeUndefined();
-  });
-
-  it("openai and chatgpt-oauth: minimal to high with verbosity", () => {
-    for (const t of ["openai", "chatgpt-oauth"] as const) {
-      expect(catalog[t].capabilities.reasoningLevels?.map((l) => l.value)).toEqual(["minimal", "low", "medium", "high"]);
-      expect(eff(t, "minimal")).toBe("minimal");
-      expect(eff(t, "xhigh")).toBeUndefined();
-      expect(eff(t, "none")).toBeUndefined();
-    }
-    expect(callOptions(prov("openai"), { verbosity: "low" }).providerOptions).toEqual({ openai: { textVerbosity: "low" } });
-    expect(callOptions(prov("chatgpt-oauth"), { verbosity: "high" }).providerOptions).toEqual({
-      openai: { textVerbosity: "high", store: false },
-    });
-    expect(callOptions(prov("anthropic"), { verbosity: "low" }).providerOptions).toBeUndefined();
-  });
-
-  it("google: off, low, medium, high", () => {
-    expect(catalog.google.capabilities.reasoningLevels?.map((l) => l.label)).toEqual(["Off", "Low", "Medium", "High"]);
-    expect(catalog.google.capabilities.reasoningLabel).toBe("Thinking");
-    expect(eff("google", "none")).toBe("none");
-    expect(eff("google", "high")).toBe("high");
-  });
-
-  it("xai and xai-oauth: low and high only", () => {
-    for (const t of ["xai", "xai-oauth"] as const) {
-      expect(eff(t, "high")).toBe("high");
-      expect(eff(t, "medium")).toBeUndefined();
-    }
-  });
-
-  it("openrouter: three levels and the thinking toggle", () => {
-    expect(eff("openrouter", "medium")).toBe("medium");
-    expect(eff("openrouter", "none")).toBe("none");
-    expect(eff("openrouter", "xhigh")).toBeUndefined();
-  });
-
-  it("local providers: toggle only, no levels", () => {
-    for (const t of ["lmstudio", "ollama"] as const) {
-      expect(catalog[t].capabilities.reasoningLevels).toBeNull();
-      expect(eff(t, "none")).toBe("none");
-      expect(eff(t, "high")).toBeUndefined();
-    }
-  });
-
-  it("groq, mistral, deepseek, openai-compatible, llamacpp: no reasoning control", () => {
-    for (const t of ["groq", "mistral", "deepseek", "openai-compatible", "llamacpp"] as const) {
-      expect(catalog[t].capabilities.reasoningLevels).toBeNull();
-      expect(eff(t, "none")).toBeUndefined();
-      expect(eff(t, "high")).toBeUndefined();
-    }
-  });
-
-  it("offers temperature only on openai-compatible endpoints that accept it", () => {
-    expect(offersTemperature(prov("openrouter"))).toBe(true);
-    expect(offersTemperature(prov("groq"))).toBe(true);
-    expect(offersTemperature(prov("anthropic"))).toBe(false);
-    expect(offersTemperature(prov("chatgpt-oauth"))).toBe(false);
-  });
-
-  it("defaults thinking off only for toggle providers", () => {
-    expect(resolveControls(prov("lmstudio"))).toEqual({ reasoning: "none" });
-    expect(resolveControls(prov("openrouter"), { reasoning: "high" })).toEqual({ reasoning: "high" });
-    expect(resolveControls(prov("anthropic"))).toEqual({});
-    expect(controlsKey("p", "m")).toBe("p:m");
-  });
-});
-
 describe("listModels", () => {
   it("parses OpenAI-style, Anthropic and Gemini lists", async () => {
     const respond = (body: unknown) => vi.fn(async () => new Response(JSON.stringify(body), { status: 200 }));
@@ -274,17 +173,24 @@ describe("model button labels", () => {
     expect(modelLabel("qwen3.5-9b")).toBe("qwen3.5-9b");
   });
 
-  it("shows the chosen level", () => {
-    expect(effortLabel(prov("openai"), { reasoning: "high" })).toBe("High");
-    expect(effortLabel(prov("openai"))).toBe("");
-    expect(effortLabel(prov("anthropic"), { reasoning: "xhigh" })).toBe("Max");
+  it("shows the chosen effort and nothing when unset", () => {
+    const caps = modelCapabilities(prov("anthropic"), "claude-opus-5-5");
+    expect(effortLabel(caps, { effort: "xhigh" })).toBe("Extra high");
+    expect(effortLabel(caps)).toBe("");
+    expect(effortLabel(modelCapabilities(prov("lmstudio"), "qwen3.5-9b"), { thinking: false })).toBe("");
+  });
+});
+
+describe("callOptions", () => {
+  it("never adds a token limit and omits everything unset", () => {
+    expect(callOptions(prov("openai"), "gpt-6-luna", {})).toEqual({});
+    expect(callOptions(prov("lmstudio"), "qwen3.5-9b", {})).toEqual({});
   });
 
-  it("shows Thinking for a bare switch and nothing when off", () => {
-    expect(effortLabel(prov("lmstudio"))).toBe("");
-    expect(effortLabel(prov("lmstudio"), { reasoning: "medium" })).toBe("Thinking");
-    expect(thinkingOn(prov("lmstudio"))).toBe(false);
-    expect(thinkingOn(prov("lmstudio"), { reasoning: "medium" })).toBe(true);
-    expect(thinkingOn(prov("anthropic"))).toBe(true);
+  it("omits temperature and max tokens for ChatGPT OAuth and forces store false", () => {
+    const o = callOptions(prov("chatgpt-oauth"), "gpt-6-luna", { thinking: false, temperature: 0.2, maxOutputTokens: 4000 });
+    expect(o.temperature).toBeUndefined();
+    expect(o.maxOutputTokens).toBeUndefined();
+    expect(o.providerOptions).toEqual({ openai: { reasoningEffort: "none", store: false } });
   });
 });

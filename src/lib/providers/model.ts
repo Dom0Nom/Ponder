@@ -4,8 +4,10 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createXai } from "@ai-sdk/xai";
 import type { LanguageModel } from "ai";
-import type { ModelRef, Provider } from "../types";
-import { baseUrlOf, catalog, capabilitiesOf, pickDefaultModel, type ReasoningLevel, type Verbosity } from "./catalog";
+import type { ModelRef, OpenRouterModel, Provider } from "../types";
+import { baseUrlOf, capabilitiesOf, catalog, pickDefaultModel } from "./catalog";
+import { effortRank, resolveModelCaps, type Effort, type Verbosity } from "./modelCaps";
+import { cachedOpenRouterModel } from "./openrouter";
 import { createProxyFetch } from "./proxyFetch";
 
 export type ChatModel = Exclude<LanguageModel, string>;
@@ -75,34 +77,100 @@ export function createLanguageModel(provider: Provider, modelId: string, opts: M
 }
 
 export interface CallOptionInput {
-  /** false turns reasoning off where the provider supports it; true/undefined keeps the model default */
+  /** false turns thinking off where the model allows it; true/undefined keeps the chosen or default state */
   thinking?: boolean;
-  reasoning?: ReasoningLevel;
+  effort?: Effort;
   verbosity?: Verbosity;
   temperature?: number;
   maxOutputTokens?: number;
 }
 
+type Json = string | number | boolean | null | Json[] | { [k: string]: Json };
+
 export interface CallOptions {
-  reasoning?: ReasoningLevel;
   temperature?: number;
   maxOutputTokens?: number;
-  providerOptions?: Record<string, Record<string, string | number | boolean | null>>;
+  providerOptions?: Record<string, Record<string, Json>>;
 }
 
-/** Extra `streamText` options for a provider. Never adds a token limit on its own. */
-export function callOptions(provider: Provider, input: CallOptionInput = {}): CallOptions {
-  const caps = capabilitiesOf(provider);
+/** Thinking budget for older Claude models that only take a token budget. */
+export const CLAUDE_BUDGET_TOKENS = 8000;
+
+/**
+ * Extra `streamText` options for a model: only what its capabilities accept, in the provider's own request shape.
+ * Unset values are omitted so the model's default applies. Never adds a token limit on its own.
+ */
+export function callOptions(provider: Provider, modelId: string, input: CallOptionInput = {}, orModel?: OpenRouterModel): CallOptions {
+  const caps = resolveModelCaps(provider, modelId, orModel ?? cachedOpenRouterModel(modelId));
   const out: CallOptions = {};
-  const lv = input.reasoning;
-  if (lv && (caps.reasoningLevels?.some((l) => l.value === lv) || (lv === "none" && caps.thinkingToggle))) {
-    out.reasoning = lv;
+  const po: Record<string, Record<string, Json>> = {};
+
+  let effort = caps.effort?.options.some((o) => o.value === input.effort) ? input.effort : undefined;
+  let thinking = caps.thinking ? input.thinking : undefined;
+  if (input.thinking === false && !caps.thinking && caps.effort?.options.some((o) => o.value === "none")) effort = "none";
+  const offLimit = caps.thinking?.offMaxEffort;
+  const shownEffort = effort ?? caps.effort?.default ?? undefined;
+  if (thinking === false && offLimit && shownEffort && effortRank(shownEffort) > effortRank(offLimit)) thinking = undefined;
+
+  const thinkingOn = caps.thinking ? (thinking ?? caps.thinking.default) : caps.effort?.options.some((o) => o.value === "none") ? shownEffort !== "none" : true;
+  const verbosity = caps.verbosity?.options.some((o) => o.value === input.verbosity) ? input.verbosity : undefined;
+  const wire = caps.wire;
+  const key = wire.kind === "compat" || wire.kind === "openrouter" ? provider.type : wire.kind === "anthropic" ? "anthropic" : wire.kind;
+
+  if (caps.temperature && input.temperature != null && !(caps.temperature.offWhenThinking && thinkingOn)) out.temperature = input.temperature;
+  if (input.maxOutputTokens != null && capabilitiesOf(provider).maxOutputTokens) out.maxOutputTokens = input.maxOutputTokens;
+
+  switch (wire.kind) {
+    case "anthropic": {
+      const o: Record<string, Json> = {};
+      if (effort) o.effort = effort;
+      if (thinking === false && wire.off) o.thinking = { type: wire.off };
+      else if (thinking === true && wire.on === "adaptive") o.thinking = { type: "adaptive", display: "summarized" };
+      else if (thinking === true && wire.on === "budget") o.thinking = { type: "enabled", budgetTokens: CLAUDE_BUDGET_TOKENS };
+      if (Object.keys(o).length) po[key] = o;
+      break;
+    }
+    case "openai": {
+      const o: Record<string, Json> = {};
+      if (effort) o.reasoningEffort = effort;
+      if (verbosity) o.textVerbosity = verbosity;
+      if (Object.keys(o).length) po[key] = o;
+      break;
+    }
+    case "google": {
+      if (wire.style === "level" && effort) po[key] = { thinkingConfig: { thinkingLevel: effort } };
+      if (wire.style === "budget" && thinking === false) po[key] = { thinkingConfig: { thinkingBudget: 0 } };
+      break;
+    }
+    case "xai":
+      if (effort) po[key] = { reasoningEffort: effort };
+      break;
+    case "openrouter": {
+      const o: Record<string, Json> = {};
+      const reasoning: Record<string, Json> = {};
+      if (effort) reasoning.effort = effort;
+      if (thinking === false) reasoning.enabled = false;
+      else if (thinking === true && !effort) reasoning.enabled = true;
+      if (Object.keys(reasoning).length) o.reasoning = reasoning;
+      if (verbosity) o.textVerbosity = verbosity;
+      if (Object.keys(o).length) po[key] = o;
+      break;
+    }
+    case "compat": {
+      const o: Record<string, Json> = {};
+      if (effort && wire.effort) o.reasoningEffort = effort;
+      if (thinking === false) {
+        if (wire.thinking === "reasoning_effort-none") o.reasoningEffort = "none";
+        else if (wire.thinking === "deepseek") o.thinking = { type: "disabled" };
+      }
+      if (Object.keys(o).length) po[key] = o;
+      break;
+    }
+    case "none":
+      break;
   }
-  if (input.thinking === false && caps.reasoningToggle) out.reasoning = "none";
-  if (input.verbosity && caps.verbosity) out.providerOptions = { openai: { textVerbosity: input.verbosity } };
-  if (input.temperature != null && caps.temperature) out.temperature = input.temperature;
-  if (input.maxOutputTokens != null && caps.maxOutputTokens) out.maxOutputTokens = input.maxOutputTokens;
-  if (provider.type === "chatgpt-oauth") out.providerOptions = { openai: { ...out.providerOptions?.openai, store: false } };
+  if (provider.type === "chatgpt-oauth") po.openai = { ...po.openai, store: false };
+  if (Object.keys(po).length) out.providerOptions = po;
   return out;
 }
 

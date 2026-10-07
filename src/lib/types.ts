@@ -682,6 +682,15 @@ export interface OpenRouterModel {
   contextLength: number | null;
   supportedParameters: string[];
   created: number | null;
+  reasoning?: OpenRouterReasoning | null;
+}
+
+export interface OpenRouterReasoning {
+  mandatory: boolean;
+  supportedEfforts: string[] | null;
+  defaultEffort: string | null;
+  defaultEnabled: boolean | null;
+  supportsMaxTokens: boolean;
 }
 
 export interface OpenRouterCatalog {

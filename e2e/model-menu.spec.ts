@@ -51,28 +51,30 @@ test("switch provider, search and filter OpenRouter, controls follow each model"
   await expect(menu(app)).toHaveCount(0);
   await expect(trigger(app, "deepseek-v4.1-flash")).toBeVisible();
 
-  // model A: reasoning effort High
+  // model A: DeepSeek offers Low/High/Max with High as its default
   await trigger(app, "deepseek-v4.1-flash").click();
   await expect(menu(app).getByRole("menuitemradio", { name: "deepseek-v4.1-flash" })).toHaveAttribute("aria-checked", "true");
   const effort = menu(app).getByRole("radiogroup", { name: "Reasoning effort" });
-  await effort.getByRole("radio", { name: "High" }).click();
+  await expect(effort.getByRole("radio")).toHaveText(["Low", "High", "Max"]);
   await expect(effort.getByRole("radio", { name: "High" })).toHaveAttribute("aria-checked", "true");
-  await menu(app).getByLabel("Search OpenRouter models").fill("mistral large");
-  await menu(app).getByRole("menuitemradio", { name: "mistral-large-4-0" }).click();
+  await effort.getByRole("radio", { name: "Low" }).click();
+  await expect(effort.getByRole("radio", { name: "Low" })).toHaveAttribute("aria-checked", "true");
+  await menu(app).getByLabel("Search OpenRouter models").fill("haiku 5.5");
+  await menu(app).getByRole("menuitemradio", { name: "claude-haiku-5.5" }).click();
 
-  // model B has its own default
-  await trigger(app, "mistral-large-4-0").click();
-  const effortB = menu(app).getByRole("radiogroup", { name: "Reasoning effort" });
-  await expect(effortB).toBeVisible();
-  await expect(effortB.getByRole("radio", { name: "High" })).toHaveAttribute("aria-checked", "false");
-  await effortB.getByRole("radio", { name: "Low" }).click();
-  await expect(effortB.getByRole("radio", { name: "Low" })).toHaveAttribute("aria-checked", "true");
+  // model B has its own scale and default
+  await trigger(app, "claude-haiku-5.5").click();
+  const effortB = menu(app).getByRole("radiogroup", { name: "Effort" });
+  await expect(effortB.getByRole("radio")).toHaveText(["Low", "Medium", "High", "Extra high", "Max"]);
+  await expect(effortB.getByRole("radio", { name: "Medium" })).toHaveAttribute("aria-checked", "true");
+  await effortB.getByRole("radio", { name: "Max" }).click();
+  await expect(effortB.getByRole("radio", { name: "Max" })).toHaveAttribute("aria-checked", "true");
 
   // back to A: its value is restored; recents list it first
-  await expect(menu(app).getByRole("menuitemradio").first()).toContainText("mistral-large-4-0");
+  await expect(menu(app).getByRole("menuitemradio").first()).toContainText("claude-haiku-5.5");
   await menu(app).getByRole("menuitemradio", { name: "deepseek-v4.1-flash" }).click();
-  await trigger(app, "deepseek-v4.1-flash High").click();
-  await expect(menu(app).getByRole("radiogroup", { name: "Reasoning effort" }).getByRole("radio", { name: "High" })).toHaveAttribute(
+  await trigger(app, "deepseek-v4.1-flash Low").click();
+  await expect(menu(app).getByRole("radiogroup", { name: "Reasoning effort" }).getByRole("radio", { name: "Low" })).toHaveAttribute(
     "aria-checked",
     "true",
   );
@@ -91,8 +93,51 @@ test("only supported controls are shown per model", async ({ app }) => {
   await menu(app).getByLabel("Search OpenRouter models").fill("qwen3.8 flash");
   await menu(app).getByRole("menuitemradio", { name: "qwen3.8-flash" }).click();
   await trigger(app, "qwen3.8-flash").click();
-  await expect(menu(app).getByRole("switch", { name: "Extended thinking" })).toBeVisible();
+  await expect(menu(app).getByRole("switch", { name: "Thinking" })).toBeVisible();
   await expect(menu(app).getByRole("radiogroup", { name: "Reasoning effort" })).toHaveCount(0);
+
+  // Haiku 5.5: effort scale and a thinking switch, no temperature or verbosity
+  await menu(app).getByLabel("Search OpenRouter models").fill("haiku 5.5");
+  await menu(app).getByRole("menuitemradio", { name: "claude-haiku-5.5" }).click();
+  await trigger(app, "claude-haiku-5.5").click();
+  await expect(menu(app).getByRole("radiogroup", { name: "Effort" })).toBeVisible();
+  await expect(menu(app).getByRole("switch", { name: "Thinking" })).toBeVisible();
+  await expect(menu(app).getByRole("radiogroup", { name: "Temperature" })).toHaveCount(0);
+  await expect(menu(app).getByRole("radiogroup", { name: "Verbosity" })).toHaveCount(0);
+
+  // Opus 5.5 can't turn thinking off: no switch
+  await menu(app).getByLabel("Search OpenRouter models").fill("opus 5.5");
+  await menu(app).getByRole("menuitemradio", { name: "claude-opus-5.5" }).click();
+  await trigger(app, "claude-opus-5.5").click();
+  await expect(menu(app).getByRole("radiogroup", { name: "Effort" }).getByRole("radio", { name: "Medium" })).toHaveAttribute("aria-checked", "true");
+  await expect(menu(app).getByRole("switch")).toHaveCount(0);
+
+  // GPT reasoning model: scale and verbosity, no temperature
+  await menu(app).getByLabel("Search OpenRouter models").fill("gpt-6.1 sol");
+  await menu(app).getByRole("menuitemradio", { name: "gpt-6.1-sol" }).click();
+  await trigger(app, "gpt-6.1-sol").click();
+  await expect(menu(app).getByRole("radiogroup", { name: "Reasoning effort" })).toBeVisible();
+  await expect(menu(app).getByRole("radiogroup", { name: "Verbosity" })).toBeVisible();
+  await expect(menu(app).getByRole("radiogroup", { name: "Temperature" })).toHaveCount(0);
+});
+
+test("a local model shows its own thinking switch and temperature", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await page.goto("/?seed&localqwen");
+  await page.getByRole("button", { name: "New space" }).first().click();
+  await page.getByLabel("Name").fill("Biology");
+  await page.getByRole("button", { name: "Create" }).click();
+  await page.getByRole("button", { name: "mock-model" }).last().click();
+  const m = page.getByTestId("model-menu");
+  await expect(m.getByRole("radiogroup", { name: "Temperature" })).toBeVisible();
+  await expect(m.getByRole("switch")).toHaveCount(0);
+  await m.getByRole("menuitemradio", { name: "qwen3.5-9b" }).click();
+  await page.getByRole("button", { name: "qwen3.5-9b" }).last().click();
+  await expect(m.getByRole("switch", { name: "Thinking" })).toBeChecked();
+  await expect(m.getByRole("radiogroup", { name: "Temperature" })).toBeVisible();
+  await m.getByRole("switch", { name: "Thinking" }).click();
+  await expect(m.getByRole("switch", { name: "Thinking" })).not.toBeChecked();
 });
 
 test("keyboard: arrows move through models, typing focuses search", async ({ app }) => {
