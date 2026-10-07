@@ -11,6 +11,7 @@ mod lan;
 mod music;
 mod micro_steps;
 mod oauth;
+mod icons;
 mod openrouter;
 mod placement;
 mod practice;
@@ -165,6 +166,7 @@ pub fn run() {
             commands::providers::http_abort,
             commands::providers::http_get_text,
             commands::providers::list_openrouter_models,
+            commands::providers::site_icon,
             cloud::commands::cloud_status,
             cloud::commands::cloud_set_client,
             cloud::commands::cloud_connect,
