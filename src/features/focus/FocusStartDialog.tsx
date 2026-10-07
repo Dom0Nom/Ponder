@@ -1,9 +1,12 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { ListChecks, Play } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "../../components/ui/button";
 import { Dialog } from "../../components/ui/dialog";
 import { Input, Label } from "../../components/ui/input";
 import { Segmented, Spinner } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
+import { useFocusPrefs } from "../../lib/focusPrefs";
+import { useGenerateMicroSteps } from "../../lib/focus/useGenerateMicroSteps";
 import { api } from "../../lib/ipc";
 import { s } from "../../lib/strings";
 import type { Energy, FocusConfig, FocusTechnique } from "../../lib/types";
@@ -30,8 +33,44 @@ const FIELD_LABEL: Record<Field, string> = {
   cyclesBeforeLong: s.focus.cycles,
 };
 
+const EDITABLE: FocusTechnique[] = ["timebox", "custom"];
+
 const toText = (o: Partial<Record<Field, number>>) =>
   Object.fromEntries(Object.entries(o).map(([k, v]) => [k, String(v)])) as Partial<Record<Field, string>>;
+
+function StepsButton({
+  spaceId,
+  goal,
+  ready,
+  onNeedGoal,
+  onReady,
+}: {
+  spaceId: string;
+  goal: string;
+  ready: number | null;
+  onNeedGoal: () => void;
+  onReady: (n: number) => void;
+}) {
+  const { generate, busy } = useGenerateMicroSteps(spaceId);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <button
+        type="button"
+        disabled={busy}
+        onClick={async () => {
+          if (!goal.trim()) return onNeedGoal();
+          const n = await generate(goal.trim());
+          if (n) onReady(n);
+        }}
+        className="-ml-2.25 flex h-7.5 items-center gap-1.5 self-start rounded-btn px-2.25 font-medium hover:bg-fill disabled:opacity-60"
+      >
+        {busy ? <Spinner size={14} /> : <ListChecks size={14} />}
+        {busy ? s.focus.micro.generating : s.focus.micro.button}
+      </button>
+      {ready != null && <p className="text-caption text-muted">{s.focus.micro.readyLine(ready)}</p>}
+    </div>
+  );
+}
 
 export function FocusStartDialog() {
   const open = useUi((st) => st.focusDialogOpen);
@@ -39,18 +78,23 @@ export function FocusStartDialog() {
   const route = useUi((st) => st.route);
   const active = useFocusStore((st) => st.state);
   const setState = useFocusStore((st) => st.setState);
+  const { prefs } = useFocusPrefs();
 
   const [technique, setTechnique] = useState<FocusTechnique>("pomodoro");
   const [goal, setGoal] = useState("");
   const [values, setValues] = useState<Partial<Record<Field, string>>>(toText(FIELDS.pomodoro));
-  const [checkIn, setCheckIn] = useState("15");
   const [energy, setEnergy] = useState<Energy>("normal");
   const [busy, setBusy] = useState(false);
+  const [stepsReady, setStepsReady] = useState<number | null>(null);
+  const [needGoal, setNeedGoal] = useState(false);
+  const goalRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
       setGoal("");
       setEnergy("normal");
+      setStepsReady(null);
+      setNeedGoal(false);
     }
   }, [open]);
 
@@ -60,18 +104,19 @@ export function FocusStartDialog() {
   };
 
   const fields = Object.keys(FIELDS[technique]) as Field[];
+  const shown = EDITABLE.includes(technique) ? fields : [];
   const invalid = (v: string | undefined) => !(Number(v) > 0);
-  const checkInInvalid = !(Number(checkIn) >= 0) || checkIn.trim() === "";
-  const hasErrors = fields.some((f) => invalid(values[f])) || checkInInvalid;
+  const hasErrors = fields.some((f) => invalid(values[f]));
+  const spaceId = route.name === "space" ? route.spaceId : null;
 
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
     if (hasErrors || busy || active) return;
     const config: FocusConfig = {
-      spaceId: route.name === "space" ? route.spaceId : null,
+      spaceId,
       technique,
       goal: goal.trim() || null,
-      checkInMins: Math.round(Number(checkIn)),
+      checkInMins: prefs.checkIns.minutes,
       energy,
     };
     for (const f of fields) config[f] = Number(values[f]);
@@ -79,6 +124,13 @@ export function FocusStartDialog() {
     try {
       setState(await api.focusStart(config));
       setOpen(false);
+      if (spaceId) {
+        const ui = useUi.getState();
+        if (energy === "low") ui.setStudioView("lowEnergy");
+        else if (stepsReady) ui.setStudioView("microsteps");
+        else return;
+        useUi.setState({ studioOpen: true });
+      }
     } catch (err) {
       toastError(s.focus.startFailed, err, () => void submit());
     } finally {
@@ -91,28 +143,74 @@ export function FocusStartDialog() {
       open={open}
       onOpenChange={setOpen}
       title={s.focus.startTitle}
-      className="w-[min(640px,calc(100vw-32px))]"
+      className="w-[min(482px,calc(100vw-32px))]"
       footer={
         <>
-          <Button variant="ghost" onClick={() => setOpen(false)}>
+          <Button variant="secondary" onClick={() => setOpen(false)}>
             {s.common.cancel}
           </Button>
           <Button variant="primary" disabled={hasErrors || busy || !!active} onClick={() => void submit()}>
-            {busy && <Spinner size={14} className="text-on-accent" />}
+            {busy ? <Spinner size={14} className="text-on-primary" /> : <Play size={15} />}
             {busy ? s.focus.starting : s.focus.begin}
           </Button>
         </>
       }
     >
-      <form onSubmit={submit} className="space-y-5 pb-2">
+      <form onSubmit={submit} className="flex flex-col gap-4">
         {active && (
-          <p role="status" className="rounded-xl bg-warn-soft px-3 py-2 text-[0.8125rem] text-warn">
+          <p role="status" className="rounded-control bg-fill px-3 py-2 text-body text-fg-secondary">
             {s.focus.alreadyRunning}
           </p>
         )}
         <div>
-          <p className="mb-2 text-[0.8125rem] font-medium text-muted">{s.focus.energy}</p>
+          <Label htmlFor="focus-goal">{s.focus.goal}</Label>
+          <Input
+            id="focus-goal"
+            ref={goalRef}
+            value={goal}
+            placeholder={s.focus.goalPlaceholder}
+            onChange={(e) => {
+              setGoal(e.target.value);
+              setNeedGoal(false);
+            }}
+            maxLength={200}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label className="mb-0">{s.focus.technique}</Label>
+          <Segmented<FocusTechnique>
+            block
+            label={s.focus.technique}
+            value={technique}
+            onChange={pick}
+            options={TECHNIQUES.map((t) => ({ value: t, label: s.focus.techniques[t] }))}
+          />
+          <p className="text-caption text-muted">{s.focus.techniqueHelp[technique]}</p>
+          {shown.length > 0 && (
+            <div className={cn("mt-1 grid gap-3", shown.length > 2 ? "grid-cols-4" : "grid-cols-2")}>
+              {shown.map((f) => (
+                <div key={f}>
+                  <Label htmlFor={`focus-${f}`}>{FIELD_LABEL[f]}</Label>
+                  <Input
+                    id={`focus-${f}`}
+                    type="number"
+                    inputMode="decimal"
+                    min={f === "cyclesBeforeLong" ? 1 : 0.5}
+                    step={f === "cyclesBeforeLong" ? 1 : "any"}
+                    value={values[f] ?? ""}
+                    aria-invalid={invalid(values[f])}
+                    onChange={(e) => setValues((v) => ({ ...v, [f]: e.target.value }))}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          {hasErrors && <p className="text-label text-danger">{s.focus.minutesInvalid}</p>}
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label className="mb-0">{s.focus.energy}</Label>
           <Segmented<Energy>
+            block
             label={s.focus.energy}
             value={energy}
             onChange={setEnergy}
@@ -121,82 +219,23 @@ export function FocusStartDialog() {
               { value: "low", label: s.focus.energyLow },
             ]}
           />
-          {energy === "low" && <p className="mt-1.5 text-xs text-faint">{s.focus.energyLowHelp}</p>}
+          {energy === "low" && <p className="text-caption text-muted">{s.focus.energyLowHelp}</p>}
         </div>
-        <fieldset>
-          <legend className="mb-2 text-[0.8125rem] font-medium text-muted">{s.focus.technique}</legend>
-          <div role="radiogroup" aria-label={s.focus.technique} className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {TECHNIQUES.map((t) => (
-              <button
-                key={t}
-                type="button"
-                role="radio"
-                aria-checked={technique === t}
-                onClick={() => pick(t)}
-                className={cn(
-                  "rounded-2xl border px-3 py-2.5 text-left transition-colors",
-                  technique === t
-                    ? "border-accent bg-accent-soft text-accent-text"
-                    : "border-border bg-surface hover:bg-surface-2",
-                )}
-              >
-                <span className="block text-sm font-semibold">{s.focus.techniques[t]}</span>
-                <span className={cn("mt-0.5 block text-xs", technique === t ? "text-accent-text/80" : "text-muted")}>
-                  {s.focus.techniqueHelp[t]}
-                </span>
-              </button>
-            ))}
-          </div>
-        </fieldset>
-
-        <div>
-          <Label htmlFor="focus-goal">{s.focus.goal}</Label>
-          <Input
-            id="focus-goal"
-            value={goal}
-            placeholder={s.focus.goalPlaceholder}
-            onChange={(e) => setGoal(e.target.value)}
-            maxLength={200}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {fields.map((f) => (
-            <div key={f}>
-              <Label htmlFor={`focus-${f}`}>{FIELD_LABEL[f]}</Label>
-              <Input
-                id={`focus-${f}`}
-                type="number"
-                inputMode="decimal"
-                min={f === "cyclesBeforeLong" ? 1 : 0.5}
-                step={f === "cyclesBeforeLong" ? 1 : "any"}
-                value={values[f] ?? ""}
-                aria-invalid={invalid(values[f])}
-                onChange={(e) => setValues((v) => ({ ...v, [f]: e.target.value }))}
-                className={cn(invalid(values[f]) && "border-danger")}
-              />
-            </div>
-          ))}
-          <div>
-            <Label htmlFor="focus-checkin">{s.focus.checkIn}</Label>
-            <Input
-              id="focus-checkin"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              step={1}
-              value={checkIn}
-              aria-invalid={checkInInvalid}
-              aria-describedby="focus-checkin-help"
-              onChange={(e) => setCheckIn(e.target.value)}
-              className={cn(checkInInvalid && "border-danger")}
+        {spaceId && (
+          <>
+            <StepsButton
+              spaceId={spaceId}
+              goal={goal}
+              ready={stepsReady}
+              onNeedGoal={() => {
+                setNeedGoal(true);
+                goalRef.current?.focus();
+              }}
+              onReady={setStepsReady}
             />
-            <p id="focus-checkin-help" className="mt-1 text-xs text-faint">
-              {s.focus.checkInOff}
-            </p>
-          </div>
-        </div>
-        {hasErrors && <p className="text-xs text-danger">{s.focus.minutesInvalid}</p>}
+            {needGoal && <p className="-mt-3 text-caption text-danger">{s.focus.micro.needGoal}</p>}
+          </>
+        )}
         <button type="submit" hidden />
       </form>
     </Dialog>
