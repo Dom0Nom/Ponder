@@ -5,7 +5,7 @@ import { s } from "../../lib/strings";
 import { useUi } from "../../stores/ui";
 import { ErrorState, Skeleton } from "../../components/ui/misc";
 import { ContentCard } from "../../app/ContentCard";
-import { SourcesPane } from "../sources/SourcesPane";
+import { SourcesHost, SourcesPanel } from "../sources/SourcesPanel";
 import { ChatPane } from "../chat/ChatPane";
 import { StudioPane } from "./StudioPane";
 import { SourceViewer } from "../sources/SourceViewer";
@@ -72,14 +72,8 @@ export function SpaceScreen({ spaceId }: { spaceId: string }) {
           ) : (
             <ChatPane space={space} />
           )}
-          <div
-            aria-label={s.panes.sources}
-            data-testid="pane-sources"
-            role="region"
-            className={cn("absolute inset-y-0 left-0 z-10 w-[340px] flex-col overflow-hidden border-r border-border bg-surface", sourcesOpen ? "flex" : "hidden")}
-          >
-            <SourcesPane space={space} />
-          </div>
+          <SourcesPanel space={space} open={sourcesOpen} />
+          <SourcesHost space={space} />
         </section>
       </ContentCard>
       {studioOpen && (

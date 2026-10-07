@@ -1,6 +1,6 @@
 import * as D from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { cn } from "../../lib/utils";
 import { s } from "../../lib/strings";
 import { Button } from "./button";
@@ -14,6 +14,7 @@ export function Dialog({
   footer,
   className,
   bodyClassName,
+  style,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -23,6 +24,7 @@ export function Dialog({
   footer?: ReactNode;
   className?: string;
   bodyClassName?: string;
+  style?: CSSProperties;
 }) {
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
@@ -43,6 +45,7 @@ export function Dialog({
             "t-modal fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[min(440px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-dialog border border-border bg-surface shadow-dialog outline-none",
             className,
           )}
+          style={style}
         >
           <div className="flex items-start gap-4 pb-1 pl-5 pr-4 pt-4">
             <div className="min-w-0 flex-1">

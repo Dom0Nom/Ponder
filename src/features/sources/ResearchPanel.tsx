@@ -1,18 +1,22 @@
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Sparkles } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Space } from "../../lib/types";
-import { cn } from "../../lib/utils";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
 import { deepResearch, type FoundSource, type ResearchStage } from "../../lib/research/deepResearch";
 import { proxyHttp } from "../../lib/importers/http";
+import { ActivityOrb, type Activity } from "../../components/motion/ActivityOrb";
 import { Button } from "../../components/ui/button";
+import { Checkbox16 } from "../../components/ui/Checkbox16";
 import { Input } from "../../components/ui/input";
-import { EmptyState, Spinner } from "../../components/ui/misc";
+import { EmptyState } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
+import { useImportFooter } from "./ImportDialog";
+
+const STAGE_ORB: Record<ResearchStage, Activity> = { planning: "plan", searching: "search", fetching: "research", ranking: "grade", done: "research" };
 
 const STAGE_LABEL: Record<ResearchStage, string> = {
   planning: s.research.planning,
@@ -81,30 +85,37 @@ export function ResearchPanel({ space, done, initialQuery }: { space: Space; don
     }
   };
 
+  useImportFooter({
+    label: found?.length ? s.research.importSelected(selected.size) : s.sources.import,
+    disabled: !found?.length || !selected.size,
+    busy: importing,
+    run: importSelected,
+  });
+
   return (
-    <div className="pb-2">
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (q.trim()) run();
-        }}
-      >
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.research.placeholder} aria-label={s.research.placeholder} />
-        <Button type="submit" variant="primary" disabled={!q.trim() || !!stage}>
-          <Sparkles size={16} /> {s.research.start}
-        </Button>
-      </form>
-      <p className="mt-2 text-xs text-muted">
-        Searches DuckDuckGo, Wikipedia, arXiv and OpenAlex, reads the pages and rates them with your chat model.
-      </p>
+    <div className="flex flex-col gap-3.5">
+      <div className="flex flex-col gap-2">
+        <form
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (q.trim() && !stage) run();
+          }}
+        >
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.research.placeholder} aria-label={s.research.placeholder} className="flex-1" />
+          <Button type="submit" variant="secondary" disabled={!q.trim() || !!stage}>
+            {s.research.start}
+          </Button>
+        </form>
+        <p className="text-label text-muted">{s.research.hint}</p>
+      </div>
 
       {stage && (
-        <div className="mt-6 flex items-center gap-3 rounded-2xl bg-surface-2 px-4 py-3 text-sm" aria-live="polite">
-          <Spinner />
+        <div data-testid="research-running" data-stage={stage} className="flex items-center gap-3 rounded-card border border-border px-4 py-3" aria-live="polite">
+          <ActivityOrb activity={STAGE_ORB[stage]} size={32} />
           <div className="min-w-0">
             <p className="font-medium">{STAGE_LABEL[stage]}</p>
-            {detail && <p className="truncate text-xs text-muted">{detail}</p>}
+            {detail && <p className="truncate text-label text-muted">{detail}</p>}
           </div>
           <Button size="sm" variant="ghost" className="ml-auto" onClick={() => abort.current?.abort()}>
             {s.common.cancel}
@@ -114,50 +125,40 @@ export function ResearchPanel({ space, done, initialQuery }: { space: Space; don
 
       {found && found.length === 0 && <EmptyState title={s.research.noResults} />}
       {found && found.length > 0 && (
-        <div className="mt-5">
-          <p className="font-medium">{s.research.reviewTitle}</p>
-          <p className="text-xs text-muted">{s.research.reviewBody}</p>
-          <ul className="mt-3 space-y-2" data-testid="research-results">
-            {found.map((f) => (
-              <li key={f.id}>
-                <label className="flex cursor-pointer gap-3 rounded-2xl border border-border p-3 hover:bg-surface-2">
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]"
-                    checked={selected.has(f.id)}
-                    onChange={(e) => {
-                      const next = new Set(selected);
-                      if (e.target.checked) next.add(f.id);
-                      else next.delete(f.id);
-                      setSelected(next);
-                    }}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start gap-2">
-                      <p className="min-w-0 flex-1 text-sm font-medium">{f.title}</p>
-                      <Credibility value={f.credibility} />
-                    </div>
-                    <p className="mt-1 text-xs text-muted">{f.summary}</p>
-                    <a
-                      href={f.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="mt-1 inline-flex max-w-full items-center gap-1 truncate text-[0.6875rem] text-faint hover:text-accent-text"
-                    >
-                      <ExternalLink size={11} className="shrink-0" />
-                      <span className="truncate">{new URL(f.url).hostname.replace(/^www\./, "")}</span>
-                    </a>
-                  </div>
-                </label>
-              </li>
-            ))}
+        <div className="flex flex-col gap-1.5">
+          <p className="font-semibold">{s.research.reviewTitle}</p>
+          <p className="mb-1 text-body leading-[1.5] text-muted">{s.research.reviewBody}</p>
+          <ul className="rounded-card border border-border px-3.5" data-testid="research-results">
+            {found.map((f) => {
+              const host = new URL(f.url).hostname.replace(/^www\./, "");
+              return (
+                <li key={f.id} className="group flex h-[42px] items-center gap-2.5 border-divider [&+&]:border-t">
+                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5" title={f.summary}>
+                    <Checkbox16
+                      checked={selected.has(f.id)}
+                      onChange={(e) => {
+                        const next = new Set(selected);
+                        if (e.target.checked) next.add(f.id);
+                        else next.delete(f.id);
+                        setSelected(next);
+                      }}
+                    />
+                    <span className="min-w-0 flex-1 truncate font-medium">{`${f.title} – ${host}`}</span>
+                  </label>
+                  <a
+                    href={f.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`${s.research.openLink}: ${host}`}
+                    className="hidden text-muted hover:text-fg focus:block group-hover:block"
+                  >
+                    <ExternalLink size={13} />
+                  </a>
+                  <Credibility value={f.credibility} />
+                </li>
+              );
+            })}
           </ul>
-          <div className="mt-4 flex justify-end">
-            <Button variant="primary" disabled={!selected.size || importing} onClick={importSelected}>
-              {importing && <Spinner size={15} className="text-on-accent" />} {s.research.importSelected(selected.size)}
-            </Button>
-          </div>
         </div>
       )}
     </div>
@@ -165,10 +166,10 @@ export function ResearchPanel({ space, done, initialQuery }: { space: Space; don
 }
 
 function Credibility({ value }: { value: number }) {
-  const tone = value >= 75 ? "bg-accent-soft text-accent-text" : value >= 50 ? "bg-surface-3 text-muted" : "bg-warn-soft text-warn";
+  const level = value >= 75 ? s.research.levels.high : value >= 50 ? s.research.levels.medium : s.research.levels.low;
   return (
-    <span title={s.research.credibility} className={cn("shrink-0 rounded-full px-2 py-0.5 text-[0.6875rem] font-medium tabular-nums", tone)}>
-      {s.research.credibility} {value}
+    <span title={String(value)} className="shrink-0 text-label text-muted">
+      {s.research.credibility}: {level}
     </span>
   );
 }

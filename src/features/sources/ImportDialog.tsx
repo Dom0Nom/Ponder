@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useUi } from "../../stores/ui";
 import * as Tabs from "@radix-ui/react-tabs";
 import { useQueryClient } from "@tanstack/react-query";
-import { Cloud, FileUp, Globe, HardDrive, Sparkles, StickyNote, SquarePlay } from "lucide-react";
+import { FileText, Upload } from "lucide-react";
 import { qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Space } from "../../lib/types";
@@ -18,14 +18,39 @@ import { proxyHttp } from "../../lib/importers/http";
 import { ResearchPanel } from "./ResearchPanel";
 import { CloudTab } from "./CloudTab";
 
+export interface ImportFooter {
+  label: string;
+  disabled?: boolean;
+  busy?: boolean;
+  status?: string;
+  run: () => void;
+}
+
+const FooterCtx = createContext<(f: ImportFooter | null) => void>(() => {});
+
+/** Registers the active tab's primary action in the dialog footer. */
+export function useImportFooter(f: ImportFooter | null) {
+  const set = useContext(FooterCtx);
+  const run = useRef(f?.run);
+  run.current = f?.run;
+  const key = f ? `${f.label}|${!!f.disabled}|${!!f.busy}|${f.status ?? ""}` : "";
+  useEffect(() => {
+    set(f ? { ...f, run: () => run.current?.() } : null);
+    return () => set(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, set]);
+}
+
+const WIDTH: Record<string, number> = { file: 520, paste: 520, url: 520, youtube: 520, research: 600, gdrive: 680, dropbox: 680 };
+
 const TABS = [
-  { id: "file", label: s.sources.tabs.file, icon: FileUp },
-  { id: "paste", label: s.sources.tabs.paste, icon: StickyNote },
-  { id: "url", label: s.sources.tabs.url, icon: Globe },
-  { id: "youtube", label: s.sources.tabs.youtube, icon: SquarePlay },
-  { id: "gdrive", label: s.sources.tabs.gdrive, icon: HardDrive },
-  { id: "dropbox", label: s.sources.tabs.dropbox, icon: Cloud },
-  { id: "research", label: s.sources.tabs.research, icon: Sparkles },
+  { id: "file", label: s.sources.tabs.file },
+  { id: "paste", label: s.sources.tabs.paste },
+  { id: "url", label: s.sources.tabs.url },
+  { id: "youtube", label: s.sources.tabs.youtube },
+  { id: "gdrive", label: s.sources.tabs.gdrive },
+  { id: "dropbox", label: s.sources.tabs.dropbox },
+  { id: "research", label: s.sources.tabs.research },
 ] as const;
 
 export function ImportDialog({
@@ -40,6 +65,7 @@ export function ImportDialog({
   initialTab?: string;
 }) {
   const [tab, setTab] = useState(initialTab ?? "file");
+  const [footer, setFooter] = useState<ImportFooter | null>(null);
   const query = useUi((st) => st.importDialog.query);
   const setSourcesOpen = useUi((st) => st.setSourcesOpen);
   const done = () => {
@@ -50,55 +76,82 @@ export function ImportDialog({
     if (open) setTab(initialTab ?? "file");
   }, [open, initialTab]);
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} title={s.sources.importTitle} className="w-[min(680px,calc(100vw-32px))]">
-      <Tabs.Root value={tab} onValueChange={setTab}>
-        <Tabs.List aria-label={s.sources.importTitle} className="mb-4 flex flex-wrap gap-1">
-          {TABS.map((t) => (
-            <Tabs.Trigger
-              key={t.id}
-              value={t.id}
-              className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] font-medium text-muted hover:bg-surface-2 data-[state=active]:bg-accent-soft data-[state=active]:text-accent-text"
-            >
-              <t.icon size={15} /> {t.label}
-            </Tabs.Trigger>
-          ))}
-        </Tabs.List>
-        <Tabs.Content value="file">
-          <FileTab space={space} done={done} />
-        </Tabs.Content>
-        <Tabs.Content value="paste">
-          <PasteTab space={space} done={done} />
-        </Tabs.Content>
-        <Tabs.Content value="url">
-          <UrlTab space={space} kind="url" done={done} />
-        </Tabs.Content>
-        <Tabs.Content value="youtube">
-          <UrlTab space={space} kind="youtube" done={done} />
-        </Tabs.Content>
-        <Tabs.Content value="gdrive">
-          <CloudTab service="google" space={space} done={done} />
-        </Tabs.Content>
-        <Tabs.Content value="dropbox">
-          <CloudTab service="dropbox" space={space} done={done} />
-        </Tabs.Content>
-        <Tabs.Content value="research">
-          <ResearchPanel key={query ?? ""} space={space} initialQuery={query} done={done} />
-        </Tabs.Content>
-      </Tabs.Root>
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={s.sources.importTitle}
+      className="max-h-[720px]"
+      style={{ width: `min(${WIDTH[tab] ?? 520}px, calc(100vw - 32px))` }}
+      footer={
+        <>
+          {footer?.status && <span className="mr-auto min-w-0 truncate text-muted">{footer.status}</span>}
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+            {s.common.cancel}
+          </Button>
+          <Button variant="primary" disabled={!footer || footer.disabled || footer.busy} onClick={() => footer?.run()}>
+            {footer?.busy && <Spinner size={15} className="text-on-primary" />}
+            {footer?.busy ? s.sources.importing : (footer?.label ?? s.sources.import)}
+          </Button>
+        </>
+      }
+    >
+      <FooterCtx.Provider value={setFooter}>
+        <Tabs.Root value={tab} onValueChange={setTab} className="flex flex-col gap-3.5">
+          <Tabs.List aria-label={s.sources.importTitle} className="flex flex-wrap gap-1">
+            {TABS.map((t) => (
+              <Tabs.Trigger
+                key={t.id}
+                value={t.id}
+                className="inline-flex h-7.5 items-center rounded-btn px-2.5 font-medium text-fg hover:bg-fill data-[state=active]:bg-fill-active data-[state=active]:font-semibold"
+              >
+                {t.label}
+              </Tabs.Trigger>
+            ))}
+          </Tabs.List>
+          <Tabs.Content value="file">
+            <FileTab space={space} done={done} />
+          </Tabs.Content>
+          <Tabs.Content value="paste">
+            <PasteTab space={space} done={done} />
+          </Tabs.Content>
+          <Tabs.Content value="url">
+            <UrlTab space={space} kind="url" done={done} />
+          </Tabs.Content>
+          <Tabs.Content value="youtube">
+            <UrlTab space={space} kind="youtube" done={done} />
+          </Tabs.Content>
+          <Tabs.Content value="gdrive">
+            <CloudTab service="google" space={space} done={done} />
+          </Tabs.Content>
+          <Tabs.Content value="dropbox">
+            <CloudTab service="dropbox" space={space} done={done} />
+          </Tabs.Content>
+          <Tabs.Content value="research">
+            <ResearchPanel key={query ?? ""} space={space} initialQuery={query} done={done} />
+          </Tabs.Content>
+        </Tabs.Root>
+      </FooterCtx.Provider>
     </Dialog>
   );
 }
 
 function FileTab({ space, done }: { space: Space; done: () => void }) {
   const qc = useQueryClient();
+  const [staged, setStaged] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const choose = async () => {
-    setBusy(true);
     try {
       const paths = await pickFiles();
-      if (!paths.length) return;
+      if (paths.length) setStaged((cur) => [...new Set([...cur, ...paths])]);
+    } catch (e) {
+      toastError(s.sources.importFailed, e, choose);
+    }
+  };
+  const run = async () => {
+    setBusy(true);
+    try {
       const failures: string[] = [];
-      for (const p of paths) {
+      for (const p of staged) {
         try {
           await fileImporter.import(space.id, p);
         } catch (e) {
@@ -107,21 +160,34 @@ function FileTab({ space, done }: { space: Space; done: () => void }) {
       }
       qc.invalidateQueries({ queryKey: qk.sources(space.id) });
       if (failures.length) toastError(s.sources.importFailed, new Error(failures.join("\n")));
-      if (failures.length < paths.length) done();
-    } catch (e) {
-      toastError(s.sources.importFailed, e, choose);
+      if (failures.length < staged.length) {
+        setStaged([]);
+        done();
+      }
     } finally {
       setBusy(false);
     }
   };
+  useImportFooter({ label: s.sources.import, disabled: !staged.length, busy, status: staged.length ? s.sources.chosen(staged.length) : undefined, run });
   return (
-    <div className="flex flex-col items-center rounded-2xl border border-dashed border-border px-6 py-10 text-center">
-      <FileUp size={26} className="text-muted" />
-      <p className="mt-3 font-medium">Drop files on the Sources pane, or choose them here</p>
-      <p className="mt-1 text-sm text-muted">{s.sources.fileHelp}</p>
-      <Button variant="primary" className="mt-5" disabled={busy} onClick={choose}>
-        {busy && <Spinner size={15} className="text-on-accent" />} {s.sources.chooseFiles}
-      </Button>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col items-center gap-2.5 rounded-card border border-dashed border-control-off p-7 text-muted transition-colors duration-(--motion-quick)">
+        <Upload size={20} />
+        <p>{s.sources.fileHelp}</p>
+        <Button variant="secondary" onClick={choose}>
+          {s.sources.chooseFiles}
+        </Button>
+      </div>
+      {staged.length > 0 && (
+        <ul className="flex flex-col gap-1.5" data-testid="staged-files">
+          {staged.map((p) => (
+            <li key={p} className="flex items-center gap-2 text-body">
+              <FileText size={14} className="shrink-0 text-muted" />
+              <span className="truncate">{p.split(/[\\/]/).pop()}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -146,20 +212,16 @@ function PasteTab({ space, done }: { space: Space; done: () => void }) {
       setBusy(false);
     }
   };
+  useImportFooter({ label: s.sources.import, disabled: !text.trim(), busy, run: submit });
   return (
-    <div className="space-y-3 pb-2">
+    <div className="flex flex-col gap-3">
       <div>
         <Label htmlFor="paste-title">{s.sources.pasteTitle}</Label>
-        <Input id="paste-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Optional" />
+        <Input id="paste-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={s.sources.optional} />
       </div>
       <div>
         <Label htmlFor="paste-body">{s.sources.pasteBody}</Label>
         <Textarea id="paste-body" rows={9} value={text} onChange={(e) => setText(e.target.value)} placeholder={s.sources.pastePlaceholder} />
-      </div>
-      <div className="flex justify-end">
-        <Button variant="primary" disabled={!text.trim() || busy} onClick={submit}>
-          {busy ? s.sources.importing : s.sources.import}
-        </Button>
       </div>
     </div>
   );
@@ -185,15 +247,18 @@ function UrlTab({ space, kind, done }: { space: Space; kind: "url" | "youtube"; 
       setBusy(false);
     }
   };
+  useImportFooter({ label: s.sources.import, disabled: !valid, busy, run: submit });
   return (
     <form
-      className="space-y-3 pb-2"
+      className="flex flex-col gap-2"
       onSubmit={(e) => {
         e.preventDefault();
-        if (valid) submit();
+        if (valid && !busy) submit();
       }}
     >
-      <Label htmlFor={`url-${kind}`}>{kind === "youtube" ? "YouTube link" : "Web address"}</Label>
+      <Label htmlFor={`url-${kind}`} className="mb-0">
+        {kind === "youtube" ? s.sources.youtubeLabel : s.sources.urlLabel}
+      </Label>
       <Input
         id={`url-${kind}`}
         autoFocus
@@ -201,17 +266,8 @@ function UrlTab({ space, kind, done }: { space: Space; kind: "url" | "youtube"; 
         onChange={(e) => setUrl(e.target.value)}
         placeholder={kind === "youtube" ? s.sources.youtubePlaceholder : s.sources.urlPlaceholder}
       />
-      <p className="text-xs text-muted">
-        {kind === "youtube"
-          ? "The transcript is imported with timestamps. Videos without captions can't be imported."
-          : "The page's main text is saved as a source; menus and ads are dropped."}
-      </p>
-      {url && !valid && <p className="text-xs text-danger">{kind === "youtube" ? "That isn't a YouTube link." : "That doesn't look like a web address."}</p>}
-      <div className="flex justify-end">
-        <Button type="submit" variant="primary" disabled={!valid || busy}>
-          {busy && <Spinner size={15} className="text-on-accent" />} {busy ? s.sources.importing : s.sources.import}
-        </Button>
-      </div>
+      <p className="text-label text-muted">{kind === "youtube" ? s.sources.youtubeHint : s.sources.urlHint}</p>
+      {url && !valid && <p className="text-label text-danger">{kind === "youtube" ? s.sources.badYoutube : s.sources.badUrl}</p>}
     </form>
   );
 }

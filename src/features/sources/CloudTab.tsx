@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, Cloud, FileText, Folder, LogIn, Search, Settings } from "lucide-react";
+import { Cloud, Folder, LogIn, Search, Settings } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
@@ -10,9 +10,11 @@ import { useUi } from "../../stores/ui";
 import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { Checkbox16 } from "../../components/ui/Checkbox16";
 import { EmptyState, ErrorState, Skeleton, Spinner } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { ck, useCloudStatus } from "../settings/cloudQueries";
+import { useImportFooter } from "./ImportDialog";
 
 export function CloudTab({ service, space, done }: { service: CloudService; space: Space; done: () => void }) {
   const qc = useQueryClient();
@@ -61,7 +63,7 @@ export function CloudTab({ service, space, done }: { service: CloudService; spac
         body={pending ? s.cloud.browserHint : st.state === "error" ? <span className="text-danger">{st.error}</span> : undefined}
         action={
           <Button variant="primary" onClick={() => connect.mutate()} disabled={pending || connect.isPending}>
-            {pending ? <Spinner size={15} className="text-on-accent" /> : <LogIn size={15} aria-hidden />}
+            {pending ? <Spinner size={15} className="text-on-primary" /> : <LogIn size={15} aria-hidden />}
             {st.state === "error" ? s.cloud.reconnect : s.cloud.connect}
           </Button>
         }
@@ -84,7 +86,9 @@ function useDebounced<T>(value: T, ms: number): T {
 function formatModified(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  return Number.isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleDateString(undefined, { year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric", month: "short", day: "numeric" });
 }
 
 function CloudBrowser({ service, space, done }: { service: CloudService; space: Space; done: () => void }) {
@@ -132,24 +136,29 @@ function CloudBrowser({ service, space, done }: { service: CloudService; space: 
     onError: (e) => toastError(s.sources.importFailed, e, () => importSel.mutate()),
   });
 
+  useImportFooter({
+    label: s.cloud.importN(selected.size),
+    disabled: !selected.size,
+    busy: importSel.isPending,
+    status: selected.size ? s.cloud.selected(selected.size) : s.cloud.supportedHint,
+    run: () => importSel.mutate(),
+  });
+
   return (
-    <div className="flex flex-col gap-3 pb-1" data-testid={`cloud-browser-${service}`}>
+    <div className="flex flex-col gap-3.5" data-testid={`cloud-browser-${service}`}>
       <div className="flex flex-wrap items-center gap-2">
-        <nav aria-label={s.cloud.pathLabel} className="flex min-w-0 flex-1 items-center gap-0.5 text-sm">
+        <nav aria-label={s.cloud.pathLabel} className="flex min-w-0 flex-1 items-center gap-1.5 text-body-lg">
           {query ? (
             <span className="truncate font-medium">{s.cloud.search(s.cloud.names[service])}</span>
           ) : (
             trail.map((c, i) => (
-              <span key={`${c.id}-${i}`} className="flex min-w-0 items-center gap-0.5">
-                {i > 0 && <ChevronRight size={14} className="shrink-0 text-faint" aria-hidden />}
+              <span key={`${c.id}-${i}`} className="flex min-w-0 items-center gap-1.5">
+                {i > 0 && <span className="text-faint" aria-hidden>/</span>}
                 <button
                   type="button"
                   onClick={() => setTrail(backTo(trail, i))}
                   aria-current={i === trail.length - 1 ? "page" : undefined}
-                  className={cn(
-                    "truncate rounded-full px-2 py-0.5 hover:bg-surface-2",
-                    i === trail.length - 1 ? "font-medium text-fg" : "text-muted",
-                  )}
+                  className={cn("truncate font-medium hover:text-fg", i === trail.length - 1 ? "text-fg" : "text-muted")}
                 >
                   {c.name}
                 </button>
@@ -157,26 +166,27 @@ function CloudBrowser({ service, space, done }: { service: CloudService; space: 
             ))
           )}
         </nav>
-        <div className="relative w-full sm:w-56">
-          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
+        <div className="relative w-60">
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={s.cloud.search(s.cloud.names[service])}
             aria-label={s.cloud.search(s.cloud.names[service])}
-            className="h-8 pl-8 text-sm"
+            className="pl-3 pr-8 text-input"
           />
+          <Search size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border">
-        <div className="grid grid-cols-[1fr_96px_72px_104px] gap-3 border-b border-border bg-surface-2 px-3 py-2 text-xs font-medium text-muted">
-          <span className="pl-7">{s.cloud.columns.name}</span>
+      <div className="overflow-hidden rounded-card border border-border">
+        <div className={cn(GRID, "h-[34px] bg-fill-faint text-label font-semibold text-muted")}>
+          <span />
+          <span>{s.cloud.columns.name}</span>
           <span>{s.cloud.columns.type}</span>
-          <span className="text-right">{s.cloud.columns.size}</span>
+          <span>{s.cloud.columns.size}</span>
           <span>{s.cloud.columns.modified}</span>
         </div>
-        <div className="max-h-[320px] min-h-[200px] overflow-y-auto" role="list" aria-label={s.cloud.names[service]}>
+        <div className="max-h-[320px] min-h-[120px] overflow-y-auto" role="list" aria-label={s.cloud.names[service]}>
           {list.isLoading && (
             <div className="space-y-2 p-3">
               {[0, 1, 2, 3].map((i) => (
@@ -192,7 +202,7 @@ function CloudBrowser({ service, space, done }: { service: CloudService; space: 
             <Row key={item.id} item={item} checked={selected.has(item.id)} onOpen={() => open(item)} onToggle={() => toggle(item)} />
           ))}
           {list.hasNextPage && (
-            <div className="flex justify-center p-2">
+            <div className="flex justify-center border-t border-divider p-2">
               <Button size="sm" variant="ghost" onClick={() => list.fetchNextPage()} disabled={list.isFetchingNextPage}>
                 {list.isFetchingNextPage && <Spinner size={14} />} {s.cloud.loadMore}
               </Button>
@@ -200,35 +210,28 @@ function CloudBrowser({ service, space, done }: { service: CloudService; space: 
           )}
         </div>
       </div>
-
-      <div className="flex items-center gap-3">
-        <p className="min-w-0 flex-1 text-xs text-muted">{selected.size ? s.cloud.selected(selected.size) : s.cloud.supportedHint}</p>
-        <Button variant="primary" disabled={!selected.size || importSel.isPending} onClick={() => importSel.mutate()}>
-          {importSel.isPending && <Spinner size={15} className="text-on-accent" />}
-          {importSel.isPending ? s.sources.importing : s.cloud.importN(selected.size)}
-        </Button>
-      </div>
     </div>
   );
 }
 
+const GRID = "grid grid-cols-[28px_minmax(0,1fr)_90px_70px_90px] items-center gap-2 px-3";
+
 function Row({ item, checked, onOpen, onToggle }: { item: CloudItem; checked: boolean; onOpen: () => void; onToggle: () => void }) {
-  const Icon = item.folder ? Folder : FileText;
+  const ok = item.folder || item.supported;
   const cells = (
     <>
       <span className="truncate">{typeLabel(item)}</span>
-      <span className="text-right tabular-nums">{item.folder ? "—" : formatSize(item.size)}</span>
+      <span className="tabular-nums">{item.folder ? "—" : formatSize(item.size)}</span>
       <span className="truncate">{formatModified(item.modified)}</span>
     </>
   );
-  const base = "grid grid-cols-[1fr_96px_72px_104px] items-center gap-3 px-3 py-1.5 text-sm text-muted";
+  const base = cn(GRID, "h-10 border-t border-divider first:border-t-0 text-body", ok ? "text-fg" : "text-faint");
   if (item.folder) {
     return (
-      <div role="listitem" className={cn(base, "hover:bg-surface-2")}>
-        <button type="button" onClick={onOpen} className="flex min-w-0 items-center gap-2 text-left font-medium text-fg">
-          <span className="w-4 shrink-0" />
-          <Icon size={16} className="shrink-0 text-accent-text" aria-hidden />
-          <span className="truncate">{item.name}</span>
+      <div role="listitem" className={cn(base, "hover:bg-fill-faint")}>
+        <span />
+        <button type="button" onClick={onOpen} className="truncate text-left font-medium">
+          {item.name}
         </button>
         {cells}
       </div>
@@ -238,20 +241,14 @@ function Row({ item, checked, onOpen, onToggle }: { item: CloudItem; checked: bo
     <label
       role="listitem"
       title={item.supported ? undefined : s.cloud.unsupported}
-      className={cn(base, item.supported ? "cursor-pointer hover:bg-surface-2" : "opacity-50", checked && "bg-accent-soft")}
+      className={cn(base, item.supported && "cursor-pointer hover:bg-fill-faint")}
     >
-      <span className="flex min-w-0 items-center gap-2 text-fg">
-        <input
-          type="checkbox"
-          className="h-4 w-4 shrink-0 accent-[var(--accent)]"
-          checked={checked}
-          disabled={!item.supported}
-          onChange={onToggle}
-          aria-label={s.cloud.selectItem(item.name)}
-        />
-        <Icon size={16} className="shrink-0 text-muted" aria-hidden />
-        <span className="truncate">{item.name}</span>
-      </span>
+      {item.supported ? (
+        <Checkbox16 checked={checked} onChange={onToggle} aria-label={s.cloud.selectItem(item.name)} />
+      ) : (
+        <span />
+      )}
+      <span className="truncate font-medium">{item.supported ? item.name : `${item.name} · ${s.cloud.unsupported}`}</span>
       {cells}
     </label>
   );

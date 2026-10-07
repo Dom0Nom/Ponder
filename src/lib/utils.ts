@@ -88,3 +88,8 @@ export function uid(): string {
 export function isNativeApp(): boolean {
   return "__TAURI_INTERNALS__" in window && !("__MOCK_BACKEND__" in window);
 }
+
+export function tildePath(path: string, home: string): string {
+  const h = home.replace(/[\\/]+$/, "");
+  return h && (path === h || path.startsWith(`${h}/`)) ? `~${path.slice(h.length)}` : path;
+}

@@ -100,6 +100,13 @@ const outside = (box: { x: number; y: number; w: number; h: number }, reason: st
 ];
 const BACKDROP = "the design draws 9a/10a over a static copy of Home (shifted, no New space button), not the real screen 1";
 
+const SIDEBAR: Mask[] = [
+  { x: 0, y: 0, w: 234, h: 800, reason: "design draws the reduced sidebar (Home/Review/Practice only, no thread list or Sources item); the real sidebar is the shell's, DECISIONS #14" },
+];
+const SELECT_ALL: Mask[] = [
+  { x: 234, y: 744, w: 340, h: 48, reason: "Select all sources is a kept feature the design omits (02 §13), shown as the panel footer, DECISIONS #14" },
+];
+
 export const SCREENS: Record<number, Screen> = {
   1: { title: "Home", native: true, query: "cards=review", setup: home },
   2: {
@@ -153,10 +160,12 @@ export const SCREENS: Record<number, Screen> = {
   },
   6: {
     title: "Source viewer",
+    masks: SIDEBAR,
     setup: async (p) => {
       await space(p, { sources: true, studio: false });
       await click(p, /OpenStax Algebra/, null);
-      await settle(p, 400);
+      await setUi(p, { sourcesOpen: { [SPACE]: false }, importDialog: { open: true } });
+      await settle(p, 500);
     },
   },
   7: {
@@ -354,23 +363,26 @@ export const SCREENS: Record<number, Screen> = {
   },
   27: {
     title: "Sources panel",
+    masks: [...SIDEBAR, ...SELECT_ALL],
     setup: async (p) => {
       await space(p, { sources: true, studio: false });
     },
   },
   28: {
     title: "Watched folders",
+    masks: SIDEBAR,
     setup: async (p) => {
-      await space(p, { sources: true, studio: false });
+      await space(p, { sources: false, studio: false });
       await setUi(p, { watchDialogOpen: true });
       await settle(p, 500);
     },
   },
   29: {
     title: "Deep research",
+    masks: SIDEBAR,
     pending: "Deep research needs live web search and a model; the found-sources list isn't reachable from the mock",
     setup: async (p) => {
-      await space(p, { sources: true, studio: false });
+      await space(p, { sources: false, studio: false });
       await setUi(p, { importDialog: { open: true, tab: "research", query: "How substitution and elimination compare for GED problems" } });
       await settle(p, 500);
     },
@@ -378,8 +390,9 @@ export const SCREENS: Record<number, Screen> = {
   30: {
     title: "Google Drive",
     query: "drive=1",
+    masks: SIDEBAR,
     setup: async (p) => {
-      await space(p, { sources: true, studio: false });
+      await space(p, { sources: false, studio: false });
       await setUi(p, { importDialog: { open: true, tab: "gdrive" } });
       await settle(p, 800);
       await p.getByText("Math formula sheet").first().click().catch(() => undefined);
