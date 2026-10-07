@@ -6,7 +6,7 @@
  * Browser: `?fixture=design[&option=value…]`. Native app (mock IPC): `VITE_MOCK_IPC=1 VITE_FIXTURE=design bun run tauri dev`.
  *
  * Options (all optional):
- *   chat=plain|v2|none   plain (most artboards), v2 (screen 2: inline math + "Thought for 4 seconds"), none (screen 38)
+ *   chat=plain|v2|card|none   plain (most artboards), v2 (screen 2: inline math + "Thought for 4 seconds"), card (screens 11-21: plain text, follow-ups, 12 sources), none (screen 38)
  *   spaces=all|none      none = screen 36
  *   cards=review|browse|none   review (14 due cards), browse (the four cards of screen 18), none (screen 37)
  *   curriculum=plan|practice   the topic lists differ between screens 20 and 4/12
@@ -26,7 +26,7 @@ const H = 60 * MIN;
 const D = 24 * H;
 
 export interface FixtureOptions {
-  chat: "plain" | "v2" | "none";
+  chat: "plain" | "v2" | "card" | "none";
   spaces: "all" | "none";
   cards: "review" | "browse" | "none";
   curriculum: "plan" | "practice";
@@ -53,7 +53,7 @@ export function readOptions(search = location.search): FixtureOptions {
     return v && allowed.includes(v) ? v : d;
   };
   return {
-    chat: pick("chat", ["plain", "v2", "none"], "plain"),
+    chat: pick("chat", ["plain", "v2", "card", "none"], "plain"),
     spaces: pick("spaces", ["all", "none"], "all"),
     cards: pick("cards", ["review", "browse", "none"], "browse"),
     curriculum: pick("curriculum", ["plan", "practice"], "plan"),
@@ -223,8 +223,10 @@ const COURSE_LESSONS = [
 const CARDS_BROWSE = [
   { id: "c-sub", kind: "basic", front: "When should you solve a system by substitution?", back: "When one equation already has a variable on its own, or can get there in one step.", due: FIXTURE_NOW + 1 * D, state: 2, suspended: false },
   { id: "c-slope", kind: "basic", front: "What is the slope in y = mx + b?", back: "m", due: FIXTURE_NOW + 3 * D, state: 2, suspended: false },
-  { id: "c-image", kind: "occlusion", front: "Image card · 3 boxes", back: "", due: FIXTURE_NOW - 1 * MIN, state: 2, suspended: false },
-  { id: "c-elim", kind: "cloze", front: "Elimination works when coefficients are {{c1::matching or opposite}}.", back: "", due: FIXTURE_NOW + 5 * D, state: 2, suspended: true },
+  { id: "c-image", kind: "occlusion", front: "", back: "", due: FIXTURE_NOW - 1 * MIN, state: 2, suspended: false },
+  { id: "c-image2", kind: "occlusion", front: "", back: "", due: FIXTURE_NOW - 1 * MIN, state: 2, suspended: false },
+  { id: "c-image3", kind: "occlusion", front: "", back: "", due: FIXTURE_NOW - 1 * MIN, state: 2, suspended: false },
+  { id: "c-elim", kind: "basic", front: "Elimination works when coefficients are…", back: "", due: FIXTURE_NOW + 5 * D, state: 2, suspended: true },
 ] as const;
 
 const REVIEW_FIRST = [
@@ -368,6 +370,26 @@ function seedGed(db: DB, o: FixtureOptions, at: (n: number) => number, x: <V ext
         updatedAt: at(2 * D),
       } as T.Source;
     }
+    if (o.chat === "card") {
+      for (let k = 1; k <= 7; k++) {
+        db.sources[`src-extra-${k}`] = {
+          id: `src-extra-${k}`,
+          spaceId: sp,
+          title: `Worksheet ${k}`,
+          kind: "pdf",
+          origin: null,
+          status: "ready",
+          error: null,
+          summary: "Practice worksheet.",
+          useInChat: true,
+          progress: 1,
+          charCount: 1200,
+          chunkCount: 1,
+          createdAt: at(k * H),
+          updatedAt: at(k * H),
+        } as T.Source;
+      }
+    }
     const pageOffset = 0;
     db.texts["src-openstax"] = { text: OPENSTAX_TEXT, pages: [[412, pageOffset]] };
     const paras = OPENSTAX_TEXT.split("\n\n");
@@ -392,6 +414,7 @@ function seedGed(db: DB, o: FixtureOptions, at: (n: number) => number, x: <V ext
       );
     }
     const v2 = o.chat === "v2";
+    const card = o.chat === "card";
     const cite = (n: number, sourceId: string, title: string, chunkId: number, snippet: string): T.Citation => ({
       n,
       chunkId,
@@ -432,7 +455,7 @@ function seedGed(db: DB, o: FixtureOptions, at: (n: number) => number, x: <V ext
       content: `${first}\n\nUse **elimination** when both equations are in standard form and a variable has matching or opposite coefficients, so adding the equations cancels it. [3]`,
       reasoning: v2 ? "Comparing when each method needs fewer steps." : null,
       citations,
-      meta: { tutorStyle: "mixed", model: { providerId: "prov-anthropic", model: "Sonnet 5.5" }, thinking: v2, ...(v2 ? { thinkingMs: 4000, followUps: ["Why does substitution work?", "Show me when elimination is faster", "Give me a harder one"] } : {}) } as T.MessageMeta,
+      meta: { tutorStyle: "mixed", model: { providerId: "prov-anthropic", model: "Sonnet 5.5" }, thinking: v2, ...(v2 || card ? { ...(v2 ? { thinkingMs: 4000 } : {}), followUps: ["Why does substitution work?", "Show me when elimination is faster", "Give me a harder one"] } : {}) } as T.MessageMeta,
       status: "complete",
       error: null,
       createdAt: at(2 * H),
@@ -620,7 +643,7 @@ function seedCards(db: DB, o: FixtureOptions, at: (n: number) => number, spaceNa
         state: c.state,
         suspended: c.suspended,
         createdAt: at(i * H),
-        data: c.kind === "occlusion" ? { image: "cell.svg", masks: [0, 1, 2].map((k) => ({ id: `m${k}`, x: 0.1 + k * 0.25, y: 0.3, w: 0.2, h: 0.12 })), mask: "m0" } : null,
+        data: c.kind === "occlusion" ? { image: "cell.svg", masks: [0, 1, 2].map((k) => ({ id: `m${k}`, x: 0.1 + k * 0.25, y: 0.3, w: 0.2, h: 0.12 })), mask: `m${c.id === "c-image" ? 0 : c.id === "c-image2" ? 1 : 2}` } : null,
       });
     });
   }
@@ -745,8 +768,8 @@ export function fixtureOverrides(): Record<string, (a: Args) => unknown> {
       if (o.cards === "none" || o.spaces === "none") return [];
       return [
         { spaceId: SP.ged, spaceName: "GED Math", due: 8, new: 4, total: 52 },
-        { spaceId: SP.es, spaceName: "Spanish A2", due: 4, new: 0, total: 30 },
-        { spaceId: SP.bio, spaceName: "Biology", due: 2, new: 0, total: 41 },
+        { spaceId: SP.es, spaceName: "Spanish A2", due: 1, new: 0, total: 30 },
+        { spaceId: SP.bio, spaceName: "Biology", due: 1, new: 0, total: 41 },
       ];
     },
     topic_coverage: (a) =>

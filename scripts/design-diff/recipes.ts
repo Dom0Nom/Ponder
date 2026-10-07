@@ -104,8 +104,41 @@ const STUDIO_IN_CARD =
 /** Moves the real Studio panel into the 340px slot inside the chat card that screens 22-26 draw. */
 const studioInCard = (p: Page) =>
   p.addStyleTag({
-    content: `[data-testid=pane-studio]{top:2px!important;right:9px!important;bottom:9px!important;width:340px!important;border-top:0!important;z-index:20}`,
+    content: `[data-testid=pane-studio]{top:2px!important;right:9px!important;bottom:9px!important;width:340px!important;border-top:0!important;border-left:0!important;z-index:20}`,
   });
+const SPACE_BACKDROP = "the design draws the dialog over a static reduced copy of the space (no Sources row or thread list, other chat text), not the real screen 2";
+/**
+ * Screens 11-21 draw their dialogs and Studio sub-views over an older reduced copy of the space
+ * (Home/Review/Practice only, 640px chat column, Studio inside the card). This restyles the real screen into that
+ * state so the diff covers the whole frame; it changes the recipe's page only, not the app.
+ */
+async function legacySpace(p: Page, withStudio: boolean) {
+  await p.addStyleTag({
+    content: `[data-testid=message-list]>div{max-width:640px!important;gap:22px!important}
+[data-testid=message-list] *{line-height:1.65}
+[data-testid=message-list] .prose-chat p+p{margin-top:22px!important}
+[data-testid=msg-assistant]{gap:22px!important}
+[data-testid=pane-chat] div.pb-\\[18px\\]{padding-bottom:24px!important}
+[data-testid=pane-chat]{padding-right:${withStudio ? 338 : 0}px;margin-left:${withStudio ? -3 : 0}px}
+${withStudio ? "" : "[data-testid=pane-studio]{visibility:hidden}"}`,
+  });
+  await p.evaluate(() => {
+    let el = document.querySelector("[data-testid=pane-chat]")?.parentElement ?? null;
+    while (el && !/right-\[336px\]|right-2/.test(el.className)) el = el.parentElement;
+    if (el) el.style.right = "8px";
+    for (const sp of Array.from(document.querySelectorAll("[data-testid=message-list] span")) as HTMLElement[]) {
+      if (!/^(OpenStax Algebra|GED Study Guide)/.test(sp.textContent ?? "") || sp.children.length > 3) continue;
+      (sp.closest<HTMLElement>("[class*=rounded-full]") ?? sp).style.display = "none";
+    }
+    const body = document.querySelector("aside")?.querySelector<HTMLElement>(":scope > div > div:last-child");
+    for (const n of Array.from(body?.children ?? []) as HTMLElement[]) {
+      const text = n.textContent ?? "";
+      if (n.tagName === "BUTTON" && text.startsWith("Sources")) n.style.display = "none";
+      else if (n.classList.contains("flex-1")) n.style.display = "none";
+      else if (n.querySelector("[aria-label=Settings]")) n.style.marginTop = "auto";
+    }
+  });
+}
 const BACKDROP = "the design draws 9a/10a over a static copy of Home (shifted, no New space button), not the real screen 1";
 
 const SIDEBAR: Mask[] = [
@@ -138,10 +171,6 @@ export const SCREENS: Record<number, Screen> = {
     title: "Review (cards)",
     query: "cards=review",
     native: true,
-    masks: [
-      { x: 420, y: 274, w: 640, h: 22, reason: "queue count is fixture data (mock counts rows); space name is a kept feature, DECISIONS #14" },
-      { x: 420, y: 636, w: 640, h: 24, reason: "scheduler previews depend on fixture card state" },
-    ],
     setup: async (p) => {
       await nav(p, { name: "review" });
       await p.getByText("When should you solve", { exact: false }).first().waitFor({ timeout: 5000 }).catch(() => undefined);
@@ -225,13 +254,14 @@ export const SCREENS: Record<number, Screen> = {
   },
   11: {
     title: "Quiz",
-    query: "curriculum=plan",
+    query: "curriculum=plan&chat=card",
     setup: async (p) => {
       await space(p);
       await studio(p, "plan", "Learning plan");
       await p.getByTestId("topic-row").filter({ hasText: "Systems of equations" }).first().click();
       await click(p, /start this topic/i, "menuitem");
       await p.getByTestId("quiz-question").waitFor({ timeout: 8000 }).catch(() => undefined);
+      await legacySpace(p, false);
       await settle(p, 500);
     },
   },
@@ -239,11 +269,6 @@ export const SCREENS: Record<number, Screen> = {
     title: "Practice problem",
     query: "curriculum=practice",
     native: true,
-    masks: [
-      { x: 412, y: 170, w: 456, h: 108, reason: "math is KaTeX, the design draws STIX Two Text; the map keeps KaTeX (03 §2)" },
-      { x: 1000, y: 380, w: 90, h: 22, reason: "skill change kept after answering, not drawn; DECISIONS #14" },
-      { x: 412, y: 92, w: 140, h: 22, reason: "problem count is fixture data and increments after grading" },
-    ],
     setup: async (p) => {
       await nav(p, { name: "practice", spaceId: SPACE, topicKey: "systems" });
       await p.getByText(/Solve the system/).first().waitFor({ timeout: 8000 }).catch(() => undefined);
@@ -255,90 +280,107 @@ export const SCREENS: Record<number, Screen> = {
   },
   13: {
     title: "Check my steps",
-    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
+    query: "chat=card",
     setup: async (p) => {
       await space(p);
       await studio(p, "steps", "Check my steps");
+      await p.getByPlaceholder(/e\.g\. Solve/).fill("Solve 2(x\u22123)+4=10");
+      await p.getByLabel("Your steps, one per line").fill("2x-6+4=10\n2x-2=10\n2x=8\nx=4");
+      await click(p, /^check my steps$/i).catch(() => undefined);
+      await p.getByTestId("step-summary").waitFor({ timeout: 5000 }).catch(() => undefined);
+      await p.addStyleTag({ content: "[data-sonner-toaster]{display:none!important}" });
       await studioInCard(p);
+      await legacySpace(p, true);
     },
   },
   14: {
     title: "Use a photo of your work",
+    query: "chat=card",
     setup: async (p) => {
       await space(p);
       await studio(p, "steps", "Check my steps");
       await click(p, /use a photo/i).catch(() => undefined);
+      await legacySpace(p, false);
       await settle(p, 500);
     },
   },
   15: {
     title: "Flashcards",
-    query: "cards=browse",
+    query: "cards=browse&chat=card",
     native: true,
-    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
     setup: async (p) => {
       await space(p);
       await studio(p, "flashcards", "Flashcards");
       await studioInCard(p);
+      await legacySpace(p, true);
     },
   },
   16: {
     title: "Make flashcards",
+    query: "chat=card",
     setup: async (p) => {
       await space(p);
       await studio(p, "flashcards", "Flashcards");
       await click(p, /make cards from sources/i).catch(() => undefined);
+      await legacySpace(p, false);
       await settle(p, 400);
     },
   },
   17: {
     title: "Add a card",
+    query: "chat=card",
     setup: async (p) => {
       await space(p);
       await studio(p, "flashcards", "Flashcards");
       await click(p, /^add card$/i).catch(() => undefined);
       await p.getByLabel("Front", { exact: true }).fill("What does substitution need?");
       await p.getByLabel("Back", { exact: true }).fill("One equation with a variable already on its own.");
+      await legacySpace(p, false);
       await settle(p, 400);
     },
   },
   18: {
     title: "Browse cards",
-    query: "cards=browse",
+    query: "cards=browse&chat=card",
     setup: async (p) => {
       await space(p);
       await studio(p, "flashcards", "Flashcards");
       await click(p, /browse cards/i).catch(() => undefined);
+      await legacySpace(p, false);
+      await p.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
       await settle(p, 400);
     },
   },
   19: {
     title: "Image card (occlusion)",
+    query: "chat=card",
     setup: async (p) => {
       await space(p);
       await studio(p, "flashcards", "Flashcards");
       await p.getByTestId("occlusion-editor-button").click();
       await click(p, /choose image/i).catch(() => undefined);
+      await legacySpace(p, false);
       await settle(p, 600);
     },
   },
   20: {
     title: "Learning plan",
-    query: "curriculum=plan",
-    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
+    query: "curriculum=plan&chat=card",
     setup: async (p) => {
       await space(p);
       await studio(p, "plan", "Learning plan");
       await studioInCard(p);
+      await legacySpace(p, true);
     },
   },
   21: {
     title: "Course",
-    masks: outside(STUDIO_BOX, STUDIO_IN_CARD),
+    query: "chat=card",
     setup: async (p) => {
       await space(p);
       await studio(p, "course", "Course");
       await studioInCard(p);
+      await legacySpace(p, true);
     },
   },
   22: {
