@@ -40,7 +40,7 @@ export function QuizLayer() {
       open
       onOpenChange={(o) => !o && finish(null)}
       title={current.title}
-      className="w-[min(560px,calc(100vw-32px))]"
+      className="w-[min(562px,calc(100vw-32px))]"
       footer={
         done ? (
           <Button variant="primary" onClick={() => finish(answers)}>

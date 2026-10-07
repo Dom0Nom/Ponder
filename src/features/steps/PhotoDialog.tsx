@@ -227,7 +227,7 @@ export function PhotoDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={s.steps.photoTitle}
-      className="w-[min(520px,calc(100vw-32px))]"
+      className="w-[min(522px,calc(100vw-32px))]"
       footer={
         <>
           <Button variant="secondary" onClick={() => onOpenChange(false)}>

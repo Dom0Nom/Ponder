@@ -135,7 +135,7 @@ export function OcclusionEditor({
       onOpenChange={onOpenChange}
       title={editing ? s.occlusion.editTitle : s.occlusion.title}
       description={s.occlusion.description}
-      className="max-h-[min(720px,92vh)] w-[min(860px,calc(100vw-32px))]"
+      className="max-h-[min(720px,92vh)] w-[min(862px,calc(100vw-32px))]"
       footer={
         <>
           {!editing && image && (

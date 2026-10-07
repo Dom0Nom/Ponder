@@ -155,7 +155,7 @@ function GenerateCardsDialog({ space, open, onOpenChange }: { space: Space; open
       open={open}
       onOpenChange={onOpenChange}
       title={s.cards.generateTitle}
-      className="w-[min(460px,calc(100vw-32px))]"
+      className="w-[min(462px,calc(100vw-32px))]"
       footer={
         <>
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
@@ -230,7 +230,7 @@ export function AddCardDialog({ space }: { space: Space }) {
       open={open}
       onOpenChange={(o) => !o && close()}
       title={s.cards.addTitle}
-      className="w-[min(480px,calc(100vw-32px))]"
+      className="w-[min(482px,calc(100vw-32px))]"
       footer={
         <>
           <Button variant="secondary" onClick={close}>
@@ -254,11 +254,11 @@ export function AddCardDialog({ space }: { space: Space }) {
           <>
             <label className="flex flex-col gap-1.5">
               <span className={fieldLabel}>{s.cards.front}</span>
-              <Textarea id="card-front" rows={3} className={AREA} value={front} onChange={(e) => setFront(e.target.value)} />
+              <Textarea id="card-front" className={AREA} value={front} onChange={(e) => setFront(e.target.value)} />
             </label>
             <label className="flex flex-col gap-1.5">
               <span className={fieldLabel}>{s.cards.back}</span>
-              <Textarea id="card-back" rows={3} className={AREA} value={back} onChange={(e) => setBack(e.target.value)} />
+              <Textarea id="card-back" className={AREA} value={back} onChange={(e) => setBack(e.target.value)} />
             </label>
           </>
         ) : (
@@ -322,7 +322,7 @@ function BrowseCardsDialog({ space, onClose }: { space: Space; onClose: () => vo
       open
       onOpenChange={(o) => !o && onClose()}
       title={s.cards.browseTitle}
-      className="w-[min(620px,calc(100vw-32px))]"
+      className="w-[min(622px,calc(100vw-32px))]"
       bodyClassName="px-0 pb-0 pt-1"
     >
       <div className="px-5 pb-2 pt-1">

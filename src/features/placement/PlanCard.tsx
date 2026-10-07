@@ -140,7 +140,7 @@ function CustomCurriculumDialog({
       onOpenChange={onOpenChange}
       title={s.plan.customTitle}
       description={s.plan.customBody}
-      className="w-[min(480px,calc(100vw-32px))]"
+      className="w-[min(482px,calc(100vw-32px))]"
       footer={
         <>
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
@@ -279,7 +279,7 @@ function CoverageMap({ space, curriculum }: { space: Space; curriculum: SpaceCur
       <Button variant="secondary" className="w-full" disabled={busy} onClick={() => run(() => runPlacement(space, curriculum))}>
         {placed ? s.plan.retakePlacement : s.plan.placement}
       </Button>
-      <Dialog open={changing} onOpenChange={setChanging} title={s.plan.change} className="w-[min(480px,calc(100vw-32px))]">
+      <Dialog open={changing} onOpenChange={setChanging} title={s.plan.change} className="w-[min(482px,calc(100vw-32px))]">
         <CurriculumPicker space={space} onDone={() => setChanging(false)} />
       </Dialog>
       <ConfirmDialog

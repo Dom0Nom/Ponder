@@ -172,11 +172,14 @@ export const SCREENS: Record<number, Screen> = {
   },
   11: {
     title: "Quiz",
-    pending: "Quiz is launched from the lesson/quiz flow; the pre-quiz dialog (\"Before you start\") needs the new entry point",
+    query: "curriculum=plan",
     setup: async (p) => {
       await space(p);
-      await click(p, /quiz me/i).catch(() => undefined);
-      await settle(p, 800);
+      await studio(p, "plan", "Learning plan");
+      await p.getByTestId("topic-row").filter({ hasText: "Systems of equations" }).first().click();
+      await click(p, /start this topic/i, "menuitem");
+      await p.getByTestId("quiz-question").waitFor({ timeout: 8000 }).catch(() => undefined);
+      await settle(p, 500);
     },
   },
   12: {
@@ -206,7 +209,6 @@ export const SCREENS: Record<number, Screen> = {
   },
   14: {
     title: "Use a photo of your work",
-    pending: "Photo dialog is opened from the step checker; needs recipe against the restyled step checker",
     setup: async (p) => {
       await space(p);
       await studio(p, "steps", "Check my steps");
@@ -238,6 +240,8 @@ export const SCREENS: Record<number, Screen> = {
       await space(p);
       await studio(p, "flashcards", "Flashcards");
       await click(p, /^add card$/i).catch(() => undefined);
+      await p.getByLabel("Front", { exact: true }).fill("What does substitution need?");
+      await p.getByLabel("Back", { exact: true }).fill("One equation with a variable already on its own.");
       await settle(p, 400);
     },
   },
@@ -253,12 +257,12 @@ export const SCREENS: Record<number, Screen> = {
   },
   19: {
     title: "Image card (occlusion)",
-    pending: "Occlusion editor needs an image in the mock (image_store) and the redesigned dialog",
     setup: async (p) => {
       await space(p);
       await studio(p, "flashcards", "Flashcards");
-      await click(p, /image card/i).catch(() => undefined);
-      await settle(p, 500);
+      await p.getByTestId("occlusion-editor-button").click();
+      await click(p, /choose image/i).catch(() => undefined);
+      await settle(p, 600);
     },
   },
   20: {
