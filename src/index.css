@@ -432,6 +432,9 @@ input[type="range"].slider { -webkit-appearance: none; appearance: none; height:
   --calc-key-pressed: #b82e2e;
   --calc-key-pressed-ring: #ffffff;
   --calc-focus: #ff1229;
+  --calc-solar-frame: #23292d;
+  --calc-solar-cell: #554c51;
+  --calc-solar-divider: #5e555a;
 }
 .calc-key {
   transition: transform 80ms ease-out;
