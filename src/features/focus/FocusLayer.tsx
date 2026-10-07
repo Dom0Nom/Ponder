@@ -14,7 +14,6 @@ import { ParkingInput } from "./controls";
 import { FocusStartDialog } from "./FocusStartDialog";
 import { emitFocusTransition, loadFocusState, useFocusStore } from "./focusStore";
 
-export { useFocusTransitions, onFocusTransition } from "./focusStore";
 
 function ParkingCapture() {
   const open = useFocusStore((st) => st.parkingOpen);

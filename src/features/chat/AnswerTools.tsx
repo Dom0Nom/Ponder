@@ -17,7 +17,6 @@ import { PonderMark } from "../../components/brand/PonderMark";
 import { toast, toastError } from "../../components/ui/toast";
 import { actionIconBtn } from "./actionButton";
 import { ModelPicker } from "../settings/ModelPicker";
-import { Markdown } from "./Markdown";
 
 const VERDICT: Record<ClaimVerdict, { label: string; icon: typeof CheckCircle2; tone: string }> = {
   supported: { label: s.check.supported, icon: CheckCircle2, tone: "text-success" },
@@ -274,4 +273,3 @@ export function RememberedChips({ message }: { message: Message }) {
   );
 }
 
-export { Markdown };

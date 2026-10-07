@@ -893,7 +893,6 @@ export const s = {
     pickTitle: "Pick a topic",
     pickBody: "Each answer moves your skill estimate. The next problem is chosen so you get about 7 in 10 right.",
     skill: (pct: number, n: number) => `Skill ${pct}/100 · ${n} ${n === 1 ? "problem" : "problems"}`,
-    cardHint: "Endless problems at your level, with worked solutions.",
     problems: (n: number) => `${n} ${n === 1 ? "problem" : "problems"}`,
     level: (l: number) => `Level ${l} of 5`,
     writing: "Writing a problem…",
