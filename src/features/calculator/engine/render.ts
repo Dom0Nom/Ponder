@@ -175,7 +175,8 @@ function scrollEntry(m: string): string {
   };
   let start = hidden ? 1 : 0;
   while (window(start) <= cur && start < items.length - 1) start++;
-  const stop = window(start);
+  // a cursor item too wide for the window is still shown
+  const stop = Math.max(window(start), cur + 1);
   const rest = items.slice(stop).some((it) => it.w > 0);
   return (start > 0 ? "◂" : "") + serialize(items.slice(start, stop).map((it) => it.n!)) + (rest ? "▸" : "");
 }

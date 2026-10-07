@@ -16,7 +16,8 @@ export type MNode =
   | { t: "sup"; a: MNode[] }
   | { t: "inv"; a: MNode[] }
   | { t: "blink"; a: MNode[] }
-  | { t: "cur"; under?: boolean };
+  | { t: "cur"; under?: boolean }
+  | { t: "base" };
 
 export interface Item {
   node: MNode;
@@ -112,6 +113,9 @@ export function layoutSeq(nodes: MNode[], font: FontId = "n"): Box {
   return { w: x, asc, desc, ops };
 }
 
+/** A slot that starts with an exponent has no base: the base shows as a placeholder box. */
+const baseless = (nodes: MNode[]) => nodes.find((n) => n.t !== "cur")?.t === "sup";
+
 export const isEmptySlot = (nodes: MNode[]) => nodes.every((n) => n.t === "cur");
 
 /** Dotted placeholder box: the outline of a glyph cell with every second dot lit. */
@@ -128,7 +132,7 @@ function placeholder(font: FontId): Op[] {
 
 /** An empty template slot is a placeholder box; a cursor in it fills the box while the cursor is on. */
 function layoutSlot(nodes: MNode[], font: FontId): Box {
-  if (!isEmptySlot(nodes)) return layoutSeq(nodes, font);
+  if (!isEmptySlot(nodes)) return layoutSeq(baseless(nodes) ? [{ t: "base" }, ...nodes] : nodes, font);
   const h = GLYPH_H[font];
   const ops = placeholder(font);
   if (nodes.length) ops.push({ k: "solid", x: 0, y: -h, w: font === "m" ? 4 : 5, h });
@@ -142,6 +146,8 @@ function layoutNode(n: MNode, font: FontId): Box {
   switch (n.t) {
     case "g":
       return { w: p, asc: h, desc: DESC[font], ops: [{ k: "g", key: n.key, font, x: 0, y: -h }] };
+    case "base":
+      return { w: p, asc: h, desc: DESC[font], ops: placeholder(font) };
     case "cur":
       return { w: 0, asc: h, desc: 0, ops: [{ k: "cur", x: 0, y: n.under ? 0 : -h, w: p - 1, h: n.under ? 1 : h }] };
     case "sup": {
@@ -202,7 +208,7 @@ export function measure(markup: string): { w: number; h: number } {
 
 /** Character cells (BEHAVIOR §3.2): fractions count their wider part, √ counts one cell; an empty slot is one cell. */
 export function cells(nodes: MNode[]): number {
-  const slot = (ns: MNode[]) => (isEmptySlot(ns) ? 1 : cells(ns));
+  const slot = (ns: MNode[]) => (isEmptySlot(ns) ? 1 : cells(ns) + (baseless(ns) ? 1 : 0));
   let c = 0;
   for (const n of nodes) {
     switch (n.t) {

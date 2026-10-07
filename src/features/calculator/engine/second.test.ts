@@ -29,7 +29,6 @@ describe("placeholder boxes", () => {
 
   test("empty exponent, ×10ⁿ and eˣ: one raised box", () => {
     expect(lines("5 4 mul x10n")).toEqual(["54**10^{}"]);
-    expect(lines(". 7 2nd ln pow")).toEqual([".7e^{}"]);
     expect(dots("^{}")).toHaveLength(8);
     expect(dots("e^{}")).toHaveLength(8);
     expect(Math.max(...dots("^{}").map((o) => o.y))).toBeLessThan(-4);
@@ -52,6 +51,27 @@ describe("placeholder boxes", () => {
     expect(off).toBeGreaterThan(0);
     expect(on).toBeGreaterThan(off - 8);
     expect(rasterize(model(c.state), true).some(Boolean)).toBe(true);
+  });
+});
+
+describe("third check", () => {
+  test("pow in an empty exponent nests a new empty exponent", () => {
+    expect(lines(". 7 2nd ln pow")).toEqual([".7e^{^{}}"]);
+    expect(dots("e^{^{}}")).toHaveLength(16);
+    expect(lines("5 . 7 5 9 pow pow 6 enter")).toEqual(["", "SYNTAX", "Error"]);
+  });
+
+  test("empty templates do not pre-empt evaluation errors", () => {
+    expect(lines("2 div 0 sub 1 5 2nd table 2nd log 4 frac 3 2nd square enter")).toEqual(["", "DIVIDE BY 0", "Error"]);
+    const c = run("recip pow 2nd cos pow enter");
+    expect(c.text().lines).toEqual(["", "DOMAIN", "Error"]);
+  });
+
+  test("a deep superscript with the cursor in it still shows its content", () => {
+    const l = lines("2nd lparen square ln . . pow 8 2nd tan 0 2nd neg 2nd log lparen");
+    expect(l).toHaveLength(1);
+    expect(l[0].startsWith("◂^{")).toBe(true);
+    expect(l[0]).toContain("8tan⁻¹(0ans10^{(}");
   });
 });
 

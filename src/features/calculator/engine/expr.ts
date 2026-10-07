@@ -552,15 +552,17 @@ export interface EvalResult {
 
 /** Errors come in evaluation order (BEHAVIOR §21): when the entry has a syntax error, the longest
  * well-formed prefix is evaluated first and any math error in it wins. */
-const hasEmptySlot = (els: El[]): boolean => els.some((e) => e.k !== "t" && e.s.some((l) => !l.length || hasEmptySlot(l)));
+const openParens = (els: El[]) =>
+  els.reduce((n, e) => (e.k !== "t" ? n : e.v.endsWith("(") ? n + 1 : e.v === ")" ? n - 1 : n), 0);
 
 function parseOrPrefixError(els: El[], ctx: Ctx): Parsed {
-  if (hasEmptySlot(els)) err("SYNTAX");
   try {
     return parse(els);
   } catch (e) {
     if (!(e instanceof CalcError) || e.code !== "SYNTAX") throw e;
     for (let k = els.length - 1; k > 0; k--) {
+      // a function's whole argument is parsed before the function is applied
+      if (openParens(els.slice(0, k)) > 0) continue;
       let prefix: Parsed;
       try {
         prefix = parse(els.slice(0, k));

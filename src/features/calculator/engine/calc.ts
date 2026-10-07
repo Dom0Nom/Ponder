@@ -8,7 +8,6 @@ import {
   end,
   fromMarkup,
   home,
-  inEmptyPow,
   insert,
   isEmpty,
   isTok,
@@ -205,7 +204,6 @@ function editKey(s: State, ed: Ed, k: string, implicitAns: boolean): boolean {
       else put("e^(");
       return true;
     case "pow":
-      if (mp && inEmptyPow(ed)) return true;
       if (mp) insert(ed, [tpl("pow", [])], { at: 0, slot: 0 });
       else put("^");
       return true;
