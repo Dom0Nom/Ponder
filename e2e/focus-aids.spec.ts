@@ -39,6 +39,7 @@ async function openCitedPassage(app: Page) {
 
 test("break menu: edit in settings, pick on the break screen", async ({ app }) => {
   await app.getByRole("button", { name: "Settings" }).click();
+  await app.getByRole("button", { name: "Edit break menu" }).click();
   const add = app.getByRole("textbox", { name: "Add a break activity" });
   await add.fill("  Play guitar ");
   await add.press("Enter");
@@ -74,6 +75,7 @@ test("break menu: edit in settings, pick on the break screen", async ({ app }) =
 
 test("break screen shows a tip when the menu is empty", async ({ app }) => {
   await app.getByRole("button", { name: "Settings" }).click();
+  await app.getByRole("button", { name: "Edit break menu" }).click();
   for (const name of ["Drink a glass of water", "Stretch or walk around", "Look out of a window", "Do ten slow breaths"]) {
     await app.getByRole("button", { name: `Remove “${name}”` }).click();
   }

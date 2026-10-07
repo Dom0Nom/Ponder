@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { qk, useCaptureStatus } from "../../lib/queries";
 import { s } from "../../lib/strings";
-import { DEFAULT_SHORTCUT, formatShortcut, shortcutFromEvent, validateShortcut } from "../../lib/capture/shortcut";
+import { DEFAULT_SHORTCUT, shortcutFromEvent, splitShortcut, validateShortcut } from "../../lib/capture/shortcut";
 import { Button } from "../../components/ui/button";
-import { ErrorState, Skeleton, Switch } from "../../components/ui/misc";
+import { ErrorState, Kbd, Skeleton, Switch } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
+import { Callout, SettingsGroup, SettingsRow } from "./layout";
 
 export function CaptureSection() {
   const { data, isLoading, error, refetch } = useCaptureStatus();
@@ -49,45 +49,41 @@ export function CaptureSection() {
   if (error || !data) return <ErrorState title={s.errors.generic} error={error} onRetry={() => refetch()} />;
 
   return (
-    <div data-testid="capture-settings">
-      <div className="flex items-center justify-between gap-6 py-2.5">
-        <span className="text-sm">{s.capture.enable}</span>
-        <Switch
-          label={s.capture.enable}
-          checked={data.enabled}
-          disabled={busy}
-          onCheckedChange={(on) => configure(on, data.shortcut)}
-        />
-      </div>
-      <div className="flex items-center justify-between gap-6 py-2.5">
-        <span className="text-sm">{s.capture.shortcut}</span>
-        <div className="flex items-center gap-2">
-          <kbd
-            aria-live="polite"
-            data-testid="capture-shortcut"
-            className="min-w-16 rounded-lg border border-border bg-surface-2 px-2.5 py-1 text-center font-sans text-sm"
-          >
-            {recording ? s.capture.recording : formatShortcut(data.shortcut)}
-          </kbd>
-          {data.shortcut !== DEFAULT_SHORTCUT && !recording && (
-            <Button size="sm" variant="ghost" disabled={busy} onClick={() => configure(data.enabled, DEFAULT_SHORTCUT)}>
-              {s.capture.reset}
+    <>
+      <SettingsGroup data-testid="capture-settings">
+        <SettingsRow title={s.capture.enable}>
+          <Switch
+            label={s.capture.enable}
+            checked={data.enabled}
+            disabled={busy}
+            onCheckedChange={(on) => configure(on, data.shortcut)}
+          />
+        </SettingsRow>
+        <SettingsRow title={s.capture.shortcut}>
+          <span className="flex items-center gap-2">
+            <Kbd
+              aria-live="polite"
+              data-testid="capture-shortcut"
+              keys={recording ? undefined : splitShortcut(data.shortcut)}
+            >
+              {recording ? s.capture.recording : null}
+            </Kbd>
+            {data.shortcut !== DEFAULT_SHORTCUT && !recording && (
+              <Button size="sm" variant="ghost" disabled={busy} onClick={() => configure(data.enabled, DEFAULT_SHORTCUT)}>
+                {s.capture.reset}
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" disabled={busy} onClick={() => setRecording((r) => !r)}>
+              {recording ? s.common.cancel : s.capture.change}
             </Button>
-          )}
-          <Button size="sm" disabled={busy} onClick={() => setRecording((r) => !r)}>
-            {recording ? s.common.cancel : s.capture.change}
-          </Button>
-        </div>
-      </div>
+          </span>
+        </SettingsRow>
+      </SettingsGroup>
       {data.enabled && !data.registered && data.error && (
-        <div role="alert" className="mt-2 flex items-start gap-2 rounded-xl bg-danger-soft px-3 py-2 text-sm">
-          <AlertCircle size={16} className="mt-0.5 shrink-0 text-danger" />
-          <div>
-            <p className="font-medium text-danger">{s.capture.notRegistered}</p>
-            <p className="mt-0.5 break-words text-muted">{data.error}</p>
-          </div>
+        <div className="mt-3">
+          <Callout title={s.capture.notRegistered}>{data.error}</Callout>
         </div>
       )}
-    </div>
+    </>
   );
 }

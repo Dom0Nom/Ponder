@@ -13,6 +13,7 @@ export function Dialog({
   children,
   footer,
   className,
+  bodyClassName,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -21,6 +22,7 @@ export function Dialog({
   children?: ReactNode;
   footer?: ReactNode;
   className?: string;
+  bodyClassName?: string;
 }) {
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
@@ -58,7 +60,7 @@ export function Dialog({
               <X size={15} />
             </D.Close>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-3">{children}</div>
+          <div className={cn("min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-3", bodyClassName)}>{children}</div>
           {footer && <div className="flex items-center justify-end gap-2 border-t border-divider px-5 py-3.5">{footer}</div>}
         </D.Content>
       </D.Portal>

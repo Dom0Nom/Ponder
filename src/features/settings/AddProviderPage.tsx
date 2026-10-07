@@ -1,8 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, Info, KeyRound, LogIn, Server } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, ChevronRight, ExternalLink, HardDrive, KeyRound, LogIn } from "lucide-react";
+import { Fragment, useState } from "react";
 import { Button } from "../../components/ui/button";
-import { Dialog } from "../../components/ui/dialog";
 import { Input, Label } from "../../components/ui/input";
 import { toastError } from "../../components/ui/toast";
 import { api } from "../../lib/ipc";
@@ -10,45 +9,61 @@ import { catalog, catalogOrder, type CatalogEntry } from "../../lib/providers/ca
 import { qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Provider, ProviderKind, ProviderType } from "../../lib/types";
-import { cn } from "../../lib/utils";
+import { useUi } from "../../stores/ui";
 import { openExternal } from "./openExternal";
 import { pk } from "./providerQueries";
+import { SubPage } from "./SubPage";
 
-const groupIcon: Record<ProviderKind, typeof Server> = { local: Server, oauth: LogIn, apiKey: KeyRound };
+const groupIcon: Record<ProviderKind, typeof HardDrive> = { local: HardDrive, oauth: LogIn, apiKey: KeyRound };
+
+const DESIGNED: Record<ProviderKind, ProviderType[]> = {
+  local: ["lmstudio", "ollama"],
+  oauth: ["chatgpt-oauth", "xai-oauth"],
+  apiKey: ["anthropic", "openai", "openrouter", "openai-compatible"],
+};
+
+function Tile({ type, onPick }: { type: ProviderType; onPick: (t: ProviderType) => void }) {
+  const Icon = groupIcon[catalog[type].kind];
+  const hint = s.providers.tileHint[type];
+  return (
+    <button
+      onClick={() => onPick(type)}
+      className="flex h-12 items-center gap-3 rounded-tile border border-border px-3 text-left hover:bg-fill-faint"
+    >
+      <Icon size={15} aria-hidden />
+      <span className="flex flex-1 flex-col">
+        <span className="font-semibold">{catalog[type].tileLabel ?? catalog[type].label}</span>
+        {hint && <span className="text-label text-muted">{hint}</span>}
+      </span>
+      <ChevronRight size={14} aria-hidden />
+    </button>
+  );
+}
 
 function TypeGrid({ onPick }: { onPick: (t: ProviderType) => void }) {
   const groups: ProviderKind[] = ["local", "oauth", "apiKey"];
+  const shown = new Set(groups.flatMap((g) => DESIGNED[g]));
+  const extra = catalogOrder.filter((t) => !shown.has(t));
   return (
-    <div className="space-y-5 pb-2">
-      {groups.map((g) => {
-        const Icon = groupIcon[g];
-        return (
-          <div key={g}>
-            <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted">
-              <Icon size={14} aria-hidden />
-              {s.providers.groups[g]}
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {catalogOrder
-                .filter((t) => catalog[t].kind === g)
-                .map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => onPick(t)}
-                    className="rounded-xl border border-border bg-surface px-3 py-2.5 text-left text-sm font-medium transition-colors hover:border-accent hover:bg-accent-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-                  >
-                    {catalog[t].label}
-                  </button>
-                ))}
-            </div>
+    <>
+      {groups.map((g) => (
+        <Fragment key={g}>
+          <p className="text-label font-semibold text-muted">{s.providers.groups[g]}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {DESIGNED[g].map((t) => (
+              <Tile key={t} type={t} onPick={onPick} />
+            ))}
           </div>
-        );
-      })}
-      <p className="flex gap-2 rounded-xl bg-surface-2 px-3 py-2.5 text-xs text-muted">
-        <Info size={14} className="mt-0.5 shrink-0" aria-hidden />
-        {s.providers.claudeNote}
-      </p>
-    </div>
+        </Fragment>
+      ))}
+      <p className="text-label font-semibold text-muted">{s.providers.moreProviders}</p>
+      <div className="grid grid-cols-2 gap-2">
+        {extra.map((t) => (
+          <Tile key={t} type={t} onPick={onPick} />
+        ))}
+      </div>
+      <p className="text-caption text-muted">{s.providers.claudeNote}</p>
+    </>
   );
 }
 
@@ -69,7 +84,7 @@ function ProviderForm({
   return (
     <form
       id="add-provider-form"
-      className="space-y-4 pb-2"
+      className="flex flex-col gap-4"
       onSubmit={(e) => {
         e.preventDefault();
         if (valid && !busy) onSubmit({ name: name.trim(), baseUrl: baseUrl.trim(), key: key.trim() });
@@ -90,7 +105,7 @@ function ProviderForm({
             spellCheck={false}
             autoCapitalize="off"
           />
-          <p className="mt-1 text-xs text-muted">{s.providers.baseUrlHelp}</p>
+          <p className="mt-1.5 text-caption text-muted">{s.providers.baseUrlHelp}</p>
         </div>
       )}
       {showKey && (
@@ -101,7 +116,7 @@ function ProviderForm({
               <button
                 type="button"
                 onClick={() => openExternal(entry.docsUrl)}
-                className="inline-flex items-center gap-1 text-xs font-medium text-accent-text hover:underline"
+                className="inline-flex items-center gap-1 text-label font-semibold text-fg hover:underline"
               >
                 {s.providers.getKey}
                 <ExternalLink size={12} aria-hidden />
@@ -116,11 +131,11 @@ function ProviderForm({
             value={key}
             onChange={(e) => setKey(e.target.value)}
           />
-          <p className="mt-1 text-xs text-muted">{s.providers.apiKeyHelp}</p>
+          <p className="mt-1.5 text-caption text-muted">{s.providers.apiKeyHelp}</p>
         </div>
       )}
       {entry.kind === "oauth" && (
-        <p className="rounded-xl bg-surface-2 px-3 py-2.5 text-sm text-muted">
+        <p className="rounded-pane bg-fill-subtle px-3 py-2.5 text-body text-muted">
           {entry.type === "chatgpt-oauth" ? s.providers.signInChatgptHelp : s.providers.signInGrokHelp}
         </p>
       )}
@@ -128,24 +143,12 @@ function ProviderForm({
   );
 }
 
-export function AddProviderDialog({
-  open,
-  onOpenChange,
-  onAdded,
-}: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-  onAdded: (p: Provider) => void;
-}) {
+export function AddProviderPage({ type }: { type?: ProviderType }) {
   const qc = useQueryClient();
-  const [type, setType] = useState<ProviderType | null>(null);
+  const navigate = useUi((st) => st.navigate);
+  const setJustAdded = useUi((st) => st.setJustAddedProvider);
   const [busy, setBusy] = useState(false);
   const entry = type ? catalog[type] : null;
-
-  const close = (o: boolean) => {
-    onOpenChange(o);
-    if (!o) setTimeout(() => setType(null), 200);
-  };
 
   const submit = async (v: { name: string; baseUrl: string; key: string }) => {
     if (!entry) return;
@@ -164,8 +167,8 @@ export function AddProviderDialog({
         qc.invalidateQueries({ queryKey: pk.secret(created.id) });
       }
       await qc.invalidateQueries({ queryKey: qk.providers });
-      close(false);
-      onAdded(created);
+      setJustAdded(created.id);
+      navigate({ name: "settings", section: "providers" });
     } catch (e) {
       if (created) {
         await api.deleteProvider(created.id).catch(() => {});
@@ -178,17 +181,15 @@ export function AddProviderDialog({
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={close}
+    <SubPage
+      crumb={s.settings.crumbProviders}
+      section="providers"
       title={entry ? entry.label : s.providers.addTitle}
-      description={entry ? undefined : s.providers.addBody}
-      className={cn(!entry && "w-[min(620px,calc(100vw-32px))]")}
       footer={
         entry && (
           <>
-            <Button variant="ghost" onClick={() => setType(null)} disabled={busy}>
-              <ArrowLeft size={16} aria-hidden />
+            <Button variant="ghost" size="sm" onClick={() => navigate({ name: "settings", page: { kind: "addProvider" } })} disabled={busy}>
+              <ArrowLeft size={14} aria-hidden />
               {s.common.back}
             </Button>
             <Button variant="primary" type="submit" form="add-provider-form" disabled={busy}>
@@ -198,7 +199,11 @@ export function AddProviderDialog({
         )
       }
     >
-      {entry ? <ProviderForm key={entry.type} entry={entry} busy={busy} onSubmit={submit} /> : <TypeGrid onPick={setType} />}
-    </Dialog>
+      {entry ? (
+        <ProviderForm key={entry.type} entry={entry} busy={busy} onSubmit={submit} />
+      ) : (
+        <TypeGrid onPick={(t) => navigate({ name: "settings", page: { kind: "addProvider", type: t } })} />
+      )}
+    </SubPage>
   );
 }

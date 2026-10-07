@@ -1,7 +1,7 @@
 import * as Sw from "@radix-ui/react-switch";
 import * as Tip from "@radix-ui/react-tooltip";
 import { AlertCircle, Loader2 } from "lucide-react";
-import { useRef, type ReactNode } from "react";
+import { useRef, type HTMLAttributes, type ReactNode } from "react";
 import { cn } from "../../lib/utils";
 import { s } from "../../lib/strings";
 import { useSlidingPill } from "../motion/useSlidingPill";
@@ -177,9 +177,15 @@ export function ErrorState({
   );
 }
 
-export function Kbd({ keys, children, className }: { keys?: string[]; children?: ReactNode; className?: string }) {
+export function Kbd({
+  keys,
+  children,
+  className,
+  ...rest
+}: { keys?: string[]; children?: ReactNode; className?: string } & HTMLAttributes<HTMLElement>) {
   return (
     <kbd
+      {...rest}
       className={cn(
         "inline-flex h-4.5 shrink-0 items-center gap-px rounded-kbd bg-kbd px-1.25 font-kbd text-kbd font-semibold leading-none text-fg-secondary",
         className,

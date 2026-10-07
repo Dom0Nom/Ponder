@@ -107,6 +107,15 @@ export function formatShortcut(accel: string): string {
   return p.mods.map((m) => MOD_SYMBOL[m]).join("") + key;
 }
 
+/** formatShortcut as separate glyphs for Kbd: modifiers one by one, then the key. */
+export function splitShortcut(accel: string): string[] {
+  const p = parseShortcut(accel);
+  if (!p) return [accel];
+  const label = formatShortcut(accel);
+  const mods = p.mods.map((m) => MOD_SYMBOL[m]);
+  return [...mods, label.slice(mods.join("").length)];
+}
+
 export interface KeyLike {
   code: string;
   metaKey: boolean;

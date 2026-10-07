@@ -7,10 +7,11 @@ import { toast, toastError } from "../../components/ui/toast";
 import { api } from "../../lib/ipc";
 import { qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
-import { SPACE_COLORS, SPACE_ICONS } from "../../lib/spaceStyle";
+import { SPACE_ICONS } from "../../lib/spaceStyle";
 import type { Space } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
+import { NativeSelect } from "../settings/NativeSelect";
 import { CURRICULA, curriculumById } from "../../lib/placement/curricula";
 import { runPlacement } from "../../lib/placement/flows";
 
@@ -24,8 +25,7 @@ export function SpaceDialog({
   space?: Space;
 }) {
   const [name, setName] = useState(space?.name ?? "");
-  const [icon, setIcon] = useState(space?.icon ?? "book");
-  const [color, setColor] = useState(space?.color ?? "blue");
+  const [icon, setIcon] = useState(space?.icon ?? "calculator");
   const [busy, setBusy] = useState(false);
   const [curriculum, setCurriculum] = useState("");
   const qc = useQueryClient();
@@ -34,8 +34,7 @@ export function SpaceDialog({
   useEffect(() => {
     if (open) {
       setName(space?.name ?? "");
-      setIcon(space?.icon ?? "book");
-      setColor(space?.color ?? "blue");
+      setIcon(space?.icon ?? "calculator");
       setCurriculum("");
     }
   }, [open, space]);
@@ -45,11 +44,11 @@ export function SpaceDialog({
     setBusy(true);
     try {
       if (space) {
-        const updated = await api.updateSpace(space.id, { name, icon, color });
+        const updated = await api.updateSpace(space.id, { name, icon });
         qc.setQueryData(qk.space(space.id), updated);
         toast.success(s.space.saved);
       } else {
-        const created = await api.createSpace({ name, icon, color });
+        const created = await api.createSpace({ name, icon, color: "slate" });
         navigate({ name: "space", spaceId: created.id });
         const cur = curriculumById(curriculum);
         if (cur) {
@@ -80,10 +79,10 @@ export function SpaceDialog({
       title={space ? s.space.editTitle : s.space.createTitle}
       footer={
         <>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>
             {s.common.cancel}
           </Button>
-          <Button variant="primary" disabled={!name.trim() || busy} onClick={submit}>
+          <Button variant="primary" className="px-4" disabled={!name.trim() || busy} onClick={submit}>
             {space ? s.common.save : s.common.create}
           </Button>
         </>
@@ -94,7 +93,7 @@ export function SpaceDialog({
           e.preventDefault();
           submit();
         }}
-        className="space-y-5 pb-2"
+        className="flex flex-col gap-4"
       >
         <div>
           <Label htmlFor="space-name">{s.space.nameLabel}</Label>
@@ -110,19 +109,14 @@ export function SpaceDialog({
         {!space && (
           <div>
             <Label htmlFor="space-curriculum">{s.space.curriculum}</Label>
-            <select
-              id="space-curriculum"
-              value={curriculum}
-              onChange={(e) => setCurriculum(e.target.value)}
-              className="h-10 w-full rounded-xl border border-border bg-surface px-3 text-sm"
-            >
+            <NativeSelect id="space-curriculum" value={curriculum} onChange={(e) => setCurriculum(e.target.value)}>
               <option value="">{s.space.noCurriculum}</option>
               {CURRICULA.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.title}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
         )}
         <div>
@@ -137,36 +131,22 @@ export function SpaceDialog({
                 aria-label={key}
                 onClick={() => setIcon(key)}
                 className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-2",
-                  icon === key && "bg-accent-soft text-accent-text hover:bg-accent-soft",
+                  "flex size-8.5 items-center justify-center rounded-pane border text-fg",
+                  icon === key ? "border-fg bg-fill" : "border-border bg-transparent hover:bg-fill",
                 )}
               >
-                <Icon size={19} />
+                <Icon size={16} />
               </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <Label>{s.space.color}</Label>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={s.space.color}>
-            {Object.entries(SPACE_COLORS).map(([key, c]) => (
-              <button
-                type="button"
-                key={key}
-                role="radio"
-                aria-checked={color === key}
-                aria-label={key}
-                onClick={() => setColor(key)}
-                className={cn(
-                  "h-8 w-8 rounded-full ring-offset-2 ring-offset-surface transition-shadow",
-                  color === key && "ring-2 ring-accent",
-                )}
-                style={{ background: c[1] }}
-              />
             ))}
           </div>
         </div>
       </form>
     </Dialog>
   );
+}
+
+export function SpaceDialogHost() {
+  const open = useUi((st) => st.spaceDialogOpen);
+  const setOpen = useUi((st) => st.setSpaceDialogOpen);
+  return <SpaceDialog open={open} onOpenChange={setOpen} />;
 }

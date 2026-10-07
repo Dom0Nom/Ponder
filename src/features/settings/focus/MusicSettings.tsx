@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle } from "lucide-react";
 import { api, events } from "../../../lib/ipc";
 import { qk, useMusicStatus } from "../../../lib/queries";
 import { useFocusPrefs, useSetFocusPref } from "../../../lib/focusPrefs";
@@ -10,6 +9,7 @@ import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { ErrorState, Skeleton, Spinner, Switch } from "../../../components/ui/misc";
 import { toast, toastError } from "../../../components/ui/toast";
+import { Callout, SettingsRow } from "../layout";
 
 export function MusicSettings() {
   const status = useMusicStatus();
@@ -27,7 +27,7 @@ export function MusicSettings() {
   }, [qc]);
 
   if (status.data && !status.data.available) return null;
-  if (status.isLoading || isLoading) return <Skeleton className="h-24" />;
+  if (status.isLoading || isLoading) return <Skeleton className="my-3 h-12" />;
   if (status.error || !status.data) {
     return <ErrorState title={s.errors.generic} error={status.error} onRetry={() => status.refetch()} />;
   }
@@ -70,15 +70,12 @@ export function MusicSettings() {
   };
 
   return (
-    <div data-testid="music-settings">
-      <h3 className="text-sm font-semibold">{s.music.title}</h3>
-      <p className="mt-0.5 text-sm text-muted">{s.music.body}</p>
-      <div className="flex items-center justify-between gap-6 py-2.5">
-        <span className="text-sm">{s.music.enable}</span>
+    <div data-testid="music-settings" className="[&>*+*]:border-t [&>*+*]:border-divider">
+      <SettingsRow title={s.music.enable} description={s.music.body}>
         <Switch label={s.music.enable} checked={enabled} onCheckedChange={(on) => save({ enabled: on, playlist })} />
-      </div>
+      </SettingsRow>
       {enabled && (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2 py-3">
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
               <Input
@@ -91,26 +88,22 @@ export function MusicSettings() {
                 onKeyDown={(e) => e.key === "Enter" && void commit()}
               />
               {invalid && (
-                <p role="alert" className="mt-1.5 text-[0.8125rem] text-danger">
+                <p role="alert" className="mt-1.5 text-body text-danger">
                   {invalid}
                 </p>
               )}
             </div>
-            <Button disabled={!parsed.ok || testing} onClick={() => void test()}>
+            <Button variant="secondary" size="md" disabled={!parsed.ok || testing} onClick={() => void test()}>
               {testing ? <Spinner /> : null}
               {testing ? s.music.testing : s.music.test}
             </Button>
           </div>
-          <p className="text-[0.8125rem] text-muted">{s.music.permissionHint}</p>
+          <p className="text-caption text-muted">{s.music.permissionHint}</p>
         </div>
       )}
       {status.data.lastError && (
-        <div role="alert" className="mt-3 flex items-start gap-2 rounded-xl bg-danger-soft px-3 py-2 text-sm">
-          <AlertCircle size={16} className="mt-0.5 shrink-0 text-danger" />
-          <div>
-            <p className="font-medium text-danger">{s.music.lastError}</p>
-            <p className="mt-0.5 break-words text-muted">{status.data.lastError}</p>
-          </div>
+        <div className="py-3">
+          <Callout title={s.music.lastError}>{status.data.lastError}</Callout>
         </div>
       )}
     </div>

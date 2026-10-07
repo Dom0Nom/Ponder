@@ -1,5 +1,7 @@
 import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./ipc";
+import { toast } from "sonner";
+import { s } from "./strings";
 import type { SpacePatch } from "./types";
 
 export const queryClient = new QueryClient({
@@ -62,6 +64,15 @@ export function useUpdateSpace() {
       qc.invalidateQueries({ queryKey: qk.spaces });
     },
   });
+}
+
+export function useDeleteSpace() {
+  const qc = useQueryClient();
+  return async (id: string) => {
+    await api.deleteSpace(id);
+    qc.invalidateQueries({ queryKey: qk.spaces });
+    toast.success(s.space.deleted);
+  };
 }
 
 export function usePinThread(spaceId: string) {

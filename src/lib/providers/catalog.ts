@@ -34,6 +34,8 @@ export type SdkKind = "anthropic" | "openai" | "google" | "xai" | "chatgpt" | "o
 export interface CatalogEntry {
   type: ProviderType;
   label: string;
+  /** shorter name on the add-provider tile */
+  tileLabel?: string;
   kind: ProviderKind;
   sdk: SdkKind;
   defaultBaseUrl: string;
@@ -63,6 +65,7 @@ export const catalog: Record<ProviderType, CatalogEntry> = {
   anthropic: {
     type: "anthropic",
     label: "Anthropic (Claude)",
+    tileLabel: "Anthropic",
     kind: "apiKey",
     sdk: "anthropic",
     defaultBaseUrl: "https://api.anthropic.com/v1",
@@ -181,6 +184,7 @@ export const catalog: Record<ProviderType, CatalogEntry> = {
   "openai-compatible": {
     type: "openai-compatible",
     label: "OpenAI-compatible",
+    tileLabel: "Other (OpenAI-compatible)",
     kind: "apiKey",
     sdk: "openai-compatible",
     defaultBaseUrl: "",
@@ -225,6 +229,7 @@ export const catalog: Record<ProviderType, CatalogEntry> = {
   "chatgpt-oauth": {
     type: "chatgpt-oauth",
     label: "ChatGPT (sign in)",
+    tileLabel: "ChatGPT",
     kind: "oauth",
     sdk: "chatgpt",
     defaultBaseUrl: "https://api.openai.com/v1",
@@ -243,6 +248,7 @@ export const catalog: Record<ProviderType, CatalogEntry> = {
   "xai-oauth": {
     type: "xai-oauth",
     label: "Grok (sign in)",
+    tileLabel: "Grok",
     kind: "oauth",
     sdk: "xai",
     defaultBaseUrl: "https://api.x.ai/v1",
