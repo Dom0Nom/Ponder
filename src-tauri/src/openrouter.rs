@@ -126,6 +126,18 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "network"]
+    async fn live_list_parses() {
+        let dir = tempfile::tempdir().unwrap();
+        let c = load(&reqwest::Client::new(), dir.path(), true).await.unwrap();
+        for id in ["deepseek/deepseek-v4.1-flash", "anthropic/claude-haiku-4.5"] {
+            let m = c.models.iter().find(|m| m.id == id).unwrap_or_else(|| panic!("{id} missing"));
+            assert!(m.supported_parameters.iter().any(|p| p == "reasoning"));
+        }
+        assert!(dir.path().join(CACHE_FILE).exists());
+    }
+
+    #[tokio::test]
     async fn caches_then_falls_back_to_stale() {
         let dir = tempfile::tempdir().unwrap();
         let server = MockServer::start().await;
