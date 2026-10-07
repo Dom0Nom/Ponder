@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"><script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script><link rel="stylesheet" href="https://unpkg.com/lucide-static@0.460.0/font/lucide.css"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Inter:wght@400;500;600&family=VT323&family=STIX+Two+Text:ital,wght@0,400;0,500;1,400;1,500&display=swap"><style>body{margin:0;background:#ebebeb;font-family:system-ui,sans-serif}a{color:#1a1a1a}a:hover{color:#000}.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}.dv-tname{font:600 13px/1.2 system-ui,sans-serif;color:#1a1a1a}.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 system-ui,sans-serif;color:rgba(0,0,0,.55)}.dv-card{max-width:100%;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}.dv-opt:target .dv-oid{background:#2a78d6;color:#fff}.dv-next{margin:22px 0 0;font:12px/1.5 system-ui,sans-serif;color:rgba(0,0,0,.5)}</style></helmet>
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Space screen v2: light (2a) and dark (2b)</span></div>
+<div class="dv-opts">
+<div class="dv-opt" id="2a"><div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Try the practice problem (answer is 3) · Hint · chat title menu · sidebar toggle · Studio ⌘⇧T</div>
+<div class="dv-card" style="width:1280px;height:800px;display:flex;font-family:'IBM Plex Sans',sans-serif;color:#111111;background:#ffffff;font-size:13px;line-height:1.45;position:relative">
+  <div style="position:absolute;top:18px;left:18px;z-index:10;display:flex;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:#ff5f57"></span><span style="width:12px;height:12px;border-radius:50%;background:#febc2e"></span><span style="width:12px;height:12px;border-radius:50%;background:#28c840"></span></div>
+  <div style="width:{{ railW }};flex:none;position:relative;z-index:5;transition:width .18s ease">
+  <aside onMouseEnter="{{ navEnter }}" onMouseLeave="{{ navLeave }}" style="position:absolute;top:0;left:0;bottom:0;width:{{ navW }};background:#f6f6f6;box-shadow:{{ navShadow }};display:flex;flex-direction:column;box-sizing:border-box;transition:width .18s ease,box-shadow .18s;overflow:{{ railOverflow }}">
+    <div style="height:48px;flex:none"></div>
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:2px;padding:8px 12px 12px">
+    <div style="display:flex;align-items:center;gap:8px;height:32px;margin:0 0 8px;padding:0 6px 0 10px;border:1px solid #e3e3e3;border-radius:6px;background:#fff;color:#6b6b6b;white-space:nowrap;overflow:hidden;cursor:text;opacity:{{ labelOpacity }}"><i class="icon-search" style="font-size:14px;color:#111111"></i><span style="flex:1">Search</span><span style="display:inline-flex;align-items:center;gap:1px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:4px;background:rgba(127,127,127,.16);color:#404040;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;font-size:11px;font-weight:600;line-height:1"><span style="width:10px;display:flex;justify-content:center">⌘</span><span style="width:10px;display:flex;justify-content:center">K</span></span></div>
+    <sc-for list="{{ navTop }}" as="it" hint-placeholder-count="3"><div onClick="{{ it.onClick }}" style="display:flex;align-items:center;gap:12px;height:36px;padding:0 16px;border-radius:6px;white-space:nowrap;overflow:hidden;cursor:pointer;background:{{ it.bg }};color:{{ it.fg }}" style-hover="background:{{ it.hoverBg }}"><i class="{{ it.icon }}" style="font-size:16px;flex:none;width:16px"></i><span style="flex:1;font-weight:500;opacity:{{ labelOpacity }};transition:opacity .15s">{{ it.label }}</span><span style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;font-size:11.5px;font-weight:600;letter-spacing:.12em;color:#6b6b6b;opacity:{{ labelOpacity }}">{{ it.hint }}</span></div></sc-for>
+    <div style="position:relative;height:38px;flex:none"><span style="position:absolute;left:-12px;right:-12px;top:10px;height:1px;background:#e6e6e6"></span><span title="New chat" style="position:absolute;right:4px;bottom:-4px;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#111111;opacity:{{ labelOpacity }}" style-hover="background:#e6e6e6"><i class="icon-plus" style="font-size:15px"></i></span></div>
+    <div style="flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:2px;margin:0 -12px;padding:0 12px">
+    <sc-for list="{{ threadGroups }}" as="g" hint-placeholder-count="2">
+      <div style="padding:10px 16px 4px;font-size:12px;font-weight:600;color:#6b6b6b;white-space:nowrap;opacity:{{ labelOpacity }}">{{ g.label }}</div>
+      <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="2"><div onMouseEnter="{{ it.enter }}" onMouseLeave="{{ it.leave }}" style="position:relative;display:flex;align-items:center;gap:2px;height:32px;flex:none;padding:0 6px 0 16px;border-radius:6px;white-space:nowrap;cursor:pointer;background:{{ it.bg }};color:#111111;opacity:{{ labelOpacity }}">
+      <sc-if value="{{ it.editing }}" hint-placeholder-val="{{ false }}"><input autoFocus="{{ true }}" defaultValue="{{ it.label }}" onKeyDown="{{ it.renameKey }}" onBlur="{{ it.renameBlur }}" onClick="{{ it.stop }}" style="flex:1;min-width:0;height:24px;padding:0 6px;margin-left:-7px;border:1px solid #111111;border-radius:4px;font:inherit;font-weight:500;color:#111111;background:#fff;outline:none"></sc-if>
+      <sc-if value="{{ it.notEditing }}" hint-placeholder-val="{{ true }}"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:{{ it.weight }}">{{ it.label }}</span></sc-if>
+      <sc-if value="{{ it.showPin }}" hint-placeholder-val="{{ false }}"><span onClick="{{ it.togglePin }}" title="{{ it.pinLabel }}" style="width:24px;height:24px;flex:none;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:{{ it.pinOpacity }}" style-hover="background:rgba(0,0,0,.08)"><i class="icon-pin" style="font-size:14px"></i></span></sc-if>
+      <sc-if value="{{ it.showMore }}" hint-placeholder-val="{{ false }}"><span onClick="{{ it.toggleMenu }}" title="More" style="width:24px;height:24px;flex:none;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:rgba(0,0,0,.08)"><i class="icon-ellipsis" style="font-size:14px"></i></span></sc-if>
+      <sc-if value="{{ it.menuOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ it.stop }}" style="position:absolute;top:30px;right:4px;z-index:20;width:148px;padding:4px;background:#fff;border:1px solid #e6e6e6;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);color:#111111;display:flex;flex-direction:column">
+          <div onClick="{{ it.rename }}" style="display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:5px;font-weight:500" style-hover="background:#f2f2f2"><i class="icon-pencil" style="font-size:14px"></i>Rename</div>
+          <div onClick="{{ it.togglePin }}" style="display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:5px;font-weight:500" style-hover="background:#f2f2f2"><i class="{{ it.pinIcon }}" style="font-size:14px"></i>{{ it.pinLabel }}</div>
+          <div style="height:1px;background:#efefef;margin:4px 0"></div>
+          <div onClick="{{ it.remove }}" style="display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:5px;font-weight:500;color:#b3261e" style-hover="background:#fdf0ef"><i class="icon-trash-2" style="font-size:14px"></i>Delete</div>
+        </div>
+      </sc-if>
+    </div></sc-for>
+    </sc-for>
+    </div>
+    <div style="display:flex;margin-top:6px;opacity:{{ labelOpacity }}"><span title="Settings ⌘," style="width:32px;height:32px;margin-left:4px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#111111" style-hover="background:#ebebeb"><i class="icon-settings" style="font-size:16px"></i></span></div>
+    </div>
+  </aside>
+</div>
+
+  <main style="flex:1;min-width:0;display:flex;flex-direction:column;position:relative;overflow:hidden;background:#f6f6f6">
+    <div style="height:48px;flex:none;display:flex;align-items:center;gap:12px;padding:0 16px 0 12px;box-sizing:border-box;position:relative" data-comment-anchor="ba854d6fe9-div">
+      <sc-if value="{{ railHidden }}" hint-placeholder-val="{{ true }}"><span style="width:64px;flex:none"></span></sc-if>
+      <span onClick="{{ togglePin }}" title="Toggle sidebar" style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ pinBg }};color:#111111" style-hover="background:#e6e6e6"><i class="icon-panel-left" style="font-size:16px"></i></span>
+      <span style="color:#404040;font-weight:500">GED Math</span><span style="color:#8a8a8a">/</span>
+      <div onClick="{{ stopProp }}" style="position:relative">
+        <span onClick="{{ toggleTitleMenu }}" style="display:flex;align-items:center;gap:6px;height:28px;padding:0 6px 0 8px;margin-left:-8px;border-radius:6px;font-weight:500;cursor:pointer;background:{{ titleTrigBg }}" style-hover="background:#ebebeb">{{ activeTitle }}<i class="icon-chevron-down" style="font-size:13px;color:#6b6b6b"></i></span>
+        <sc-if value="{{ titleMenuOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:32px;left:-8px;z-index:40;width:180px;padding:4px;background:#fff;border:1px solid #e6e6e6;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);display:flex;flex-direction:column">
+            <div onClick="{{ titleRename }}" style="display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:5px;font-weight:500;cursor:pointer" style-hover="background:#f2f2f2"><i class="icon-pencil" style="font-size:14px"></i>Rename</div>
+            <div onClick="{{ titlePin }}" style="display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:5px;font-weight:500;cursor:pointer" style-hover="background:#f2f2f2"><i class="{{ activePinIcon }}" style="font-size:14px"></i>{{ activePinLabel }}</div>
+            <div style="display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:5px;font-weight:500;cursor:pointer" style-hover="background:#f2f2f2"><i class="icon-share" style="font-size:14px"></i>Export as notes</div>
+            <div style="height:1px;background:#efefef;margin:4px 0"></div>
+            <div style="display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:5px;font-weight:500;color:#b3261e;cursor:pointer" style-hover="background:#fdf0ef"><i class="icon-trash-2" style="font-size:14px"></i>Delete chat</div>
+          </div>
+        </sc-if>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+                <sc-if value="{{ studioClosed }}" hint-placeholder-val="{{ false }}"><span onClick="{{ toggleStudio }}" style="display:flex;align-items:center;gap:10px;height:28px;padding:0 10px;border-radius:6px;cursor:pointer" style-hover="background:#ebebeb"><span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums">18:42</span><span style="position:relative;width:16px;height:16px;border-radius:50%;background:conic-gradient(#111111 0 25%, #e3e3e3 25% 100%)"><span style="position:absolute;inset:3px;border-radius:50%;background:#f6f6f6"></span></span></span></sc-if>
+        <span onClick="{{ toggleCalc }}" title="Calculator (reference calculator layout)" style="display:flex;align-items:center;gap:8px;height:28px;padding:0 10px;border-radius:6px;cursor:pointer;background:{{ calcBtnBg }};color:#111111" style-hover="background:#ebebeb"><i class="icon-calculator" style="font-size:14px"></i>Calculator</span>
+        <span onClick="{{ toggleStudio }}" style="display:flex;align-items:center;gap:8px;height:28px;padding:0 10px;border-radius:6px;cursor:pointer;background:{{ stuBtnBg }};color:#111111" style-hover="background:#ebebeb"><i class="icon-panel-right" style="font-size:14px"></i>Studio<span style="display:inline-flex;align-items:center;gap:1px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:4px;background:rgba(127,127,127,.18);font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;font-size:11px;font-weight:600;line-height:1" title="Keyboard shortcut"><span style="width:10px;display:flex;justify-content:center">⌘</span><span style="width:10px;display:flex;justify-content:center">⇧</span><span style="width:10px;display:flex;justify-content:center">T</span></span></span>
+      </div>
+    </div>
+
+    <div style="position:absolute;top:48px;left:{{ chatLeft }};right:{{ chatRight }};bottom:8px;background:#fff;border:1px solid #e6e6e6;border-radius:8px;pointer-events:none;transition:right .2s"></div>
+    <div style="flex:1;min-height:0;overflow:auto;display:flex;justify-content:center;align-items:flex-start;position:relative;padding-left:{{ padL }};padding-right:{{ padR }};transition:padding .2s">
+      <div style="width:100%;max-width:700px;padding:32px 24px 28px;display:flex;flex-direction:column;gap:26px">
+        <div style="align-self:flex-end;max-width:80%;background:#f2f2f2;border-radius:8px;padding:10px 14px;font-size:14px">How do I know when to use substitution instead of elimination?</div>
+
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:14px;line-height:1.65">
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:#404040"><i class="icon-brain" style="font-size:13px"></i>Thought for 4 seconds</div>
+          <p style="margin:0;text-wrap:pretty">Use <b>substitution</b> when one equation already has a variable on its own, or can get there in one step, like {{ mathInline }}. You plug that expression into the other equation and you're left with one unknown.<span style="display:inline-flex;align-items:center;gap:5px;height:20px;margin-left:4px;padding:0 8px 0 3px;border-radius:999px;background:#ededed;color:#111111;font-size:12px;font-weight:500;line-height:1;vertical-align:1px;white-space:nowrap"><i class="icon-book-open" style="font-size:12px;margin-left:3px"></i>OpenStax Algebra<span style="color:#6b6b6b">+1</span></span></p>
+          <p style="margin:0;text-wrap:pretty">Use <b>elimination</b> when both equations are in standard form and a variable has matching or opposite coefficients, so adding the equations cancels it.<span style="display:inline-flex;align-items:center;gap:5px;height:20px;margin-left:4px;padding:0 8px 0 3px;border-radius:999px;background:#ededed;color:#111111;font-size:12px;font-weight:500;line-height:1;vertical-align:1px;white-space:nowrap"><i class="icon-file-text" style="font-size:12px;margin-left:3px"></i>GED Study Guide</span></p>
+          
+          <div style="display:flex;align-items:center;gap:2px;font-size:12.5px;margin-left:-6px">
+            <sc-for list="{{ answerIcons }}" as="b" hint-placeholder-count="4"><span onMouseEnter="{{ b.enter }}" onMouseLeave="{{ b.leave }}" style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:5px;color:#6b6b6b;cursor:pointer" style-hover="background:#f2f2f2;color:#111111"><i class="{{ b.icon }}" style="font-size:14px"></i><sc-if value="{{ b.show }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;bottom:34px;left:50%;transform:translateX(-50%);z-index:30;width:max-content;max-width:220px;padding:7px 10px;border-radius:6px;background:#111111;color:#fff;font-size:12px;line-height:1.35;pointer-events:none;text-align:left"><b style="display:block;font-weight:600">{{ b.name }}</b><span style="color:#cfcfcf">{{ b.desc }}</span></span></sc-if></span></sc-for>
+            <span style="width:1px;height:14px;background:#e5e5e5;margin:0 6px"></span>
+            <span style="display:flex;align-items:center;gap:6px;height:28px;padding:0 9px;border-radius:5px;white-space:nowrap;flex:none;color:#111111;font-weight:500;cursor:pointer" style-hover="background:#f2f2f2"><i class="icon-layers" style="font-size:13px"></i>Make card</span><span style="display:flex;align-items:center;gap:6px;height:28px;padding:0 9px;border-radius:5px;white-space:nowrap;flex:none;color:#111111;font-weight:500;cursor:pointer" style-hover="background:#f2f2f2"><i class="icon-pencil-line" style="font-size:13px"></i>Quiz me</span>
+            <span onClick="{{ toggleSources }}" style="margin-left:auto;display:flex;align-items:center;gap:6px;height:28px;padding:0 9px;border-radius:5px;white-space:nowrap;flex:none;color:#404040;font-weight:500;cursor:pointer" style-hover="background:#f2f2f2"><i class="icon-library" style="font-size:13px"></i>2 sources</span>
+          </div>
+          <div style="display:flex;flex-direction:column;border-top:1px solid #efefef;margin-top:2px">
+            <sc-for list="{{ followUps }}" as="f" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:10px;height:36px;border-bottom:1px solid #efefef;color:#111111;font-size:13.5px;cursor:pointer" style-hover="color:#000;background:#fafafa"><i class="icon-corner-down-right" style="font-size:14px;color:#8a8a8a"></i><span style="flex:1">{{ f }}</span><i class="icon-plus" style="font-size:14px;color:#8a8a8a"></i></div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="border:1px solid #e3e3e3;border-radius:10px;background:#fff;overflow:hidden;flex:none">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px 10px 16px;border-bottom:1px solid #efefef;font-size:13px">
+            <span style="font-weight:600">Practice</span>
+            <span style="display:flex;gap:4px;align-items:center"><span style="width:16px;height:4px;border-radius:2px;background:#111111"></span><span style="width:16px;height:4px;border-radius:2px;background:{{ dot2 }}"></span><span style="width:16px;height:4px;border-radius:2px;background:#e3e3e3"></span></span>
+            <span style="color:#6b6b6b;font-weight:500">2 of 3</span>
+            <span onClick="{{ toggleHint }}" style="margin-left:auto;display:flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:6px;font-weight:500;cursor:pointer;background:{{ hintBg }}" style-hover="background:#f2f2f2"><i class="icon-lightbulb" style="font-size:13px"></i>Hint</span>
+            <span style="display:flex;align-items:center;height:26px;padding:0 9px;border-radius:6px;font-weight:500;cursor:pointer" style-hover="background:#f2f2f2">Skip</span>
+          </div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+            <div style="font-size:14px">Which method fits best, and what's {{ mathX }}?</div>
+            <div style="display:flex;justify-content:center;padding:18px 0;background:#f7f7f7;border-radius:6px;font-size:15px">{{ mathSystem }}</div>
+            <sc-if value="{{ hintOpen }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:8px;font-size:13px;color:#404040;line-height:1.5"><i class="icon-lightbulb" style="font-size:14px;color:#111111;margin-top:2px"></i><span>The first equation already gives you {{ mathY }} on its own. Try putting it into the second one.</span></div></sc-if>
+            <div style="display:flex;gap:8px">
+              <input placeholder="x =" value="{{ answer }}" onChange="{{ onAnswer }}" onKeyDown="{{ onAnswerKey }}" style="flex:1;min-width:0;height:36px;padding:0 12px;box-sizing:border-box;border:1px solid {{ answerBorder }};border-radius:6px;font:inherit;font-size:14px;color:#111111;outline:none;background:#fff">
+              <span onClick="{{ checkAnswer }}" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 14px;box-sizing:border-box;border-radius:6px;background:#111111;color:#fff;font-weight:500;cursor:pointer">Check<span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#a8a8a8">↵</span></span>
+              <span title="Photo of your work" style="width:36px;height:36px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid #dedede;cursor:pointer" style-hover="background:#f7f7f7"><i class="icon-camera" style="font-size:15px"></i></span>
+            </div>
+          </div>
+          <sc-if value="{{ isCorrect }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 12px 12px 16px;background:#eaf6ee;border-top:1px solid #cfe9d8">
+              <span style="width:24px;height:24px;flex:none;border-radius:50%;background:#1a7f43;color:#fff;display:flex;align-items:center;justify-content:center"><i class="icon-check" style="font-size:14px"></i></span>
+              <div style="flex:1;min-width:0"><div style="font-weight:600;color:#0f5a2e">Correct, x = 3</div><div style="font-size:12.5px;color:#1f5133">Substitution fits: y is already isolated in the first equation.</div></div>
+              <span style="display:flex;align-items:center;height:30px;padding:0 10px;border-radius:6px;color:#0f5a2e;font-weight:500;cursor:pointer" style-hover="background:#d7eedf">Why?</span>
+              <span onClick="{{ resetAnswer }}" style="display:flex;align-items:center;gap:8px;height:30px;padding:0 12px;border-radius:6px;background:#1a7f43;color:#fff;font-weight:500;cursor:pointer">Continue<i class="icon-arrow-right" style="font-size:13px"></i></span>
+            </div>
+          </sc-if>
+          <sc-if value="{{ isWrong }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 12px 12px 16px;background:#fbeceb;border-top:1px solid #f1d1ce">
+              <span style="width:24px;height:24px;flex:none;border-radius:50%;background:#b3261e;color:#fff;display:flex;align-items:center;justify-content:center"><i class="icon-x" style="font-size:14px"></i></span>
+              <div style="flex:1;min-width:0"><div style="font-weight:600;color:#8c1d17">Not quite</div><div style="font-size:12.5px;color:#7a2420">Check your sign when you move the 4 across.</div></div>
+              <span style="display:flex;align-items:center;height:30px;padding:0 10px;border-radius:6px;color:#8c1d17;font-weight:500;cursor:pointer" style-hover="background:#f5dbd9">Show steps</span>
+              <span onClick="{{ retryAnswer }}" style="display:flex;align-items:center;height:30px;padding:0 12px;border-radius:6px;background:#b3261e;color:#fff;font-weight:500;cursor:pointer">Try again</span>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:none;display:flex;justify-content:center;position:relative;padding-top:0;padding-bottom:26px;padding-left:{{ padLc }};padding-right:{{ padRc }};transition:padding .2s">
+      <div style="width:100%;max-width:652px;border:1px solid #dedede;border-radius:8px;background:#fff">
+        <div style="padding:12px 14px 6px;font-size:14px;color:#999999">Ask about your sources…</div>
+        <div style="display:flex;align-items:center;gap:4px;padding:6px 8px 8px 8px">
+          <span title="Attach file or photo" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;cursor:pointer" style-hover="background:#f2f2f2"><i class="icon-plus" style="font-size:16px"></i></span>
+          <div onClick="{{ stopProp }}" style="position:relative">
+            <span onClick="{{ toggleStyleMenu }}" style="display:flex;align-items:center;gap:6px;height:28px;padding:0 8px 0 10px;border-radius:6px;white-space:nowrap;font-size:13px;font-weight:500;cursor:pointer;background:{{ styleTrigBg }}" style-hover="background:#f2f2f2">{{ tutorStyle }}<i class="icon-chevron-down" style="font-size:13px"></i></span>
+            <sc-if value="{{ styleMenuOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;bottom:36px;left:0;z-index:30;padding:4px;background:#fff;border:1px solid #e6e6e6;border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.12);display:flex;flex-direction:column;width:248px">
+                <div style="padding:8px 10px 4px;font-size:12px;font-weight:600;color:#6b6b6b">Tutor style</div>
+                <sc-for list="{{ styleOptions }}" as="o" hint-placeholder-count="3">
+                  <div onClick="{{ o.pick }}" style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:5px;cursor:pointer" style-hover="background:#f2f2f2">
+                    <div style="flex:1"><div style="font-weight:600">{{ o.name }}</div><div style="font-size:12px;color:#404040;margin-top:1px">{{ o.desc }}</div></div>
+                    <i class="{{ o.check }}" style="font-size:14px;margin-top:2px"></i>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+          <div onClick="{{ stopProp }}" style="position:relative">
+            <span onClick="{{ toggleModelMenu }}" style="display:flex;align-items:center;gap:6px;height:28px;padding:0 8px 0 10px;border-radius:6px;white-space:nowrap;font-size:13px;font-weight:500;cursor:pointer;background:{{ modelTrigBg }}" style-hover="background:#f2f2f2">{{ modelName }}<span style="color:#6b6b6b;font-weight:500">{{ effortLabel }}</span><i class="icon-chevron-down" style="font-size:13px"></i></span>
+            <sc-if value="{{ modelMenuOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;bottom:36px;left:0;z-index:30;width:300px;padding:4px;background:#fff;border:1px solid #e6e6e6;border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.12);display:flex;flex-direction:column">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px 6px">
+                  <span style="width:18px;height:18px;border-radius:4px;display:block;background-size:cover;background-image:url('{{ providerIcon }}')"></span>
+                  <span style="flex:1;font-weight:600">{{ providerName }}</span>
+                </div>
+                <sc-if value="{{ hasModelSearch }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin:2px 6px 4px;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border:1px solid #e5e5e5;border-radius:6px;color:#6b6b6b"><i class="icon-search" style="font-size:13px"></i>Search {{ modelCount }} models</div>
+                </sc-if>
+                <div style="max-height:260px;overflow:auto;display:flex;flex-direction:column">
+                  <sc-for list="{{ modelGroups }}" as="g" hint-placeholder-count="1">
+                    <sc-if value="{{ g.showLabel }}" hint-placeholder-val="{{ false }}"><div style="padding:8px 10px 2px;font-size:11px;font-weight:600;color:#6b6b6b">{{ g.label }}</div></sc-if>
+                    <sc-for list="{{ g.models }}" as="o" hint-placeholder-count="3">
+                      <div onClick="{{ o.pick }}" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:5px;cursor:pointer;flex:none" style-hover="background:#f2f2f2">
+                        <span style="flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ o.name }}</span><span style="font-size:12px;color:#404040;white-space:nowrap">{{ o.meta }}</span>
+                        <i class="{{ o.check }}" style="font-size:14px;width:14px;flex:none"></i>
+                      </div>
+                    </sc-for>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ hasControls }}" hint-placeholder-val="{{ true }}">
+                  <div style="height:1px;background:#efefef;margin:4px 0"></div>
+                  <sc-for list="{{ modelControls }}" as="c" hint-placeholder-count="2">
+                    <sc-if value="{{ c.isSeg }}" hint-placeholder-val="{{ true }}">
+                      <div style="padding:8px 10px 4px;font-size:12px;font-weight:600;color:#6b6b6b">{{ c.label }}</div>
+                      <div style="display:flex;gap:2px;margin:2px 6px 6px;padding:2px;border:1px solid #e5e5e5;border-radius:6px">
+                        <sc-for list="{{ c.options }}" as="o" hint-placeholder-count="4">
+                          <span onClick="{{ o.pick }}" style="flex:1;display:flex;align-items:center;justify-content:center;height:26px;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;background:{{ o.bg }};color:{{ o.fg }}">{{ o.name }}</span>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ c.isToggle }}" hint-placeholder-val="{{ false }}">
+                      <div onClick="{{ c.toggle }}" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:5px;cursor:pointer" style-hover="background:#f2f2f2">
+                        <span style="flex:1;font-weight:600">{{ c.label }}</span>
+                        <span style="width:28px;height:16px;border-radius:999px;background:{{ c.track }};position:relative;transition:background .15s"><span style="position:absolute;top:2px;left:{{ c.knob }};width:12px;height:12px;border-radius:50%;background:#fff;transition:left .15s"></span></span>
+                      </div>
+                    </sc-if>
+                  </sc-for>
+                </sc-if>
+              </div>
+            </sc-if>
+          </div>
+          <span onClick="{{ toggleSources }}" style="display:flex;align-items:center;gap:6px;height:28px;padding:0 9px;border-radius:6px;white-space:nowrap;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:#f2f2f2"><i class="icon-library" style="font-size:13px"></i>12 sources</span>
+          <span style="margin-left:auto;width:30px;height:30px;border-radius:6px;background:#111111;color:#fff;display:flex;align-items:center;justify-content:center"><i class="icon-arrow-up" style="font-size:15px"></i></span>
+        </div>
+      </div>
+    </div>
+
+    
+    <sc-if value="{{ sourcesOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;top:49px;left:1px;bottom:9px;width:340px;background:#fff;border-right:1px solid #e5e5e5;border-radius:7px 0 0 7px;box-shadow:8px 0 24px rgba(0,0,0,.06);display:flex;flex-direction:column;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px"><span style="font-size:12px;font-weight:600;color:#6b6b6b">Sources (12)</span><span style="display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:1px solid #dedede;border-radius:6px;font-weight:500"><i class="icon-plus" style="font-size:14px"></i>Add</span></div>
+        <div style="margin:0 16px 8px;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border:1px solid #e5e5e5;border-radius:6px;color:#999999"><i class="icon-search" style="font-size:13px"></i>Filter sources</div>
+        <sc-for list="{{ sources }}" as="src" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;gap:10px;height:40px;padding:0 16px" style-hover="background:#f5f5f5">
+            <i class="{{ src.icon }}" style="font-size:14px;color:#111111"></i>
+            <div style="flex:1;min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500">{{ src.name }}</div></div>
+            <span style="font-size:11px;font-weight:600;color:#111111;padding:1px 6px;border:1px solid #d4d4d4;border-radius:4px">{{ src.meta }}</span>
+            <span style="width:14px;height:14px;border-radius:3px;background:#111111;color:#fff;display:flex;align-items:center;justify-content:center"><i class="icon-check" style="font-size:10px"></i></span>
+          </div>
+        </sc-for>
+        <div style="margin-top:auto;padding:12px 16px;border-top:1px solid #efefef;display:flex;align-items:center;gap:8px;color:#111111;font-weight:500"><i class="icon-folder-sync" style="font-size:14px"></i>Synced with ~/Documents/GED</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ studioOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="position:absolute;top:48px;right:0;bottom:0;width:328px;box-sizing:border-box;background:#fff;border-top:1px solid #e6e6e6;border-left:1px solid #e6e6e6;border-radius:0;display:flex;flex-direction:column;overflow:hidden">
+        <div style="padding:16px 16px 16px;border-bottom:1px solid #efefef">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div style="font-size:56px;font-weight:500;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1;opacity:{{ timerOpacity }}">18:42</div>
+            <span onClick="{{ togglePause }}" style="display:flex;align-items:center;justify-content:center;gap:8px;width:112px;height:40px;flex:none;border-radius:8px;background:#111111;color:#fff;font-weight:600;cursor:pointer"><i class="{{ pauseIcon }}" style="font-size:15px"></i>{{ pauseLabel }}</span>
+          </div>
+        </div>
+        <sc-if value="{{ notCalc }}" hint-placeholder-val="{{ true }}">
+        <div style="height:16px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px">
+          <sc-for list="{{ tools }}" as="t" hint-placeholder-count="6">
+            <div style="display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #e8e8e8;border-radius:8px;cursor:pointer" style-hover="background:#f7f7f7;border-color:#d9d9d9">
+              <i class="{{ t.icon }}" style="font-size:16px"></i>
+              <div><div style="font-weight:600;line-height:1.25">{{ t.name }}</div><div style="font-size:12px;color:#6b6b6b;line-height:1.3;margin-top:1px">{{ t.meta }}</div></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="padding:22px 16px 6px;font-size:12px;font-weight:600;color:#6b6b6b">Recent</div>
+        <div style="margin:0 16px;border-top:1px solid #efefef">
+        <sc-for list="{{ made }}" as="m" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:10px;height:38px;padding:0 4px;margin:0 -4px;border-bottom:1px solid #efefef;border-radius:0;cursor:pointer" style-hover="background:#f7f7f7">
+            <i class="{{ m.icon }}" style="font-size:14px;flex:none"></i>
+            <span style="flex:1;min-width:0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.name }}</span>
+            <span style="font-size:12px;color:#6b6b6b;white-space:nowrap">{{ m.when }}</span>
+          </div>
+        </sc-for>
+        </div>
+        <div style="margin-top:auto;padding:10px 16px;border-top:1px solid #efefef;display:flex;align-items:center;gap:8px;color:#404040;font-weight:500;cursor:pointer" style-hover="color:#111111"><i class="icon-sliders-horizontal" style="font-size:14px"></i>Space settings</div>
+        </sc-if>
+        <sc-if value="{{ calcOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;padding:8px 14px 14px;gap:6px;background:#fff">
+          <div style="align-self:stretch;display:flex;justify-content:flex-end"><span onClick="{{ toggleCalc }}" title="Back to study tools" style="width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#f2f2f2"><i class="icon-x" style="font-size:14px"></i></span></div>
+          <div style="width:100%;max-width:296px;display:flex;flex-direction:column;gap:12px;padding:14px 12px 16px;box-sizing:border-box;border-radius:20px 20px 30px 30px;background:linear-gradient(180deg,#3d424a 0%,#2c3036 38%,#202327 100%);box-shadow:0 14px 30px rgba(0,0,0,.28), 0 2px 4px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.14), inset 0 -2px 0 rgba(0,0,0,.35)">
+            <div style="padding:10px 10px 12px;border-radius:10px 10px 14px 14px;background:linear-gradient(180deg,#5b616b,#41454d);box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 1px 0 rgba(0,0,0,.4)">
+              <div style="padding:6px;border-radius:5px;background:#16181b;box-shadow:inset 0 2px 3px rgba(0,0,0,.6)">
+                <div style="height:92px;padding:3px 7px 5px;box-sizing:border-box;border-radius:2px;background:linear-gradient(180deg,#bfc6ad,#cdd3bc);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);color:#1f2619;font-family:'VT323',monospace;display:flex;flex-direction:column;overflow:hidden">
+                  <div style="display:flex;gap:8px;height:11px;font-family:Arial,Helvetica,sans-serif;font-size:8px;font-weight:700;letter-spacing:.03em;line-height:11px"><span style="opacity:{{ calc2ndOn }}">2ND</span><span>{{ calcAngle }}</span><span style="margin-left:auto">{{ calcModeTag }}</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;font-size:19px;line-height:19px">
+                    <sc-for list="{{ calcLines }}" as="l" hint-placeholder-count="1">
+                      <div style="white-space:nowrap;overflow:hidden">{{ l.expr }}</div>
+                      <div style="text-align:right;white-space:nowrap">{{ l.res }}</div>
+                    </sc-for>
+                    <div style="white-space:nowrap;overflow:hidden;display:flex;align-items:center"><span>{{ calcEntry }}</span><span style="width:8px;height:15px;margin-left:1px;background:#1f2619"></span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div style="flex:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px 7px">
+                <sc-for list="{{ calcTop }}" as="k" hint-placeholder-count="6"><span onClick="{{ k.press }}" style="display:flex;flex-direction:column;align-items:stretch;gap:2px;cursor:pointer;user-select:none;min-width:0"><span style="height:10px;font-family:Arial,Helvetica,sans-serif;font-size:8.5px;font-weight:700;line-height:10px;text-align:center;color:#6fd3a0;white-space:nowrap">{{ k.second }}</span><span style="height:{{ k.h }};display:flex;align-items:center;justify-content:center;border-radius:5px 5px 9px 9px;background:{{ k.bg }};color:{{ k.fg }};font-family:Arial,Helvetica,sans-serif;font-size:{{ k.size }};font-weight:700;box-shadow:0 2px 0 #08090a, 0 3px 5px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,{{ k.hi }});white-space:nowrap" style-active="transform:translateY(2px);box-shadow:0 0 0 #08090a, inset 0 1px 0 rgba(255,255,255,.1)">{{ k.label }}</span></span></sc-for>
+              </div>
+              <div style="position:relative;width:72px;height:72px;flex:none;border-radius:50%;background:radial-gradient(circle at 50% 35%,#7b818b,#4a4f57 70%);box-shadow:0 3px 0 #0a0b0c, 0 4px 8px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.25);margin-top:6px">
+                <span style="position:absolute;inset:24px;border-radius:50%;background:radial-gradient(circle,#3a3e45,#50555d);box-shadow:inset 0 1px 2px rgba(0,0,0,.5)"></span>
+                <span onClick="{{ calcUp }}" style="position:absolute;top:2px;left:24px;width:24px;height:22px;display:flex;align-items:center;justify-content:center;color:#f2f2f2;cursor:pointer"><i class="icon-chevron-up" style="font-size:13px"></i></span>
+                <span onClick="{{ calcDown }}" style="position:absolute;bottom:2px;left:24px;width:24px;height:22px;display:flex;align-items:center;justify-content:center;color:#f2f2f2;cursor:pointer"><i class="icon-chevron-down" style="font-size:13px"></i></span>
+                <span onClick="{{ calcLeft }}" style="position:absolute;left:2px;top:24px;width:22px;height:24px;display:flex;align-items:center;justify-content:center;color:#f2f2f2;cursor:pointer"><i class="icon-chevron-left" style="font-size:13px"></i></span>
+                <span onClick="{{ calcRight }}" style="position:absolute;right:2px;top:24px;width:22px;height:24px;display:flex;align-items:center;justify-content:center;color:#f2f2f2;cursor:pointer"><i class="icon-chevron-right" style="font-size:13px"></i></span>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px 7px">
+              <sc-for list="{{ calcKeys }}" as="k" hint-placeholder-count="35"><span onClick="{{ k.press }}" style="display:flex;flex-direction:column;align-items:stretch;gap:2px;cursor:pointer;user-select:none;min-width:0"><span style="height:10px;font-family:Arial,Helvetica,sans-serif;font-size:8.5px;font-weight:700;line-height:10px;text-align:center;color:#6fd3a0;white-space:nowrap">{{ k.second }}</span><span style="height:{{ k.h }};display:flex;align-items:center;justify-content:center;border-radius:5px 5px 9px 9px;background:{{ k.bg }};color:{{ k.fg }};font-family:Arial,Helvetica,sans-serif;font-size:{{ k.size }};font-weight:700;box-shadow:0 2px 0 #08090a, 0 3px 5px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,{{ k.hi }});white-space:nowrap" style-active="transform:translateY(2px);box-shadow:0 0 0 #08090a, inset 0 1px 0 rgba(255,255,255,.1)">{{ k.label }}</span></span></sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+      </div>
+    </sc-if>
+  </main>
+</div></div>
+<div class="dv-opt" id="2b"><div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Dark</div>
+<div class="dv-card" style="width:1280px;height:800px;display:flex;font-family:'IBM Plex Sans',sans-serif;color:#ececec;background:#212121;font-size:13px;line-height:1.45;position:relative">
+  <div style="position:absolute;top:18px;left:18px;z-index:10;display:flex;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:#ff5f57"></span><span style="width:12px;height:12px;border-radius:50%;background:#febc2e"></span><span style="width:12px;height:12px;border-radius:50%;background:#28c840"></span></div>
+  <div style="width:{{ dk.railW }};flex:none;position:relative;z-index:5;transition:width .18s ease">
+  <aside onMouseEnter="{{ dk.navEnter }}" onMouseLeave="{{ dk.navLeave }}" style="position:absolute;top:0;left:0;bottom:0;width:{{ dk.navW }};background:#171717;box-shadow:{{ dk.navShadow }};display:flex;flex-direction:column;box-sizing:border-box;transition:width .18s ease,box-shadow .18s;overflow:{{ dk.railOverflow }}">
+    <div style="height:48px;flex:none"></div>
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:2px;padding:8px 12px 12px">
+    <div style="display:flex;align-items:center;gap:8px;height:32px;margin:0 0 8px;padding:0 6px 0 10px;border:1px solid #333333;border-radius:6px;background:#212121;color:#8e8e8e;white-space:nowrap;overflow:hidden;cursor:text;opacity:{{ dk.labelOpacity }}"><i class="icon-search" style="font-size:14px;color:#ececec"></i><span style="flex:1">Search</span><span style="display:inline-flex;align-items:center;gap:1px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:4px;background:rgba(127,127,127,.16);color:#b4b4b4;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;font-size:11px;font-weight:600;line-height:1"><span style="width:10px;display:flex;justify-content:center">⌘</span><span style="width:10px;display:flex;justify-content:center">K</span></span></div>
+    <sc-for list="{{ dk.navTop }}" as="it" hint-placeholder-count="3"><div onClick="{{ it.onClick }}" style="display:flex;align-items:center;gap:12px;height:36px;padding:0 16px;border-radius:6px;white-space:nowrap;overflow:hidden;cursor:pointer;background:{{ it.bg }};color:{{ it.fg }}" style-hover="background:{{ it.hoverBg }}"><i class="{{ it.icon }}" style="font-size:16px;flex:none;width:16px"></i><span style="flex:1;font-weight:500;opacity:{{ dk.labelOpacity }};transition:opacity .15s">{{ it.label }}</span><span style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;font-size:11.5px;font-weight:600;letter-spacing:.12em;color:#8e8e8e;opacity:{{ dk.labelOpacity }}">{{ it.hint }}</span></div></sc-for>
+    <div style="position:relative;height:38px;flex:none"><span style="position:absolute;left:-12px;right:-12px;top:10px;height:1px;background:#2e2e2e"></span><span title="New chat" style="position:absolute;right:4px;bottom:-4px;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#ececec;opacity:{{ dk.labelOpacity }}" style-hover="background:#2e2e2e"><i class="icon-plus" style="font-size:15px"></i></span></div>
+    <div style="flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:2px;margin:0 -12px;padding:0 12px">
+    <sc-for list="{{ dk.threadGroups }}" as="g" hint-placeholder-count="2">
+      <div style="padding:10px 16px 4px;font-size:12px;font-weight:600;color:#8e8e8e;white-space:nowrap;opacity:{{ dk.labelOpacity }}">{{ g.label }}</div>
+      <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="2"><div onMouseEnter="{{ it.enter }}" onMouseLeave="{{ it.leave }}" style="position:relative;display:flex;align-items:center;gap:2px;height:32px;flex:none;padding:0 6px 0 16px;border-radius:6px;white-space:nowrap;cursor:pointer;background:{{ it.bg }};color:#ececec;opacity:{{ dk.labelOpacity }}">
+      <sc-if value="{{ it.editing }}" hint-placeholder-val="{{ false }}"><input autoFocus="{{ true }}" defaultValue="{{ it.label }}" onKeyDown="{{ it.renameKey }}" onBlur="{{ it.renameBlur }}" onClick="{{ it.stop }}" style="flex:1;min-width:0;height:24px;padding:0 6px;margin-left:-7px;border:1px solid #ececec;border-radius:4px;font:inherit;font-weight:500;color:#ececec;background:#212121;outline:none"></sc-if>
+      <sc-if value="{{ it.notEditing }}" hint-placeholder-val="{{ true }}"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:{{ it.weight }}">{{ it.label }}</span></sc-if>
+      <sc-if value="{{ it.showPin }}" hint-placeholder-val="{{ false }}"><span onClick="{{ it.togglePin }}" title="{{ it.pinLabel }}" style="width:24px;height:24px;flex:none;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:{{ it.pinOpacity }}" style-hover="background:rgba(255,255,255,.08)"><i class="icon-pin" style="font-size:14px"></i></span></sc-if>
+      <sc-if value="{{ it.showMore }}" hint-placeholder-val="{{ false }}"><span onClick="{{ it.toggleMenu }}" title="More" style="width:24px;height:24px;flex:none;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:rgba(255,255,255,.08)"><i class="icon-ellipsis" style="font-size:14px"></i></span></sc-if>
+      <sc-if value="{{ it.menuOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ it.stop }}" style="position:absolute;top:30px;right:4px;z-index:20;width:148px;padding:4px;background:#212121;border:1px solid #2e2e2e;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);color:#ececec;display:flex;flex-direction:column">
+          <div onClick="{{ it.rename }}" style="display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:5px;font-weight:500" style-hover="background:#2a2a2a"><i class="icon-pencil" style="font-size:14px"></i>Rename</div>
+          <div onClick="{{ it.togglePin }}" style="display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:5px;font-weight:500" style-hover="background:#2a2a2a"><i class="{{ it.pinIcon }}" style="font-size:14px"></i>{{ it.pinLabel }}</div>
+          <div style="height:1px;background:#2a2a2a;margin:4px 0"></div>
+          <div onClick="{{ it.remove }}" style="display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:5px;font-weight:500;color:#e5736b" style-hover="background:#3a2220"><i class="icon-trash-2" style="font-size:14px"></i>Delete</div>
+        </div>
+      </sc-if>
+    </div></sc-for>
+    </sc-for>
+    </div>
+    <div style="display:flex;margin-top:6px;opacity:{{ dk.labelOpacity }}"><span title="Settings ⌘," style="width:32px;height:32px;margin-left:4px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#ececec" style-hover="background:#2a2a2a"><i class="icon-settings" style="font-size:16px"></i></span></div>
+    </div>
+  </aside>
+</div>
+
+  <main style="flex:1;min-width:0;display:flex;flex-direction:column;position:relative;overflow:hidden;background:#171717">
+    <div style="height:48px;flex:none;display:flex;align-items:center;gap:12px;padding:0 16px 0 12px;box-sizing:border-box;position:relative">
+      <sc-if value="{{ dk.railHidden }}" hint-placeholder-val="{{ true }}"><span style="width:64px;flex:none"></span></sc-if>
+      <span onClick="{{ dk.togglePin }}" title="Toggle sidebar" style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ dk.pinBg }};color:#ececec" style-hover="background:#2e2e2e"><i class="icon-panel-left" style="font-size:16px"></i></span>
+      <span style="color:#b4b4b4;font-weight:500">GED Math</span><span style="color:#767676">/</span>
+      <div onClick="{{ dk.stopProp }}" style="position:relative">
+        <span onClick="{{ dk.toggleTitleMenu }}" style="display:flex;align-items:center;gap:6px;height:28px;padding:0 6px 0 8px;margin-left:-8px;border-radius:6px;font-weight:500;cursor:pointer;background:{{ dk.titleTrigBg }}" style-hover="background:#2a2a2a">{{ dk.activeTitle }}<i class="icon-chevron-down" style="font-size:13px;color:#8e8e8e"></i></span>
+        <sc-if value="{{ dk.titleMenuOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:32px;left:-8px;z-index:40;width:180px;padding:4px;background:#212121;border:1px solid #2e2e2e;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);display:flex;flex-direction:column">
+            <div onClick="{{ dk.titleRename }}" style="display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:5px;font-weight:500;cursor:pointer" style-hover="background:#2a2a2a"><i class="icon-pencil" style="font-size:14px"></i>Rename</div>
+            <div onClick="{{ dk.titlePin }}" style="display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:5px;font-weight:500;cursor:pointer" style-hover="background:#2a2a2a"><i class="{{ dk.activePinIcon }}" style="font-size:14px"></i>{{ dk.activePinLabel }}</div>
+            <div style="display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:5px;font-weight:500;cursor:pointer" style-hover="background:#2a2a2a"><i class="icon-share" style="font-size:14px"></i>Export as notes</div>
+            <div style="height:1px;background:#2a2a2a;margin:4px 0"></div>
+            <div style="display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:5px;font-weight:500;color:#e5736b;cursor:pointer" style-hover="background:#3a2220"><i class="icon-trash-2" style="font-size:14px"></i>Delete chat</div>
+          </div>
+        </sc-if>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+                <sc-if value="{{ dk.studioClosed }}" hint-placeholder-val="{{ false }}"><span onClick="{{ dk.toggleStudio }}" style="display:flex;align-items:center;gap:10px;height:28px;padding:0 10px;border-radius:6px;cursor:pointer" style-hover="background:#2a2a2a"><span style="font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums">18:42</span><span style="position:relative;width:16px;height:16px;border-radius:50%;background:conic-gradient(#ececec 0 25%, #333333 25% 100%)"><span style="position:absolute;inset:3px;border-radius:50%;background:#171717"></span></span></span></sc-if>
+        <span onClick="{{ dk.toggleCalc }}" title="Calculator (reference calculator layout)" style="display:flex;align-items:center;gap:8px;height:28px;padding:0 10px;border-radius:6px;cursor:pointer;background:{{ dk.calcBtnBg }};color:#ececec" style-hover="background:#2a2a2a"><i class="icon-calculator" style="font-size:14px"></i>Calculator</span>
+        <span onClick="{{ dk.toggleStudio }}" style="display:flex;align-items:center;gap:8px;height:28px;padding:0 10px;border-radius:6px;cursor:pointer;background:{{ dk.stuBtnBg }};color:#ececec" style-hover="background:#2a2a2a"><i class="icon-panel-right" style="font-size:14px"></i>Studio<span style="display:inline-flex;align-items:center;gap:1px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:4px;background:rgba(127,127,127,.18);font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;font-size:11px;font-weight:600;line-height:1" title="Keyboard shortcut"><span style="width:10px;display:flex;justify-content:center">⌘</span><span style="width:10px;display:flex;justify-content:center">⇧</span><span style="width:10px;display:flex;justify-content:center">T</span></span></span>
+      </div>
+    </div>
+
+    <div style="position:absolute;top:48px;left:{{ dk.chatLeft }};right:{{ dk.chatRight }};bottom:8px;background:#212121;border:1px solid #2e2e2e;border-radius:8px;pointer-events:none;transition:right .2s"></div>
+    <div style="flex:1;min-height:0;overflow:auto;display:flex;justify-content:center;align-items:flex-start;position:relative;padding-left:{{ dk.padL }};padding-right:{{ dk.padR }};transition:padding .2s">
+      <div style="width:100%;max-width:700px;padding:32px 24px 28px;display:flex;flex-direction:column;gap:26px">
+        <div style="align-self:flex-end;max-width:80%;background:#2a2a2a;border-radius:8px;padding:10px 14px;font-size:14px">How do I know when to use substitution instead of elimination?</div>
+
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:14px;line-height:1.65">
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:#b4b4b4"><i class="icon-brain" style="font-size:13px"></i>Thought for 4 seconds</div>
+          <p style="margin:0;text-wrap:pretty">Use <b>substitution</b> when one equation already has a variable on its own, or can get there in one step, like {{ dk.mathInline }}. You plug that expression into the other equation and you're left with one unknown.<span style="display:inline-flex;align-items:center;gap:5px;height:20px;margin-left:4px;padding:0 8px 0 3px;border-radius:999px;background:#2e2e2e;color:#ececec;font-size:12px;font-weight:500;line-height:1;vertical-align:1px;white-space:nowrap"><i class="icon-book-open" style="font-size:12px;margin-left:3px"></i>OpenStax Algebra<span style="color:#8e8e8e">+1</span></span></p>
+          <p style="margin:0;text-wrap:pretty">Use <b>elimination</b> when both equations are in standard form and a variable has matching or opposite coefficients, so adding the equations cancels it.<span style="display:inline-flex;align-items:center;gap:5px;height:20px;margin-left:4px;padding:0 8px 0 3px;border-radius:999px;background:#2e2e2e;color:#ececec;font-size:12px;font-weight:500;line-height:1;vertical-align:1px;white-space:nowrap"><i class="icon-file-text" style="font-size:12px;margin-left:3px"></i>GED Study Guide</span></p>
+          
+          <div style="display:flex;align-items:center;gap:2px;font-size:12.5px;margin-left:-6px">
+            <sc-for list="{{ dk.answerIcons }}" as="b" hint-placeholder-count="4"><span onMouseEnter="{{ b.enter }}" onMouseLeave="{{ b.leave }}" style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:5px;color:#8e8e8e;cursor:pointer" style-hover="background:#2a2a2a;color:#ececec"><i class="{{ b.icon }}" style="font-size:14px"></i><sc-if value="{{ b.show }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;bottom:34px;left:50%;transform:translateX(-50%);z-index:30;width:max-content;max-width:220px;padding:7px 10px;border-radius:6px;background:#ececec;color:#171717;font-size:12px;line-height:1.35;pointer-events:none;text-align:left"><b style="display:block;font-weight:600">{{ b.name }}</b><span style="color:#4a4a4a">{{ b.desc }}</span></span></sc-if></span></sc-for>
+            <span style="width:1px;height:14px;background:#2e2e2e;margin:0 6px"></span>
+            <span style="display:flex;align-items:center;gap:6px;height:28px;padding:0 9px;border-radius:5px;white-space:nowrap;flex:none;color:#ececec;font-weight:500;cursor:pointer" style-hover="background:#2a2a2a"><i class="icon-layers" style="font-size:13px"></i>Make card</span><span style="display:flex;align-items:center;gap:6px;height:28px;padding:0 9px;border-radius:5px;white-space:nowrap;flex:none;color:#ececec;font-weight:500;cursor:pointer" style-hover="background:#2a2a2a"><i class="icon-pencil-line" style="font-size:13px"></i>Quiz me</span>
+            <span onClick="{{ dk.toggleSources }}" style="margin-left:auto;display:flex;align-items:center;gap:6px;height:28px;padding:0 9px;border-radius:5px;white-space:nowrap;flex:none;color:#b4b4b4;font-weight:500;cursor:pointer" style-hover="background:#2a2a2a"><i class="icon-library" style="font-size:13px"></i>2 sources</span>
+          </div>
+          <div style="display:flex;flex-direction:column;border-top:1px solid #2a2a2a;margin-top:2px">
+            <sc-for list="{{ dk.followUps }}" as="f" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:10px;height:36px;border-bottom:1px solid #2a2a2a;color:#ececec;font-size:13.5px;cursor:pointer" style-hover="color:#000;background:#242424"><i class="icon-corner-down-right" style="font-size:14px;color:#767676"></i><span style="flex:1">{{ f }}</span><i class="icon-plus" style="font-size:14px;color:#767676"></i></div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="border:1px solid #333333;border-radius:10px;background:#212121;overflow:hidden;flex:none">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px 10px 16px;border-bottom:1px solid #2a2a2a;font-size:13px">
+            <span style="font-weight:600">Practice</span>
+            <span style="display:flex;gap:4px;align-items:center"><span style="width:16px;height:4px;border-radius:2px;background:#ececec"></span><span style="width:16px;height:4px;border-radius:2px;background:{{ dk.dot2 }}"></span><span style="width:16px;height:4px;border-radius:2px;background:#333333"></span></span>
+            <span style="color:#8e8e8e;font-weight:500">2 of 3</span>
+            <span onClick="{{ dk.toggleHint }}" style="margin-left:auto;display:flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:6px;font-weight:500;cursor:pointer;background:{{ dk.hintBg }}" style-hover="background:#2a2a2a"><i class="icon-lightbulb" style="font-size:13px"></i>Hint</span>
+            <span style="display:flex;align-items:center;height:26px;padding:0 9px;border-radius:6px;font-weight:500;cursor:pointer" style-hover="background:#2a2a2a">Skip</span>
+          </div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+            <div style="font-size:14px">Which method fits best, and what's {{ dk.mathX }}?</div>
+            <div style="display:flex;justify-content:center;padding:18px 0;background:#262626;border-radius:6px;font-size:15px">{{ dk.mathSystem }}</div>
+            <sc-if value="{{ dk.hintOpen }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:8px;font-size:13px;color:#b4b4b4;line-height:1.5"><i class="icon-lightbulb" style="font-size:14px;color:#ececec;margin-top:2px"></i><span>The first equation already gives you {{ dk.mathY }} on its own. Try putting it into the second one.</span></div></sc-if>
+            <div style="display:flex;gap:8px">
+              <input placeholder="x =" value="{{ dk.answer }}" onChange="{{ dk.onAnswer }}" onKeyDown="{{ dk.onAnswerKey }}" style="flex:1;min-width:0;height:36px;padding:0 12px;box-sizing:border-box;border:1px solid {{ dk.answerBorder }};border-radius:6px;font:inherit;font-size:14px;color:#ececec;outline:none;background:#212121">
+              <span onClick="{{ dk.checkAnswer }}" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 14px;box-sizing:border-box;border-radius:6px;background:#ececec;color:#171717;font-weight:500;cursor:pointer">Check<span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6e6e6e">↵</span></span>
+              <span title="Photo of your work" style="width:36px;height:36px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid #3a3a3a;cursor:pointer" style-hover="background:#262626"><i class="icon-camera" style="font-size:15px"></i></span>
+            </div>
+          </div>
+          <sc-if value="{{ dk.isCorrect }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 12px 12px 16px;background:#16291d;border-top:1px solid #244a31">
+              <span style="width:24px;height:24px;flex:none;border-radius:50%;background:#3fb56d;color:#171717;display:flex;align-items:center;justify-content:center"><i class="icon-check" style="font-size:14px"></i></span>
+              <div style="flex:1;min-width:0"><div style="font-weight:600;color:#8fdcaa">Correct, x = 3</div><div style="font-size:12.5px;color:#a9d9b8">Substitution fits: y is already isolated in the first equation.</div></div>
+              <span style="display:flex;align-items:center;height:30px;padding:0 10px;border-radius:6px;color:#8fdcaa;font-weight:500;cursor:pointer" style-hover="background:#1f3a28">Why?</span>
+              <span onClick="{{ dk.resetAnswer }}" style="display:flex;align-items:center;gap:8px;height:30px;padding:0 12px;border-radius:6px;background:#3fb56d;color:#171717;font-weight:500;cursor:pointer">Continue<i class="icon-arrow-right" style="font-size:13px"></i></span>
+            </div>
+          </sc-if>
+          <sc-if value="{{ dk.isWrong }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 12px 12px 16px;background:#2f1b1a;border-top:1px solid #4d2724">
+              <span style="width:24px;height:24px;flex:none;border-radius:50%;background:#e5736b;color:#171717;display:flex;align-items:center;justify-content:center"><i class="icon-x" style="font-size:14px"></i></span>
+              <div style="flex:1;min-width:0"><div style="font-weight:600;color:#f2b8b5">Not quite</div><div style="font-size:12.5px;color:#e6aaa6">Check your sign when you move the 4 across.</div></div>
+              <span style="display:flex;align-items:center;height:30px;padding:0 10px;border-radius:6px;color:#f2b8b5;font-weight:500;cursor:pointer" style-hover="background:#40221f">Show steps</span>
+              <span onClick="{{ dk.retryAnswer }}" style="display:flex;align-items:center;height:30px;padding:0 12px;border-radius:6px;background:#e5736b;color:#171717;font-weight:500;cursor:pointer">Try again</span>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:none;display:flex;justify-content:center;position:relative;padding-top:0;padding-bottom:26px;padding-left:{{ dk.padLc }};padding-right:{{ dk.padRc }};transition:padding .2s">
+      <div style="width:100%;max-width:652px;border:1px solid #3a3a3a;border-radius:8px;background:#212121">
+        <div style="padding:12px 14px 6px;font-size:14px;color:#6e6e6e">Ask about your sources…</div>
+        <div style="display:flex;align-items:center;gap:4px;padding:6px 8px 8px 8px">
+          <span title="Attach file or photo" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;cursor:pointer" style-hover="background:#2a2a2a"><i class="icon-plus" style="font-size:16px"></i></span>
+          <div onClick="{{ dk.stopProp }}" style="position:relative">
+            <span onClick="{{ dk.toggleStyleMenu }}" style="display:flex;align-items:center;gap:6px;height:28px;padding:0 8px 0 10px;border-radius:6px;white-space:nowrap;font-size:13px;font-weight:500;cursor:pointer;background:{{ dk.styleTrigBg }}" style-hover="background:#2a2a2a">{{ dk.tutorStyle }}<i class="icon-chevron-down" style="font-size:13px"></i></span>
+            <sc-if value="{{ dk.styleMenuOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;bottom:36px;left:0;z-index:30;padding:4px;background:#212121;border:1px solid #2e2e2e;border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.12);display:flex;flex-direction:column;width:248px">
+                <div style="padding:8px 10px 4px;font-size:12px;font-weight:600;color:#8e8e8e">Tutor style</div>
+                <sc-for list="{{ dk.styleOptions }}" as="o" hint-placeholder-count="3">
+                  <div onClick="{{ o.pick }}" style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:5px;cursor:pointer" style-hover="background:#2a2a2a">
+                    <div style="flex:1"><div style="font-weight:600">{{ o.name }}</div><div style="font-size:12px;color:#b4b4b4;margin-top:1px">{{ o.desc }}</div></div>
+                    <i class="{{ o.check }}" style="font-size:14px;margin-top:2px"></i>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+          <div onClick="{{ dk.stopProp }}" style="position:relative">
+            <span onClick="{{ dk.toggleModelMenu }}" style="display:flex;align-items:center;gap:6px;height:28px;padding:0 8px 0 10px;border-radius:6px;white-space:nowrap;font-size:13px;font-weight:500;cursor:pointer;background:{{ dk.modelTrigBg }}" style-hover="background:#2a2a2a">{{ dk.modelName }}<span style="color:#8e8e8e;font-weight:500">{{ dk.effortLabel }}</span><i class="icon-chevron-down" style="font-size:13px"></i></span>
+            <sc-if value="{{ dk.modelMenuOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;bottom:36px;left:0;z-index:30;width:300px;padding:4px;background:#212121;border:1px solid #2e2e2e;border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.12);display:flex;flex-direction:column">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px 6px">
+                  <span style="width:18px;height:18px;border-radius:4px;display:block;background-size:cover;background-image:url('{{ dk.providerIcon }}')"></span>
+                  <span style="flex:1;font-weight:600">{{ dk.providerName }}</span>
+                </div>
+                <sc-if value="{{ dk.hasModelSearch }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin:2px 6px 4px;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border:1px solid #2e2e2e;border-radius:6px;color:#8e8e8e"><i class="icon-search" style="font-size:13px"></i>Search {{ dk.modelCount }} models</div>
+                </sc-if>
+                <div style="max-height:260px;overflow:auto;display:flex;flex-direction:column">
+                  <sc-for list="{{ dk.modelGroups }}" as="g" hint-placeholder-count="1">
+                    <sc-if value="{{ g.showLabel }}" hint-placeholder-val="{{ false }}"><div style="padding:8px 10px 2px;font-size:11px;font-weight:600;color:#8e8e8e">{{ g.label }}</div></sc-if>
+                    <sc-for list="{{ g.models }}" as="o" hint-placeholder-count="3">
+                      <div onClick="{{ o.pick }}" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:5px;cursor:pointer;flex:none" style-hover="background:#2a2a2a">
+                        <span style="flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ o.name }}</span><span style="font-size:12px;color:#b4b4b4;white-space:nowrap">{{ o.meta }}</span>
+                        <i class="{{ o.check }}" style="font-size:14px;width:14px;flex:none"></i>
+                      </div>
+                    </sc-for>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ dk.hasControls }}" hint-placeholder-val="{{ true }}">
+                  <div style="height:1px;background:#2a2a2a;margin:4px 0"></div>
+                  <sc-for list="{{ dk.modelControls }}" as="c" hint-placeholder-count="2">
+                    <sc-if value="{{ c.isSeg }}" hint-placeholder-val="{{ true }}">
+                      <div style="padding:8px 10px 4px;font-size:12px;font-weight:600;color:#8e8e8e">{{ c.label }}</div>
+                      <div style="display:flex;gap:2px;margin:2px 6px 6px;padding:2px;border:1px solid #2e2e2e;border-radius:6px">
+                        <sc-for list="{{ c.options }}" as="o" hint-placeholder-count="4">
+                          <span onClick="{{ o.pick }}" style="flex:1;display:flex;align-items:center;justify-content:center;height:26px;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;background:{{ o.bg }};color:{{ o.fg }}">{{ o.name }}</span>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ c.isToggle }}" hint-placeholder-val="{{ false }}">
+                      <div onClick="{{ c.toggle }}" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:5px;cursor:pointer" style-hover="background:#2a2a2a">
+                        <span style="flex:1;font-weight:600">{{ c.label }}</span>
+                        <span style="width:28px;height:16px;border-radius:999px;background:{{ c.track }};position:relative;transition:background .15s"><span style="position:absolute;top:2px;left:{{ c.knob }};width:12px;height:12px;border-radius:50%;background:#212121;transition:left .15s"></span></span>
+                      </div>
+                    </sc-if>
+                  </sc-for>
+                </sc-if>
+              </div>
+            </sc-if>
+          </div>
+          <span onClick="{{ dk.toggleSources }}" style="display:flex;align-items:center;gap:6px;height:28px;padding:0 9px;border-radius:6px;white-space:nowrap;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:#2a2a2a"><i class="icon-library" style="font-size:13px"></i>12 sources</span>
+          <span style="margin-left:auto;width:30px;height:30px;border-radius:6px;background:#ececec;color:#171717;display:flex;align-items:center;justify-content:center"><i class="icon-arrow-up" style="font-size:15px"></i></span>
+        </div>
+      </div>
+    </div>
+
+    
+    <sc-if value="{{ dk.sourcesOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;top:49px;left:1px;bottom:9px;width:340px;background:#212121;border-right:1px solid #2e2e2e;border-radius:7px 0 0 7px;box-shadow:8px 0 24px rgba(0,0,0,.06);display:flex;flex-direction:column;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px"><span style="font-size:12px;font-weight:600;color:#8e8e8e">Sources (12)</span><span style="display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:1px solid #3a3a3a;border-radius:6px;font-weight:500"><i class="icon-plus" style="font-size:14px"></i>Add</span></div>
+        <div style="margin:0 16px 8px;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border:1px solid #2e2e2e;border-radius:6px;color:#6e6e6e"><i class="icon-search" style="font-size:13px"></i>Filter sources</div>
+        <sc-for list="{{ dk.sources }}" as="src" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;gap:10px;height:40px;padding:0 16px" style-hover="background:#262626">
+            <i class="{{ src.icon }}" style="font-size:14px;color:#ececec"></i>
+            <div style="flex:1;min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500">{{ src.name }}</div></div>
+            <span style="font-size:11px;font-weight:600;color:#ececec;padding:1px 6px;border:1px solid #4a4a4a;border-radius:4px">{{ src.meta }}</span>
+            <span style="width:14px;height:14px;border-radius:3px;background:#ececec;color:#171717;display:flex;align-items:center;justify-content:center"><i class="icon-check" style="font-size:10px"></i></span>
+          </div>
+        </sc-for>
+        <div style="margin-top:auto;padding:12px 16px;border-top:1px solid #2a2a2a;display:flex;align-items:center;gap:8px;color:#ececec;font-weight:500"><i class="icon-folder-sync" style="font-size:14px"></i>Synced with ~/Documents/GED</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ dk.studioOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="position:absolute;top:48px;right:0;bottom:0;width:328px;box-sizing:border-box;background:#212121;border-top:1px solid #2e2e2e;border-left:1px solid #2e2e2e;border-radius:0;display:flex;flex-direction:column;overflow:hidden">
+        <div style="padding:16px 16px 16px;border-bottom:1px solid #2a2a2a">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div style="font-size:56px;font-weight:500;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1;opacity:{{ dk.timerOpacity }}">18:42</div>
+            <span onClick="{{ dk.togglePause }}" style="display:flex;align-items:center;justify-content:center;gap:8px;width:112px;height:40px;flex:none;border-radius:8px;background:#ececec;color:#171717;font-weight:600;cursor:pointer"><i class="{{ dk.pauseIcon }}" style="font-size:15px"></i>{{ dk.pauseLabel }}</span>
+          </div>
+        </div>
+        <sc-if value="{{ dk.notCalc }}" hint-placeholder-val="{{ true }}">
+        <div style="height:16px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px">
+          <sc-for list="{{ dk.tools }}" as="t" hint-placeholder-count="6">
+            <div style="display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #2e2e2e;border-radius:8px;cursor:pointer" style-hover="background:#262626;border-color:#444444">
+              <i class="{{ t.icon }}" style="font-size:16px"></i>
+              <div><div style="font-weight:600;line-height:1.25">{{ t.name }}</div><div style="font-size:12px;color:#8e8e8e;line-height:1.3;margin-top:1px">{{ t.meta }}</div></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="padding:22px 16px 6px;font-size:12px;font-weight:600;color:#8e8e8e">Recent</div>
+        <div style="margin:0 16px;border-top:1px solid #2a2a2a">
+        <sc-for list="{{ dk.made }}" as="m" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:10px;height:38px;padding:0 4px;margin:0 -4px;border-bottom:1px solid #2a2a2a;border-radius:0;cursor:pointer" style-hover="background:#262626">
+            <i class="{{ m.icon }}" style="font-size:14px;flex:none"></i>
+            <span style="flex:1;min-width:0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.name }}</span>
+            <span style="font-size:12px;color:#8e8e8e;white-space:nowrap">{{ m.when }}</span>
+          </div>
+        </sc-for>
+        </div>
+        <div style="margin-top:auto;padding:10px 16px;border-top:1px solid #2a2a2a;display:flex;align-items:center;gap:8px;color:#b4b4b4;font-weight:500;cursor:pointer" style-hover="color:#ececec"><i class="icon-sliders-horizontal" style="font-size:14px"></i>Space settings</div>
+        </sc-if>
+        <sc-if value="{{ dk.calcOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;padding:8px 14px 14px;gap:6px;background:#fff">
+          <div style="align-self:stretch;display:flex;justify-content:flex-end"><span onClick="{{ dk.toggleCalc }}" title="Back to study tools" style="width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#f2f2f2"><i class="icon-x" style="font-size:14px"></i></span></div>
+          <div style="width:100%;max-width:296px;display:flex;flex-direction:column;gap:12px;padding:14px 12px 16px;box-sizing:border-box;border-radius:20px 20px 30px 30px;background:linear-gradient(180deg,#3d424a 0%,#2c3036 38%,#202327 100%);box-shadow:0 14px 30px rgba(0,0,0,.28), 0 2px 4px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.14), inset 0 -2px 0 rgba(0,0,0,.35)">
+            <div style="padding:10px 10px 12px;border-radius:10px 10px 14px 14px;background:linear-gradient(180deg,#5b616b,#41454d);box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 1px 0 rgba(0,0,0,.4)">
+              <div style="padding:6px;border-radius:5px;background:#16181b;box-shadow:inset 0 2px 3px rgba(0,0,0,.6)">
+                <div style="height:92px;padding:3px 7px 5px;box-sizing:border-box;border-radius:2px;background:linear-gradient(180deg,#bfc6ad,#cdd3bc);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);color:#1f2619;font-family:'VT323',monospace;display:flex;flex-direction:column;overflow:hidden">
+                  <div style="display:flex;gap:8px;height:11px;font-family:Arial,Helvetica,sans-serif;font-size:8px;font-weight:700;letter-spacing:.03em;line-height:11px"><span style="opacity:{{ dk.calc2ndOn }}">2ND</span><span>{{ dk.calcAngle }}</span><span style="margin-left:auto">{{ dk.calcModeTag }}</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;font-size:19px;line-height:19px">
+                    <sc-for list="{{ dk.calcLines }}" as="l" hint-placeholder-count="1">
+                      <div style="white-space:nowrap;overflow:hidden">{{ l.expr }}</div>
+                      <div style="text-align:right;white-space:nowrap">{{ l.res }}</div>
+                    </sc-for>
+                    <div style="white-space:nowrap;overflow:hidden;display:flex;align-items:center"><span>{{ dk.calcEntry }}</span><span style="width:8px;height:15px;margin-left:1px;background:#1f2619"></span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div style="flex:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px 7px">
+                <sc-for list="{{ dk.calcTop }}" as="k" hint-placeholder-count="6"><span onClick="{{ k.press }}" style="display:flex;flex-direction:column;align-items:stretch;gap:2px;cursor:pointer;user-select:none;min-width:0"><span style="height:10px;font-family:Arial,Helvetica,sans-serif;font-size:8.5px;font-weight:700;line-height:10px;text-align:center;color:#6fd3a0;white-space:nowrap">{{ k.second }}</span><span style="height:{{ k.h }};display:flex;align-items:center;justify-content:center;border-radius:5px 5px 9px 9px;background:{{ k.bg }};color:{{ k.fg }};font-family:Arial,Helvetica,sans-serif;font-size:{{ k.size }};font-weight:700;box-shadow:0 2px 0 #08090a, 0 3px 5px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,{{ k.hi }});white-space:nowrap" style-active="transform:translateY(2px);box-shadow:0 0 0 #08090a, inset 0 1px 0 rgba(255,255,255,.1)">{{ k.label }}</span></span></sc-for>
+              </div>
+              <div style="position:relative;width:72px;height:72px;flex:none;border-radius:50%;background:radial-gradient(circle at 50% 35%,#7b818b,#4a4f57 70%);box-shadow:0 3px 0 #0a0b0c, 0 4px 8px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.25);margin-top:6px">
+                <span style="position:absolute;inset:24px;border-radius:50%;background:radial-gradient(circle,#3a3e45,#50555d);box-shadow:inset 0 1px 2px rgba(0,0,0,.5)"></span>
+                <span onClick="{{ dk.calcUp }}" style="position:absolute;top:2px;left:24px;width:24px;height:22px;display:flex;align-items:center;justify-content:center;color:#f2f2f2;cursor:pointer"><i class="icon-chevron-up" style="font-size:13px"></i></span>
+                <span onClick="{{ dk.calcDown }}" style="position:absolute;bottom:2px;left:24px;width:24px;height:22px;display:flex;align-items:center;justify-content:center;color:#f2f2f2;cursor:pointer"><i class="icon-chevron-down" style="font-size:13px"></i></span>
+                <span onClick="{{ dk.calcLeft }}" style="position:absolute;left:2px;top:24px;width:22px;height:24px;display:flex;align-items:center;justify-content:center;color:#f2f2f2;cursor:pointer"><i class="icon-chevron-left" style="font-size:13px"></i></span>
+                <span onClick="{{ dk.calcRight }}" style="position:absolute;right:2px;top:24px;width:22px;height:24px;display:flex;align-items:center;justify-content:center;color:#f2f2f2;cursor:pointer"><i class="icon-chevron-right" style="font-size:13px"></i></span>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px 7px">
+              <sc-for list="{{ dk.calcKeys }}" as="k" hint-placeholder-count="35"><span onClick="{{ k.press }}" style="display:flex;flex-direction:column;align-items:stretch;gap:2px;cursor:pointer;user-select:none;min-width:0"><span style="height:10px;font-family:Arial,Helvetica,sans-serif;font-size:8.5px;font-weight:700;line-height:10px;text-align:center;color:#6fd3a0;white-space:nowrap">{{ k.second }}</span><span style="height:{{ k.h }};display:flex;align-items:center;justify-content:center;border-radius:5px 5px 9px 9px;background:{{ k.bg }};color:{{ k.fg }};font-family:Arial,Helvetica,sans-serif;font-size:{{ k.size }};font-weight:700;box-shadow:0 2px 0 #08090a, 0 3px 5px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,{{ k.hi }});white-space:nowrap" style-active="transform:translateY(2px);box-shadow:0 0 0 #08090a, inset 0 1px 0 rgba(255,255,255,.1)">{{ k.label }}</span></span></sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+      </div>
+    </sc-if>
+  </main>
+</div></div>
+</div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;provider&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;anthropic&quot;,&quot;openai&quot;,&quot;openrouter&quot;,&quot;ollama&quot;],&quot;default&quot;:&quot;anthropic&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Text provider (from Settings)&quot;}}">
+class Component extends DCLogic {
+  state = { sourcesOpen: false, studioOpen: true, navPinned: true };
+  componentDidMount() {
+    this._k = (e) => {
+      if (!(e.metaKey && e.shiftKey)) return;
+      const k = e.key.toLowerCase();
+      if (k === 's') { e.preventDefault(); this.setState(s => ({ sourcesOpen: !s.sourcesOpen, chatsOpen: false })); }
+      if (k === 't') { e.preventDefault(); this.setState(s => ({ studioOpen: !s.studioOpen })); }
+    };
+    window.addEventListener('keydown', this._k);
+    this._c = () => { const s = this.state; if (s.menuThread || s.styleMenu || s.modelMenu || s.titleMenu) this.setState({ menuThread: null, styleMenu: false, modelMenu: false, titleMenu: false }); };
+    window.addEventListener('click', this._c);
+    const wait = () => window.katex ? this.forceUpdate() : setTimeout(wait, 100);
+    wait();
+  }
+  defaultThreads() { return [
+      { id: 1, title: "Systems of equations", pinned: false, day: "Today" }, { id: 6, title: "Graphing inequalities", pinned: false, day: "Today" },
+      { id: 2, title: "Slope-intercept form", pinned: false, day: "Yesterday" },
+      { id: 3, title: "Word problems: rates", pinned: false, day: "Previous 7 days" }, { id: 4, title: "Practice test 2 review", pinned: true, day: "Previous 7 days" },
+      { id: 5, title: "Fractions refresher", pinned: false, day: "Previous 30 days" }]; }
+  threadVals() {
+    const st = this.state;
+    const list = st.threads || this.defaultThreads();
+    const upd = (fn) => this.setState(s => ({ threads: fn((s.threads || this.defaultThreads()).slice()) }));
+    const stop = (e) => e.stopPropagation();
+    const items = list.map(t => {
+      const active = t.id === 1, hov = st.hoverThread === t.id, menu = st.menuThread === t.id, editing = st.editThread === t.id;
+      const commit = (v) => { upd(l => l.map(x => x.id === t.id ? { ...x, title: v.trim() || x.title } : x)); this.setState({ editThread: null }); };
+      return {
+        label: t.title, editing, notEditing: !editing,
+        group: t.pinned ? "Pinned" : t.day, weight: active ? 600 : 500,
+        bg: active ? "#e8e8e8" : (hov || menu) ? "#efefef" : "transparent",
+        showPin: !editing && (t.pinned || hov || menu), showMore: !editing && (hov || menu),
+        pinIcon: t.pinned ? "icon-pin-off" : "icon-pin", pinLabel: t.pinned ? "Unpin" : "Pin", pinOpacity: t.pinned ? 1 : 0.5,
+        menuOpen: menu, stop,
+        enter: () => this.setState({ hoverThread: t.id }),
+        leave: () => this.setState(s => s.hoverThread === t.id ? { hoverThread: null } : null),
+        toggleMenu: (e) => { e.stopPropagation(); this.setState(s => ({ menuThread: s.menuThread === t.id ? null : t.id })); },
+        togglePin: (e) => { e.stopPropagation(); upd(l => l.map(x => x.id === t.id ? { ...x, pinned: !x.pinned } : x)); this.setState({ menuThread: null }); },
+        rename: (e) => { e.stopPropagation(); this.setState({ editThread: t.id, menuThread: null }); },
+        remove: (e) => { e.stopPropagation(); upd(l => l.filter(x => x.id !== t.id)); this.setState({ menuThread: null }); },
+        renameKey: (e) => { if (e.key === 'Enter') commit(e.target.value); if (e.key === 'Escape') this.setState({ editThread: null }); },
+        renameBlur: (e) => commit(e.target.value),
+      };
+    });
+    return ["Pinned","Today","Yesterday","Previous 7 days","Previous 30 days"].map(label => ({ label, items: items.filter(i => i.group === label) })).filter(g => g.items.length);
+  }
+  extraVals() {
+    const st = this.state;
+    const cur = (st.threads || this.defaultThreads()).find(t => t.id === 1);
+    const ans = st.answer ?? "", res = st.result;
+    const check = () => { const v = (this.state.answer || "").replace(/\s|x=/gi, ""); if (!v) return; this.setState({ result: v === "3" ? "ok" : "bad" }); };
+    return {
+      activeTitle: cur ? cur.title : "Systems of equations",
+      activePinLabel: cur && cur.pinned ? "Unpin" : "Pin", activePinIcon: cur && cur.pinned ? "icon-pin-off" : "icon-pin",
+      titleMenuOpen: !!st.titleMenu, titleTrigBg: st.titleMenu ? "#ebebeb" : "transparent",
+      toggleTitleMenu: () => this.setState(s => ({ titleMenu: !s.titleMenu, styleMenu: false, modelMenu: false })),
+      titleRename: () => this.setState({ titleMenu: false, navPinned: true, editThread: 1 }),
+      titlePin: () => this.setState(s => ({ titleMenu: false, threads: (s.threads || this.defaultThreads()).map(t => t.id === 1 ? { ...t, pinned: !t.pinned } : t) })),
+      answerIcons: [["copy","Copy","Copy the answer as text"],["shield-check","Check against sources","Verifies each claim against your sources and flags anything unsupported"],["scale","Second opinion","Asks a different model the same question so you can compare"],["refresh-cw","Regenerate","Write this answer again"]]
+        .map(([i, name, desc]) => ({ icon: "icon-" + i, name, desc, show: st.tip === name,
+          enter: () => this.setState({ tip: name }), leave: () => this.setState(s => s.tip === name ? { tip: null } : null) })),
+      pauseLabel: st.paused ? "Resume" : "Pause", pauseIcon: st.paused ? "icon-play" : "icon-pause", timerOpacity: st.paused ? 0.4 : 1,
+      togglePause: () => this.setState(s => ({ paused: !s.paused })),
+      followUps: ["Why does substitution work?", "Show me when elimination is faster", "Give me a harder one"],
+      made: [["layers","Linear systems","Today"],["list-todo","Slope-intercept quiz","Today"],["file-text","Study Guide ch. 6 summary","Yesterday"]]
+        .map(([i, name, when]) => ({ icon: "icon-" + i, name, when })),
+      answer: ans, isCorrect: res === "ok", isWrong: res === "bad",
+      answerBorder: res === "ok" ? "#1a7f43" : res === "bad" ? "#b3261e" : "#dedede",
+      dot2: res === "ok" ? "#111111" : "#8a8a8a",
+      onAnswer: (e) => this.setState({ answer: e.target.value, result: null }),
+      onAnswerKey: (e) => { if (e.key === "Enter") check(); },
+      checkAnswer: check,
+      retryAnswer: () => this.setState({ result: null, answer: "" }),
+      resetAnswer: () => this.setState({ result: null, answer: "" }),
+      hintOpen: !!st.hint, hintBg: st.hint ? "#ebebeb" : "transparent",
+      toggleHint: () => this.setState(s => ({ hint: !s.hint })),
+    };
+  }
+  calcVals() {
+    const c = this.state.calc || { tokens: [], hist: [], second: false, deg: true, frac: {}, ans: 0, vars: {}, scroll: 0, sto: false };
+    const set = (patch) => this.setState(s => ({ calc: { ...(s.calc || c), ...patch } }));
+    const fmt = (v, asFrac) => {
+      if (typeof v !== "number" || !isFinite(v)) return "Error";
+      if (asFrac) { let best = null; for (let d = 1; d <= 1000; d++) { const n = Math.round(v * d); if (Math.abs(n / d - v) < 1e-10) { best = [n, d]; break; } } if (best && best[1] !== 1) return best[0] + "/" + best[1]; }
+      if (Math.abs(v) >= 1e10 || (Math.abs(v) < 1e-9 && v !== 0)) { const [m, e] = v.toExponential(6).split("e"); return parseFloat(m) + "×10^" + parseInt(e, 10); }
+      return String(parseFloat(v.toPrecision(10)));
+    };
+    const evaluate = (toks) => {
+      const deg = c.deg, r = (x) => deg ? x * Math.PI / 180 : x, ir = (x) => deg ? x * 180 / Math.PI : x;
+      const F = { S: (x) => Math.sin(r(x)), C: (x) => Math.cos(r(x)), T: (x) => Math.tan(r(x)), AS: (x) => ir(Math.asin(x)), AC: (x) => ir(Math.acos(x)), AT: (x) => ir(Math.atan(x)),
+        L: Math.log10, N: Math.log, R: Math.sqrt, P: Math.PI, E: Math.E, ANS: c.ans, X: c.vars.x ?? 0 };
+      let js = toks.map(t => t.js).join("");
+      const open = (js.match(/\(/g) || []).length - (js.match(/\)/g) || []).length;
+      js += ")".repeat(Math.max(0, open));
+      try { const v = Function(...Object.keys(F), "return (" + js + ");")(...Object.values(F)); return typeof v === "number" ? v : NaN; } catch (e) { return NaN; }
+    };
+    const T = (disp, js) => ({ disp, js });
+    const push = (...t) => set({ tokens: [...(c.tokens.length === 0 && t[0].op ? [T("Ans", "ANS")] : c.tokens), ...t], second: false, scroll: 0 });
+    const op = (disp, js) => ({ ...T(disp, js), op: true });
+    const enter = () => {
+      if (c.sto) { set({ vars: { ...c.vars, x: c.ans }, sto: false, hist: [...c.hist, { expr: "Ans→x", v: c.ans }] }); return; }
+      const toks = c.tokens.length ? c.tokens : (c.hist.length ? c.hist[c.hist.length - 1].toks || [] : []);
+      if (!toks.length) return;
+      const v = evaluate(toks);
+      set({ hist: [...c.hist, { expr: toks.map(t => t.disp).join(""), v, toks }].slice(-20), tokens: [], ans: isFinite(v) ? v : c.ans, second: false, scroll: 0 });
+    };
+    const K = (label, second, press, kind, extra) => ({ label, second: second || "", press, ...extra,
+      h: kind === "num" || kind === "enter" ? "27px" : "23px",
+      bg: kind === "num" ? "linear-gradient(180deg,#ffffff,#e4e4e1)" : kind === "enter" ? "linear-gradient(180deg,#d9dbdd,#b9bcc0)" : kind === "2nd" ? (c.second ? "linear-gradient(180deg,#9ff0c4,#6fd3a0)" : "linear-gradient(180deg,#7fe0ae,#4fb784)") : "linear-gradient(180deg,#3b3e44,#1d1f23)",
+      fg: kind === "num" || kind === "enter" || kind === "2nd" ? "#15171a" : "#ffffff",
+      hi: kind === "num" || kind === "enter" || kind === "2nd" ? ".9" : ".14",
+      size: kind === "num" ? "14px" : "11px" });
+    const s2 = c.second;
+    const fn = (d, j, d2, j2) => () => s2 && d2 ? push(T(d2 + "(", j2 + "(")) : push(T(d + "(", j + "("));
+    const num = (n) => () => push(T(n, n));
+    const top = [
+      K("2nd", "", () => set({ second: !c.second }), "2nd"),
+      K("mode", "quit", () => s2 ? set({ second: false, tokens: [], scroll: 0 }) : set({ deg: !c.deg, second: false }), "fn"),
+      K("delete", "insert", () => set({ tokens: c.tokens.slice(0, -1), second: false }), "fn"),
+      K("log", "10ˣ", () => s2 ? push(T("10^(", "10**(")) : push(T("log(", "L(")), "fn"),
+      K("prb", "angle", () => push(T("!", "")), "fn"),
+      K("data", "stat", () => {}, "fn"),
+    ];
+    const keys = [
+      K("ln", "eˣ", () => s2 ? push(T("e^(", "E**(")) : push(T("ln(", "N(")), "fn"),
+      K("n/d", "Un/d", () => push(op("⁄", "/")), "fn"),
+      K("◂▸", "f◂▸d", () => { const i = c.hist.length - 1; if (i < 0) return; const fr = { ...c.frac, [i]: !c.frac[i] }; set({ frac: fr, second: false }); }, "fn"),
+      K("table", "f(x)", () => {}, "fn"),
+      K("clear", "", () => set({ tokens: [], second: false, sto: false }), "fn"),
+      K("π", "hyp", () => push(T("π", "P")), "fn"),
+      K("sin", "sin⁻¹", fn("sin", "S", "sin⁻¹", "AS"), "fn"),
+      K("cos", "cos⁻¹", fn("cos", "C", "cos⁻¹", "AC"), "fn"),
+      K("tan", "tan⁻¹", fn("tan", "T", "tan⁻¹", "AT"), "fn"),
+      K("÷", "K", () => push(op("÷", "/")), "fn"),
+      K("^", "ˣ√", () => s2 ? push(op("ˣ√(", "**(1/")) : push(op("^", "**")), "fn"),
+      K("x⁻¹", "EE", () => s2 ? push(op("E", "*10**")) : push(op("⁻¹", "**-1")), "fn"),
+      K("(", "%", () => s2 ? push(op("%", "/100")) : push(T("(", "(")), "fn"),
+      K(")", "▸%", () => push(T(")", ")")), "fn"),
+      K("×", "", () => push(op("×", "*")), "fn"),
+      K("x²", "√", () => s2 ? push(T("√(", "R(")) : push(op("²", "**2")), "fn"),
+      K("7", "", num("7"), "num"), K("8", "", num("8"), "num"), K("9", "", num("9"), "num"),
+      K("−", "", () => push(op("−", "-")), "fn"),
+      K("x", "abc", () => push(T("x", "X")), "fn"),
+      K("4", "", num("4"), "num"), K("5", "", num("5"), "num"), K("6", "", num("6"), "num"),
+      K("+", "", () => push(op("+", "+")), "fn"),
+      K("sto→", "recall", () => set({ sto: true, tokens: [T("Ans→x", "")], second: false }), "fn"),
+      K("1", "", num("1"), "num"), K("2", "", num("2"), "num"), K("3", "", num("3"), "num"),
+      K("×10ⁿ", "", () => push(op("×10^", "*10**")), "fn"),
+      K("on", "off", () => this.setState({ calc: null }), "fn"),
+      K("0", "reset", num("0"), "num"), K(".", ",", num("."), "num"),
+      K("(−)", "ans", () => s2 ? push(T("Ans", "ANS")) : push(T("⁻", "-")), "num"),
+      K("enter", "≈", enter, "enter"),
+    ].map(k => k.label === "enter" ? { ...k, size: "11.5px" } : k);
+    const shown = c.hist.slice(0, c.hist.length - c.scroll).slice(-2);
+    const offset = c.hist.length - c.scroll - shown.length;
+    return {
+      calcOpen: !!this.state.calcOpen, notCalc: !this.state.calcOpen,
+      calcBtnBg: this.state.calcOpen ? "#e6e6e6" : "transparent",
+      toggleCalc: () => this.setState(s => ({ calcOpen: !s.calcOpen, studioOpen: true })),
+      calcTop: top, calcKeys: keys,
+      calc2ndOn: c.second ? 1 : 0.15, calcAngle: c.deg ? "DEG" : "RAD", calcModeTag: c.sto ? "STO" : "",
+      calcLines: shown.map((l, i) => ({ expr: l.expr, res: fmt(l.v, !!c.frac[offset + i]) })),
+      calcEntry: c.tokens.map(t => t.disp).join(""),
+      calcUp: () => set({ scroll: Math.min(c.scroll + 1, Math.max(0, c.hist.length - 1)) }),
+      calcDown: () => set({ scroll: Math.max(0, c.scroll - 1) }),
+      calcLeft: () => {}, calcRight: () => {},
+    };
+  }
+  tex(src, display) {
+    if (!window.katex) return src;
+    const html = window.katex.renderToString(src, { displayMode: !!display, throwOnError: false });
+    return React.createElement('span', { style: { whiteSpace: 'nowrap' }, dangerouslySetInnerHTML: { __html: html } });
+  }
+  componentWillUnmount() { window.removeEventListener('keydown', this._k); }
+  renderVals() {
+    const v = this.baseVals();
+    const MAP = {"#f6f6f6":"#171717","#ffffff":"#212121","#fff":"#2a2a2a","#111111":"#ececec","#404040":"#b4b4b4","#6b6b6b":"#8e8e8e","#8a8a8a":"#767676","#e6e6e6":"#2e2e2e","#efefef":"#2a2a2a","#e3e3e3":"#333333","#dedede":"#3a3a3a","#e5e5e5":"#2e2e2e","#e8e8e8":"#2e2e2e","#ebebeb":"#2a2a2a","#ededed":"#2e2e2e","#f2f2f2":"#2a2a2a","#d4d4d4":"#4a4a4a","#1a7f43":"#3fb56d","#b3261e":"#e5736b"};
+    const conv = (s) => s.replace(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g, m => MAP[m.toLowerCase()] || m).split("rgba(0,0,0,.08)").join("rgba(255,255,255,.08)");
+    const skip = { calcTop: 1, calcKeys: 1, providerIcon: 1 };
+    const dm = (x) => {
+      if (typeof x === "string") return conv(x);
+      if (Array.isArray(x)) return x.map(dm);
+      if (x && typeof x === "object" && !x.$$typeof) { const o = {}; for (const k in x) o[k] = skip[k] ? x[k] : dm(x[k]); return o; }
+      return x;
+    };
+    return { ...v, dk: dm(v) };
+  }
+  baseVals() {
+    const { sourcesOpen, studioOpen } = this.state;
+    const pinned = !!this.state.navPinned;
+    const open = pinned;
+    const N = (icon, label, hint, active) => ({ icon: "icon-" + icon, label, hint: hint || "",
+      bg: active ? "#e8e8e8" : "transparent", fg: "#111111", hoverBg: active ? "#e8e8e8" : "#ebebeb" });
+    const nav = {
+      navW: open ? "232px" : "0px", navShadow: "none",
+      railW: pinned ? "232px" : "0px", pinBg: pinned ? "#e6e6e6" : "transparent",
+      railHidden: !pinned, railOverflow: pinned ? "visible" : "hidden", chatLeft: pinned ? "0px" : "8px",
+      togglePin: () => this.setState(s => ({ navPinned: !s.navPinned })), labelOpacity: open ? 1 : 0, dividerOpacity: open ? 0 : 1,
+      navEnter: () => {}, navLeave: () => {},
+      navTop: [N("house","Home"),
+        { ...N("files","Sources","⌘⇧S", this.state.sourcesOpen), onClick: () => this.setState(s => ({ sourcesOpen: !s.sourcesOpen })) }, N("layers","Review","14"), N("pencil-line","Practice")],
+      threadGroups: this.threadVals(),
+    };
+    const st = this.state;
+    const style = st.tutorStyle || "Mixed";
+    const SEG = (label, options, def) => ({ type: "seg", label, options, def });
+    const TOG = (label, def) => ({ type: "toggle", label, def });
+    const anthropicCtl = [SEG("Effort", ["Low","Medium","High","Max"], "High"), TOG("Extended thinking", true)];
+    const openaiCtl = [SEG("Reasoning effort", ["Minimal","Low","Medium","High"], "Medium"), SEG("Verbosity", ["Low","Medium","High"], "Medium")];
+    const tempCtl = [SEG("Temperature", ["0","0.3","0.7","1.0"], "0.7")];
+    const PROVIDERS = {
+      anthropic: { name: "Anthropic", initial: "A", search: false, groups: [{ label: "", models: [
+        ["Sonnet 5.5","Balanced",anthropicCtl],["Opus 5","Most capable",anthropicCtl],["Haiku 4.5","Fastest",[TOG("Extended thinking", false)]]] }] },
+      openai: { name: "OpenAI", initial: "O", search: false, groups: [{ label: "", models: [
+        ["GPT-5.2","Flagship",openaiCtl],["GPT-5 mini","Fast",openaiCtl],["GPT-4.1","No reasoning",tempCtl]] }] },
+      openrouter: { name: "OpenRouter", initial: "R", search: true, total: 312, groups: [
+        { label: "Anthropic", models: [["Claude Sonnet 5.5","$3 / $15",anthropicCtl],["Claude Opus 5","$15 / $75",anthropicCtl]] },
+        { label: "OpenAI", models: [["GPT-5.2","$1.25 / $10",openaiCtl],["GPT-5 mini","$0.25 / $2",openaiCtl]] },
+        { label: "Google", models: [["Gemini 3 Pro","$2 / $12",[SEG("Thinking budget", ["Low","Medium","High"], "Medium")]],["Gemini 3 Flash","$0.30 / $2.50",[SEG("Thinking budget", ["Off","Low","High"], "Low")]]] },
+        { label: "DeepSeek", models: [["DeepSeek R2","$0.55 / $2.20",[TOG("Show reasoning", true)]],["DeepSeek V4","$0.27 / $1.10",tempCtl]] },
+        { label: "Meta", models: [["Llama 4 Maverick","$0.15 / $0.60",tempCtl]] }] },
+      ollama: { name: "Ollama (local)", initial: "L", search: false, groups: [{ label: "", models: [
+        ["llama3.3:70b","42 GB",[...tempCtl, SEG("Context", ["8k","32k","128k"], "32k")]],["qwen3:32b","20 GB",[TOG("Thinking", true), ...tempCtl]],["gemma3:12b","8 GB",tempCtl]] }] },
+    };
+    const pKey = this.props.provider ?? "anthropic";
+    const P = PROVIDERS[pKey] || PROVIDERS.anthropic;
+    const all = P.groups.flatMap(g => g.models);
+    const selKey = "model:" + pKey;
+    const model = all.find(m => m[0] === st[selKey]) ? st[selKey] : all[0][0];
+    const ctls = all.find(m => m[0] === model)[2];
+    const valOf = (c) => st["v:" + model + ":" + c.label] ?? c.def;
+    const firstSeg = ctls.find(c => c.type === "seg");
+    const composer = {
+      stopProp: (e) => e.stopPropagation(),
+      tutorStyle: style, modelName: model, effortLabel: firstSeg ? valOf(firstSeg) : "",
+      providerName: P.name, providerIcon: "https://www.google.com/s2/favicons?sz=64&domain=" + ({ anthropic: "anthropic.com", openai: "openai.com", openrouter: "openrouter.ai", ollama: "ollama.com" }[pKey] || "anthropic.com"), hasModelSearch: P.search, modelCount: String(P.total || all.length),
+      modelGroups: P.groups.map(g => ({ label: g.label, showLabel: !!g.label, models: g.models.map(([name, meta]) => ({
+        name, meta, check: name === model ? "icon-check" : "", pick: () => this.setState({ [selKey]: name }) })) })),
+      hasControls: ctls.length > 0,
+      modelControls: ctls.map(c => {
+        const v = valOf(c), k = "v:" + model + ":" + c.label;
+        return { label: c.label, isSeg: c.type === "seg", isToggle: c.type === "toggle",
+          options: (c.options || []).map(name => ({ name, bg: name === v ? "#111111" : "transparent", fg: name === v ? "#fff" : "#111111", pick: () => this.setState({ [k]: name }) })),
+          track: v ? "#111111" : "#d4d4d4", knob: v ? "14px" : "2px", toggle: () => this.setState({ [k]: !v }) };
+      }),
+      styleMenuOpen: !!st.styleMenu, modelMenuOpen: !!st.modelMenu,
+      styleTrigBg: st.styleMenu ? "#f2f2f2" : "transparent", modelTrigBg: st.modelMenu ? "#f2f2f2" : "transparent",
+      toggleStyleMenu: () => this.setState(s => ({ styleMenu: !s.styleMenu, modelMenu: false })),
+      toggleModelMenu: () => this.setState(s => ({ modelMenu: !s.modelMenu, styleMenu: false })),
+      styleOptions: [["Direct","Gives the answer and explains it"],["Socratic","Asks guiding questions, no answers"],["Mixed","Hints first, answer if you're stuck"]]
+        .map(([name, desc]) => ({ name, desc, check: name === style ? "icon-check" : "", pick: () => this.setState({ tutorStyle: name, styleMenu: false }) })),
+    };
+    const space = { ...nav, ...composer,
+      mathSystem: this.tex(String.raw`\displaystyle \begin{cases} y = 3x - 4 \\ 2x + y = 11 \end{cases}`),
+      mathInline: this.tex('y = 2x + 1'),
+      mathX: this.tex('x'),
+      sourcesOpen, studioOpen, studioClosed: !studioOpen,
+      mathY: this.tex('y'),
+      ...this.extraVals(), ...this.calcVals(),
+      padL: sourcesOpen ? "340px" : this.state.chatsOpen ? "300px" : "0px", padR: studioOpen ? "336px" : "8px", chatRight: studioOpen ? "336px" : "8px",
+      padLc: sourcesOpen ? "364px" : this.state.chatsOpen ? "324px" : "24px", padRc: studioOpen ? "360px" : "32px",
+      toggleSources: () => this.setState(s => ({ sourcesOpen: !s.sourcesOpen })),
+      toggleStudio: () => this.setState(s => ({ studioOpen: !s.studioOpen })),
+      stuBtnBg: studioOpen ? "#e6e6e6" : "transparent",
+      sources: [
+        ["file-type-2","OpenStax Algebra & Trigonometry","PDF"],
+        ["file-type-2","GED Math Study Guide","PDF"],
+        ["square-play","Khan Academy: Systems intro","Video"],
+        ["globe","Purplemath: substitution","Web"],
+        ["sticky-note","My notes, week 3","Note"],
+        ["file-text","Practice test 2 answers","Doc"],
+        ["file-type-2","Formula sheet","PDF"],
+      ].map(([i,name,meta]) => ({ icon: "icon-" + i, name, meta })),
+      tools: [
+        ["layers","Flashcards","8 due today"],
+        ["pencil-line","Practice","3 topics"],
+        ["list-checks","Check my steps","Upload your work"],
+        ["map","Study plan","Week 3 of 8"],
+        ["graduation-cap","Course","62% done"],
+        ["notebook-pen","Journal","Reflect on today"],
+      ].map(([i,name,meta]) => ({ icon: "icon-" + i, name, meta })),
+    };
+    return space;
+  }
+}
+</script>
+</body>
+</html>
