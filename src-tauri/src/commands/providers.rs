@@ -339,3 +339,12 @@ pub async fn http_get_text(
 ) -> AppResult<FetchedPage> {
     proxy::get_text(&svc.page_http, &url, headers).await
 }
+
+#[tauri::command]
+pub async fn list_openrouter_models(
+    state: State<'_, AppState>,
+    svc: State<'_, ProviderServices>,
+    force: Option<bool>,
+) -> AppResult<crate::openrouter::OpenRouterCatalog> {
+    crate::openrouter::load(&svc.page_http, &state.data_dir, force.unwrap_or(false)).await
+}
