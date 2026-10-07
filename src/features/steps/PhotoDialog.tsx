@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, ImagePlus, RotateCcw, ScanText, X } from "lucide-react";
+import { Camera, Image, RotateCcw, X } from "lucide-react";
 import { Dialog } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
-import { Label } from "../../components/ui/input";
 import { Segmented, Spinner } from "../../components/ui/misc";
 import { NativeSelect } from "../settings/NativeSelect";
 import { ModelPicker } from "../settings/ModelPicker";
@@ -65,16 +64,16 @@ function CameraView({ onPhoto }: { onPhoto: (p: Photo) => void }) {
 
   if (error) {
     return (
-      <p role="alert" className="rounded-xl bg-warn-soft px-3 py-2.5 text-sm" data-testid="camera-error">
+      <p role="alert" className="rounded-card bg-fill-subtle px-3 py-2.5 text-fg-secondary" data-testid="camera-error">
         {error}
       </p>
     );
   }
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       {devices.length > 0 && (
-        <div>
-          <Label htmlFor="step-camera">{s.steps.camera}</Label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-semibold text-muted">{s.steps.camera}</span>
           <NativeSelect id="step-camera" value={shown} onChange={(e) => (setShown(e.target.value), setDeviceId(e.target.value))}>
             {devices.map((d, i) => (
               <option key={d.deviceId || i} value={d.deviceId}>
@@ -82,18 +81,18 @@ function CameraView({ onPhoto }: { onPhoto: (p: Photo) => void }) {
               </option>
             ))}
           </NativeSelect>
-        </div>
+        </label>
       )}
-      <p className="text-xs text-muted">{s.steps.continuityHint}</p>
-      <div className="relative overflow-hidden rounded-xl bg-surface-2">
+      <p className="text-label text-muted">{s.steps.continuityHint}</p>
+      <div className="relative overflow-hidden rounded-card bg-fill-subtle">
         <video ref={video} muted playsInline className="aspect-video w-full object-contain" />
         {!live && (
-          <div className="absolute inset-0 flex items-center justify-center gap-2 text-sm text-muted">
+          <div className="absolute inset-0 flex items-center justify-center gap-2 text-muted">
             <Spinner /> {s.steps.cameraStarting}
           </div>
         )}
       </div>
-      <Button variant="primary" size="sm" disabled={!live} onClick={() => video.current && onPhoto(photoFromVideo(video.current))}>
+      <Button variant="primary" className="self-start" disabled={!live} onClick={() => video.current && onPhoto(photoFromVideo(video.current))}>
         <Camera size={15} /> {s.steps.takePhoto}
       </Button>
     </div>
@@ -117,14 +116,14 @@ function FileView({ onFile }: { onFile: (f: File) => void }) {
         if (f) onFile(f);
       }}
       className={cn(
-        "flex flex-col items-center gap-3 rounded-xl border border-dashed px-4 py-8 text-center text-sm text-muted transition-colors",
-        over ? "border-accent bg-accent-soft" : "border-border",
+        "flex flex-col items-center gap-2.5 rounded-card border border-dashed border-control-off p-8 text-center text-fg-secondary transition-colors",
+        over && "bg-fill-subtle",
       )}
       data-testid="photo-drop"
     >
-      <ImagePlus size={22} aria-hidden />
+      <Image size={20} aria-hidden />
       <p>{s.steps.drop}</p>
-      <Button size="sm" onClick={() => input.current?.click()}>
+      <Button variant="secondary" onClick={() => input.current?.click()}>
         {s.steps.chooseFile}
       </Button>
       <input
@@ -228,25 +227,25 @@ export function PhotoDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={s.steps.photoTitle}
-      description={s.steps.photoBody}
+      className="w-[min(520px,calc(100vw-32px))]"
       footer={
         <>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>
             {s.common.cancel}
           </Button>
           <Button variant="primary" disabled={!photo || reading} onClick={read}>
-            {reading ? <Spinner className="text-on-accent" /> : <ScanText size={16} />}
+            {reading && <Spinner size={14} className="text-on-primary" />}
             {reading ? s.steps.reading : s.steps.read}
           </Button>
         </>
       }
     >
-      <div className="space-y-4 pb-2">
+      <div className="flex flex-col gap-3.5">
         {photo ? (
           <div className="relative">
-            <img src={photo.url} alt={s.steps.photoAlt} className="max-h-72 w-full rounded-xl bg-surface-2 object-contain" data-testid="photo-preview" />
+            <img src={photo.url} alt={s.steps.photoAlt} className="max-h-72 w-full rounded-card bg-fill-subtle object-contain" data-testid="photo-preview" />
             <div className="absolute right-2 top-2 flex gap-1">
-              <Button size="icon-sm" variant="secondary" aria-label={tab === "camera" ? s.steps.retake : s.steps.removeImage} onClick={() => setPhoto(null)}>
+              <Button size="icon-sm" variant="secondary" className="bg-surface" aria-label={tab === "camera" ? s.steps.retake : s.steps.removeImage} onClick={() => setPhoto(null)}>
                 {tab === "camera" ? <RotateCcw size={14} /> : <X size={14} />}
               </Button>
             </div>
@@ -257,23 +256,23 @@ export function PhotoDialog({
               label={s.steps.photoTitle}
               value={tab}
               onChange={setTab}
+              block
               options={[
-                { value: "file", label: s.steps.tabFile },
                 { value: "camera", label: s.steps.tabCamera, title: hasCamera ? s.steps.continuityHint : s.steps.cameraUnavailable },
+                { value: "file", label: s.steps.tabFile },
               ]}
             />
             {tab === "camera" ? <CameraView onPhoto={setPhoto} /> : <FileView onFile={takeFile} />}
           </>
         )}
         {error && (
-          <p role="alert" className="rounded-xl bg-danger-soft px-3 py-2.5 text-sm text-danger">
+          <p role="alert" className="rounded-card border border-danger-border bg-danger-soft px-3 py-2.5 text-danger-text">
             {error}
           </p>
         )}
-        <div>
-          <Label>{s.steps.readModel}</Label>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-label font-semibold text-muted">{s.steps.readModel}</span>
           <ModelPicker value={visionRef} onChange={setVisionRef} allowDefault />
-          <p className="mt-1 text-xs text-muted">{s.steps.readModelHint}</p>
         </div>
       </div>
     </Dialog>
