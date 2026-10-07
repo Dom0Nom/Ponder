@@ -44,7 +44,7 @@ export const isEmpty = (ed: Ed) => ed.els.length === 0;
 /** Insert elements at the cursor. A single element overwrites unless insert mode is on or the cursor is at the end. */
 export function insert(ed: Ed, els: El[], enter?: { at: number; slot: number; end?: boolean }) {
   const l = listAt(ed);
-  const overwrite = els.length === 1 && !ed.ins && ed.pos < l.length;
+  const overwrite = els.length === 1 && !ed.ins && ed.pos < l.length && l[ed.pos].k === "t";
   l.splice(ed.pos, overwrite ? 1 : 0, ...els);
   if (enter) {
     const at = ed.pos + enter.at;
@@ -141,13 +141,16 @@ export function vertical(ed: Ed, dir: 1 | -1): boolean {
 
 export function del(ed: Ed) {
   const l = listAt(ed);
-  if (ed.pos < l.length) {
-    l.splice(ed.pos, 1);
-    return;
-  }
-  if (ed.pos > 0) {
-    l.splice(ed.pos - 1, 1);
-    ed.pos--;
+  if (ed.pos < l.length || ed.pos > 0) {
+    if (ed.pos < l.length) l.splice(ed.pos, 1);
+    else l.splice(--ed.pos, 1);
+    const p = parentTpl(ed);
+    // emptying a superscript removes it; typing continues on the baseline
+    if (p && p.el.k === "pow" && l.length === 0) {
+      ed.path.pop();
+      p.list.splice(p.i, 1);
+      ed.pos = p.i;
+    }
     return;
   }
   const p = parentTpl(ed);
@@ -250,4 +253,22 @@ export function fromMarkup(s: string): El[] {
     return out;
   };
   return group();
+}
+
+/** `clear` with the cursor in (or on) a template removes that template only. Returns false when there is none. */
+export function clearTemplate(ed: Ed): boolean {
+  const p = parentTpl(ed);
+  if (p) {
+    ed.path.pop();
+    p.list.splice(p.i, 1);
+    ed.pos = p.i;
+    ed.path = ed.path.slice(0, ed.path.length);
+    return true;
+  }
+  const l = listAt(ed);
+  if (ed.pos < l.length && l[ed.pos].k !== "t") {
+    l.splice(ed.pos, 1);
+    return true;
+  }
+  return false;
 }

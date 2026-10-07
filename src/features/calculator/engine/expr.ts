@@ -1,7 +1,7 @@
 import { type El, isTok, VARS } from "./editor";
 import type { Hint } from "./format";
 import * as N from "./num";
-import { type Val, err, int, dec, PI, E13, PI13, isRational } from "./num";
+import { CalcError, type Val, err, int, dec, PI, E13, PI13, isRational } from "./num";
 
 export type Angle = "DEG" | "RAD" | "GRAD";
 
@@ -45,7 +45,8 @@ export const FUNCS = [
   "x'(",
   "y'(",
 ];
-const CONV: Record<string, Hint> = { "▸n/d◂▸Un/d": "mixed", "▸F◂▸d": "fd", "▸DMS": "dms", "▸%": "pct" };
+const CONV: Record<string, Hint> = { "▸n/d◂▸Un/d": "mixed", "▸F◂▸d": "fd", "▸DMS": "dms", "▸%": "pct", "◂▸": undefined };
+const isConv = (v: string | undefined) => v !== undefined && v in CONV;
 const POSTFIX = new Set(["²", "⁻¹", "!", "%", "°", "'", '"', "ʳ", "ᵍ"]);
 const SYMS = /^(π|e|ans|rand|[xyztabc]|stat:.+|L[123])$/;
 
@@ -83,8 +84,8 @@ class Parser {
   top(): Parsed {
     let node = this.add();
     let hint: Hint;
-    while (this.tv() && CONV[this.tv()!]) {
-      hint = CONV[this.tv()!];
+    while (isConv(this.tv())) {
+      hint = CONV[this.tv()!] ?? hint;
       if (hint === "mixed" && node.t === "mixed") hint = "improper";
       this.i++;
     }
@@ -275,7 +276,7 @@ class Parser {
 
   isConvOrStore(): boolean {
     const v = this.tv();
-    return v === "→" || (v !== undefined && !!CONV[v]);
+    return v === "→" || isConv(v);
   }
 }
 
@@ -549,8 +550,33 @@ export interface EvalResult {
   usedFrac: boolean;
 }
 
+/** Errors come in evaluation order (BEHAVIOR §21): when the entry has a syntax error, the longest
+ * well-formed prefix is evaluated first and any math error in it wins. */
+function parseOrPrefixError(els: El[], ctx: Ctx): Parsed {
+  try {
+    return parse(els);
+  } catch (e) {
+    if (!(e instanceof CalcError) || e.code !== "SYNTAX") throw e;
+    for (let k = els.length - 1; k > 0; k--) {
+      let prefix: Parsed;
+      try {
+        prefix = parse(els.slice(0, k));
+      } catch {
+        continue;
+      }
+      try {
+        evaluate(prefix.node, ctx);
+      } catch (inner) {
+        if (inner instanceof CalcError && inner.code !== "SYNTAX") throw inner;
+      }
+      break;
+    }
+    throw e;
+  }
+}
+
 export function run(els: El[], ctx: Ctx): EvalResult {
-  const p = parse(els);
+  const p = parseOrPrefixError(els, ctx);
   const val = evaluate(p.node, ctx);
   return { val, hint: p.hint, store: p.store, usedFrac: p.usedFrac };
 }

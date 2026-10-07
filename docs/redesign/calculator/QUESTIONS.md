@@ -1,6 +1,6 @@
 # Calculator: builder questions
 
-These are questions from the builder for the spec. All 625 verified vectors pass, so no vector is marked as an expected failure (`src/features/calculator/engine/divergences.ts` is empty).
+These are questions from the builder for the spec. All 645 verified vectors pass, so no vector is marked as an expected failure (`src/features/calculator/engine/divergences.ts` is empty).
 
 ## Answered by the verification pass (closed)
 
@@ -15,6 +15,7 @@ The verified spec answered all of these. The build now follows it.
 - Q8: the same-row rule (cells ≤ 14, with the two exceptions).
 - Q9: FLOAT goes scientific below 1×10⁻⁹.
 - Q12: indicators on application screens.
+- Q13 (raised minus sign): the vectors were misread. There is no separate `⁻` row; the special case is removed.
 
 ## Open
 
@@ -28,10 +29,13 @@ The seeded vectors pass with this generator: s ← 40014·s mod 2147483563, rand
 
 ### Q13. Rules fitted to single vectors (please confirm with more probes)
 
-- **Raised minus sign:** `\f{3}{5}^{⁻1}` and `(4^{⁻1})^{⁻1}` read as a separate `⁻` row above the entry. The build splits off the minus of any superscript whose base is a fraction, or a parenthesis group containing a power or fraction. This only affects the text encoding.
 - **Fraction-with-radical result:** `sin(45)` / `\t\f{√{2}}{2}` goes to its own row, but `5*cos(\f{π}{4})\t\f{5√{2}}{2}` stays on the same row. The build moves such a result to its own row only when the entry has no fraction.
 - **`2√{2}◂▸` and `3.142857142857◂▸`** follow the general cell rule. None of the vectors cover a toggle row exactly at the 14-cell limit.
 - **Data editor and stats:** picking a stat result after starting from the data editor pastes it into the edit line. `enter` then stores it, and the stored value becomes `ans` (`stat-oneVarAnsTimes2`). `data` in the CLEAR/FORMULA menu returns to the editor at row 1 (`stat-editorClearAll`).
+
+### Q15. Cursor cell when an entry ends in a function token
+
+When the entry scrolls, the cursor normally takes a cell of its own (`edit-scroll16`). `edit-deleteExponentLong` ends in `tan(` and shows 15 content cells after the `◂`, with no room for the cursor, and the left edge cuts into `ans` (`◂s8÷…`). The build drops the cursor cell when the entry ends in a function token or `ans`. Probes with other tokens and with a scroll built up in several steps would confirm whether the reference scrolls per key rather than per screen.
 
 ### Q14. Not covered by vectors; the build's choice
 
