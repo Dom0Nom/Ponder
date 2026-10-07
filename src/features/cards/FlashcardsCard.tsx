@@ -254,7 +254,7 @@ export function AddCardDialog({ space }: { space: Space }) {
           <Button variant="secondary" onClick={close}>
             {s.common.cancel}
           </Button>
-          <Button variant="primary" className="min-w-[96px]" disabled={!valid || busy || added} onClick={save}>
+          <Button variant="primary" disabled={!valid || busy || added} onClick={save}>
             <TextSwap text={added ? s.cards.added : s.cards.add} />
           </Button>
         </>

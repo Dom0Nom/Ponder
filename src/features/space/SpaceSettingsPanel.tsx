@@ -173,7 +173,7 @@ export function SpaceSettingsPanel({ space, onBack }: { space: Space; onBack: ()
             {s.space.deleteSpace}
           </Button>
         </span>
-        <Button variant="primary" className="min-w-[72px]" disabled={!dirty || !draft.name.trim() || saving || justSaved} onClick={save}>
+        <Button variant="primary" disabled={!dirty || !draft.name.trim() || saving || justSaved} onClick={save}>
           <TextSwap text={justSaved ? s.common.saved : s.common.save} />
         </Button>
       </div>

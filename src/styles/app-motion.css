@@ -40,3 +40,6 @@
 
 /* Digit groups stay inline so innerText and copy keep the number on one line */
 .t-digit-group { display: inline; }
+
+/* Settled panels drop the compositing hint so their text keeps the same antialiasing as static content */
+.t-panel-slide[data-open="true"] { will-change: auto; }
