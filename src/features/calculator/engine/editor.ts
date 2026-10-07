@@ -7,7 +7,9 @@ export const isTok = (e: El | undefined, v?: string): e is { k: "t"; v: string }
   !!e && e.k === "t" && (v === undefined || e.v === v);
 
 export const VARS = ["x", "y", "z", "t", "a", "b", "c"];
-export const CURSOR = "";
+export const CURSOR = "\uE000";
+/** Cursor while insert mode is on (drawn as an underline). */
+export const CURSOR_INS = "\uE003";
 
 /** Entry editor: a tree of elements with a cursor (path into templates + position). */
 export interface Ed {
@@ -173,7 +175,7 @@ export function markup(els: El[], mathprint = true, cursor?: Ed): string {
     let out = "";
     const curPos = here && cursor && path.length === cursor.path.length ? cursor.pos : -1;
     list.forEach((e, i) => {
-      if (i === curPos) out += CURSOR;
+      if (i === curPos) out += cursor!.ins ? CURSOR_INS : CURSOR;
       const sub = (s: number) => {
         const next = cursor && here && cursor.path[path.length];
         const inside = !!next && next.i === i && next.s === s;
@@ -200,13 +202,13 @@ export function markup(els: El[], mathprint = true, cursor?: Ed): string {
           break;
       }
     });
-    if (curPos === list.length) out += CURSOR;
+    if (curPos === list.length) out += cursor!.ins ? CURSOR_INS : CURSOR;
     return out;
   };
   return walk(els, [], true);
 }
 
-export const stripCursor = (s: string) => s.replaceAll(CURSOR, "");
+export const stripCursor = (s: string) => s.replaceAll(CURSOR, "").replaceAll(CURSOR_INS, "");
 
 /** Parse display text of a value (e.g. "⁻\f{3}{4}", "2√{2}", "1.5*10^{⁻7}") back into elements. */
 export function fromMarkup(s: string): El[] {

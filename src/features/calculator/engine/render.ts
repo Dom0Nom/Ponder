@@ -1,4 +1,4 @@
-import { BLINK_OFF, BLINK_ON, CUR, cells, measure, parse, parseItems } from "../lcd/layout";
+import { BLINK_OFF, BLINK_ON, CUR, CUR_INS, cells, measure, parse, parseItems } from "../lcd/layout";
 import { type State, MODE_ROWS, fmtOf, menuTabs, modeSelected, tableRows } from "./calc";
 import { isEmpty, markup } from "./editor";
 import { formatFit, formatPlain } from "./format";
@@ -24,7 +24,7 @@ export interface Model {
   cols?: number;
 }
 
-const stripMarks = (s: string) => s.replace(/[-]/g, "");
+const stripMarks = (s: string) => s.replace(/[\uE000-\uE003]/g, "");
 const width = (m: string) => measure(m).w;
 const height = (r: Row) => Math.max(measure(r.l || " ").h, r.r !== undefined ? measure(r.r).h : 0);
 
@@ -57,8 +57,8 @@ function cutRight(m: string): string {
 function scrollEntry(m: string): string {
   if (width(m) <= LCD_W) return m;
   const items = parseItems(m).filter((it) => it.src);
-  const ws = items.map((it) => (it.src === CUR ? 0 : width(it.src)));
-  const cur = Math.max(0, items.findIndex((it) => it.src.includes(CUR)));
+  const ws = items.map((it) => (it.src === CUR || it.src === CUR_INS ? 0 : width(it.src)));
+  const cur = Math.max(0, items.findIndex((it) => it.src.includes(CUR) || it.src.includes(CUR_INS)));
   let start = 0;
   const fits = (a: number) => {
     let w = a > 0 ? MARK_W : 0;

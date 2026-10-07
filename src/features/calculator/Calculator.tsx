@@ -118,6 +118,7 @@ export function Calculator({ scale: fixed = 1, fit = false, popOut = false, glob
       pressed,
       onDown: (id) => {
         if (!reduced) setPressed((p) => new Set(p).add(id));
+        if (!globalKeys && document.activeElement !== wrap.current) wrap.current?.focus({ preventScroll: true });
         press(id);
       },
       onUp: (id) =>
@@ -128,7 +129,7 @@ export function Calculator({ scale: fixed = 1, fit = false, popOut = false, glob
           return n;
         }),
     }),
-    [pressed, press, reduced],
+    [pressed, press, reduced, globalKeys],
   );
 
   const onKeyDown = useCallback(
@@ -181,7 +182,7 @@ export function Calculator({ scale: fixed = 1, fit = false, popOut = false, glob
       tabIndex={globalKeys ? -1 : 0}
       onKeyDown={globalKeys ? undefined : onKeyDown}
       onKeyUp={globalKeys ? undefined : onKeyUp}
-      className={cn("relative shrink-0 select-none overflow-hidden outline-none", className)}
+      className={cn("relative shrink-0 select-none overflow-hidden", className)}
       style={{ width: fit ? "100%" : CALC_W * scale, height: CALC_H * scale }}
     >
       <div className="absolute left-0 top-0 origin-top-left" style={{ width: CALC_W, height: CALC_H, transform: `scale(${scale})` }}>

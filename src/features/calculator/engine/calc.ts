@@ -721,7 +721,6 @@ function dataKey(s: State, sc: Extract<Screen, { t: "data" }>, k: string) {
       return;
     case "2nd+mode":
     case "mode":
-      if (!dataCommit(s, sc)) return;
       s.screen = { t: "home" };
       return;
   }

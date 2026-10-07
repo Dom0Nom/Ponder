@@ -5,6 +5,7 @@ import { glyph, glyphKeys } from "./font";
 export const CUR = "\uE000";
 export const BLINK_ON = "\uE001";
 export const BLINK_OFF = "\uE002";
+export const CUR_INS = "\uE003";
 const SEQ = ["▸n/d◂▸Un/d", "▸F◂▸D", "▸DMS", "▸%"];
 
 export type MNode =
@@ -15,7 +16,7 @@ export type MNode =
   | { t: "sup"; a: MNode[] }
   | { t: "inv"; a: MNode[] }
   | { t: "blink"; a: MNode[] }
-  | { t: "cur" };
+  | { t: "cur"; under?: boolean };
 
 export interface Item {
   node: MNode;
@@ -54,9 +55,9 @@ export function parseItems(s: string): Item[] {
       } else if (c === BLINK_ON) {
         i++;
         node = { t: "blink", a: seq(BLINK_OFF).map((x) => x.node) };
-      } else if (c === CUR) {
+      } else if (c === CUR || c === CUR_INS) {
         i++;
-        node = { t: "cur" };
+        node = { t: "cur", under: c === CUR_INS };
       } else {
         const text = SEQ.find((q) => s.startsWith(q, i)) ?? glyphKeys(s.slice(i, i + 4))[0];
         i += text.length;
@@ -119,7 +120,12 @@ function layoutNode(n: MNode, small: boolean): Box {
       };
     }
     case "cur":
-      return { w: 0, asc: ascBase, desc: 0, ops: [{ k: "cur", x: 0, y: -ascBase, w: small ? 3 : 5, h: ascBase }] };
+      return {
+        w: 0,
+        asc: ascBase,
+        desc: 0,
+        ops: [{ k: "cur", x: 0, y: n.under ? 0 : -ascBase, w: small ? 3 : 5, h: n.under ? 1 : ascBase }],
+      };
     case "sup": {
       const e = layoutSeq(n.a, true);
       const raise = small ? 3 : 5;
