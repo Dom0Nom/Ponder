@@ -9,9 +9,9 @@ import { toastError } from "../components/ui/toast";
 import { api } from "../lib/ipc";
 import { qk, usePinThread, useSpace, useThreads } from "../lib/queries";
 import { s } from "../lib/strings";
-import type { Thread } from "../lib/types";
 import { useUi } from "../stores/ui";
 import { FocusHeaderTimer } from "../features/focus/FocusHeaderTimer";
+import { useActiveThread } from "../features/chat/useActiveThread";
 
 const Sep = () => (
   <span aria-hidden className="text-faint">
@@ -24,16 +24,27 @@ const crumbCurrent = "min-w-0 truncate whitespace-nowrap font-medium";
 
 function SpaceTitle({ spaceId }: { spaceId: string }) {
   const { data: space } = useSpace(spaceId);
-  const threads = useThreads(spaceId);
-  const activeId = useUi((st) => st.activeThread[spaceId]);
+  const active = useActiveThread(spaceId);
+  const loading = useThreads(spaceId).isLoading;
+  const viewing = useUi((st) => st.viewer !== null);
   const setRenaming = useUi((st) => st.setRenamingThread);
   const pin = usePinThread(spaceId);
   const qc = useQueryClient();
   const [deleting, setDeleting] = useState(false);
-  const active: Thread | undefined = threads.data?.find((t) => t.id === activeId) ?? threads.data?.[0];
 
   if (!space) return null;
-  if (!active) return <span className={crumbCurrent}>{space.name}</span>;
+  if (!active || viewing)
+    return (
+      <>
+        <span className="whitespace-nowrap font-medium text-fg-secondary" data-tauri-drag-region>
+          {space.name}
+        </span>
+        <Sep />
+        <span className={crumbCurrent} data-tauri-drag-region>
+          {viewing ? s.panes.sources : loading ? "" : s.chat.newThread}
+        </span>
+      </>
+    );
 
   return (
     <>
@@ -119,8 +130,8 @@ export function Header() {
   const route = useUi((st) => st.route);
   const sidebarOpen = useUi((st) => st.sidebarOpen);
   const toggleSidebar = useUi((st) => st.toggleSidebar);
-  const studioOpen = useUi((st) => st.panes.studio);
-  const togglePane = useUi((st) => st.togglePane);
+  const studioOpen = useUi((st) => st.studioOpen);
+  const toggleStudio = useUi((st) => st.toggleStudio);
 
   return (
     <header data-tauri-drag-region className="flex h-[48px] shrink-0 items-center gap-3 pl-3 pr-4">
@@ -168,7 +179,7 @@ export function Header() {
             variant="chrome"
             className="h-7 gap-2 rounded-btn px-2.5 font-normal"
             aria-pressed={studioOpen}
-            onClick={() => togglePane("studio")}
+            onClick={toggleStudio}
           >
             <PanelRight size={14} />
             {s.panes.studio}
