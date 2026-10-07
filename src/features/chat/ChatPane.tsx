@@ -96,7 +96,7 @@ function ThreadView({ space, thread, ensureThread }: { space: Space; thread?: Th
         style={{ paddingLeft: sourcesOpen ? 340 : 0 }}
         data-testid="message-list"
       >
-        <div ref={content} className="mx-auto flex w-full max-w-[748px] flex-1 flex-col gap-[26px] px-6 pb-7 pt-8">
+        <div ref={content} className="mx-auto flex w-full max-w-[700px] flex-1 flex-col gap-[26px] px-6 pb-7 pt-8">
           {messages.isLoading && thread && (
             <div className="space-y-4">
               <Skeleton className="ml-auto h-10 w-1/2" />
