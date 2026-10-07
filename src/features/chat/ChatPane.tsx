@@ -37,16 +37,18 @@ function NewChatState({ hasSources, sourcesOpen, space }: { hasSources: boolean;
   const setImportDialog = useUi((st) => st.setImportDialog);
   const low = useLowEnergy(space.id);
   return (
-    <div className="flex min-h-full flex-1 flex-col items-center justify-center gap-2.5 p-10 text-center" data-testid="chat-empty">
+    <div className="t-stagger is-shown flex min-h-full flex-1 flex-col items-center justify-center gap-2.5 p-10 text-center" data-testid="chat-empty">
       <div aria-hidden className="relative h-11">
         <PonderMark size={56} state="idle" className="absolute bottom-2.5 left-1/2 -translate-x-1/2" />
       </div>
-      <p className="text-section font-semibold">{s.chat.emptyTitle}</p>
-      <p className="max-w-[380px] text-body-lg leading-[1.5] text-muted">{hasSources ? s.chat.emptyBody : s.chat.emptyNoSources}</p>
+      <p className="t-stagger-line text-section font-semibold">{s.chat.emptyTitle}</p>
+      <p className="t-stagger-line t-stagger-line--2 max-w-[380px] text-body-lg leading-[1.5] text-muted">{hasSources ? s.chat.emptyBody : s.chat.emptyNoSources}</p>
       {!hasSources && !sourcesOpen && (
-        <Button className="mt-2 font-semibold" disabled={low.active} title={low.reason} onClick={() => setImportDialog({ open: true })}>
-          <Plus size={15} /> {s.sources.add}
-        </Button>
+        <div className="t-stagger-line t-stagger-line--3 mt-2">
+          <Button className="font-semibold" disabled={low.active} title={low.reason} onClick={() => setImportDialog({ open: true })}>
+            <Plus size={15} /> {s.sources.add}
+          </Button>
+        </div>
       )}
     </div>
   );
