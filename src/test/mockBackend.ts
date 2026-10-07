@@ -1553,6 +1553,14 @@ const handlers: Record<string, (a: Args) => unknown> = {
     return null;
   },
   list_openrouter_models: () => ({ fetchedAt: Math.floor(Date.now() / 1000), models: openRouterFixture }),
+  site_icon: (a) => {
+    const host = String(a.host).toLowerCase();
+    const known = ["kimi.ai", "mi.com", "minimax.io", "moonshot.ai", "nvidia.com", "z.ai", "cohere.com"];
+    if (!known.some((k) => host === k || host.endsWith(`.${k}`))) return null;
+    const hue = [...host].reduce((n, c) => n + c.charCodeAt(0), 0) % 360;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><rect width="8" height="8" rx="2" fill="hsl(${hue} 60% 45%)"/></svg>`;
+    return `data:image/svg+xml;base64,${btoa(svg)}`;
+  },
   http_abort: (a) => {
     aborted.add(a.id as string);
     return null;

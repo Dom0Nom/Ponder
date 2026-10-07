@@ -6,6 +6,7 @@ import { Menu, MenuContent, MenuRadioGroup, MenuRadioItem, MenuTrigger } from ".
 import { TEMPERATURE_VALUES, offersTemperature } from "../../lib/providers/catalog";
 import { controlsKey, effortLabel, modelCapabilities, modelLabel, thinkingOn } from "../../lib/providers/controls";
 import { resolveModel } from "../../lib/providers/model";
+import { authorOf } from "../../lib/providers/openrouter";
 import { useOpenRouterModels, useProviders, useSettings, useUpdateSpace } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { ModelRef, Space } from "../../lib/types";
@@ -121,6 +122,11 @@ export function ModelMenu({ space }: { space: Space }) {
     >
       <Popover.Trigger asChild>
         <button className={triggerClass} aria-label={`${modelLabel(current.modelId)} ${effort}`.trim()}>
+          {current.provider.type === "openrouter" && authorOf(current.modelId) ? (
+            <ProviderIcon author={authorOf(current.modelId)} size={15} />
+          ) : (
+            <ProviderIcon type={current.provider.type} baseUrl={current.provider.baseUrl} size={15} />
+          )}
           <span className="truncate text-fg">{modelLabel(current.modelId)}</span>
           {effort && <span className="shrink-0">{effort}</span>}
           <ChevronDown size={13} className="shrink-0" />
@@ -145,7 +151,7 @@ export function ModelMenu({ space }: { space: Space }) {
                 data-testid="provider-picker"
                 className="mb-1 flex h-[34px] w-full items-center gap-2.5 rounded-item px-2.5 text-left font-semibold hover:bg-fill disabled:hover:bg-transparent data-[state=open]:bg-fill"
               >
-                <ProviderIcon type={viewed.type} size={18} />
+                <ProviderIcon type={viewed.type} baseUrl={viewed.baseUrl} size={18} />
                 <span className="min-w-0 flex-1 truncate">{viewed.name}</span>
                 {list.length > 1 && <ChevronDown size={13} className="shrink-0 text-muted" />}
               </button>
@@ -155,7 +161,7 @@ export function ModelMenu({ space }: { space: Space }) {
                 {list.map((p) => (
                   <MenuRadioItem key={p.id} value={p.id}>
                     <span className="flex min-w-0 items-center gap-2.5">
-                      <ProviderIcon type={p.type} size={18} />
+                      <ProviderIcon type={p.type} baseUrl={p.baseUrl} size={18} />
                       <span className="truncate">{p.name}</span>
                     </span>
                   </MenuRadioItem>

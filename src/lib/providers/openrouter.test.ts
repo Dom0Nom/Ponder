@@ -120,3 +120,25 @@ describe("search and author filter", () => {
     expect(searchModels([m("a/x", []), m("a/x:batch", [])], "x").map((r) => r.id)).toEqual(["a/x"]);
   });
 });
+
+describe("author logos", () => {
+  it("maps authors to sites, with guesses for unknown ones", async () => {
+    const { authorSites, baseAuthor, hostOfBaseUrl } = await import("./openrouter");
+    expect(authorSites("xiaomi")).toEqual(["mi.com"]);
+    expect(authorSites("~moonshotai")).toEqual(["moonshot.ai"]);
+    expect(authorSites("newlab")).toEqual(["newlab.com", "newlab.ai"]);
+    expect(authorSites("we!rd")).toEqual([]);
+    expect(baseAuthor("~z-ai")).toBe("z-ai");
+    expect(hostOfBaseUrl("https://api.kimi.ai/coding/v1")).toBe("api.kimi.ai");
+    for (const u of ["http://192.168.1.20:1234/v1", "http://localhost:11434", "http://[::1]:80", "http://nas.local/v1", null, ""]) {
+      expect(hostOfBaseUrl(u)).toBeNull();
+    }
+  });
+
+  it("bundled authors resolve without a site lookup", async () => {
+    const { authorIconUrl } = await import("./icons");
+    expect(authorIconUrl("~anthropic")).toBeTruthy();
+    expect(authorIconUrl("meta")).toBeTruthy();
+    expect(authorIconUrl("xiaomi")).toBeUndefined();
+  });
+});

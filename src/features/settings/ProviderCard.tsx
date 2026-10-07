@@ -188,7 +188,7 @@ export function ProviderCard({ provider, justAdded }: { provider: Provider; just
 
   return (
     <li className="flex items-center gap-3.5 px-3.5 py-3" aria-label={provider.name}>
-      <ProviderIcon type={provider.type} size={20} />
+      <ProviderIcon type={provider.type} baseUrl={provider.baseUrl} size={20} />
       <span
         className="min-w-0 flex-1 truncate text-input font-semibold"
         title={entry?.baseUrlEditable ? baseUrlOf(provider) : undefined}

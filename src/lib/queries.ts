@@ -115,3 +115,23 @@ export function invalidateCards(spaceId?: string) {
   for (const k of [qk.dueCounts, ["due"], ["mistakes"]]) queryClient.invalidateQueries({ queryKey: k });
   if (spaceId) queryClient.invalidateQueries({ queryKey: qk.cards(spaceId) });
 }
+
+/** First site in `hosts` that yields an icon (data URL). The backend caches on disk, so this runs once per host ever. */
+export function useSiteIcon(hosts: string[]): string | null {
+  const key = hosts.join(",");
+  const q = useQuery({
+    queryKey: ["siteIcon", key],
+    enabled: hosts.length > 0,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    retry: false,
+    queryFn: async () => {
+      for (const h of hosts) {
+        const url = await api.siteIcon(h).catch(() => null);
+        if (url) return url;
+      }
+      return null;
+    },
+  });
+  return q.data ?? null;
+}

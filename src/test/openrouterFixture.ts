@@ -26,6 +26,7 @@ export const openRouterFixture: OpenRouterModel[] = [
   m("google/gemma-3-27b-it", "Google: Gemma 3 27B", PLAIN, 1741000000),
   m("deepseek/deepseek-v4-pro", "DeepSeek: DeepSeek V4 Pro", REASON_EFFORT, 1777000679),
   m("deepseek/deepseek-v4.1-flash", "DeepSeek: DeepSeek V4.1 Flash", REASON_EFFORT, 1789021285),
+  m("xiaomi/mimo-v2.6-pro", "Xiaomi: MiMo V2.6 Pro", REASON_ONLY, 1789000000),
   m("meta-llama/llama-4-maverick", "Meta: Llama 4 Maverick", PLAIN, 1743881822),
   m("meta-llama/llama-3.3-70b-instruct", "Meta: Llama 3.3 70B Instruct", PLAIN, 1733506137),
   m("mistralai/mistral-large-4-0", "Mistral: Mistral Large 4", REASON_EFFORT, 1791294122),

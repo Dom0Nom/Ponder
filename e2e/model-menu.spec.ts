@@ -142,3 +142,13 @@ test("a provider with many models gets search", async ({ page }) => {
   await page.getByTestId("model-menu").getByRole("menuitemradio", { name: "local-model-7" }).click();
   await expect(page.getByRole("button", { name: "local-model-7" }).last()).toBeVisible();
 });
+
+test("authors without a bundled logo show a site icon, composer button shows the model logo", async ({ app }) => {
+  await trigger(app, "mock-model").click();
+  await usePicker(app, "OpenRouter");
+  await menu(app).getByLabel("Search OpenRouter models").fill("mimo");
+  const row = menu(app).getByRole("menuitemradio", { name: "mimo-v2.6-pro" });
+  await expect(row.locator("img")).toHaveAttribute("src", /^data:image\/svg\+xml/);
+  await row.click();
+  await expect(trigger(app, "mimo-v2.6-pro").locator("img")).toHaveAttribute("src", /^data:image\/svg\+xml/);
+});

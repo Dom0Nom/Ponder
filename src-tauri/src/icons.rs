@@ -462,4 +462,25 @@ mod tests {
         let url = site_icon(dir.path(), "https://api.kimi.ai/coding/v1").await.unwrap();
         assert!(url.unwrap().starts_with("data:image/"));
     }
+
+    /// `ICON_DOMAINS` = JSON {name: domain}; writes each icon to `ICON_OUT/<name>.<ext>` and prints misses.
+    #[tokio::test]
+    #[ignore = "network"]
+    async fn live_dump() {
+        let (Ok(file), Ok(out)) = (std::env::var("ICON_DOMAINS"), std::env::var("ICON_OUT")) else { return };
+        let map: std::collections::BTreeMap<String, String> = serde_json::from_slice(&std::fs::read(file).unwrap()).unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        for (name, domain) in map {
+            match site_icon(dir.path(), &domain).await.unwrap() {
+                Some(url) => {
+                    let (head, b64) = url.split_once(',').unwrap();
+                    let ext = ext_of(head.trim_start_matches("data:").trim_end_matches(";base64"));
+                    let bytes = base64::engine::general_purpose::STANDARD.decode(b64).unwrap();
+                    std::fs::write(std::path::Path::new(&out).join(format!("{name}.{ext}")), bytes).unwrap();
+                    println!("OK   {name} <- {domain} ({ext})");
+                }
+                None => println!("MISS {name} <- {domain}"),
+            }
+        }
+    }
 }
