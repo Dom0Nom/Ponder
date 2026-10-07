@@ -61,9 +61,11 @@ test("state carries over to a new window", async ({ page, context }) => {
   expect((await other.evaluate(() => window.__calc!.text())).lines.at(-1)).toBe("x*2\t10");
 });
 
-test("display canvas renders at the device size", async ({ page }) => {
+test("display canvas keeps the device proportions at any scale", async ({ page }) => {
   await open(page);
-  const box = await page.getByTestId("calc-lcd").boundingBox();
-  expect(box && Math.round(box.width)).toBe(243);
-  expect(box && Math.round(box.height)).toBe(100);
+  const lcd = await page.getByTestId("calc-lcd").boundingBox();
+  const device = await page.getByTestId("calculator").boundingBox();
+  expect(lcd && device).toBeTruthy();
+  expect(lcd!.width / lcd!.height).toBeCloseTo(243 / 100, 1);
+  expect(lcd!.width / device!.width).toBeCloseTo(243 / 267.9, 2);
 });
