@@ -3,6 +3,21 @@ import type { ErrorType } from "./types";
 /** All UI strings live here so they can be translated later. */
 export const s = {
   appName: "Ponder",
+  shell: {
+    sidebar: "Sidebar",
+    search: "Search",
+    home: "Home",
+    toggleSidebar: "Toggle sidebar",
+    practiceNeedsSpace: "Create a space first",
+    groups: {
+      pinned: "Pinned",
+      today: "Today",
+      yesterday: "Yesterday",
+      week: "Previous 7 days",
+      month: "Previous 30 days",
+      older: "Older",
+    },
+  },
   common: {
     cancel: "Cancel",
     save: "Save",
@@ -191,6 +206,8 @@ export const s = {
     noModel: "No chat model set up yet.",
     noModelAction: "Add a provider",
     failed: "The answer couldn't be generated",
+    pin: "Pin",
+    unpin: "Unpin",
     deleteThread: "Delete chat",
     renameThread: "Rename chat",
     sourcesUsed: (n: number) => `${n} of your sources in context`,

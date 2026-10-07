@@ -1,10 +1,13 @@
+import { useRef, type CSSProperties } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import * as Tip from "@radix-ui/react-tooltip";
 import { Toaster } from "sonner";
 import { queryClient } from "../lib/queries";
-import { useUi } from "../stores/ui";
+import { useUi, type Route } from "../stores/ui";
 import { useApplyAppearance, useIsDark } from "./useTheme";
 import { Header } from "./Header";
+import { Sidebar } from "./Sidebar";
+import { ContentCard } from "./ContentCard";
 import { HomeScreen } from "../features/home/HomeScreen";
 import { SpaceScreen } from "../features/space/SpaceScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
@@ -18,13 +21,49 @@ import { useGlobalShortcuts } from "./useGlobalShortcuts";
 import { useBackgroundSync } from "./useBackgroundSync";
 import { useStudyBuddy } from "../features/chat/useStudyBuddy";
 
+const depth = (r: Route) =>
+  r.name === "home" ? 0 : r.name === "practice" || (r.name === "settings" && r.page) ? 2 : 1;
+
+function RouteScreen({ route }: { route: Route }) {
+  if (route.name === "space") return <SpaceScreen key={route.spaceId} spaceId={route.spaceId} />;
+  if (route.name === "settings")
+    return (
+      <ContentCard scroll={false}>
+        <SettingsScreen />
+      </ContentCard>
+    );
+  if (route.name === "review")
+    return (
+      <ContentCard scroll={false}>
+        <ReviewScreen spaceId={route.spaceId} tab={route.tab} />
+      </ContentCard>
+    );
+  if (route.name === "practice")
+    return (
+      <ContentCard scroll={false}>
+        <PracticeScreen key={route.spaceId} spaceId={route.spaceId} topicKey={route.topicKey} />
+      </ContentCard>
+    );
+  return (
+    <ContentCard scroll={false}>
+      <HomeScreen />
+    </ContentCard>
+  );
+}
+
 function Routes() {
   const route = useUi((st) => st.route);
-  if (route.name === "space") return <SpaceScreen key={route.spaceId} spaceId={route.spaceId} />;
-  if (route.name === "settings") return <SettingsScreen />;
-  if (route.name === "review") return <ReviewScreen spaceId={route.spaceId} tab={route.tab} />;
-  if (route.name === "practice") return <PracticeScreen key={route.spaceId} spaceId={route.spaceId} topicKey={route.topicKey} />;
-  return <HomeScreen />;
+  const prev = useRef({ key: "", depth: depth(route), dir: 1 });
+  const key = `${route.name}:${"spaceId" in route ? route.spaceId : ""}:${route.name === "settings" ? (route.page?.kind ?? "") : ""}`;
+  if (prev.current.key !== key) {
+    const d = depth(route);
+    prev.current = { key, depth: d, dir: d === prev.current.depth ? 1 : Math.sign(d - prev.current.depth) };
+  }
+  return (
+    <div key={key} className="t-page-enter absolute inset-0" style={{ "--t-page-dir": prev.current.dir } as CSSProperties}>
+      <RouteScreen route={route} />
+    </div>
+  );
 }
 
 function Shell() {
@@ -33,11 +72,14 @@ function Shell() {
   useBackgroundSync();
   useStudyBuddy();
   return (
-    <div className="flex h-full flex-col">
-      <Header />
-      <main className="min-h-0 flex-1">
-        <Routes />
-      </main>
+    <div className="flex h-full bg-chrome text-fg">
+      <Sidebar />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Header />
+        <main className="relative min-h-0 flex-1">
+          <Routes />
+        </main>
+      </div>
       <CommandPalette />
       <FocusLayer />
       <QuizLayer />

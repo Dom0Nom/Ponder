@@ -1,85 +1,180 @@
-import { ChevronRight, GraduationCap, Moon, Search, Settings, Sun } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, Pencil, PanelLeft, PanelRight, Pin, PinOff, Trash2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "../components/ui/button";
+import { ConfirmDialog } from "../components/ui/dialog";
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../components/ui/menu";
 import { Kbd, Tooltip } from "../components/ui/misc";
-import { useSpace } from "../lib/queries";
+import { toastError } from "../components/ui/toast";
+import { api } from "../lib/ipc";
+import { qk, usePinThread, useSpace, useThreads } from "../lib/queries";
 import { s } from "../lib/strings";
-import { SpaceIcon } from "../lib/spaceStyle";
+import type { Thread } from "../lib/types";
 import { useUi } from "../stores/ui";
 import { FocusHeaderTimer } from "../features/focus/FocusHeaderTimer";
-import { useIsDark } from "./useTheme";
 
-function SpaceCrumb({ spaceId }: { spaceId: string }) {
-  const { data } = useSpace(spaceId);
-  if (!data) return null;
+const Sep = () => (
+  <span aria-hidden className="text-faint">
+    /
+  </span>
+);
+
+const crumbLink = "whitespace-nowrap font-medium text-fg-secondary hover:text-fg";
+const crumbCurrent = "min-w-0 truncate whitespace-nowrap font-medium";
+
+function SpaceTitle({ spaceId }: { spaceId: string }) {
+  const { data: space } = useSpace(spaceId);
+  const threads = useThreads(spaceId);
+  const activeId = useUi((st) => st.activeThread[spaceId]);
+  const setRenaming = useUi((st) => st.setRenamingThread);
+  const pin = usePinThread(spaceId);
+  const qc = useQueryClient();
+  const [deleting, setDeleting] = useState(false);
+  const active: Thread | undefined = threads.data?.find((t) => t.id === activeId) ?? threads.data?.[0];
+
+  if (!space) return null;
+  if (!active) return <span className={crumbCurrent}>{space.name}</span>;
+
   return (
     <>
-      <ChevronRight size={16} className="text-faint" />
-      <span className="flex min-w-0 items-center gap-2">
-        <SpaceIcon icon={data.icon} color={data.color} size={12} />
-        <span className="truncate font-medium">{data.name}</span>
+      <span className="whitespace-nowrap font-medium text-fg-secondary" data-tauri-drag-region>
+        {space.name}
       </span>
+      <Sep />
+      <Menu>
+        <MenuTrigger asChild>
+          <button
+            className="-ml-2 flex h-7 min-w-0 items-center gap-1.5 rounded-btn pl-2 pr-1.5 font-medium hover:bg-fill-active data-[state=open]:bg-fill-active"
+          >
+            <span className="truncate">{active.title}</span>
+            <ChevronDown size={13} className="shrink-0 text-muted" />
+          </button>
+        </MenuTrigger>
+        <MenuContent className="w-[180px]" align="start">
+          <MenuItem onSelect={() => setRenaming(active.id)}>
+            <Pencil size={14} /> {s.common.rename}
+          </MenuItem>
+          <MenuItem onSelect={() => pin.mutate({ id: active.id, pinned: !active.pinned })}>
+            {active.pinned ? <PinOff size={14} /> : <Pin size={14} />} {active.pinned ? s.chat.unpin : s.chat.pin}
+          </MenuItem>
+          <MenuSeparator />
+          <MenuItem danger onSelect={() => setDeleting(true)}>
+            <Trash2 size={14} /> {s.chat.deleteThread}
+          </MenuItem>
+        </MenuContent>
+      </Menu>
+      <ConfirmDialog
+        open={deleting}
+        onOpenChange={setDeleting}
+        title={`${s.chat.deleteThread}?`}
+        body={`“${active.title}” and its messages are deleted.`}
+        confirmLabel={s.common.delete}
+        danger
+        onConfirm={async () => {
+          try {
+            await api.deleteThread(active.id);
+            qc.invalidateQueries({ queryKey: qk.threads(spaceId) });
+          } catch (e) {
+            toastError(s.errors.generic, e);
+          }
+        }}
+      />
+    </>
+  );
+}
+
+function PracticeCrumbs({ spaceId, topicTitle }: { spaceId: string; topicTitle?: string }) {
+  const navigate = useUi((st) => st.navigate);
+  const { data: space } = useSpace(spaceId);
+  return (
+    <>
+      {space && (
+        <>
+          <button className={crumbLink} onClick={() => navigate({ name: "space", spaceId })}>
+            {space.name}
+          </button>
+          <Sep />
+        </>
+      )}
+      {topicTitle ? (
+        <>
+          <button className={crumbLink} onClick={() => navigate({ name: "practice", spaceId })}>
+            {s.practice.title}
+          </button>
+          <Sep />
+          <span className={crumbCurrent} data-tauri-drag-region>
+            {topicTitle}
+          </span>
+        </>
+      ) : (
+        <span className={crumbCurrent} data-tauri-drag-region>
+          {s.practice.title}
+        </span>
+      )}
     </>
   );
 }
 
 export function Header() {
   const route = useUi((st) => st.route);
-  const navigate = useUi((st) => st.navigate);
-  const setTheme = useUi((st) => st.setTheme);
-  const setPaletteOpen = useUi((st) => st.setPaletteOpen);
-  const isDark = useIsDark();
+  const sidebarOpen = useUi((st) => st.sidebarOpen);
+  const toggleSidebar = useUi((st) => st.toggleSidebar);
+  const studioOpen = useUi((st) => st.panes.studio);
+  const togglePane = useUi((st) => st.togglePane);
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 px-4" data-tauri-drag-region>
-      <div className="flex min-w-0 flex-1 items-center gap-2 pl-16" data-tauri-drag-region>
-        <button
-          onClick={() => navigate({ name: "home" })}
-          className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 hover:bg-surface-2"
-        >
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-on-accent">
-            <GraduationCap size={16} />
-          </span>
-          <span className="text-[0.9375rem] font-semibold">{s.appName}</span>
-        </button>
-        {route.name === "space" && <SpaceCrumb spaceId={route.spaceId} />}
-        {route.name === "practice" && (
+    <header data-tauri-drag-region className="flex h-[48px] shrink-0 items-center gap-3 pl-3 pr-4">
+      {!sidebarOpen && <span className="w-[64px] shrink-0" data-tauri-drag-region />}
+      <Tooltip
+        content={
           <>
-            <button onClick={() => navigate({ name: "space", spaceId: route.spaceId })} className="flex min-w-0 items-center gap-2 rounded-full pr-1 hover:text-accent-text">
-              <SpaceCrumb spaceId={route.spaceId} />
-            </button>
-            <ChevronRight size={16} className="text-faint" />
-            <span className="font-medium">{s.practice.title}</span>
+            {s.shell.toggleSidebar} <Kbd keys={["⌘", "\\"]} />
           </>
+        }
+      >
+        <Button
+          variant="chrome"
+          size="icon-sm"
+          aria-label={s.shell.toggleSidebar}
+          aria-pressed={sidebarOpen}
+          onClick={toggleSidebar}
+        >
+          <PanelLeft size={16} />
+        </Button>
+      </Tooltip>
+      <div className="flex min-w-0 items-center gap-3" data-tauri-drag-region>
+        {route.name === "home" && (
+          <span className={crumbCurrent} data-tauri-drag-region>
+            {s.shell.home}
+          </span>
         )}
         {route.name === "settings" && (
-          <>
-            <ChevronRight size={16} className="text-faint" />
-            <span className="font-medium">{s.settings.title}</span>
-          </>
+          <span className={crumbCurrent} data-tauri-drag-region>
+            {s.common.settings}
+          </span>
         )}
+        {route.name === "review" && (
+          <span className={crumbCurrent} data-tauri-drag-region>
+            {s.review.title}
+          </span>
+        )}
+        {route.name === "practice" && <PracticeCrumbs spaceId={route.spaceId} topicTitle={route.topicTitle} />}
+        {route.name === "space" && <SpaceTitle spaceId={route.spaceId} />}
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="ml-auto flex items-center gap-2">
         <FocusHeaderTimer />
-        <Tooltip content={<span>{s.palette.placeholder} <Kbd>⌘K</Kbd></span>}>
-          <Button variant="ghost" size="icon" aria-label="Command palette" onClick={() => setPaletteOpen(true)}>
-            <Search size={18} />
-          </Button>
-        </Tooltip>
-        <Tooltip content={s.palette.toggleTheme}>
+        {route.name === "space" && (
           <Button
-            variant="ghost"
-            size="icon"
-            aria-label={s.palette.toggleTheme}
-            onClick={() => setTheme(isDark ? "light" : "dark")}
+            variant="chrome"
+            className="h-7 gap-2 rounded-btn px-2.5 font-normal"
+            aria-pressed={studioOpen}
+            onClick={() => togglePane("studio")}
           >
-            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            <PanelRight size={14} />
+            {s.panes.studio}
+            <Kbd keys={["⌘", "⇧", "T"]} className="text-fg" />
           </Button>
-        </Tooltip>
-        <Tooltip content={s.common.settings}>
-          <Button variant="ghost" size="icon" aria-label={s.common.settings} onClick={() => navigate({ name: "settings" })}>
-            <Settings size={18} />
-          </Button>
-        </Tooltip>
+        )}
       </div>
     </header>
   );
