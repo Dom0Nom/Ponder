@@ -14,6 +14,10 @@ import { Lcd } from "./Lcd";
 const STORAGE_KEY = "ponder.calc.v1";
 export const CALC_W = 400;
 export const CALC_H = 560;
+/** The device body inside the 400×560 measurement frame; fit mode crops to it. */
+export const BODY = { x: 66, y: 30, w: 267.9, h: 519.1 };
+const FIT_PAD = 16;
+const FIT_TOP = 36;
 
 function loadEngine(): Engine {
   try {
@@ -71,10 +75,16 @@ export function Calculator({ scale: fixed = 1, fit = false, popOut = false, glob
   useLayoutEffect(() => {
     if (!fit || !wrap.current) return;
     const el = wrap.current;
-    const update = () => setFitScale(Math.max(0.3, el.clientWidth / CALC_W));
+    const update = () => {
+      const byW = (el.clientWidth - FIT_PAD * 2) / BODY.w;
+      const avail = el.parentElement?.clientHeight ?? 0;
+      const byH = avail > 0 ? (avail - FIT_TOP - FIT_PAD) / BODY.h : byW;
+      setFitScale(Math.max(0.3, Math.min(byW, byH)));
+    };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
+    if (el.parentElement) ro.observe(el.parentElement);
     return () => ro.disconnect();
   }, [fit]);
 
@@ -186,10 +196,20 @@ export function Calculator({ scale: fixed = 1, fit = false, popOut = false, glob
       onKeyDown={globalKeys ? undefined : onKeyDown}
       onKeyUp={globalKeys ? undefined : onKeyUp}
       className={cn("calc-root relative shrink-0 select-none overflow-hidden", className)}
-      style={{ width: fit ? "100%" : CALC_W * scale, height: CALC_H * scale }}
+      style={{ width: fit ? "100%" : BODY.w * scale, height: fit ? BODY.h * scale + FIT_TOP + FIT_PAD : BODY.h * scale }}
     >
-      <div className="absolute left-0 top-0 origin-top-left" style={{ width: CALC_W, height: CALC_H, transform: `scale(${scale})` }}>
-        <div className="absolute" style={{ left: 66, top: 30, width: 267.9, height: 519.1, borderRadius: 8.5, background: "var(--calc-body)" }} />
+      <div
+        className="absolute top-0 origin-top-left"
+        style={{
+          width: CALC_W,
+          height: CALC_H,
+          left: fit ? "50%" : 0,
+          transform: fit
+            ? `translate(${-(BODY.x + BODY.w / 2) * scale}px, ${FIT_TOP - BODY.y * scale}px) scale(${scale})`
+            : `translate(${-BODY.x * scale}px, ${-BODY.y * scale}px) scale(${scale})`,
+        }}
+      >
+        <div className="absolute" style={{ left: BODY.x, top: BODY.y, width: BODY.w, height: BODY.h, borderRadius: 8.5, background: "var(--calc-body)" }} />
         <Lcd model={model} text={text} scale={scale} reduced={reduced} />
         <Keypad h={keys} />
       </div>

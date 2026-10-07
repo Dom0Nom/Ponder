@@ -1,17 +1,24 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useApplyAppearance } from "../../app/useTheme";
 import { s } from "../../lib/strings";
-import { Calculator } from "./Calculator";
+import { BODY, Calculator } from "./Calculator";
 
-/** Entry for the pop-out window: only the calculator, at its natural 400×560 size. */
+/** Entry for the pop-out window: only the calculator, scaled to fill the window. */
 export function CalculatorWindow() {
   useApplyAppearance();
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const update = () => setScale(Math.min(window.innerWidth / BODY.w, window.innerHeight / BODY.h));
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
   useEffect(() => {
     document.title = s.calc.title;
   }, []);
   return (
-    <div className="flex h-full min-h-[560px] items-start justify-center overflow-hidden bg-surface">
-      <Calculator globalKeys />
+    <div className="flex h-screen items-center justify-center overflow-hidden bg-surface">
+      <Calculator globalKeys scale={scale} />
     </div>
   );
 }
