@@ -21,13 +21,15 @@ test("set up Google Drive, connect, browse a folder and import a PDF", async ({ 
   await app.getByRole("tab", { name: "Google Drive" }).click();
   const browser = app.getByTestId("cloud-browser-google");
   await expect(browser.getByText("Syllabus.pdf")).toBeVisible();
-  await expect(browser.getByLabel("Select Whiteboard.jpg")).toBeDisabled();
+  await expect(browser.getByText("Whiteboard.jpg · Can't be imported")).toBeVisible();
+  await expect(browser.getByLabel("Select Whiteboard.jpg")).toHaveCount(0);
 
   await browser.getByRole("button", { name: "Biology" }).click();
-  await expect(browser.getByRole("navigation", { name: "Folder path" })).toContainText("My DriveBiology");
+  await expect(browser.getByRole("navigation", { name: "Folder path" })).toContainText("My Drive/Biology");
   await browser.getByLabel("Select Photosynthesis.pdf").check();
-  await expect(browser.getByText("1 file selected")).toBeVisible();
-  await browser.getByRole("button", { name: "Import", exact: true }).click();
+  const dlg = app.getByRole("dialog");
+  await expect(dlg.getByText("1 file selected")).toBeVisible();
+  await dlg.getByRole("button", { name: "Import", exact: true }).click();
 
   const row = app.locator('[data-testid="source-row"]');
   await expect(row).toHaveCount(1);

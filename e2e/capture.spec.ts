@@ -69,7 +69,7 @@ test("watched folders: add imports the folder's files, remove keeps the sources"
   await expect(folder).toContainText("Lecture notes");
   await expect(folder).toContainText("/Users/me/Documents/Lecture notes");
   await expect(folder).toHaveAttribute("data-status", "watching");
-  await expect(folder).toContainText("2 files · Watching");
+  await expect(folder).toContainText("Watching · 2 files");
 
   // adding the same folder again is refused
   await dialog.getByRole("button", { name: "Add folder" }).click();

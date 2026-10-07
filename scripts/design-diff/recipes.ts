@@ -108,13 +108,6 @@ const studioInCard = (p: Page) =>
   });
 const BACKDROP = "the design draws 9a/10a over a static copy of Home (shifted, no New space button), not the real screen 1";
 
-const SIDEBAR: Mask[] = [
-  { x: 0, y: 0, w: 234, h: 800, reason: "design draws the reduced sidebar (Home/Review/Practice only, no thread list or Sources item); the real sidebar is the shell's, DECISIONS #14" },
-];
-const SELECT_ALL: Mask[] = [
-  { x: 234, y: 744, w: 340, h: 48, reason: "Select all sources is a kept feature the design omits (02 §13), shown as the panel footer, DECISIONS #14" },
-];
-
 export const SCREENS: Record<number, Screen> = {
   1: { title: "Home", native: true, query: "cards=review", setup: home },
   2: {
@@ -170,12 +163,36 @@ export const SCREENS: Record<number, Screen> = {
   },
   6: {
     title: "Source viewer",
-    masks: SIDEBAR,
     setup: async (p) => {
-      await space(p, { sources: true, studio: false });
-      await click(p, /OpenStax Algebra/, null);
-      await setUi(p, { sourcesOpen: { [SPACE]: false }, importDialog: { open: true } });
-      await settle(p, 500);
+      await space(p, { sources: false, studio: false });
+      const [start, end] = await p.evaluate(() => {
+        const text = (window as unknown as { __mock: { db: () => { texts: Record<string, { text: string }> } } }).__mock.db().texts["src-openstax"].text;
+        const paras = text.split("\n\n");
+        return [paras[0].length + 2, paras[0].length + 2 + paras[1].length];
+      });
+      await setUi(p, { viewer: { sourceId: "src-openstax", start, end }, importDialog: { open: true } });
+      await settle(p, 600);
+      await p.evaluate(async () => {
+        const mark = document.querySelector("[data-testid=cite-highlight]");
+        const node = mark?.querySelector("span")?.firstChild ?? mark?.firstChild;
+        if (!node?.textContent) return;
+        const range = document.createRange();
+        range.setStart(node, 0);
+        let lo = 1;
+        for (let e = 1; e < node.textContent.length; e++) {
+          range.setEnd(node, e);
+          const r = range.getBoundingClientRect();
+          if (r.left + r.width / 2 >= 641) { lo = e; break; }
+        }
+        range.setEnd(node, lo);
+        const sel = window.getSelection()!;
+        sel.removeAllRanges();
+        sel.addRange(range);
+        document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+        await new Promise((r) => setTimeout(r, 150));
+        sel.removeAllRanges();
+      });
+      await settle(p, 200);
     },
   },
   7: {
@@ -402,14 +419,12 @@ export const SCREENS: Record<number, Screen> = {
   },
   27: {
     title: "Sources panel",
-    masks: [...SIDEBAR, ...SELECT_ALL],
     setup: async (p) => {
       await space(p, { sources: true, studio: false });
     },
   },
   28: {
     title: "Watched folders",
-    masks: SIDEBAR,
     setup: async (p) => {
       await space(p, { sources: false, studio: false });
       await setUi(p, { watchDialogOpen: true });
@@ -418,18 +433,24 @@ export const SCREENS: Record<number, Screen> = {
   },
   29: {
     title: "Deep research",
-    masks: SIDEBAR,
-    pending: "Deep research needs live web search and a model; the found-sources list isn't reachable from the mock",
     setup: async (p) => {
       await space(p, { sources: false, studio: false });
-      await setUi(p, { importDialog: { open: true, tab: "research", query: "How substitution and elimination compare for GED problems" } });
+      const found = [
+        ["Solving systems by substitution – Lumen Learning", "courses.lumenlearning.com", 88],
+        ["Elimination method – Math is Fun", "www.mathsisfun.com", 85],
+        ["GED Math test guide – GED Testing Service", "ged.com", 92],
+        ["Forum thread: substitution tricks", "forum.example.org", 30],
+      ].map(([title, host, credibility], i) => ({
+        id: `r${i}`, title, url: `https://${host}/page`, engine: "duckduckgo", summary: "", credibility, relevance: 0.9, markdown: "",
+      }));
+      await setUi(p, { importDialog: { open: true, tab: "research", query: "How substitution and elimination compare for GED problems", found } });
+      await p.getByRole("checkbox").last().uncheck();
       await settle(p, 500);
     },
   },
   30: {
     title: "Google Drive",
     query: "drive=1",
-    masks: SIDEBAR,
     setup: async (p) => {
       await space(p, { sources: false, studio: false });
       await setUi(p, { importDialog: { open: true, tab: "gdrive" } });
