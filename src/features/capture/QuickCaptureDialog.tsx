@@ -69,12 +69,10 @@ export function QuickCaptureDialog() {
       open={open}
       onOpenChange={setOpen}
       title={s.capture.title}
+      className="w-[min(480px,calc(100vw-32px))]"
       footer={
         <>
-          <span className="mr-auto self-center text-xs text-faint">{s.capture.hint}</span>
-          <Button variant="ghost" onClick={() => setOpen(false)}>
-            {s.common.cancel}
-          </Button>
+          <span className="mr-auto text-caption text-muted">{s.capture.hint}</span>
           <Button variant="primary" disabled={!canSave} onClick={save}>
             {saving ? s.sources.importing : s.capture.save}
           </Button>
@@ -82,6 +80,7 @@ export function QuickCaptureDialog() {
       }
     >
       <div
+        className="flex flex-col gap-3.5"
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
             e.preventDefault();
@@ -95,14 +94,13 @@ export function QuickCaptureDialog() {
           placeholder={s.capture.placeholder}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          rows={7}
-          className="resize-none"
+          className="h-[7.5rem] resize-none"
         />
-        <div className="mt-3 pb-1">
+        <div>
           <Label htmlFor="capture-space">{s.capture.space}</Label>
-          {isLoading && <Skeleton className="h-10" />}
+          {isLoading && <Skeleton className="h-9" />}
           {error && <ErrorState className="py-3" title={s.home.loadError} error={error} onRetry={() => refetch()} />}
-          {spaces && spaces.length === 0 && <p className="text-sm text-muted">{s.capture.noSpaces}</p>}
+          {spaces && spaces.length === 0 && <p className="text-body text-muted">{s.capture.noSpaces}</p>}
           {spaces && spaces.length > 0 && (
             <NativeSelect id="capture-space" value={spaceId ?? ""} onChange={(e) => setSpaceId(e.target.value)}>
               {spaces.map((sp) => (

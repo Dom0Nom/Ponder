@@ -9,6 +9,7 @@ import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { ContentCard } from "./ContentCard";
 import { HomeScreen } from "../features/home/HomeScreen";
+import { SpaceDialogHost } from "../features/home/SpaceDialog";
 import { SpaceScreen } from "../features/space/SpaceScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { ReviewScreen } from "../features/review/ReviewScreen";
@@ -84,6 +85,7 @@ function Shell() {
       <FocusLayer />
       <QuizLayer />
       <QuickCaptureDialog />
+      <SpaceDialogHost />
     </div>
   );
 }

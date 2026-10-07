@@ -1,17 +1,21 @@
 import { Command } from "cmdk";
 import * as D from "@radix-ui/react-dialog";
-import { Brain, FilePlus2, Dumbbell, FolderSync, GraduationCap, Home, ListX, MessageSquarePlus, Moon, NotebookPen, Plus, Settings, Sparkles, Timer, Zap } from "lucide-react";
+import { Brain, FilePlus2, FolderSync, Gauge, House, Layers, Notebook, PencilLine, Plus, Search, Settings, Sparkles, SquarePen, SunMoon, Timer, Zap } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces, qk, useCaptureStatus } from "../../lib/queries";
-import { formatShortcut } from "../../lib/capture/shortcut";
+import { splitShortcut } from "../../lib/capture/shortcut";
 import { api } from "../../lib/ipc";
 import { s } from "../../lib/strings";
 import { SpaceIcon } from "../../lib/spaceStyle";
+import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
+import { Kbd } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
 
 const item =
-  "flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-fg aria-selected:bg-surface-2";
+  "flex h-9 cursor-pointer items-center gap-2.5 rounded-control px-3 font-medium text-fg aria-selected:bg-fill-active";
+const group =
+  "[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-label [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-muted";
 
 export function CommandPalette() {
   const open = useUi((st) => st.paletteOpen);
@@ -30,85 +34,27 @@ export function CommandPalette() {
   return (
     <D.Root open={open} onOpenChange={setOpen}>
       <D.Portal>
-        <D.Overlay className="fixed inset-0 z-40 bg-black/25" />
+        <D.Overlay className="t-modal-scrim fixed inset-0 z-40 bg-scrim" />
         <D.Content
           onFocusOutside={(e) => e.preventDefault()}
           aria-label={s.palette.placeholder}
-          className="fixed left-1/2 top-[14vh] z-50 w-[min(600px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden rounded-[20px] bg-surface shadow-2xl"
+          className="t-modal fixed left-1/2 top-[96px] z-50 w-[min(600px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden rounded-dialog border border-border bg-surface text-body shadow-dialog outline-none"
         >
           <D.Title className="sr-only">{s.palette.placeholder}</D.Title>
           <D.Description className="sr-only">{s.palette.placeholder}</D.Description>
           <Command loop>
-            <Command.Input
-              autoFocus
-              placeholder={s.palette.placeholder}
-              className="h-14 w-full border-b border-border bg-transparent px-5 text-[0.9375rem] outline-none placeholder:text-faint"
-            />
-            <Command.List className="max-h-[50vh] overflow-y-auto p-2">
-              <Command.Empty className="px-3 py-6 text-center text-sm text-muted">{s.palette.empty}</Command.Empty>
-              <Command.Group heading={s.palette.actions} className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:text-muted">
-                {spaceId && (
-                  <>
-                    <Command.Item className={item} onSelect={() => run(async () => {
-                      const t = await api.createThread(spaceId);
-                      qc.invalidateQueries({ queryKey: qk.threads(spaceId) });
-                      ui.setActiveThread(spaceId, t.id);
-                    })}>
-                      <MessageSquarePlus size={17} className="text-muted" /> {s.palette.newChat}
-                    </Command.Item>
-                    <Command.Item className={item} onSelect={() => run(() => ui.setImportDialog({ open: true }))}>
-                      <FilePlus2 size={17} className="text-muted" /> {s.palette.addSource}
-                    </Command.Item>
-                    <Command.Item className={item} onSelect={() => run(() => ui.setWatchDialogOpen(true))} keywords={["folder", "watch", "sync"]}>
-                      <FolderSync size={17} className="text-muted" /> {s.palette.watchedFolders}
-                    </Command.Item>
-                    <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "practice", spaceId }))} keywords={["practice", "problems", "exercises", "drill"]}>
-                      <Dumbbell size={17} className="text-muted" /> {s.practice.title}
-                    </Command.Item>
-                  </>
-                )}
-                <Command.Item className={item} onSelect={() => run(() => ui.setCaptureOpen(true))} keywords={["note", "capture", "jot"]}>
-                  <NotebookPen size={17} className="text-muted" /> {s.palette.quickCapture}
-                  {capture?.enabled && <span className="ml-auto text-xs text-faint">{formatShortcut(capture.shortcut)}</span>}
-                </Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => ui.setFocusDialogOpen(true))}>
-                  <Timer size={17} className="text-muted" /> {s.palette.startFocus}
-                  <span className="ml-auto text-xs text-faint">⌘⇧F</span>
-                </Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "review" }))} keywords={["flashcards", "cards", "fsrs", "due"]}>
-                  <GraduationCap size={17} className="text-muted" /> {s.palette.review}
-                </Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "review", tab: "mistakes" }))} keywords={["mistakes", "wrong"]}>
-                  <ListX size={17} className="text-muted" /> {s.palette.mistakes}
-                </Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "home" }))}>
-                  <Home size={17} className="text-muted" /> {s.palette.goHome}
-                </Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "home" }))} keywords={["create"]}>
-                  <Plus size={17} className="text-muted" /> {s.palette.newSpace}
-                </Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "settings" }))}>
-                  <Settings size={17} className="text-muted" /> {s.palette.openSettings}
-                  <span className="ml-auto text-xs text-faint">⌘,</span>
-                </Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "settings", section: "memory" }))} keywords={["memory", "profile", "about me"]}>
-                  <Brain size={17} className="text-muted" /> {s.memory.title}
-                </Command.Item>
-                <Command.Item
-                  className={item}
-                  onSelect={() => run(() => ui.setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"))}
-                >
-                  <Moon size={17} className="text-muted" /> {s.palette.toggleTheme}
-                </Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => ui.setReduceMotion(!ui.reduceMotion))} keywords={["animation"]}>
-                  <Zap size={17} className="text-muted" /> {s.palette.toggleMotion}
-                </Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => ui.setVisualEffects(!ui.visualEffects))} keywords={["animation"]}>
-                  <Sparkles size={17} className="text-muted" /> {s.palette.toggleEffects}
-                </Command.Item>
-              </Command.Group>
+            <div className="flex h-13 items-center gap-2.5 border-b border-divider px-4.5 text-faint">
+              <Search size={16} />
+              <Command.Input
+                autoFocus
+                placeholder={s.palette.placeholder}
+                className="h-full flex-1 bg-transparent text-title-sm text-fg outline-none placeholder:text-faint"
+              />
+            </div>
+            <Command.List className="max-h-[440px] overflow-y-auto p-1.5">
+              <Command.Empty className="px-3 py-6 text-center text-body text-muted">{s.palette.empty}</Command.Empty>
               {spaces && spaces.length > 0 && (
-                <Command.Group heading={s.palette.spaces} className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:text-muted">
+                <Command.Group heading={s.palette.spaces} className={group}>
                   {spaces.map((sp) => (
                     <Command.Item
                       key={sp.id}
@@ -116,12 +62,110 @@ export function CommandPalette() {
                       className={item}
                       onSelect={() => run(() => ui.navigate({ name: "space", spaceId: sp.id }))}
                     >
-                      <SpaceIcon icon={sp.icon} color={sp.color} size={11} />
-                      {sp.name}
+                      <SpaceIcon icon={sp.icon} tile={false} size={15} />
+                      <span className="flex-1">{sp.name}</span>
                     </Command.Item>
                   ))}
                 </Command.Group>
               )}
+              <Command.Group heading={s.palette.actions} className={cn(group, spaces && spaces.length > 0 && "[&_[cmdk-group-heading]]:pt-2.5")}>
+                {spaceId && (
+                  <>
+                    <Command.Item
+                      className={item}
+                      onSelect={() =>
+                        run(async () => {
+                          const t = await api.createThread(spaceId);
+                          qc.invalidateQueries({ queryKey: qk.threads(spaceId) });
+                          ui.setActiveThread(spaceId, t.id);
+                        })
+                      }
+                    >
+                      <SquarePen size={15} />
+                      <span className="flex-1">{s.palette.newChat}</span>
+                    </Command.Item>
+                    <Command.Item className={item} onSelect={() => run(() => ui.setImportDialog({ open: true }))}>
+                      <FilePlus2 size={15} />
+                      <span className="flex-1">{s.palette.addSource}</span>
+                    </Command.Item>
+                    <Command.Item className={item} onSelect={() => run(() => ui.setWatchDialogOpen(true))} keywords={["folder", "watch", "sync"]}>
+                      <FolderSync size={15} />
+                      <span className="flex-1">{s.palette.watchedFolders}</span>
+                    </Command.Item>
+                    <Command.Item
+                      className={item}
+                      onSelect={() => run(() => ui.navigate({ name: "practice", spaceId }))}
+                      keywords={["practice", "problems", "exercises", "drill"]}
+                    >
+                      <PencilLine size={15} />
+                      <span className="flex-1">{s.practice.title}</span>
+                    </Command.Item>
+                  </>
+                )}
+                <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "home" }))}>
+                  <House size={15} />
+                  <span className="flex-1">{s.palette.goHome}</span>
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "review" }))} keywords={["flashcards", "cards", "fsrs", "due"]}>
+                  <Layers size={15} />
+                  <span className="flex-1">{s.palette.review}</span>
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "review", tab: "mistakes" }))} keywords={["mistakes", "wrong"]}>
+                  <Notebook size={15} />
+                  <span className="flex-1">{s.palette.mistakes}</span>
+                </Command.Item>
+                <Command.Item
+                  className={item}
+                  onSelect={() =>
+                    run(() => {
+                      ui.navigate({ name: "home" });
+                      ui.setSpaceDialogOpen(true);
+                    })
+                  }
+                  keywords={["create"]}
+                >
+                  <Plus size={15} />
+                  <span className="flex-1">{s.palette.newSpace}</span>
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => ui.setFocusDialogOpen(true))}>
+                  <Timer size={15} />
+                  <span className="flex-1">{s.palette.startFocus}</span>
+                  <Kbd keys={["⌘", "⇧", "F"]} />
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => ui.setCaptureOpen(true))} keywords={["note", "capture", "jot"]}>
+                  <Zap size={15} />
+                  <span className="flex-1">{s.palette.quickCapture}</span>
+                  {capture?.enabled && <Kbd keys={splitShortcut(capture.shortcut)} />}
+                </Command.Item>
+                <Command.Item
+                  className={item}
+                  onSelect={() => run(() => ui.setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"))}
+                >
+                  <SunMoon size={15} />
+                  <span className="flex-1">{s.palette.toggleTheme}</span>
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => ui.setReduceMotion(!ui.reduceMotion))} keywords={["animation"]}>
+                  <Gauge size={15} />
+                  <span className="flex-1">{s.palette.toggleMotion}</span>
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => ui.setVisualEffects(!ui.visualEffects))} keywords={["animation"]}>
+                  <Sparkles size={15} />
+                  <span className="flex-1">{s.palette.toggleEffects}</span>
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "settings" }))}>
+                  <Settings size={15} />
+                  <span className="flex-1">{s.palette.openSettings}</span>
+                  <Kbd keys={["⌘", ","]} />
+                </Command.Item>
+                <Command.Item
+                  className={item}
+                  onSelect={() => run(() => ui.navigate({ name: "settings", section: "memory" }))}
+                  keywords={["memory", "profile", "about me"]}
+                >
+                  <Brain size={15} />
+                  <span className="flex-1">{s.memory.title}</span>
+                </Command.Item>
+              </Command.Group>
             </Command.List>
           </Command>
         </D.Content>
