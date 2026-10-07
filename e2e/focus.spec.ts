@@ -6,7 +6,8 @@ type MockWindow = Window & {
 };
 
 async function startOneMinuteSession(app: Page) {
-  await app.getByRole("button", { name: "Focus", exact: true }).click();
+  await expect(app.getByRole("button", { name: "Search" })).toBeVisible();
+  await app.keyboard.press("ControlOrMeta+Shift+KeyF");
   const dialog = app.getByRole("dialog", { name: "Start a focus session" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("radio", { name: /^Custom/ }).click();

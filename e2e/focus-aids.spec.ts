@@ -8,7 +8,7 @@ const NOTES = `Photosynthesis happens in the chloroplasts of plant cells. Chloro
 The Calvin cycle uses ATP and NADPH to fix carbon dioxide into sugar.`;
 
 async function startOneMinuteSession(app: Page) {
-  await app.getByRole("button", { name: "Focus", exact: true }).click();
+  await app.keyboard.press("ControlOrMeta+Shift+KeyF");
   const dialog = app.getByRole("dialog", { name: "Start a focus session" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("radio", { name: /^Custom/ }).click();
@@ -115,7 +115,7 @@ test("reading ruler follows the pointer and the settings switch stays in sync", 
   await app.mouse.move(2, 2);
   await expect(ruler).toHaveCount(0);
 
-  await app.getByRole("button", { name: "Settings" }).click();
+  await app.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(app.getByRole("switch", { name: "Reading ruler" })).toBeChecked();
   await expect(app.getByRole("switch", { name: "Bionic reading" })).not.toBeChecked();
 });

@@ -9,7 +9,7 @@ async function createSpace(app: Page, name: string) {
 }
 
 async function paletteCommand(app: Page, command: string) {
-  await app.getByRole("button", { name: "Command palette" }).click();
+  await app.getByRole("button", { name: "Search" }).click();
   await app.getByPlaceholder("Type a command or search…").fill(command);
   await app.keyboard.press("Enter");
 }
@@ -33,9 +33,9 @@ test("quick capture from the palette saves a note into the current space", async
 
 test("quick capture from home defaults to the last opened space and saves into the chosen one", async ({ app }) => {
   await createSpace(app, "Chemistry");
-  await app.getByRole("button", { name: "Ponder" }).click();
+  await app.getByRole("button", { name: "Home" }).click();
   await createSpace(app, "History");
-  await app.getByRole("button", { name: "Ponder" }).click();
+  await app.getByRole("button", { name: "Home" }).click();
 
   await paletteCommand(app, "Quick capture");
   const dialog = app.getByRole("dialog", { name: "Quick capture" });

@@ -13,7 +13,7 @@ async function createSpace(app: Page) {
 }
 
 async function startSession(app: Page, technique: RegExp, lowEnergy = false) {
-  await app.getByRole("button", { name: "Focus", exact: true }).click();
+  await app.keyboard.press("ControlOrMeta+Shift+KeyF");
   const dialog = app.getByRole("dialog", { name: "Start a focus session" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("radio", { name: technique }).click();
@@ -43,7 +43,7 @@ test("hyperfocus guard stays quiet when switched off in settings", async ({ app 
   await expect(guard).toBeChecked();
   await guard.click();
   await expect(guard).not.toBeChecked();
-  await app.getByRole("button", { name: "Ponder" }).click();
+  await app.getByRole("button", { name: "Back" }).click();
   await app.getByRole("button", { name: "New space" }).first().click();
   await app.getByLabel("Name").fill("Biology");
   await app.getByRole("button", { name: "Create" }).click();

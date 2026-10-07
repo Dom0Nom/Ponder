@@ -39,7 +39,7 @@ test("topic -> steps -> check one off -> progress -> survives reload", async ({ 
 
 test("a running session with a goal is used directly and shows the current step", async ({ app }) => {
   await newSpace(app);
-  await app.getByRole("button", { name: "Focus", exact: true }).click();
+  await app.keyboard.press("ControlOrMeta+Shift+KeyF");
   const dialog = app.getByRole("dialog", { name: "Start a focus session" });
   await dialog.getByLabel("Goal (optional)").fill("Read chapter 3");
   await dialog.getByRole("button", { name: "Start session" }).click();
