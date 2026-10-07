@@ -640,7 +640,13 @@ function seedCards(db: DB, o: FixtureOptions, at: (n: number) => number, spaceNa
   if (o.cards === "review") {
     const due = (i: number) => FIXTURE_NOW - (60 - i) * MIN;
     REVIEW_FIRST.forEach((c, i) => {
-      db.cards[`c-r${i}`] = mk(`c-r${i}`, sp, spaceName, { front: c.front, back: c.back, due: due(i), createdAt: at(i * H) });
+      db.cards[`c-r${i}`] = mk(`c-r${i}`, sp, spaceName, {
+        front: c.front,
+        back: c.back,
+        due: due(i),
+        createdAt: at(i * H),
+        fsrs: { due: due(i), stability: 3, difficulty: 5, elapsed_days: 3, scheduled_days: 3, learning_steps: 0, reps: 4, lapses: 0, state: 2, last_review: due(i) - 3 * D },
+      });
     });
     db.cards["c-sub"] = mk("c-sub", sp, spaceName, {
       front: "When should you solve a system by substitution?",
@@ -650,10 +656,11 @@ function seedCards(db: DB, o: FixtureOptions, at: (n: number) => number, spaceNa
       sourceId: "src-openstax",
       chunkStart: 0,
       chunkEnd: 100,
+      fsrs: { due: due(3), stability: 1.2, difficulty: 6, elapsed_days: 0, scheduled_days: 0, learning_steps: 1, reps: 1, lapses: 0, state: 1, last_review: due(3) - 60_000 },
     });
     for (let i = 4; i < 8; i++) db.cards[`c-g${i}`] = mk(`c-g${i}`, sp, spaceName, { front: `GED review card ${i + 1}`, back: "Answer", due: due(i) });
     for (let i = 0; i < 4; i++) db.cards[`c-es${i}`] = mk(`c-es${i}`, SP.es, "Spanish A2", { front: `Spanish card ${i + 1}`, back: "Respuesta", due: due(10 + i) });
-    for (let i = 0; i < 3; i++) db.cards[`c-b${i}`] = mk(`c-b${i}`, SP.bio, "Biology", { front: `Biology card ${i + 1}`, back: "Answer", due: due(20 + i) });
+    for (let i = 0; i < 2; i++) db.cards[`c-b${i}`] = mk(`c-b${i}`, SP.bio, "Biology", { front: `Biology card ${i + 1}`, back: "Answer", due: due(20 + i) });
   }
 }
 

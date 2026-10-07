@@ -397,7 +397,7 @@ input[type="range"].slider { -webkit-appearance: none; appearance: none; height:
 
 .practice-question p { margin: 0; line-height: 1.5; }
 .practice-solution .prose-chat p { line-height: 1.7; }
-.practice-question .katex-display { margin: 18px 0 0; padding: 22px 22px 20.5px; border-radius: 8px; background: var(--fill-subtle); font-size: 1.125rem; line-height: 1.6; }
+.practice-question .katex-display { margin: 18px 0 0; padding: 24.5px 22px 25.1px; border-radius: 8px; background: var(--fill-subtle); font-size: 1.125rem; line-height: 1.6; }
 .practice-question .katex-display > .katex { font-size: 1.07em; }
 .practice-question .katex-display .katex, .practice-question .katex-display .katex * { font-family: var(--font-math-stack); font-style: normal; }
 

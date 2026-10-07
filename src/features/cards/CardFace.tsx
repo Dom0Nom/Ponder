@@ -5,9 +5,9 @@ import { ChoiceOption } from "../../components/ui/choice";
 import { Markdown } from "../chat/Markdown";
 import { OcclusionSlot } from "./occlusionSlot";
 
-const FRONT = "px-12 pb-9 pt-11 text-center text-[1.375rem] font-medium leading-[1.4] [text-wrap:balance] [&_.prose-chat]:leading-[1.4] [&_p]:m-0";
+const FRONT = "px-12 pb-9 pt-11 text-center text-[1.375rem] font-medium leading-[1.4] [text-wrap:balance] [&_.prose-chat_p]:leading-[1.4] [&_p]:m-0";
 const BACK =
-  "border-t border-divider px-12 py-7 text-center text-title leading-[1.55] text-fg-secondary [text-wrap:balance] [&_.prose-chat]:leading-[1.55] [&_p]:m-0";
+  "border-t border-divider px-12 py-7 text-center text-title leading-[1.55] text-fg-secondary [text-wrap:balance] [&_.prose-chat_p]:leading-[1.55] [&_p]:m-0";
 
 function Back({ children }: { children: ReactNode }) {
   return <div className={BACK}>{children}</div>;
@@ -34,7 +34,7 @@ export function CardFace({
     const n = card.data?.cloze ?? 1;
     return (
       <div data-testid="card-face">
-        <div className="px-12 pb-9 pt-11 text-center text-[1.125rem] leading-[1.55] [text-wrap:pretty] [&_.prose-chat]:leading-[1.55] [&_p]:m-0">
+        <div className="px-12 pb-9 pt-11 text-center text-[1.125rem] leading-[1.55] [text-wrap:pretty] [&_.prose-chat_p]:leading-[1.55] [&_p]:m-0">
           <Markdown text={revealed ? clozeBack(card.front, n) : clozeFront(card.front, n)} />
         </div>
         {revealed && card.back && (

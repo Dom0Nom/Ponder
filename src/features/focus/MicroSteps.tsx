@@ -85,7 +85,10 @@ function StepRow({ step, current, onChanged }: { step: MicroStep; current: boole
     >
       <Checkbox16
         className={cn("mt-0.5", !step.done && "-mt-px h-[19.7px] w-[2px]")}
-        inputClassName={cn(!step.done && "h-full w-full")}
+        inputClassName={cn(
+          !step.done &&
+            "absolute -left-[7px] h-full w-4 rounded-none border-0 bg-[linear-gradient(var(--text-faint),var(--text-faint))] bg-[length:2px_100%] bg-center bg-no-repeat",
+        )}
         aria-label={s.focus.micro.markDone(step.text)}
         checked={step.done}
         onChange={(e) => {
