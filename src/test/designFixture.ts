@@ -294,7 +294,7 @@ export function seedDesignFixture(db: DB, o: FixtureOptions) {
         icon: s.icon,
         color: "slate",
         tutorStyle: ged ? "mixed" : "direct",
-        strictGrounding: ged,
+        strictGrounding: false,
         modelOverride: null,
         createdAt: at(30 * D),
         updatedAt: s.opened === null ? at(30 * D) : at(s.opened),
@@ -545,7 +545,7 @@ function seedGed(db: DB, o: FixtureOptions, at: (n: number) => number, x: <V ext
   const topics = CURRICULA[o.curriculum];
   db.curricula[sp] = {
     spaceId: sp,
-    curriculumId: "ged-all",
+    curriculumId: "ged",
     title: "GED (all four subjects)",
     topics: topics.map((t) => ({ id: t.id, title: t.title, description: t.description, group: t.group })),
     updatedAt: at(10 * D),

@@ -141,11 +141,11 @@ export function SpaceSettingsPanel({ space, onBack }: { space: Space; onBack: ()
             onChange={(v) => setDraft({ ...draft, tutorStyle: v })}
             options={(["direct", "socratic", "mixed"] as const).map((v) => ({ value: v, label: s.space.tutorStyles[v] }))}
           />
-          <p className="text-caption text-muted">{s.space.tutorStyleHelp[draft.tutorStyle]}</p>
+          <p className="text-caption text-muted">{s.space.tutorStyleSettingsHelp[draft.tutorStyle]}</p>
         </div>
         <div className="flex items-start gap-3">
           <div className="flex flex-1 flex-col gap-0.5">
-            <span className="text-body-lg font-medium">{s.space.strict}</span>
+            <span className="text-body-lg font-medium leading-[1.45]">{s.space.strict}</span>
             <span className="text-caption text-muted">{s.space.strictHelp}</span>
           </div>
           <Switch
