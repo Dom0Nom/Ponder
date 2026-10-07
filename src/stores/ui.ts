@@ -1,3 +1,4 @@
+import type { FoundSource } from "../lib/research/deepResearch";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ModelControls } from "../lib/providers/controls";
@@ -52,7 +53,7 @@ interface UiState {
   focusDialogOpen: boolean;
   captureOpen: boolean;
   watchDialogOpen: boolean;
-  importDialog: { open: boolean; tab?: string; query?: string };
+  importDialog: { open: boolean; tab?: string; query?: string; found?: FoundSource[] };
   /** active thread per space */
   activeThread: Record<string, string>;
   /** source viewer target */

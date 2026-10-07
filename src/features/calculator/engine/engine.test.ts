@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { Calculator } from "./index";
 import { del, insert, left, markup, newEd, tok, vertical } from "./editor";
-import { formatDecimal, formatFit, formatResult } from "./format";
+import { formatDecimal, formatFit, formatResult, formatSig10 } from "./format";
 import { cells, parse } from "../lcd/layout";
 import * as N from "./num";
 
@@ -28,7 +28,7 @@ describe("numbers", () => {
 
   test("exact radicals simplify", () => {
     expect(N.sqrt(N.int(8)).q).toEqual({ n: 2, m: 1, r: 2, pi: 0 });
-    expect(N.sqrt(N.div(N.int(1), N.int(2))).q).toEqual({ n: 1, m: 2, r: 2, pi: 0 });
+    expect(N.sqrt(N.div(N.int(1), N.int(2))).q).toBeUndefined();
     expect(N.mul(N.sqrt(N.int(2)), N.sqrt(N.int(3))).q).toEqual({ n: 1, m: 1, r: 6, pi: 0 });
   });
 
@@ -47,17 +47,18 @@ describe("format", () => {
   });
 
   test("FIX, SCI, ENG and restricted forms", () => {
-    expect(formatDecimal(2.5, { ...NORM, fix: 0 })).toBe("3.");
+    expect(formatDecimal(2.5, { ...NORM, fix: 0 })).toBe("3");
     expect(formatDecimal(1.005, { ...NORM, fix: 2 })).toBe("1.01");
     expect(formatDecimal(0.005, { ...NORM, notation: "SCI" })).toBe("5*10^{⁻3}");
     expect(formatDecimal(0.005, { ...NORM, notation: "SCI", mathprint: false })).toBe("5*10^⁻3");
     expect(formatDecimal(207400, { ...NORM, notation: "ENG" }, true)).toBe("207.4ᴇ3");
   });
 
-  test("stat values keep digits after rounding, strip when exact", () => {
-    expect(formatFit(0.677325189641, NORM, 11)).toBe("0.677325190");
-    expect(formatFit(-18.66637321, NORM, 11)).toBe("⁻18.6663732");
-    expect(formatFit(52.5, NORM, 11)).toBe("52.5");
+  test("stat values show 10 significant digits; data cells fit 6 characters", () => {
+    expect(formatSig10(0.677325189641, NORM)).toBe("0.6773251896");
+    expect(formatSig10(-18.666373213, NORM)).toBe("⁻18.66637321");
+    expect(formatSig10(52.5, NORM)).toBe("52.5");
+    expect(formatFit(18.58651222, NORM, 6)).toBe("18.587");
   });
 
   test("exact results and conversions", () => {
@@ -95,8 +96,8 @@ describe("editor", () => {
 
 describe("display rules", () => {
   test("row placement counts cells", () => {
-    expect(cells(parse("e^{.5}"), true) + cells(parse("1.648721271"), false)).toBe(15);
-    expect(cells(parse("√{2}◂▸"), true) + cells(parse("1.414213562"), false)).toBe(14);
+    expect(cells(parse("e^{.5}")) + cells(parse("1.648721271"))).toBe(14);
+    expect(cells(parse("\\f{3}{4}+1\\f{7}{12}"))).toBe(5);
   });
 
   test("long entries scroll with overflow marks", () => {

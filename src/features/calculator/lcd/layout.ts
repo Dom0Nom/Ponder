@@ -1,12 +1,12 @@
-import { glyph, glyphKeys } from "./font";
+import { glyphKeys } from "./font";
 
 /** Markup (BEHAVIOR §2) → positioned dot-font boxes. Coordinates in dots, y relative to the baseline. */
 
-export const CUR = "\uE000";
-export const BLINK_ON = "\uE001";
-export const BLINK_OFF = "\uE002";
-export const CUR_INS = "\uE003";
-const SEQ = ["▸n/d◂▸Un/d", "▸F◂▸D", "▸DMS", "▸%"];
+export const CUR = "";
+export const BLINK_ON = "";
+export const BLINK_OFF = "";
+export const CUR_INS = "";
+const SEQ = ["▸n/d◂▸Un/d", "▸F◂▸d"];
 
 export type MNode =
   | { t: "g"; key: string }
@@ -73,8 +73,14 @@ export function parseItems(s: string): Item[] {
 
 export const parse = (s: string): MNode[] => parseItems(s).map((x) => x.node);
 
+/** n: normal 5×7 in 6×8 cells; s: small 5×5 at 6-dot pitch; m: menu 4×5 at 5-dot pitch (BEHAVIOR §3.1). */
+export type FontId = "n" | "s" | "m";
+const PITCH: Record<FontId, number> = { n: 6, s: 6, m: 5 };
+const GLYPH_H: Record<FontId, number> = { n: 7, s: 5, m: 5 };
+const DESC: Record<FontId, number> = { n: 1, s: 0, m: 1 };
+
 export type Op =
-  | { k: "g"; key: string; small: boolean; x: number; y: number }
+  | { k: "g"; key: string; font: FontId; x: number; y: number }
   | { k: "rect"; x: number; y: number; w: number; h: number }
   | { k: "inv"; x: number; y: number; w: number; h: number }
   | { k: "cur"; x: number; y: number; w: number; h: number }
@@ -89,13 +95,13 @@ export interface Box {
 
 const shift = (ops: Op[], dx: number, dy: number): Op[] => ops.map((o) => ({ ...o, x: o.x + dx, y: o.y + dy }));
 
-export function layoutSeq(nodes: MNode[], small = false): Box {
+export function layoutSeq(nodes: MNode[], font: FontId = "n"): Box {
   const ops: Op[] = [];
   let x = 0;
-  let asc = small ? 5 : 7;
-  let desc = small ? 0 : 1;
+  let asc = GLYPH_H[font];
+  let desc = DESC[font];
   for (const n of nodes) {
-    const b = layoutNode(n, small);
+    const b = layoutNode(n, font);
     ops.push(...shift(b.ops, x, 0));
     x += b.w;
     asc = Math.max(asc, b.asc);
@@ -104,82 +110,66 @@ export function layoutSeq(nodes: MNode[], small = false): Box {
   return { w: x, asc, desc, ops };
 }
 
-function layoutNode(n: MNode, small: boolean): Box {
-  const ascBase = small ? 5 : 7;
+function layoutNode(n: MNode, font: FontId): Box {
+  const h = GLYPH_H[font];
+  const p = PITCH[font];
+  const sub: FontId = font === "m" ? "m" : "s";
   switch (n.t) {
-    case "g": {
-      const useSmall = small;
-      const g = glyph(n.key, useSmall);
-      const h = g.rows.length;
-      const top = useSmall && h <= 5 ? -5 : -7;
-      return {
-        w: g.w + 1,
-        asc: -top,
-        desc: small ? 0 : 1,
-        ops: [{ k: "g", key: n.key, small: useSmall && h <= 5, x: 0, y: top }],
-      };
-    }
+    case "g":
+      return { w: p, asc: h, desc: DESC[font], ops: [{ k: "g", key: n.key, font, x: 0, y: -h }] };
     case "cur":
-      return {
-        w: 0,
-        asc: ascBase,
-        desc: 0,
-        ops: [{ k: "cur", x: 0, y: n.under ? 0 : -ascBase, w: small ? 3 : 5, h: n.under ? 1 : ascBase }],
-      };
+      return { w: 0, asc: h, desc: 0, ops: [{ k: "cur", x: 0, y: n.under ? 0 : -h, w: p - 1, h: n.under ? 1 : h }] };
     case "sup": {
-      const e = layoutSeq(n.a, true);
-      const raise = small ? 3 : 5;
-      const w = Math.max(e.w, 2);
-      const ops = shift(e.ops, 0, -raise);
-      if (!n.a.length) ops.push({ k: "rect", x: 0, y: -raise - 5, w: 3, h: 1 });
-      return { w: w + (n.a.length ? 0 : 2), asc: raise + e.asc, desc: 0, ops };
+      const e = layoutSeq(n.a, sub);
+      const dy = font === "n" ? -4 : -2;
+      const ops = shift(e.ops, 0, dy);
+      if (!n.a.length) ops.push({ k: "rect", x: 0, y: dy - 5, w: 5, h: 1 }, { k: "rect", x: 0, y: dy - 1, w: 5, h: 1 });
+      return { w: n.a.length ? e.w : p, asc: e.asc - dy, desc: Math.max(0, e.desc + dy), ops };
     }
     case "frac": {
-      const a = layoutSeq(n.a, small);
-      const b = layoutSeq(n.b, small);
-      const inner = Math.max(a.w, b.w, small ? 4 : 6);
-      const bar = small ? -2 : -4;
-      const numBase = bar - Math.max(a.desc, 1);
-      const denBase = bar + 2 + b.asc;
+      const a = layoutSeq(n.a, sub);
+      const b = layoutSeq(n.b, sub);
+      const w = Math.max(a.w, b.w, p);
+      const bar = font === "n" ? -4 : -3;
+      const gap = font === "n" ? 1 : 0;
+      const numDy = bar - gap - a.desc;
+      const denDy = bar + 1 + gap + b.asc;
       const ops: Op[] = [
-        ...shift(a.ops, 1 + Math.floor((inner - a.w) / 2), numBase),
-        { k: "rect", x: 0, y: bar, w: inner + 1, h: 1 },
-        ...shift(b.ops, 1 + Math.floor((inner - b.w) / 2), denBase),
+        ...shift(a.ops, Math.floor((w - a.w) / 2), numDy),
+        { k: "rect", x: -1, y: bar, w: w + 1, h: 1 },
+        ...shift(b.ops, Math.floor((w - b.w) / 2), denDy),
       ];
-      return { w: inner + 2, asc: -(numBase - a.asc), desc: denBase + Math.max(b.desc - 1, 0), ops };
+      return { w, asc: a.asc - numDy, desc: denDy + b.desc, ops };
     }
     case "sqrt":
     case "root": {
-      const r = layoutSeq(n.a, small);
-      const idx = n.t === "root" ? layoutSeq(n.i, true) : null;
-      const ox = idx ? Math.max(idx.w - 2, 0) : 0;
-      const barY = -r.asc - 2;
+      const r = layoutSeq(n.a, font);
+      const idx = n.t === "root" ? layoutSeq(n.i, sub) : null;
+      const ox = idx ? idx.w : 0;
+      const barY = -r.asc - 1;
       const ops: Op[] = [];
-      if (idx) ops.push(...shift(idx.ops, 0, -4));
+      if (idx) ops.push(...shift(idx.ops, 0, -3));
       ops.push(
         { k: "rect", x: ox, y: -3, w: 1, h: 1 },
         { k: "rect", x: ox + 1, y: -2, w: 1, h: 2 },
-        { k: "rect", x: ox + 2, y: barY, w: 1, h: -barY },
-        { k: "rect", x: ox + 2, y: barY, w: r.w + 2, h: 1 },
-        ...shift(r.ops, ox + 4, 0),
+        { k: "rect", x: ox + 2, y: -h, w: 1, h },
+        { k: "rect", x: ox + 3, y: barY, w: 1, h: -barY - h },
+        { k: "rect", x: ox + 3, y: barY, w: r.w + 2, h: 1 },
+        ...shift(r.ops, ox + p, 0),
       );
-      const asc = Math.max(r.asc + 2, idx ? 4 + idx.asc : 0);
-      return { w: ox + 4 + r.w + 1, asc, desc: Math.max(r.desc, small ? 0 : 1), ops };
+      return { w: ox + p + r.w, asc: Math.max(r.asc + 1, idx ? idx.asc + 3 : 0), desc: Math.max(r.desc, DESC[font]), ops };
     }
-    case "inv": {
-      const c = layoutSeq(n.a, small);
-      const h = c.asc + 1;
-      return { w: c.w, asc: c.asc, desc: c.desc, ops: [...c.ops, { k: "inv", x: -1, y: -c.asc, w: c.w + 1, h }] };
-    }
+    case "inv":
     case "blink": {
-      const c = layoutSeq(n.a, small);
-      return { w: c.w, asc: c.asc, desc: c.desc, ops: [...c.ops, { k: "blink", x: -1, y: -c.asc, w: c.w + 1, h: c.asc + 1 }] };
+      const c = layoutSeq(n.a, font);
+      const box = { x: -1, y: -c.asc, w: c.w, h: c.asc + DESC[font] };
+      return { w: c.w, asc: c.asc, desc: c.desc, ops: [...c.ops, { k: n.t, ...box }] };
     }
   }
 }
 
-export function layout(markup: string, small = false): Box {
-  return layoutSeq(parse(markup), small);
+export function layout(markup: string, font: FontId = "n"): Box {
+  return layoutSeq(parse(markup), font);
 }
 
 export function measure(markup: string): { w: number; h: number } {
@@ -187,8 +177,8 @@ export function measure(markup: string): { w: number; h: number } {
   return { w: b.w, h: b.asc + b.desc };
 }
 
-/** Character cells used by the Home row-placement rule: an entry's superscript also counts its caret. */
-export function cells(nodes: MNode[], entry: boolean): number {
+/** Character cells (BEHAVIOR §3.2): fractions count their wider part, √ counts one cell. */
+export function cells(nodes: MNode[]): number {
   let c = 0;
   for (const n of nodes) {
     switch (n.t) {
@@ -196,20 +186,18 @@ export function cells(nodes: MNode[], entry: boolean): number {
         c += 1;
         break;
       case "sup":
-        c += (entry ? 1 : 0) + cells(n.a, entry);
-        break;
-      case "frac":
-        c += Math.max(cells(n.a, entry), cells(n.b, entry));
-        break;
-      case "sqrt":
-        c += 1 + cells(n.a, entry);
-        break;
-      case "root":
-        c += cells(n.i, entry) + 1 + cells(n.a, entry);
-        break;
       case "inv":
       case "blink":
-        c += cells(n.a, entry);
+        c += cells(n.a);
+        break;
+      case "frac":
+        c += Math.max(cells(n.a), cells(n.b));
+        break;
+      case "sqrt":
+        c += 1 + cells(n.a);
+        break;
+      case "root":
+        c += cells(n.i) + 1 + cells(n.a);
         break;
     }
   }

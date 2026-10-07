@@ -47,11 +47,11 @@ export function Dialog({
           )}
           style={style}
         >
-          <div className="flex items-start gap-4 pb-1 pl-5 pr-4 pt-4">
+          <div className="flex items-start pb-1 pl-5 pr-4 pt-4">
             <div className="min-w-0 flex-1">
               <D.Title className="text-title font-semibold">{title}</D.Title>
               {description ? (
-                <D.Description className="mt-1 text-body text-muted">{description}</D.Description>
+                <D.Description className="mt-1 text-body leading-[1.5] text-muted [text-wrap:pretty]">{description}</D.Description>
               ) : (
                 <D.Description className="sr-only">{title}</D.Description>
               )}

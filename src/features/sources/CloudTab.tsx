@@ -10,7 +10,7 @@ import { useUi } from "../../stores/ui";
 import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { Checkbox16 } from "../../components/ui/Checkbox16";
+import { Checkbox16 } from "../../components/ui/checkbox";
 import { EmptyState, ErrorState, Skeleton, Spinner } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { ck, useCloudStatus } from "../settings/cloudQueries";
@@ -147,7 +147,7 @@ function CloudBrowser({ service, space, done }: { service: CloudService; space: 
   return (
     <div className="flex flex-col gap-3.5" data-testid={`cloud-browser-${service}`}>
       <div className="flex flex-wrap items-center gap-2">
-        <nav aria-label={s.cloud.pathLabel} className="flex min-w-0 flex-1 items-center gap-1.5 text-body-lg">
+        <nav aria-label={s.cloud.pathLabel} className="flex min-w-0 flex-1 items-center gap-2 text-body">
           {query ? (
             <span className="truncate font-medium">{s.cloud.search(s.cloud.names[service])}</span>
           ) : (
@@ -225,7 +225,7 @@ function Row({ item, checked, onOpen, onToggle }: { item: CloudItem; checked: bo
       <span className="truncate">{formatModified(item.modified)}</span>
     </>
   );
-  const base = cn(GRID, "h-10 border-t border-divider first:border-t-0 text-body", ok ? "text-fg" : "text-faint");
+  const base = cn(GRID, "h-[41px] border-t border-divider text-body", ok ? "text-fg" : "text-faint");
   if (item.folder) {
     return (
       <div role="listitem" className={cn(base, "hover:bg-fill-faint")}>
