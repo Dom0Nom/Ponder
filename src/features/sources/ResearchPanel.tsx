@@ -8,7 +8,8 @@ import type { Space } from "../../lib/types";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
 import { deepResearch, type FoundSource, type ResearchStage } from "../../lib/research/deepResearch";
 import { proxyHttp } from "../../lib/importers/http";
-import { PonderMark } from "../../components/brand/PonderMark";
+import { Reveal } from "../../components/motion/Reveal";
+import { TextSwap } from "../../components/motion/TextSwap";
 import { Fx } from "../../components/fx/Fx";
 import { ActivityOrb, type Activity } from "../../components/motion/ActivityOrb";
 import { Button } from "../../components/ui/button";
@@ -113,27 +114,23 @@ export function ResearchPanel({
   });
 
   const panel = stage && (
-    <div
+    <Reveal
       data-testid="research-running"
       data-stage={stage}
       className="flex items-center gap-3 rounded-card border border-border px-4 py-3"
       aria-live="polite"
     >
-      {stage === "ranking" ? (
-        <span className="flex size-8 flex-none items-center justify-center">
-          <PonderMark size={20} state="generating" />
-        </span>
-      ) : (
-        <ActivityOrb activity={STAGE_ORB[stage]} size={32} />
-      )}
+      <ActivityOrb activity={STAGE_ORB[stage]} size={32} />
       <div className="min-w-0">
-        <p className="font-medium">{STAGE_LABEL[stage]}</p>
+        <p className="font-medium">
+          <TextSwap text={STAGE_LABEL[stage]} />
+        </p>
         {detail && <p className="truncate text-label text-muted">{detail}</p>}
       </div>
       <Button size="sm" variant="ghost" className="ml-auto" onClick={() => abort.current?.abort()}>
         {s.common.cancel}
       </Button>
-    </div>
+    </Reveal>
   );
 
   return (
@@ -167,10 +164,10 @@ export function ResearchPanel({
             <p className="text-body leading-[1.5] text-muted">{s.research.reviewBody}</p>
           </div>
           <ul className="rounded-card border border-border px-3.5" data-testid="research-results">
-            {found.map((f) => {
+            {found.map((f, i) => {
               const host = new URL(f.url).hostname.replace(/^www\./, "");
               return (
-                <li key={f.id} className="group flex h-[42px] items-center gap-2.5 border-divider [&+&]:h-[43px] [&+&]:border-t">
+                <Reveal as="li" index={i} key={f.id} className="group flex h-[42px] items-center gap-2.5 border-divider [&+&]:h-[43px] [&+&]:border-t">
                   <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5" title={`${host}\n${f.summary}`}>
                     <Checkbox16
                       checked={selected.has(f.id)}
@@ -193,7 +190,7 @@ export function ResearchPanel({
                     <ExternalLink size={13} />
                   </a>
                   <Credibility value={f.credibility} />
-                </li>
+                </Reveal>
               );
             })}
           </ul>

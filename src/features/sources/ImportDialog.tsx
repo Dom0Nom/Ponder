@@ -6,6 +6,7 @@ import { FileText, Upload } from "lucide-react";
 import { qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Space } from "../../lib/types";
+import { TextSwap } from "../../components/motion/TextSwap";
 import { Dialog } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
 import { Input, Label, Textarea } from "../../components/ui/input";
@@ -85,13 +86,17 @@ export function ImportDialog({
       style={{ width: `min(${WIDTH[tab] ?? 520}px, calc(100vw - 32px))` }}
       footer={
         <>
-          {footer?.status && <span className="mr-auto min-w-0 truncate text-muted">{footer.status}</span>}
+          {footer?.status && (
+            <span className="mr-auto min-w-0 truncate text-muted">
+              <TextSwap text={footer.status} />
+            </span>
+          )}
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
             {s.common.cancel}
           </Button>
           <Button variant="primary" disabled={!footer || footer.disabled || footer.busy} onClick={() => footer?.run()}>
             {footer?.busy && <Spinner size={15} className="text-on-primary" />}
-            {footer?.busy ? s.sources.importing : (footer?.label ?? s.sources.import)}
+            {footer?.busy ? s.sources.importing : <TextSwap text={footer?.label ?? s.sources.import} />}
           </Button>
         </>
       }
@@ -109,25 +114,25 @@ export function ImportDialog({
               </Tabs.Trigger>
             ))}
           </Tabs.List>
-          <Tabs.Content value="file">
+          <Tabs.Content value="file" className="t-panel-slide" data-open="true">
             <FileTab space={space} done={done} />
           </Tabs.Content>
-          <Tabs.Content value="paste">
+          <Tabs.Content value="paste" className="t-panel-slide" data-open="true">
             <PasteTab space={space} done={done} />
           </Tabs.Content>
-          <Tabs.Content value="url">
+          <Tabs.Content value="url" className="t-panel-slide" data-open="true">
             <UrlTab space={space} kind="url" done={done} />
           </Tabs.Content>
-          <Tabs.Content value="youtube">
+          <Tabs.Content value="youtube" className="t-panel-slide" data-open="true">
             <UrlTab space={space} kind="youtube" done={done} />
           </Tabs.Content>
-          <Tabs.Content value="gdrive">
+          <Tabs.Content value="gdrive" className="t-panel-slide" data-open="true">
             <CloudTab service="google" space={space} done={done} />
           </Tabs.Content>
-          <Tabs.Content value="dropbox">
+          <Tabs.Content value="dropbox" className="t-panel-slide" data-open="true">
             <CloudTab service="dropbox" space={space} done={done} />
           </Tabs.Content>
-          <Tabs.Content value="research">
+          <Tabs.Content value="research" className="t-panel-slide" data-open="true">
             <ResearchPanel key={query ?? ""} space={space} initialQuery={query} initialFound={found} done={done} />
           </Tabs.Content>
         </Tabs.Root>

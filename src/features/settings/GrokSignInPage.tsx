@@ -84,7 +84,7 @@ export function GrokSignInPage({ providerId }: { providerId: string }) {
               </Button>
             )}
             <p role="status" className="flex items-center justify-center gap-2 text-muted">
-              <Loader size={14} className="animate-spin" />
+              <Loader size={14} className="m-spin" />
               {s.providers.deviceWaiting} · {s.providers.deviceExpires(Math.max(1, Math.round(code.expiresIn / 60)))}
             </p>
           </>

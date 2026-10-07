@@ -8,6 +8,8 @@ import type { EmbedderStatus, Source, Space } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
 import { useLowEnergy } from "../focus/useLowEnergy";
+import { useFreshKeys } from "../../lib/useFreshKeys";
+import { TextSwap } from "../../components/motion/TextSwap";
 import { useStayMounted } from "../../components/motion/useStayMounted";
 import { ActivityOrb } from "../../components/motion/ActivityOrb";
 import { Button } from "../../components/ui/button";
@@ -50,6 +52,7 @@ export function SourcesPanel({ space, open }: { space: Space; open: boolean }) {
   const qc = useQueryClient();
   const low = useLowEnergy(space.id);
 
+  const isFresh = useFreshKeys(data?.map((x) => x.id));
   const all = data ?? [];
   const usable = all.filter((x) => x.status === "ready");
   const allOn = usable.length > 0 && usable.every((x) => x.useInChat);
@@ -117,7 +120,7 @@ export function SourcesPanel({ space, open }: { space: Space; open: boolean }) {
       {all.length > 0 && (
         <ul className="min-h-0 flex-1 overflow-y-auto px-2 py-1.5" data-testid="source-list">
           {all.map((src) => (
-            <SourceRow key={src.id} source={src} />
+            <SourceRow key={src.id} source={src} fresh={isFresh(src.id)} />
           ))}
         </ul>
       )}
@@ -160,7 +163,7 @@ function EmbedderBanner() {
           </p>
           {st.state === "downloading" && (
             <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-divider">
-              <div className="h-full bg-fg transition-[width]" style={{ width: `${Math.round(st.progress * 100)}%` }} />
+              <div className="m-progress h-full bg-fg" style={{ width: `${Math.round(st.progress * 100)}%` }} />
             </div>
           )}
         </>
@@ -169,7 +172,7 @@ function EmbedderBanner() {
   );
 }
 
-function SourceRow({ source }: { source: Source }) {
+function SourceRow({ source, fresh }: { source: Source; fresh: boolean }) {
   const qc = useQueryClient();
   const openViewer = useUi((st) => st.openViewer);
   const [renaming, setRenaming] = useState(false);
@@ -198,8 +201,8 @@ function SourceRow({ source }: { source: Source }) {
 
   return (
     <li
-      className="t-panel-slide group flex h-11 items-center gap-2.5 rounded-btn px-2 hover:bg-fill"
-      data-open="true"
+      className={cn("group flex h-11 items-center gap-2.5 rounded-btn px-2 hover:bg-fill", fresh && "t-panel-slide")}
+      data-open={fresh || undefined}
       data-testid="source-row"
       data-status={source.status}
     >
@@ -218,11 +221,8 @@ function SourceRow({ source }: { source: Source }) {
       >
         <span className="truncate font-medium">{source.title}</span>
         <span className={cn("text-label", source.status === "error" ? "text-danger" : "text-muted")}>
-          {source.status === "processing"
-            ? `${label} · ${s.sources.processing}`
-            : source.status === "error"
-              ? `${label} · ${s.sources.error}`
-              : label}
+          {label}
+          <TextSwap text={source.status === "processing" ? `\u00a0·\u00a0${s.sources.processing}` : source.status === "error" ? `\u00a0·\u00a0${s.sources.error}` : ""} />
         </span>
       </button>
       {source.status === "error" && (

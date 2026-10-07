@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { FolderPlus, FolderSync, Loader2, X } from "lucide-react";
+import { FolderPlus, FolderSync, Loader, X } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { qk, useWatchedFolders } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Space, WatchedFolder } from "../../lib/types";
 import { cn, isNativeApp, tildePath } from "../../lib/utils";
+import { TextSwap } from "../../components/motion/TextSwap";
+import { useFlip } from "../../lib/useFlip";
 import { Button } from "../../components/ui/button";
 import { ConfirmDialog, Dialog } from "../../components/ui/dialog";
 import { EmptyState, ErrorState, Skeleton, Switch } from "../../components/ui/misc";
@@ -36,6 +38,8 @@ export function WatchedFoldersDialog({ space, open, onOpenChange }: { space: Spa
   const [recursive, setRecursive] = useState(true);
   const [adding, setAdding] = useState(false);
   const refresh = () => qc.invalidateQueries({ queryKey: qk.watched(space.id) });
+  const listRef = useRef<HTMLUListElement>(null);
+  useFlip(listRef, [data]);
 
   const add = async () => {
     let path: string | null = null;
@@ -71,7 +75,7 @@ export function WatchedFoldersDialog({ space, open, onOpenChange }: { space: Spa
             {s.common.close}
           </Button>
           <Button variant="primary" onClick={add} disabled={adding}>
-            {adding ? <Loader2 size={15} className="animate-spin" /> : <FolderPlus size={15} />}
+            {adding ? <Loader size={15} className="m-spin" /> : <FolderPlus size={15} />}
             {adding ? s.watch.adding : s.watch.add}
           </Button>
         </>
@@ -89,7 +93,7 @@ export function WatchedFoldersDialog({ space, open, onOpenChange }: { space: Spa
         <EmptyState icon={<FolderSync size={22} />} title={s.watch.emptyTitle} body={s.watch.emptyBody} className="py-8" />
       )}
       {data && data.length > 0 && (
-        <ul className="rounded-card border border-border px-4" data-testid="watched-folder-list">
+        <ul ref={listRef} className="relative rounded-card border border-border px-4" data-testid="watched-folder-list">
           {data.map((f) => (
             <FolderRow key={f.id} folder={f} home={home} onRemoved={refresh} />
           ))}
@@ -126,13 +130,13 @@ function FolderRow({ folder, home, onRemoved }: { folder: WatchedFolder; home: s
       : `${s.watch.status[folder.status]}${bad ? "" : ` · ${s.watch.files(folder.fileCount)}`}`;
 
   return (
-    <li className="flex min-h-[60px] items-center gap-3 border-divider py-2 [&+&]:min-h-[61px] [&+&]:border-t" data-testid="watched-folder" data-status={folder.status}>
+    <li data-flip-key={folder.id} className="flex min-h-[60px] items-center gap-3 border-divider py-2 [&+&]:min-h-[61px] [&+&]:border-t" data-testid="watched-folder" data-status={folder.status}>
       <div className="flex min-w-0 flex-1 flex-col gap-px">
         <p className="truncate text-body-lg font-medium" title={folder.path}>
           {path}
         </p>
         <p className={cn("text-label", bad ? "text-danger" : "text-muted")}>
-          {meta}
+          <TextSwap text={meta} />
           {!folder.recursive && ` · ${s.watch.topLevelOnly}`}
         </p>
         {bad && folder.error && <p className="break-words text-label text-danger">{folder.error}</p>}
