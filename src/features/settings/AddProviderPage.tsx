@@ -29,7 +29,7 @@ function Tile({ type, onPick }: { type: ProviderType; onPick: (t: ProviderType) 
       onClick={() => onPick(type)}
       className="t-learn flex h-12 items-center gap-3 rounded-tile border border-border px-3 text-left hover:bg-fill-faint"
     >
-      <ProviderIcon type={type} size={20} />
+      <ProviderIcon type={type} size={15} />
       <span className="flex flex-1 flex-col">
         <span className="font-semibold">{catalog[type].tileLabel ?? catalog[type].label}</span>
         {hint && <span className="text-label text-muted">{hint}</span>}
