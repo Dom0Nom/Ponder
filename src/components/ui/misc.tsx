@@ -187,7 +187,7 @@ export function Kbd({
     <kbd
       {...rest}
       className={cn(
-        "inline-flex h-4.5 shrink-0 items-center gap-px rounded-kbd bg-kbd px-1.25 font-kbd text-kbd font-semibold leading-none text-fg-secondary",
+        "inline-flex h-4.5 shrink-0 items-center gap-px rounded-kbd bg-keycap px-1.25 font-kbd text-kbd font-semibold leading-none text-fg-secondary",
         className,
       )}
     >

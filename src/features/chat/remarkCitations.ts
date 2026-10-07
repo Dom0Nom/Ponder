@@ -23,7 +23,7 @@ export function remarkCitations(opts: { known: number }) {
               .map((x) => ({ n: Number(x.trim().replace("~", "")), inferred: x.includes("~") }))
               .filter((r) => r.n >= 1 && r.n <= opts.known);
             if (!refs.length) continue;
-            if (m.index! > last) next.push({ type: "text", value: child.value.slice(last, m.index) });
+            if (m.index! > last) next.push({ type: "text", value: child.value.slice(last, m.index).replace(/[ \t]+$/, "") });
             const prev = next[next.length - 1];
             const adjacent = m.index === last && prev?.type === "citeRef";
             if (adjacent) {

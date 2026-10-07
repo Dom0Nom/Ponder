@@ -37,7 +37,7 @@ function NavItem({
     >
       <Icon size={16} />
       <span className="flex-1">{label}</span>
-      {count ? <span className="text-meta font-semibold text-muted">{count}</span> : null}
+      {count ? <span className="font-kbd text-meta font-semibold tracking-[.12em] text-muted">{count}</span> : null}
       {hint && <span className="font-kbd text-meta font-semibold tracking-[.12em] text-muted">{hint}</span>}
     </button>
   );
@@ -48,7 +48,7 @@ function SearchButton() {
   return (
     <button
       onClick={() => setPaletteOpen(true)}
-      className="mb-2 flex h-8 shrink-0 cursor-text items-center gap-2 whitespace-nowrap rounded-btn border border-field bg-surface pl-2.5 pr-1.5 text-muted"
+      className="mb-2 flex h-[34px] shrink-0 cursor-text items-center gap-2 whitespace-nowrap rounded-btn border border-field bg-surface pl-2.5 pr-1.5 text-muted"
     >
       <Search size={14} className="text-fg" />
       <span className="flex-1 text-left">{s.shell.search}</span>

@@ -12,7 +12,8 @@
  *   curriculum=plan|practice   the topic lists differ between screens 20 and 4/12
  *   focus=none|work|break      running session (screens 2/24 work, 8/35 break)
  *   drive=1              Google Drive signed in (screen 30)
- *   sources=all|empty    empty = screen 38
+ *   sources=all|many|empty   many = 12 sources in chat (composer reads "12 sources"), empty = screen 38
+ *   course=62            the Course tile reads 62% done (13 lessons, 8 done)
  *
  * Things the mock has no field for are stored in extra properties on the rows or under
  * `settings["design.*"]`; nothing in Rust changes.
@@ -32,7 +33,8 @@ export interface FixtureOptions {
   curriculum: "plan" | "practice";
   focus: "none" | "work" | "break";
   drive: boolean;
-  sources: "all" | "empty";
+  sources: "all" | "many" | "empty";
+  course62: boolean;
 }
 
 export function fixtureName(): string | null {
@@ -59,7 +61,8 @@ export function readOptions(search = location.search): FixtureOptions {
     curriculum: pick("curriculum", ["plan", "practice"], "plan"),
     focus: pick("focus", ["none", "work", "break"], "none"),
     drive: q.get("drive") === "1",
-    sources: pick("sources", ["all", "empty"], "all"),
+    sources: pick("sources", ["all", "many", "empty"], "all"),
+    course62: q.get("course") === "62",
   };
 }
 
@@ -368,6 +371,15 @@ function seedGed(db: DB, o: FixtureOptions, at: (n: number) => number, x: <V ext
         updatedAt: at(2 * D),
       } as T.Source;
     }
+    if (o.sources === "many") {
+      for (let i = 0; i < 7; i++) {
+        const id = `src-extra-${i}`;
+        db.sources[id] = {
+          id, spaceId: sp, title: `Extra source ${i + 1}`, kind: "markdown", origin: null, status: "ready", error: null,
+          summary: `Summary of extra source ${i + 1}.`, useInChat: true, progress: 1, charCount: 1000, chunkCount: 1, createdAt: at((10 - i) * D), updatedAt: at(2 * D),
+        } as T.Source;
+      }
+    }
     const pageOffset = 0;
     db.texts["src-openstax"] = { text: OPENSTAX_TEXT, pages: [[412, pageOffset]] };
     const paras = OPENSTAX_TEXT.split("\n\n");
@@ -542,22 +554,23 @@ function seedGed(db: DB, o: FixtureOptions, at: (n: number) => number, x: <V ext
 
   if (!empty) {
     const cid = "course-openstax";
+    const doneLessons = o.course62 ? 8 : 3;
     db.courses[cid] = {
       id: cid,
       spaceId: sp,
       sourceId: "src-openstax",
       title: "OpenStax Algebra & Trigonometry",
       createdAt: at(15 * D),
-      lessons: COURSE_LESSONS.map((title, i) => ({
+      lessons: (o.course62 ? [...COURSE_LESSONS, "Conic sections"] : COURSE_LESSONS).map((title, i) => ({
         id: `les-${i + 1}`,
         courseId: cid,
         ord: i,
         title,
         startOffset: 0,
         endOffset: 100,
-        status: i < 3 ? "done" : i === 3 ? "doing" : "todo",
-        score: i < 3 ? 0.9 : null,
-        completedAt: i < 3 ? at((10 - i) * D) : null,
+        status: i < doneLessons ? "done" : i === doneLessons ? "doing" : "todo",
+        score: i < doneLessons ? 0.9 : null,
+        completedAt: i < doneLessons ? at((10 - i) * D) : null,
       })),
     };
     db.assessments["as-slope-quiz"] = {
@@ -744,7 +757,7 @@ export function fixtureOverrides(): Record<string, (a: Args) => unknown> {
       const o = readOptions();
       if (o.cards === "none" || o.spaces === "none") return [];
       return [
-        { spaceId: SP.ged, spaceName: "GED Math", due: 8, new: 4, total: 52 },
+        { spaceId: SP.ged, spaceName: "GED Math", due: 8, new: 0, total: 52 },
         { spaceId: SP.es, spaceName: "Spanish A2", due: 4, new: 0, total: 30 },
         { spaceId: SP.bio, spaceName: "Biology", due: 2, new: 0, total: 41 },
       ];
