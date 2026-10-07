@@ -44,12 +44,12 @@ export function CommandPalette() {
         <D.Content
           onFocusOutside={(e) => e.preventDefault()}
           aria-label={s.palette.placeholder}
-          className="t-modal fixed left-1/2 top-[96px] z-50 w-[min(600px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden rounded-dialog border border-border bg-surface text-body shadow-dialog outline-none"
+          className="t-modal fixed left-1/2 top-[96px] z-50 w-[min(602px,calc(100vw-30px))] -translate-x-1/2 overflow-hidden rounded-dialog border border-border bg-surface text-body shadow-dialog outline-none"
         >
           <D.Title className="sr-only">{s.palette.placeholder}</D.Title>
           <D.Description className="sr-only">{s.palette.placeholder}</D.Description>
           <Command loop>
-            <div className="flex h-13 items-center gap-2.5 border-b border-divider px-4.5 text-faint">
+            <div className="flex h-[53px] items-center gap-2.5 border-b border-divider px-4.5 text-faint">
               <Search size={16} />
               <Command.Input
                 autoFocus

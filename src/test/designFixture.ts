@@ -13,6 +13,7 @@
  *   focus=none|work|break      running session (screens 2/24 work, 8/35 break)
  *   drive=1              Google Drive signed in (screen 30)
  *   sources=all|many|empty   many = 12 sources in chat (composer reads "12 sources"), empty = screen 38
+ *   capture=off          quick-capture hotkey disabled (the palette row shows no shortcut)
  *   course=62            the Course tile reads 62% done (13 lessons, 8 done)
  *
  * Things the mock has no field for are stored in extra properties on the rows or under
@@ -35,6 +36,7 @@ export interface FixtureOptions {
   drive: boolean;
   sources: "all" | "many" | "empty";
   course62: boolean;
+  captureOff: boolean;
 }
 
 export function fixtureName(): string | null {
@@ -63,6 +65,7 @@ export function readOptions(search = location.search): FixtureOptions {
     drive: q.get("drive") === "1",
     sources: pick("sources", ["all", "many", "empty"], "all"),
     course62: q.get("course") === "62",
+    captureOff: q.get("capture") === "off",
   };
 }
 
@@ -727,7 +730,7 @@ function seedCommon(db: DB, o: FixtureOptions, at: (n: number) => number, _x: <V
   db.settings["focus.breakMenu"] = BREAK_MENU;
   db.settings["reading.aids"] = { bionic: false, ruler: true };
   db.settings["focus.music"] = { enabled: false, playlist: "" };
-  db.settings.quickCaptureEnabled = true;
+  db.settings.quickCaptureEnabled = !o.captureOff;
   db.settings.quickCaptureShortcut = "Alt+Space";
 
   if (o.spaces !== "none") {
