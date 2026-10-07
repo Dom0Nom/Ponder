@@ -45,9 +45,9 @@ export const FUNCS = [
   "x'(",
   "y'(",
 ];
-const CONV: Record<string, Hint> = { "▸n/d◂▸Un/d": "mixed", "▸F◂▸D": "fd", "▸DMS": "dms", "▸%": "pct" };
+const CONV: Record<string, Hint> = { "▸n/d◂▸Un/d": "mixed", "▸F◂▸d": "fd", "▸DMS": "dms", "▸%": "pct" };
 const POSTFIX = new Set(["²", "⁻¹", "!", "%", "°", "'", '"', "ʳ", "ᵍ"]);
-const SYMS = /^(π|e|Ans|rand|[xyztabc]|stat:.+|L[123])$/;
+const SYMS = /^(π|e|ans|rand|[xyztabc]|stat:.+|L[123])$/;
 
 export interface Parsed {
   node: Node;
@@ -85,6 +85,7 @@ class Parser {
     let hint: Hint;
     while (this.tv() && CONV[this.tv()!]) {
       hint = CONV[this.tv()!];
+      if (hint === "mixed" && node.t === "mixed") hint = "improper";
       this.i++;
     }
     let store: string | undefined;
@@ -404,7 +405,7 @@ export function evaluate(node: Node, ctx: Ctx): Val {
       const s = node.name;
       if (s === "π") return PI;
       if (s === "e") return dec(E13);
-      if (s === "Ans") return ctx.ans;
+      if (s === "ans") return ctx.ans;
       if (s === "rand") return dec(ctx.rand());
       if (VARS.includes(s)) return ctx.vars[s] ?? int(0);
       if (s.startsWith("L")) {
@@ -430,7 +431,7 @@ export function evaluate(node: Node, ctx: Ctx): Val {
         case "*":
           return N.mul(a, b);
         case "÷":
-          return N.div(a, b);
+          return N.decimal(N.div(a, b));
         case " nPr ":
           return N.nPr(a, b);
         default:
@@ -445,11 +446,12 @@ export function evaluate(node: Node, ctx: Ctx): Val {
         case "²":
           return N.mul(a, a);
         case "⁻¹":
+          if (a.d === 0) err("DOMAIN");
           return N.div(int(1), a);
         case "!":
           return N.factorial(a);
         case "%":
-          return N.div(a, int(100));
+          return N.decimal(N.div(a, int(100)));
         default:
           return angleMark(node.op, a, ctx.angle);
       }

@@ -79,13 +79,15 @@ function expo(e: number, style: "mp" | "cl" | "E"): string {
 
 function sci(d: Digits, fix: number | null, eng: boolean, style: "mp" | "cl" | "E"): string {
   if (isZeroDigits(d)) {
-    const m = fix == null ? "0" : fix === 0 ? "0." : "0." + "0".repeat(fix);
+    const m = fix == null || fix === 0 ? "0" : "0." + "0".repeat(fix);
     return m + expo(0, style);
   }
   for (let pass = 0; pass < 2; pass++) {
     const e3 = eng ? Math.floor(d.e / 3) * 3 : d.e;
     const intDigits = d.e - e3 + 1;
-    const n = fix == null ? 10 : Math.min(intDigits + fix, 10);
+    const expLen = String(Math.abs(e3)).length + (e3 < 0 ? 1 : 0);
+    const max = Math.min(10, 12 - expLen);
+    const n = fix == null ? max : Math.min(intDigits + fix, max);
     const r = roundSig(d, n);
     if (r.e !== d.e && pass === 0) {
       d = r;
@@ -95,7 +97,7 @@ function sci(d: Digits, fix: number | null, eng: boolean, style: "mp" | "cl" | "
     const ip = all.slice(0, intDigits);
     let fp = all.slice(intDigits);
     if (fix == null) fp = stripZeros(fp);
-    const m = fp ? `${ip}.${fp}` : ip + (fix === 0 ? "." : "");
+    const m = fp ? `${ip}.${fp}` : ip;
     return (r.neg ? NEG : "") + m + expo(e3, style);
   }
   return "";
@@ -107,18 +109,23 @@ export function formatDecimal(x: number, fmt: Fmt, restricted = false): string {
   const d = toDigits(x);
   if (x === 0) d.ds = "0";
   if (fmt.notation !== "NORM") return sci(d, fmt.fix, fmt.notation === "ENG", style);
-  if (x === 0) return fmt.fix == null ? "0" : fixed(d, fmt.fix, false, fmt.fix === 0);
+  if (x === 0) return fmt.fix == null ? "0" : fixed(d, fmt.fix, false, false);
   const r10 = roundSig(d, 10);
   if (r10.e >= 10) return sci(d, fmt.fix, false, style);
   if (fmt.fix != null) {
     const k = Math.min(fmt.fix, 9 - Math.max(r10.e, 0));
-    return fixed(d, k, false, k === 0);
+    return fixed(d, k, false, false);
   }
   if (r10.e >= 0) return fixed(d, 9 - r10.e, true, false);
-  const sig = stripZeros(r10.ds).length;
-  const room = 9 + r10.e + 1;
-  if (sig <= room || Math.abs(x) >= 1e-5) return fixed(d, 9, true, false);
+  if (Math.abs(x) >= 1e-9) return fixed(d, 9, true, false);
   return sci(d, null, false, style);
+}
+
+/** Statistics menu values: 10 significant digits, trailing zeros removed (BEHAVIOR §16). */
+export function formatSig10(x: number, fmt: Fmt): string {
+  if (fmt.notation !== "NORM" || x === 0 || Math.abs(x) >= 1e10 || Math.abs(x) < 1e-9) return formatDecimal(x, fmt, true);
+  const r = roundSig(toDigits(x), 10);
+  return fixed(toDigits(x), Math.max(0, 9 - r.e), true, false);
 }
 
 /** Statistic and table values: as on Home, but rounded values keep trailing zeros, max `width` chars. */
@@ -165,7 +172,7 @@ export function formatMixed(q: Q, mathprint: boolean): string | undefined {
   return mathprint ? `${sign}${w}\\f{${rem}}{${q.m}}` : `${sign}${w}␣${rem}⁄${q.m}`;
 }
 
-export type Hint = "mixed" | "fd" | "pct" | "dms" | "decimal" | "exact" | undefined;
+export type Hint = "mixed" | "improper" | "fd" | "pct" | "dms" | "decimal" | "exact" | undefined;
 
 export function formatDMS(x: number): string {
   const neg = x < 0;
@@ -191,6 +198,7 @@ export function formatResult(v: Val, fmt: Fmt, opts: { hint?: Hint; usedFrac?: b
   if (hint === "dms") return formatDMS(v.d);
   if (hint === "pct") return formatDecimal(t13(v.d * 100), fmt) + "%";
   if (hint === "decimal") return formatDecimal(v.d, fmt);
+  if (hint === "improper" && v.q) return formatQ(v.q, fmt.mathprint) ?? formatDecimal(v.d, fmt);
   if (hint === "mixed") {
     const q = v.q ?? findExact(v.d, { rationalOnly: true });
     if (q) {

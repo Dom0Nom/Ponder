@@ -22,7 +22,7 @@ import {
   vertical,
 } from "./editor";
 import { type Angle, type Ctx, type StatVals, run } from "./expr";
-import { type Fmt, type Notation, findExactFor, formatDecimal, formatFit, formatPlain, formatQ, formatResult, fullDecimal } from "./format";
+import { type Fmt, type Notation, findExactFor, formatDecimal, formatFit, formatSig10, formatPlain, formatQ, formatResult, fullDecimal } from "./format";
 import { type MenuAction, type MenuId, type MenuItem, type MenuTab, STATIC_MENUS, STAT_ITEMS_1, STAT_ITEMS_2 } from "./menus";
 import * as N from "./num";
 import { CalcError, type ErrCode, type Val, int, ZERO } from "./num";
@@ -54,7 +54,7 @@ export type Screen =
   | { t: "statSetup"; kind: 1 | 2; row: number; col: number }
   | { t: "tableFn" }
   | { t: "tableSetup"; row: number; col: number; fresh: boolean }
-  | { t: "table"; sel: number; top: number; ed: Ed | null }
+  | { t: "table"; sel: number; top: number; col: number; ed: Ed | null }
   | { t: "k" }
   | { t: "kdone" };
 
@@ -75,6 +75,8 @@ export interface State {
   start: number;
   browse: number | null;
   pasted: boolean;
+  /** A calculation just finished and nothing was typed since (lights ↓). */
+  done: boolean;
   ans: Val;
   vars: Record<string, Val>;
   seed: number;
@@ -84,7 +86,8 @@ export interface State {
   formulas: (El[] | null)[];
   stat: StatResult | null;
   statCfg: { data: number; frq: number; x: number; y: number };
-  statMenuSel: number;
+  /** Screen that statistics return to: Home, or the data editor they were started from. */
+  statBack: Screen;
   table: { fn: Ed; start: Ed; step: Ed; auto: boolean; xs: Val[] };
 }
 
@@ -110,6 +113,7 @@ export function initialState(): State {
     start: 0,
     browse: null,
     pasted: false,
+    done: false,
     ans: ZERO,
     vars: Object.fromEntries(VARS.map((v) => [v, ZERO])),
     seed: 12345,
@@ -119,7 +123,7 @@ export function initialState(): State {
     formulas: [null, null, null],
     stat: null,
     statCfg: { data: 0, frq: 0, x: 0, y: 1 },
-    statMenuSel: 0,
+    statBack: { t: "home" },
     table: { fn: newEd(), start: newEd([tok("0")]), step: newEd([tok("1")]), auto: true, xs: [] },
   };
 }
@@ -144,12 +148,14 @@ function ctxOf(s: State, extra: Partial<Ctx> = {}): Ctx {
 }
 
 const TRIG = new Set(["sin", "cos", "tan", "2nd+sin", "2nd+cos", "2nd+tan"]);
-const ANS_FIRST = new Set(["add", "sub", "mul", "div", "pow", "square", "recip", "sto", "2nd+lparen", "2nd+rparen", "2nd+x10n", "2nd+table"]);
+const ANS_FIRST = new Set(["add", "sub", "mul", "div", "pow", "square", "recip", "sto", "2nd+lparen", "x10n"]);
+const VALUE_FIRST = new Set(["2nd+rparen", "2nd+x10n", "2nd+table"]);
 
 /** Keys shared by every entry line (Home, K, table function, data editor, setup fields). */
 function editKey(s: State, ed: Ed, k: string, implicitAns: boolean): boolean {
   const mp = s.modes.mathprint;
-  if (implicitAns && isEmpty(ed) && ANS_FIRST.has(k)) insert(ed, [tok("Ans")]);
+  if (implicitAns && isEmpty(ed) && ANS_FIRST.has(k)) insert(ed, [tok("ans")]);
+  if (implicitAns && isEmpty(ed) && VALUE_FIRST.has(k)) insert(ed, ansValue(s));
   const put = (v: string) => insert(ed, [tok(v)]);
   if (/^[0-9.]$/.test(k)) {
     put(k);
@@ -167,11 +173,11 @@ function editKey(s: State, ed: Ed, k: string, implicitAns: boolean): boolean {
     log: "log(",
     ln: "ln(",
     "2nd+.": ",",
-    "2nd+neg": "Ans",
+    "2nd+neg": "ans",
     "2nd+lparen": "%",
     "2nd+rparen": "▸%",
     "2nd+x10n": "▸n/d◂▸Un/d",
-    "2nd+table": "▸F◂▸D",
+    "2nd+table": "▸F◂▸d",
   };
   if (simple[k]) {
     put(simple[k]);
@@ -186,7 +192,6 @@ function editKey(s: State, ed: Ed, k: string, implicitAns: boolean): boolean {
   }
   switch (k) {
     case "sto":
-      if (ed.path.length) end(ed);
       put("→");
       return true;
     case "2nd+log":
@@ -288,7 +293,7 @@ function fail(s: State, e: unknown, back: Screen) {
 
 function homeEnter(s: State) {
   let els: El[];
-  if (s.k) els = [...(isEmpty(s.ed) ? [tok("Ans")] : clone(s.ed.els)), ...clone(s.k)];
+  if (s.k) els = [...(isEmpty(s.ed) ? [tok("ans")] : clone(s.ed.els)), ...clone(s.k)];
   else if (!isEmpty(s.ed)) els = clone(s.ed.els);
   else if (s.history.length) els = clone(s.history[s.history.length - 1].entry).filter((e) => !isTok(e, "◂▸"));
   else return;
@@ -301,15 +306,20 @@ function homeEnter(s: State) {
     s.ans = r.hint === "pct" ? { d: r.val.d * 100, q: undefined } : r.val;
     s.ed = newEd();
     s.pasted = false;
+    s.done = true;
   } catch (e) {
-    end(s.ed);
+    if (e instanceof CalcError) {
+      s.history.push({ entry: clone(els), em: markup(els, s.modes.mathprint), rm: "", val: s.ans, exact: false });
+      s.start = s.history.length;
+      s.ed = newEd(clone(els));
+    }
     fail(s, e, { t: "home" });
   }
 }
 
 function toggle(s: State) {
   const last = s.history[s.history.length - 1];
-  if (!last || !isEmpty(s.ed)) return;
+  if (!last || !last.rm || !isEmpty(s.ed)) return;
   const fmt = fmtOf(s);
   let em: string;
   let rm: string;
@@ -322,6 +332,7 @@ function toggle(s: State) {
     rm = (q && formatQ(q, fmt.mathprint)) || formatDecimal(last.val.d, fmt);
   }
   s.history.push({ entry: [...fromMarkup(em), tok("◂▸")], em: em + "◂▸", rm, val: last.val, exact: !isDecimalText(rm) });
+  s.done = true;
 }
 
 function pasteParts(s: State): { els: El[] } | undefined {
@@ -355,6 +366,7 @@ function homeKey(s: State, k: string) {
     case "enter":
       return homeEnter(s);
     case "clear":
+      s.done = false;
       if (!isEmpty(s.ed)) s.ed = newEd();
       else s.start = s.history.length;
       s.pasted = false;
@@ -371,7 +383,7 @@ function homeKey(s: State, k: string) {
       vertical(s.ed, 1);
       return;
   }
-  editKey(s, s.ed, k, true);
+  if (editKey(s, s.ed, k, true)) s.done = false;
 }
 
 /** Editor that menu picks and editing keys apply to, for a given screen. */
@@ -419,14 +431,14 @@ function menuTabs(s: State, id: MenuId): MenuTab[] {
       items: names.map((n) => {
         if (n === "x'" || n === "y'") return { label: n, act: { statTok: `${n}(` } };
         const v = res.vals[n];
-        return { label: `${n}=${v === "Error" ? "Error" : formatFit(v, fmt, 11)}`, act: { statTok: `stat:${n}` } };
+        return { label: `${n}=${v === "Error" ? "Error" : formatSig10(v, fmt)}`, act: { statTok: `stat:${n}` } };
       }),
     },
   ];
 }
 
 function openMenu(s: State, id: MenuId, back: Screen) {
-  const sel = id === "stats" ? Math.min(s.statMenuSel, (s.stat ? 3 : 2) - 1) : 0;
+  const sel = 0;
   s.screen = { t: "menu", id, tab: 0, sel, top: Math.max(0, sel - 2), back };
 }
 
@@ -435,11 +447,18 @@ function doReset(s: State) {
   s.screen = { t: "cleared" };
 }
 
+/** The previous answer as entry elements: its exact form when it has one, else the 13-digit value. */
+function ansValue(s: State): El[] {
+  const v = s.ans;
+  const exact = v.q ? formatResult(v, fmtOf(s), { hint: "exact" }) : "";
+  return fromMarkup(exact && !/^[⁻0-9.]+$/.test(exact) ? exact : fullDecimal(v.d));
+}
+
 function insertTo(s: State, back: Screen, els: El[], ansFirst = false) {
   s.screen = back;
   const ed = edFor(s, back);
   if (!ed) return;
-  if (ansFirst && back.t === "home" && isEmpty(ed)) insert(ed, [tok("Ans")]);
+  if (ansFirst && (back.t === "home" || back.t === "data") && isEmpty(ed)) insert(ed, [tok("ans")]);
   insert(ed, els);
 }
 
@@ -449,7 +468,7 @@ function runAction(s: State, act: MenuAction, sc: Extract<Screen, { t: "menu" }>
   if ("dms" in act) {
     const ed = edFor(s, back);
     s.screen = back;
-    if (ed && back.t === "home" && isEmpty(ed)) insert(ed, fromMarkup(fullDecimal(s.ans.d)));
+    if (ed && back.t === "home" && isEmpty(ed)) insert(ed, ansValue(s));
     if (ed) insert(ed, [tok("▸DMS")]);
     return;
   }
@@ -470,8 +489,7 @@ function runAction(s: State, act: MenuAction, sc: Extract<Screen, { t: "menu" }>
   }
   if ("stats" in act) {
     const n = act.stats as number;
-    s.statMenuSel = n - 1;
-    if (n === 3) return openMenu(s, "statvars", { t: "home" });
+    if (n === 3) return openMenu(s, "statvars", s.statBack);
     s.screen = { t: "statSetup", kind: n as 1 | 2, row: 0, col: n === 1 ? s.statCfg.data : s.statCfg.x };
     return;
   }
@@ -497,10 +515,14 @@ function runAction(s: State, act: MenuAction, sc: Extract<Screen, { t: "menu" }>
     s.screen = back;
     return;
   }
-  if ("statTok" in act) return insertTo(s, { t: "home" }, [tok(act.statTok)]);
+  if ("statTok" in act) return insertTo(s, s.statBack, [tok(act.statTok)]);
 }
 
 function menuKey(s: State, sc: Extract<Screen, { t: "menu" }>, k: string) {
+  if (k === "data" && sc.id === "data" && sc.back.t === "data") {
+    s.screen = { ...sc.back, row: 0, top: 0, ed: null };
+    return;
+  }
   const tabs = menuTabs(s, sc.id);
   const items = tabs[sc.tab].items;
   const fit = () => {
@@ -531,7 +553,7 @@ function menuKey(s: State, sc: Extract<Screen, { t: "menu" }>, k: string) {
     case "enter":
       return runAction(s, items[sc.sel].act, sc);
     case "clear":
-      s.screen = sc.id === "statvars" || sc.id === "stats" ? { t: "home" } : sc.back;
+      s.screen = sc.back;
       return;
   }
   if (/^[1-9]$/.test(k)) {
@@ -647,6 +669,7 @@ function dataCommit(s: State, sc: Extract<Screen, { t: "data" }>): boolean {
   try {
     const r = run(ed.els, ctxOf(s));
     const v = r.usedFrac ? r.val : { d: r.val.d };
+    s.ans = r.val;
     const l = s.lists[sc.col];
     if (sc.row < l.length) l[sc.row] = v;
     else if (l.length < 42) l.push(v);
@@ -707,7 +730,8 @@ function dataKey(s: State, sc: Extract<Screen, { t: "data" }>, k: string) {
       return openMenu(s, "data", sc);
     case "2nd+data":
       if (!dataCommit(s, sc)) return;
-      return openMenu(s, "stats", { t: "home" });
+      s.statBack = sc;
+      return openMenu(s, "stats", sc);
     case "clear":
       sc.ed = newEd();
       return;
@@ -725,7 +749,7 @@ function dataKey(s: State, sc: Extract<Screen, { t: "data" }>, k: string) {
       return;
   }
   const ed = edFor(s, sc)!;
-  editKey(s, ed, k, false);
+  editKey(s, ed, k, true);
 }
 
 function statKey(s: State, sc: Extract<Screen, { t: "statSetup" }>, k: string) {
@@ -758,6 +782,8 @@ function statKey(s: State, sc: Extract<Screen, { t: "statSetup" }>, k: string) {
       }
       return calcStats(s, sc.kind);
     case "clear":
+      s.screen = s.statBack;
+      return;
     case "2nd+mode":
       s.screen = { t: "home" };
   }
@@ -772,19 +798,19 @@ function calcStats(s: State, kind: 1 | 2) {
     if (kind === 1) {
       const fs = cfg.frq === 0 ? null : num(s.lists[cfg.frq - 1]);
       vals = oneVar(num(s.lists[cfg.data]), fs);
-      title = `1-Var:L${cfg.data + 1},${cfg.frq === 0 ? "One" : "L" + cfg.frq}`;
+      title = `1-Var:L${cfg.data + 1},${cfg.frq === 0 ? "1" : "L" + cfg.frq}`;
     } else {
       vals = twoVar(num(s.lists[cfg.x]), num(s.lists[cfg.y]));
       title = `2-Var:L${cfg.x + 1},L${cfg.y + 1}`;
     }
     s.stat = { kind, title, vals };
-    openMenu(s, "statvars", { t: "home" });
+    openMenu(s, "statvars", s.statBack);
   } catch (e) {
-    fail(s, e, { t: "home" });
+    fail(s, e, s.statBack);
   }
 }
 
-function tableRows(s: State, sc: Extract<Screen, { t: "table" }>): { x: Val; y: string }[] {
+function tableRows(s: State, sc: Extract<Screen, { t: "table" }>): { x: Val; y: string; yFull: string }[] {
   const fmt = fmtOf(s);
   const xs: Val[] = [];
   if (s.table.auto) {
@@ -794,13 +820,15 @@ function tableRows(s: State, sc: Extract<Screen, { t: "table" }>): { x: Val; y: 
   } else xs.push(...s.table.xs.slice(sc.top, sc.top + 3));
   return xs.map((x) => {
     let y: string;
+    let yFull: string;
     try {
       const v = run(s.table.fn.els, ctxOf(s, { vars: { ...s.vars, x } })).val;
       y = formatFit(v.d, fmt, 6);
+      yFull = formatPlain(v, fmt);
     } catch {
-      y = "ERROR";
+      y = yFull = "ERROR";
     }
-    return { x, y };
+    return { x, y, yFull };
   });
 }
 
@@ -857,7 +885,7 @@ function tableKey(s: State, sc: Screen, k: string) {
           const step = evalOr(s, s.table.step.els, 1);
           if (s.table.auto && step.d === 0) return fail(s, new CalcError("DOMAIN"), sc);
           s.table.xs = [];
-          s.screen = { t: "table", sel: 0, top: 0, ed: null };
+          s.screen = { t: "table", sel: 0, top: 0, col: 0, ed: null };
           return;
         }
         return enterRow(sc.row + 1);
@@ -880,6 +908,10 @@ function tableKey(s: State, sc: Screen, k: string) {
     return;
   }
   if (sc.t !== "table") return;
+  if (k === "left" || k === "right") {
+    sc.col = k === "right" ? 1 : 0;
+    return;
+  }
   if (s.table.auto) {
     switch (k) {
       case "down":
@@ -1025,6 +1057,7 @@ function dispatch(s: State, k: string) {
     case "2nd+sto":
       return openMenu(s, "recall", sc);
     case "2nd+data":
+      s.statBack = { t: "home" };
       return openMenu(s, "stats", sc);
     case "data":
       s.screen = { t: "data", col: 0, row: 0, top: 0, ed: null, formula: false };
