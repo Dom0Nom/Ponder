@@ -15,12 +15,13 @@
  *
  * --native: compare against the real Tauri window instead of Vite, for screens 1, 2, 3, 12, 15, 23, 24, 38.
  *   Limits: this script never drives the native UI. Start the app on the design fixture yourself:
- *     VITE_MOCK_IPC=1 VITE_FIXTURE=design bun run tauri dev
- *   (the fixture is then seeded in the webview's mock backend; the frozen clock applies). Size the window to
+ *     VITE_MOCK_IPC=1 VITE_FIXTURE=design VITE_FIXTURE_OPTS="cards=review" bun run tauri dev
+ *   (the fixture is then seeded in the webview's mock backend; VITE_FIXTURE_OPTS holds the recipe's `query`
+ *   options, since the native window has no URL to put them in; the frozen clock applies). Size the window to
  *   1280x800 points (the capture is resized to 2560x1600 only when the aspect ratio already matches), put it in
  *   the state of each screen (see `query` options in src/test/designFixture.ts and each recipe), and the script
- *   asks you to confirm per screen before capturing it with `screencapture -l <windowId> -o`. Theme follows the
- *   macOS appearance, so run the light screens first, then switch appearance for the dark ones.
+ *   asks you to confirm per screen before capturing it with `screencapture -l <windowId> -o` (pipe `yes ''` to
+ *   capture right away). Switch theme with ⌘K "Toggle light / dark".
  *   Window owner is matched by NATIVE_OWNER (default "ai-learning-app|Ponder|AI Learning App").
  */
 import { chromium, webkit, type Browser, type Page } from "@playwright/test";
