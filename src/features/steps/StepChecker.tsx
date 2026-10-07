@@ -64,7 +64,7 @@ function StepRow({
     <li
       data-testid="step-row"
       data-status={verdict ? (verdict.ok ? "ok" : "wrong") : "unchecked"}
-      className={cn("flex items-center gap-2.5 px-3 py-[9px] [&+&]:border-t [&+&]:border-divider", isFirstWrong && "bg-danger-soft")}
+      className={cn("group/row flex items-center gap-2.5 px-3 py-[9px] [&+&]:border-t [&+&]:border-divider", isFirstWrong && "bg-danger-soft")}
     >
       <span className="w-11 shrink-0 text-label text-muted">{s.steps.stepN(n)}</span>
       <Tex tex={text} className="min-w-0 flex-1 overflow-x-auto text-title-sm" />
@@ -74,7 +74,7 @@ function StepRow({
         </span>
       ) : verdict.ok ? (
         <span className="flex h-[23.8px] items-center gap-1 text-success" title={verdict.checkedBy === "calc" ? s.steps.byCalc : undefined}>
-          {verdict.checkedBy === "calc" && <Calculator size={12} aria-hidden />}
+          {verdict.checkedBy === "calc" && <Calculator size={12} className="opacity-0 group-hover/row:opacity-100" aria-hidden />}
           <Check size={15} aria-label={s.steps.stepOk} />
         </span>
       ) : (
@@ -86,39 +86,41 @@ function StepRow({
   );
 }
 
-function FirstWrong({ verdict }: { verdict: StepVerdict }) {
+function FirstWrong({ verdict, note }: { verdict: StepVerdict; note?: string }) {
   const [showHint, setShowHint] = useState(false);
   const [showFix, setShowFix] = useState(false);
   return (
     <div className="flex flex-col gap-1.5" data-testid="first-wrong">
-      {verdict.issue && (
-        <div className="text-fg-secondary">
-          <Markdown text={verdict.issue} />
-        </div>
-      )}
-      {verdict.checkedBy === "calc" && (
-        <p className="flex items-center gap-1.5 text-label text-muted">
-          <Calculator size={12} aria-hidden /> {s.steps.byCalc}
-        </p>
-      )}
-      {(verdict.hint || verdict.fix) && (
-        <div className="-ml-[9px] flex gap-0.5">
+      <div className="-ml-[9px] flex gap-0.5">
+        <Button variant="ghost" size="sm" aria-expanded={showHint} onClick={() => setShowHint(!showHint)}>
+          <Lightbulb size={14} /> {s.steps.hint}
+        </Button>
+        {verdict.fix && (
+          <Button variant="ghost" size="sm" aria-expanded={showFix} onClick={() => setShowFix(!showFix)}>
+            {showFix ? <EyeOff size={14} /> : <Eye size={14} />} {showFix ? s.steps.hideFix : s.steps.showFix}
+          </Button>
+        )}
+      </div>
+      {showHint && (
+        <div className="flex flex-col gap-1.5">
+          {note && <p className="text-label text-muted">{note}</p>}
+          {verdict.issue && (
+            <div className="text-fg-secondary">
+              <Markdown text={verdict.issue} />
+            </div>
+          )}
+          {verdict.checkedBy === "calc" && (
+            <p className="flex items-center gap-1.5 text-label text-muted">
+              <Calculator size={12} aria-hidden /> {s.steps.byCalc}
+            </p>
+          )}
           {verdict.hint && (
-            <Button variant="ghost" size="sm" aria-expanded={showHint} onClick={() => setShowHint(!showHint)}>
-              <Lightbulb size={14} /> {s.steps.hint}
-            </Button>
+            <div className="flex gap-2 text-fg-secondary">
+              <Lightbulb size={14} className="mt-0.5 shrink-0" aria-label={s.steps.hint} />
+              <Markdown text={verdict.hint} />
+            </div>
           )}
-          {verdict.fix && (
-            <Button variant="ghost" size="sm" aria-expanded={showFix} onClick={() => setShowFix(!showFix)}>
-              {showFix ? <EyeOff size={14} /> : <Eye size={14} />} {showFix ? s.steps.hideFix : s.steps.showFix}
-            </Button>
-          )}
-        </div>
-      )}
-      {showHint && verdict.hint && (
-        <div className="flex gap-2 text-fg-secondary">
-          <Lightbulb size={14} className="mt-0.5 shrink-0" aria-label={s.steps.hint} />
-          <Markdown text={verdict.hint} />
+          <p className="text-label text-muted">{s.steps.laterUnchecked}</p>
         </div>
       )}
       {showFix && verdict.fix && (
@@ -127,7 +129,6 @@ function FirstWrong({ verdict }: { verdict: StepVerdict }) {
           <Tex tex={verdict.fix} />
         </div>
       )}
-      <p className="text-label text-muted">{s.steps.laterUnchecked}</p>
     </div>
   );
 }
@@ -157,6 +158,9 @@ export function StepCheckerPanel({
 
   const lines = linesOf(text);
   const fresh = result && result.steps.join("\n") === lines.join("\n") ? result.r : null;
+  const summaryNote = fresh
+    ? [fresh.summary, fresh.finalCorrect != null && (fresh.finalCorrect ? s.steps.finalRight : s.steps.finalWrong)].filter(Boolean).join(" · ")
+    : "";
 
   const check = async () => {
     if (!lines.length) return setError(new Error(s.steps.needSteps));
@@ -312,14 +316,11 @@ export function StepCheckerPanel({
             <p className={cn("font-semibold", firstWrong == null ? "text-success" : "text-danger-text")}>
               {firstWrong == null ? s.steps.allGood : s.steps.firstWrong(firstWrong + 1)}
             </p>
-            {(fresh.summary || fresh.finalCorrect != null) && (
-              <p className="text-label text-muted">
-                {[fresh.summary, fresh.finalCorrect != null && (fresh.finalCorrect ? s.steps.finalRight : s.steps.finalWrong)]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
+            {firstWrong != null ? (
+              <FirstWrong verdict={fresh.verdicts[firstWrong]} note={summaryNote} />
+            ) : (
+              summaryNote && <p className="text-label text-muted">{summaryNote}</p>
             )}
-            {firstWrong != null && <FirstWrong verdict={fresh.verdicts[firstWrong]} />}
           </div>
         )}
         <PhotoDialog open={photoOpen} onOpenChange={setPhotoOpen} spaceId={spaceId} initialImage={pasted} onRead={fromPhoto} />

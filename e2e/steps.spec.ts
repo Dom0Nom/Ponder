@@ -22,6 +22,7 @@ async function expectSignErrorAtStep1(app: Page) {
   await expect(rows.nth(0)).toHaveAttribute("data-status", "wrong");
   for (const i of [1, 2, 3]) await expect(rows.nth(i)).toHaveAttribute("data-status", "ok");
   const first = checker.getByTestId("first-wrong");
+  await first.getByRole("button", { name: "Hint" }).click();
   await expect(first).toContainText("wasn't applied to every term");
   await expect(first).toContainText("checked by calculation");
   await expect(checker.getByTestId("step-summary")).toContainText("Step 1 is where it goes wrong");
@@ -37,7 +38,7 @@ test("flags the exact step with a sign error and saves it as a mistake", async (
   await checker.getByLabel("Your steps, one per line").fill("-2x-6+4=10\n-2x-2=10\n-2x=12\nx=-6");
   await checker.getByRole("button", { name: "Check my steps" }).click();
   await expectSignErrorAtStep1(app);
-  await expect(checker.getByTestId("step-row").first().locator(".katex")).toBeVisible();
+  await expect(checker.getByTestId("step-row").first()).toContainText("−2x − 6 + 4 = 10");
   await expect(app.getByText("Saved to your mistake notebook")).toBeVisible();
   const mistakes = await app.evaluate(() => Object.values((window as any).__mock.db().mistakes) as any[]);
   expect(mistakes).toHaveLength(1);

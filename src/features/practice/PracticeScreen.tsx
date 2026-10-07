@@ -320,10 +320,10 @@ function Session({
                       <p className="text-fg-secondary">{[result.grade.feedback, result.errorNote].filter(Boolean).join(" ")}</p>
                     )}
                   </div>
-                  <div className="flex flex-col gap-2 rounded-card border border-border px-4 pb-3 pt-[15px]">
+                  <div className="flex flex-col gap-2 rounded-card border border-border px-4 pb-3.5 pt-3.5">
                     <p className="text-label font-semibold text-muted">{s.practice.solution}</p>
-                    <div className="text-input leading-[1.7] [&_.prose-chat]:leading-[1.7] [&_p]:m-0">
-                      <Markdown text={item.solution} />
+                    <div className="practice-solution text-input leading-[1.7] [&_.prose-chat]:leading-[1.7] [&_p]:m-0">
+                      <Markdown text={item.solution} plainInlineMath />
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -333,10 +333,10 @@ function Session({
                     <Button variant="secondary" onClick={() => load("same")}>
                       {s.practice.moreLikeThis}
                     </Button>
-                    <Button variant="ghost" onClick={() => load("easier")}>
+                    <Button variant="ghost" size="sm" onClick={() => load("easier")}>
                       {s.practice.easier}
                     </Button>
-                    <Button variant="ghost" onClick={() => load("harder")}>
+                    <Button variant="ghost" size="sm" onClick={() => load("harder")}>
                       {s.practice.harder}
                     </Button>
                   </div>

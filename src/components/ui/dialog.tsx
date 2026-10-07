@@ -59,7 +59,7 @@ export function Dialog({
               </div>
               <D.Close
                 aria-label={s.common.close}
-                className="flex size-7 shrink-0 items-center justify-center rounded-btn text-fg hover:bg-fill"
+                className="flex size-7 shrink-0 items-center justify-center rounded-btn text-muted hover:bg-fill hover:text-fg"
               >
                 <X size={15} />
               </D.Close>

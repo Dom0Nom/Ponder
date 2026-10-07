@@ -6,7 +6,7 @@
  * Browser: `?fixture=design[&option=value…]`. Native app (mock IPC): `VITE_MOCK_IPC=1 VITE_FIXTURE=design bun run tauri dev`.
  *
  * Options (all optional):
- *   chat=plain|v2|card|none   plain (most artboards), v2 (screen 2: inline math + "Thought for 4 seconds"), card (screens 11-21: plain text, follow-ups, 12 sources), none (screen 38)
+ *   chat=plain|v2|none   plain (most artboards), v2 (screen 2: inline math + "Thought for 4 seconds"), none (screen 38)
  *   spaces=all|none      none = screen 36
  *   cards=review|browse|none   review (14 due cards), browse (the four cards of screen 18), none (screen 37)
  *   curriculum=plan|practice   the topic lists differ between screens 20 and 4/12
@@ -26,7 +26,7 @@ const H = 60 * MIN;
 const D = 24 * H;
 
 export interface FixtureOptions {
-  chat: "plain" | "v2" | "card" | "none";
+  chat: "plain" | "v2" | "none";
   spaces: "all" | "none";
   cards: "review" | "browse" | "none";
   curriculum: "plan" | "practice";
@@ -53,7 +53,7 @@ export function readOptions(search = location.search): FixtureOptions {
     return v && allowed.includes(v) ? v : d;
   };
   return {
-    chat: pick("chat", ["plain", "v2", "card", "none"], "plain"),
+    chat: pick("chat", ["plain", "v2", "none"], "plain"),
     spaces: pick("spaces", ["all", "none"], "all"),
     cards: pick("cards", ["review", "browse", "none"], "browse"),
     curriculum: pick("curriculum", ["plan", "practice"], "plan"),
@@ -206,18 +206,13 @@ const COVERAGE: Record<string, { similarity: number | null; keywordHits: number 
 };
 
 const COURSE_LESSONS = [
-  "Prerequisites",
-  "Equations and inequalities",
-  "Functions",
-  "Linear functions",
-  "Polynomial functions",
-  "Exponential functions",
-  "Systems of equations",
-  "Matrices",
-  "Analytic geometry",
-  "Sequences and series",
-  "Probability",
-  "Counting principles",
+  "1 Prerequisites",
+  "2 Equations and inequalities",
+  "3 Functions",
+  "4 Linear functions",
+  "5 Polynomial functions",
+  "6 Exponential functions",
+  "7 Systems of equations",
 ];
 
 const CARDS_BROWSE = [
@@ -370,26 +365,6 @@ function seedGed(db: DB, o: FixtureOptions, at: (n: number) => number, x: <V ext
         updatedAt: at(2 * D),
       } as T.Source;
     }
-    if (o.chat === "card") {
-      for (let k = 1; k <= 7; k++) {
-        db.sources[`src-extra-${k}`] = {
-          id: `src-extra-${k}`,
-          spaceId: sp,
-          title: `Worksheet ${k}`,
-          kind: "pdf",
-          origin: null,
-          status: "ready",
-          error: null,
-          summary: "Practice worksheet.",
-          useInChat: true,
-          progress: 1,
-          charCount: 1200,
-          chunkCount: 1,
-          createdAt: at(k * H),
-          updatedAt: at(k * H),
-        } as T.Source;
-      }
-    }
     const pageOffset = 0;
     db.texts["src-openstax"] = { text: OPENSTAX_TEXT, pages: [[412, pageOffset]] };
     const paras = OPENSTAX_TEXT.split("\n\n");
@@ -414,7 +389,6 @@ function seedGed(db: DB, o: FixtureOptions, at: (n: number) => number, x: <V ext
       );
     }
     const v2 = o.chat === "v2";
-    const card = o.chat === "card";
     const cite = (n: number, sourceId: string, title: string, chunkId: number, snippet: string): T.Citation => ({
       n,
       chunkId,
@@ -455,7 +429,7 @@ function seedGed(db: DB, o: FixtureOptions, at: (n: number) => number, x: <V ext
       content: `${first}\n\nUse **elimination** when both equations are in standard form and a variable has matching or opposite coefficients, so adding the equations cancels it. [3]`,
       reasoning: v2 ? "Comparing when each method needs fewer steps." : null,
       citations,
-      meta: { tutorStyle: "mixed", model: { providerId: "prov-anthropic", model: "Sonnet 5.5" }, thinking: v2, ...(v2 || card ? { ...(v2 ? { thinkingMs: 4000 } : {}), followUps: ["Why does substitution work?", "Show me when elimination is faster", "Give me a harder one"] } : {}) } as T.MessageMeta,
+      meta: { tutorStyle: "mixed", model: { providerId: "prov-anthropic", model: "Sonnet 5.5" }, thinking: v2, ...(v2 ? { thinkingMs: 4000, followUps: ["Why does substitution work?", "Show me when elimination is faster", "Give me a harder one"] } : {}) } as T.MessageMeta,
       status: "complete",
       error: null,
       createdAt: at(2 * H),
@@ -813,6 +787,20 @@ export function fixtureScript(fallback: Script): Script {
     }
     if (/Write ONE (practice|new) problem/i.test(text)) {
       return { content: JSON.stringify({ kind: "numeric", ...FIXTURE_PRACTICE, level: 3 }) };
+    }
+    if (/You check a learner's worked math solution/i.test(text)) {
+      return {
+        content: JSON.stringify({
+          steps: [
+            { step: 1, ok: true },
+            { step: 2, ok: true },
+            { step: 3, ok: false, issue: "Adding 6 to both sides gives 12, not 8.", hint: "Add the same number to both sides.", fix: "2x = 12" },
+            { step: 4, ok: true },
+          ],
+          finalCorrect: null,
+          summary: "",
+        }),
+      };
     }
     if (/Solve this problem carefully/i.test(text)) return { content: `{"answer": ${FIXTURE_PRACTICE.answer}}` };
     if (/Classify the most likely mistake/i.test(text)) return { content: JSON.stringify({ errorType: "sign", note: "" }) };

@@ -511,6 +511,7 @@ export const SCREENS: Record<number, Screen> = {
     setup: async (p) => {
       await nav(p, { name: "review", tab: "mistakes" });
       await click(p, /mistake notebook/i, "tab").catch(() => undefined);
+      await p.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
       await settle(p, 400);
     },
   },

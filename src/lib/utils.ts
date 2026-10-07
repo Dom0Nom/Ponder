@@ -142,6 +142,7 @@ export function plainMath(text: string): string | null {
   return t
     .replace(/\s*([+=<>×÷−])\s*/g, " $1 ")
     .replace(/(?<=[\w)])\s*-\s*(?=[\w(])/g, " − ")
+    .replace(/(^|[=(+×÷<>−] ?)-(?=[\w(.])/g, "$1−")
     .replace(/\s+/g, " ")
     .trim();
 }

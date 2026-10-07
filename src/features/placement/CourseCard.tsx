@@ -57,12 +57,12 @@ function CourseBlock({ space, course }: { space: Space; course: Course }) {
 
   return (
     <div className="flex flex-col gap-3.5" data-testid="course-card">
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-2">
+      <div className="group flex flex-col gap-1.5">
+        <div className="relative flex items-center gap-2">
           <span className="flex-1 truncate text-input font-semibold">{course.title}</span>
           <Menu>
             <MenuTrigger asChild>
-              <Button variant="ghost-muted" size="icon-sm" title={s.course.options} aria-label={s.course.options}>
+              <Button variant="ghost-muted" size="icon-sm" className={cn(REVEAL, "absolute right-0 top-1/2 -translate-y-1/2 data-[state=open]:opacity-100")} title={s.course.options} aria-label={s.course.options}>
                 <Ellipsis size={15} />
               </Button>
             </MenuTrigger>
@@ -74,8 +74,8 @@ function CourseBlock({ space, course }: { space: Space; course: Course }) {
           </Menu>
         </div>
         <div className="flex items-center gap-2.5">
-          <span className="block h-1 w-[140px] flex-none rounded-sm bg-fill-active">
-            <span className="block h-1 rounded-sm bg-fg" style={{ width: `${pct}%` }} />
+          <span className="block h-1 w-[140px] flex-none rounded-[2px] bg-fill-active">
+            <span className="block h-1 rounded-[2px] bg-fg" style={{ width: `${pct}%` }} />
           </span>
           <span className="text-muted">{s.course.progress(done, course.lessons.length)}</span>
         </div>
