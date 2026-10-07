@@ -85,6 +85,7 @@ test("Reduce motion: no WebGL context anywhere", async ({ browser }) => {
 test("Reduce motion setting: no WebGL context anywhere", async ({ app }) => {
   await countWebGL(app);
   await app.reload();
+  await app.waitForFunction(() => !!(window as unknown as W).__ui);
   await app.evaluate(() => (window as unknown as W).__ui.getState().setReduceMotion(true));
   await walk(app);
 });
@@ -92,6 +93,7 @@ test("Reduce motion setting: no WebGL context anywhere", async ({ app }) => {
 test("Visual effects off: no WebGL context anywhere", async ({ app }) => {
   await countWebGL(app);
   await app.reload();
+  await app.waitForFunction(() => !!(window as unknown as W).__ui);
   await app.evaluate(() => (window as unknown as W).__ui.getState().setVisualEffects(false));
   await walk(app);
 });
@@ -99,6 +101,7 @@ test("Visual effects off: no WebGL context anywhere", async ({ app }) => {
 test("effects on: the new-chat mark creates exactly one context", async ({ app }) => {
   await countWebGL(app);
   await app.reload();
+  await app.waitForFunction(() => !!(window as unknown as W).__ui);
   await newSpace(app);
   await expect(app.getByTestId("chat-empty").locator("[data-shader='on']")).toHaveCount(1);
   await expect.poll(() => contexts(app)).toBe(1);
