@@ -46,7 +46,7 @@ export function HomeScreen() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-[960px] flex-col gap-6 px-10 pb-12 pt-11">
+      <div className="mx-auto flex max-w-[1040px] flex-col gap-6 px-10 pb-12 pt-11">
         <div className="flex items-center gap-4">
           <h1 className="flex-1 text-page font-semibold">{s.home.title}</h1>
           <Button variant="primary" size="lg" onClick={() => setSpaceDialogOpen(true)}>

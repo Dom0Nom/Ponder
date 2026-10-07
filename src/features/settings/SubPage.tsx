@@ -21,7 +21,7 @@ export function SubPage({
   const navigate = useUi((st) => st.navigate);
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-[720px] flex-col gap-4 p-10">
+      <div className="mx-auto flex max-w-[800px] flex-col gap-4 p-10">
         <nav aria-label={s.settings.title} className="flex items-center gap-1.5 text-body text-muted">
           <button className="flex items-center gap-1 hover:text-fg" onClick={() => navigate({ name: "settings", section })}>
             <ChevronLeft size={14} />

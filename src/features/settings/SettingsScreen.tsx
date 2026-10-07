@@ -62,7 +62,7 @@ export function SettingsScreen() {
   if (page) return <SettingsSubPage />;
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-[720px] flex-col gap-5 px-10 pb-12 pt-10">
+      <div className="mx-auto flex max-w-[800px] flex-col gap-5 px-10 pb-12 pt-10">
         <h1 className="text-page font-semibold">{s.settings.title}</h1>
         <SettingsSection id="settings-appearance" title={s.settings.appearance}>
           <SettingsGroup>
