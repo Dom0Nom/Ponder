@@ -1,7 +1,9 @@
 /**
  * 1:1 pixel-diff gate between the design artboards and the running app.
  *
- *   bun scripts/design-diff.ts [ids...] [--native] [--port 1450] [--json] [--refresh-design] [--all]
+ *   bun scripts/design-diff.ts [ids...] [--native] [--webkit] [--port 1450] [--json] [--refresh-design] [--all]
+ *
+ * --webkit: render the app side in Playwright WebKit (same engine family as the macOS WKWebView).
  *
  * ids: "12", "12a", "12b" (a number means light and dark); no ids means every screen.
  * Design side: screenshots each artboard's 1280x800 frame at 2x, cached in design/compare/design/ (served from
@@ -21,7 +23,7 @@
  *   macOS appearance, so run the light screens first, then switch appearance for the dark ones.
  *   Window owner is matched by NATIVE_OWNER (default "ai-learning-app|Ponder|AI Learning App").
  */
-import { chromium, type Browser, type Page } from "@playwright/test";
+import { chromium, webkit, type Browser, type Page } from "@playwright/test";
 import pixelmatch from "pixelmatch";
 import { PNG } from "pngjs";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
@@ -306,6 +308,8 @@ async function main() {
   await ensureServers(!NATIVE);
 
   const browser = await chromium.launch();
+  // --webkit renders the app in WebKit (the engine behind the macOS app's WKWebView); the design side stays Chromium
+  const appBrowser = flag("--webkit") ? await webkit.launch() : browser;
   const rows: Row[] = [];
   try {
     const designFail = await shootDesign(browser, recipes, flag("--refresh-design"));
@@ -324,7 +328,7 @@ async function main() {
           await rl.question(`\nShow screen ${r.id} (${r.title}${r.query ? `, fixture options: ${r.query}` : ""}) in the native window, then press Enter... `);
           buf = captureNative(appPath);
         } else {
-          buf = await shootApp(browser, r);
+          buf = await shootApp(appBrowser, r);
         }
         writeFileSync(appPath, buf);
         row.pct = compare(join(DESIGN_OUT, `${r.id}.png`), buf, BACK_BUTTON_SCREENS.has(r.n) ? [...r.masks, BACK_BUTTON] : r.masks, join(OUT, `${r.id}-diff.png`), r.region, r.n);
@@ -337,6 +341,7 @@ async function main() {
     }
     rl?.close();
   } finally {
+    if (appBrowser !== browser) await appBrowser.close();
     await browser.close();
     for (const c of children) c.kill();
   }
