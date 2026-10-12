@@ -6,10 +6,10 @@ import { useFocusStore } from "../focus/focusStore";
 import { api } from "../../lib/ipc";
 import { storedControls } from "../../lib/chat/controls";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
-import { plainAnswer } from "../../lib/chat/plainAnswer";
 import { runTurn } from "../../lib/chat/runner";
 import { s } from "../../lib/strings";
-import { stopSpeaking, speak } from "../../lib/tts/player";
+import { LiveSpeech } from "../../lib/tts/liveSpeech";
+import { speakLive, stopSpeaking, usePlayer, type LiveSpeaker } from "../../lib/tts/player";
 import { audioFormatOf, speechSettings, transcribe } from "../../lib/tts/speech";
 import type { Space, Thread } from "../../lib/types";
 import { listen, type Listening } from "../../lib/voice/recorder";
@@ -81,13 +81,32 @@ async function turns(sess: Session) {
     useVoice.setState({ heard: text });
     set("thinking");
 
-    let answer: string;
+    let speaker: LiveSpeaker | null = null;
+    let stopWatching = () => {};
     try {
       const { space } = sess.deps;
       const llm = await resolveChatModel(space);
       const thread = sess.thread ?? sess.deps.thread ?? (await sess.deps.ensureThread());
       sess.thread = thread;
       if (!live(sess)) return;
+      const sp = speakLive(SPEAK_KEY);
+      speaker = sp;
+      const feed = new LiveSpeech(sp.push);
+      const offStream = useChatStream.subscribe((st) => {
+        const running = st.running[thread.id];
+        const text = running && st.live[running.messageId]?.content;
+        if (text) feed.update(text);
+      });
+      const offPlayer = usePlayer.subscribe((p) => {
+        if (!live(sess)) return;
+        const phase = useVoice.getState().phase;
+        if (phase === "thinking" && p.key === SPEAK_KEY && p.status === "playing") set("speaking");
+        else if (phase === "speaking" && p.key !== SPEAK_KEY) set("thinking");
+      });
+      stopWatching = () => {
+        offStream();
+        offPlayer();
+      };
       const final = await runTurn({
         llm,
         space,
@@ -98,27 +117,32 @@ async function turns(sess: Session) {
         userText: text,
         voice: true,
       });
-      if (!live(sess)) return;
+      offStream();
+      if (!live(sess)) return stopWatching();
       if (final.status === "error") throw new Error(final.error ?? s.chat.failed);
-      answer = plainAnswer(final.content);
+      feed.finish(final.content);
+      sp.end();
     } catch (e) {
+      stopWatching();
+      if (speaker) stopSpeaking();
       if (live(sess)) {
         toastError(s.chat.failed, e instanceof NoModelError ? new Error(s.chat.noModel) : e);
         pause(sess);
       }
       return;
     }
-    if (!answer) continue;
 
-    set("speaking");
     try {
-      await speak(SPEAK_KEY, answer);
+      if (usePlayer.getState().key === SPEAK_KEY) set("speaking");
+      await speaker.done;
     } catch (e) {
       if (live(sess)) {
         toastError(s.speech.failed, e);
         pause(sess);
       }
       return;
+    } finally {
+      stopWatching();
     }
   }
 }
@@ -154,6 +178,9 @@ export function micPress() {
   if (!sess) return;
   const { phase } = useVoice.getState();
   if (phase === "listening") sess.listening?.stop();
-  else if (phase === "speaking") stopSpeaking();
+  else if (phase === "speaking") {
+    stopSpeaking();
+    if (sess.thread) useChatStream.getState().stop(sess.thread.id);
+  }
   else if (phase === "paused") void turns(sess);
 }

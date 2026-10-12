@@ -66,13 +66,12 @@ test("voice tutor: speak, get a spoken answer in the thread, then listen again",
   await expect(messages).toContainText("Chloroplasts capture light energy.");
   await expect(messages).toContainText("do you think that happens");
 
+  await expect(bar(app)).toHaveAttribute("data-phase", "listening", { timeout: 15_000 });
   const tts = (await speech(app)).filter((c) => c.url.endsWith("/audio/speech"));
-  expect(tts.length).toBeGreaterThan(0);
+  expect(tts.length).toBeGreaterThan(1);
   const spoken = tts.map((c) => String(c.body!.input)).join(" ");
   expect(spoken).toContain("do you think that happens");
   expect(spoken).not.toMatch(/[*[\]{}]/);
-
-  await expect(bar(app)).toHaveAttribute("data-phase", "listening", { timeout: 10_000 });
   await app.getByTestId("voice-stop").click();
   await expect(bar(app)).toHaveCount(0);
   await expect(app.getByLabel("Ask about your sources…")).toBeVisible();

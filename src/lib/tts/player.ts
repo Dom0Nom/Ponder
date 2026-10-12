@@ -15,6 +15,7 @@ export interface Segment {
 let run = 0;
 let current: HTMLAudioElement | null = null;
 let finishClip: (() => void) | null = null;
+let wakeLive: (() => void) | null = null;
 
 function release() {
   if (current) {
@@ -29,6 +30,7 @@ function release() {
 export function stopSpeaking() {
   run++;
   release();
+  wakeLive?.();
   usePlayer.setState({ key: null, status: "idle", segment: 0 });
 }
 
@@ -107,6 +109,79 @@ export async function speakSegments(key: string, segments: Segment[], start = 0)
 }
 
 export const speak = (key: string, text: string) => speakSegments(key, [{ text }]);
+
+export interface LiveSpeaker {
+  push: (text: string) => void;
+  /** No more text is coming. */
+  end: () => void;
+  /** True when everything pushed was played, false when stopped or replaced. */
+  done: Promise<boolean>;
+}
+
+/** Speaks text as it arrives. Text pushed while a clip plays is joined into the next clip. */
+export function speakLive(key: string): LiveSpeaker {
+  stopSpeaking();
+  const my = run;
+  let buffer = "";
+  let ended = false;
+  const take = () => {
+    const [head, ...rest] = speechChunks(buffer, 600, 600);
+    buffer = rest.join(" ");
+    return head ?? "";
+  };
+  usePlayer.setState({ key, status: "loading", segment: 0 });
+  const done = (async () => {
+    try {
+      const [settings, providers] = await Promise.all([api.getSettings(), api.listProviders()]);
+      const cfg = speechSettings(settings);
+      const next = () => {
+        const p = synthesize(cfg, take(), providers);
+        p.catch(() => undefined);
+        return p;
+      };
+      let clip: Promise<Audio> | null = null;
+      for (;;) {
+        while (!clip && !buffer.trim() && !ended && my === run) {
+          await new Promise<void>((resolve) => {
+            const w = () => {
+              if (wakeLive === w) wakeLive = null;
+              resolve();
+            };
+            wakeLive = w;
+          });
+        }
+        if (my !== run) return false;
+        if (!clip) {
+          if (!buffer.trim()) return true;
+          clip = next();
+        }
+        const audio = await clip;
+        if (my !== run) return false;
+        clip = buffer.trim() ? next() : null;
+        await playClip(audio, cfg.speed, my);
+        if (my !== run) return false;
+      }
+    } catch (e) {
+      if (my === run) throw e;
+      return false;
+    } finally {
+      if (my === run) stopSpeaking();
+    }
+  })();
+  done.catch(() => undefined);
+  return {
+    push: (text) => {
+      if (my !== run || ended) return;
+      buffer = buffer ? `${buffer} ${text}` : text;
+      wakeLive?.();
+    },
+    end: () => {
+      ended = true;
+      wakeLive?.();
+    },
+    done,
+  };
+}
 
 /** Renders segments to one MP3 file without playing them. Gemini returns WAV clips, which can't be joined this way. */
 export async function renderSegments(segments: Segment[], onProgress?: (done: number, total: number) => void, signal?: AbortSignal): Promise<Uint8Array> {
