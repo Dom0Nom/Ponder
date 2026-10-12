@@ -2,7 +2,8 @@ import { useRef, useState } from "react";
 import { Reveal } from "../../components/motion/Reveal";
 import { useFlip } from "../../lib/useFlip";
 import { useFreshKeys } from "../../lib/useFreshKeys";
-import { Ellipsis, LayoutGrid, Pencil, Plus, Trash2 } from "lucide-react";
+import { Download, Ellipsis, LayoutGrid, Pencil, Plus, Trash2 } from "lucide-react";
+import { exportStudyPack } from "../packs/studyPack";
 import { useDeleteSpace, useSpaces } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import { relativeTime } from "../../lib/utils";
@@ -121,10 +122,14 @@ function SpaceCard({ space, onEdit, onDelete }: { space: Space; onEdit: () => vo
               <Ellipsis size={16} />
             </Button>
           </MenuTrigger>
-          <MenuContent align="end" sideOffset={2} className="w-[150px]" onClick={(e) => e.stopPropagation()}>
+          <MenuContent align="end" sideOffset={2} className="w-[200px]" onClick={(e) => e.stopPropagation()}>
             <MenuItem onSelect={onEdit}>
               <Pencil size={14} />
               {s.common.edit}
+            </MenuItem>
+            <MenuItem onSelect={() => void exportStudyPack(space.id, space.name)}>
+              <Download size={14} />
+              {s.pack.export}
             </MenuItem>
             <MenuSeparator />
             <MenuItem danger onSelect={onDelete}>

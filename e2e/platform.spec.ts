@@ -51,6 +51,79 @@ test("integrations: shows link examples and the CLI alias with the binary path",
   expect(cfg).toEqual({ mcpServers: { ponder: { command: exe, args: ["mcp", "--db", db] } } });
 });
 
+const TEXT = "Cells divide by mitosis. Mitochondria make energy for the cell.";
+
+async function addTextSource(app: Page, title: string) {
+  await app.getByRole("button", { name: "Add source" }).click();
+  await app.getByRole("tab", { name: "Paste text" }).click();
+  await app.getByLabel("Title").fill(title);
+  await app.getByRole("textbox", { name: "Text", exact: true }).fill(TEXT);
+  await app.getByRole("button", { name: "Import" }).click();
+  await expect(app.locator('[data-testid="source-row"][data-status="ready"]')).toHaveCount(1);
+}
+
+async function paletteAction(app: Page, name: string) {
+  await app.getByRole("button", { name: "Search" }).click();
+  await app.getByPlaceholder("Type a command or search…").fill(name);
+  await app.keyboard.press("Enter");
+}
+
+test("study packs: export a space, import it as a new space with its own sources", async ({ app }) => {
+  test.setTimeout(120_000);
+  await paletteAction(app, "Import study pack");
+  await expect(app.getByText("Importing study pack…")).toHaveCount(0);
+  await expect(app.getByTestId("space-grid")).toHaveCount(0);
+
+  const bio = await createSpace(app, "Biology");
+  await addTextSource(app, "Cells");
+  await app.evaluate((id) => {
+    const db = (window as any).__mock.db();
+    db.notes = { n1: { id: "n1", spaceId: id, title: "Osmosis", body: "Water moves.", useAsSource: false, sourceId: null, createdAt: 1, updatedAt: 1 } };
+    db.cards = { c1: { id: "c1", spaceId: id, kind: "basic", front: "Q", back: "A", data: null, sourceId: null, chunkStart: null, chunkEnd: null, origin: "manual", suspended: false, createdAt: 1, updatedAt: 1, due: 1, state: 2, fsrs: {}, spaceName: "Biology" } };
+  }, bio);
+
+  await paletteAction(app, "Export study pack");
+  await expect(app.getByText("Study pack saved: 1 source, 1 card, 1 note")).toBeVisible();
+
+  await paletteAction(app, "Import study pack");
+  await expect(app.getByText(/Imported “Biology \(imported\)”/)).toBeVisible();
+  await expect(app.getByRole("banner").getByText("Biology (imported)")).toBeVisible();
+  await app.getByRole("button", { name: /^Sources/ }).first().click();
+  await expect(app.locator('[data-testid="source-row"][data-status="ready"]')).toHaveCount(1);
+  await expect(app.getByTestId("source-row")).toContainText("Cells");
+
+  const counts = await app.evaluate(() => {
+    const db = (window as any).__mock.db();
+    const spaces = Object.values(db.spaces) as any[];
+    const imported = spaces.find((x) => x.name === "Biology (imported)");
+    return {
+      spaces: spaces.length,
+      sources: Object.values(db.sources).filter((x: any) => x.spaceId === imported.id).length,
+      notes: Object.values(db.notes).filter((x: any) => x.spaceId === imported.id).length,
+      cards: Object.values(db.cards).filter((x: any) => x.spaceId === imported.id && x.state === 0).length,
+      chunks: db.chunks.filter((c: any) => c.spaceId === imported.id).length > 0,
+    };
+  });
+  expect(counts).toEqual({ spaces: 2, sources: 1, notes: 1, cards: 1, chunks: true });
+
+  await app.getByRole("button", { name: "Home" }).click();
+  await expect(app.getByTestId("space-card")).toHaveCount(2);
+});
+
+test("study packs: a damaged pack shows an error and adds nothing", async ({ app }) => {
+  await createSpace(app, "Biology");
+  await app.evaluate(() => {
+    const db = (window as any).__mock.db();
+    db.packs = { "/tmp/bad.ponderpack": { name: "Bad" } };
+    db.lastPack = "/tmp/bad.ponderpack";
+  });
+  await paletteAction(app, "Import study pack");
+  await expect(app.getByText("Couldn't import the study pack")).toBeVisible();
+  await expect(app.getByText(/damaged/)).toBeVisible();
+  const spaces = await app.evaluate(() => Object.keys((window as any).__mock.db().spaces).length);
+  expect(spaces).toBe(1);
+});
+
 test("backups: choose folder, back up, prune, restore needs a restart", async ({ app }) => {
   test.setTimeout(90_000);
   await app.getByRole("button", { name: "Settings" }).click();

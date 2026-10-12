@@ -26,6 +26,17 @@ interface MockChunk {
   page: number | null;
 }
 
+interface MockPack {
+  name: string;
+  space: Omit<T.Space, "sourceCount">;
+  sources: T.Source[];
+  texts: Record<string, T.SourceText>;
+  chunks: MockChunk[];
+  notes: T.Note[];
+  cards: T.Card[];
+  outputs: T.StudioOutput[];
+}
+
 export interface DB {
   spaces: Row<Omit<T.Space, "sourceCount">>;
   sources: Row<T.Source>;
@@ -68,6 +79,8 @@ export interface DB {
   planTasks: Row<T.PlanTask>;
   watched: Row<T.WatchedFolder>;
   speech: { url: string; body: unknown }[];
+  packs?: Record<string, MockPack>;
+  lastPack?: string;
   backups: T.BackupInfo[];
   backup: { folder: string | null; enabled: boolean; frequency: "daily" | "weekly"; keep: number; restoreStaged: boolean; lastError: string | null };
   nextId: number;
@@ -529,6 +542,15 @@ function ingest(src: T.Source, text: string) {
 }
 
 const deepLinkQueue: string[] = [];
+
+const packCounts = (p: MockPack): T.PackCounts => ({
+  sources: p.sources.length,
+  chunks: p.chunks.length,
+  notes: p.notes.length,
+  cards: p.cards.length,
+  outputs: p.outputs.length,
+  files: 0,
+});
 
 function backupStatus(): T.BackupStatus {
   const { folder, enabled, frequency, keep, restoreStaged, lastError } = db.backup;
@@ -2011,6 +2033,62 @@ const handlers: Record<string, (a: Args) => unknown> = {
     db.rewrites.push(w);
     save();
     return null;
+  },
+  pack_export: (a) => {
+    const space = db.spaces[a.spaceId as string] ?? err("not_found", "Space not found");
+    const sources = Object.values(db.sources).filter((x) => x.spaceId === space.id);
+    const ids = new Set(sources.map((x) => x.id));
+    const pack: MockPack = {
+      name: space.name,
+      space: structuredClone(space),
+      sources: structuredClone(sources),
+      texts: structuredClone(Object.fromEntries(Object.entries(db.texts).filter(([k]) => ids.has(k)))),
+      chunks: structuredClone(db.chunks.filter((c) => c.spaceId === space.id)),
+      notes: structuredClone(Object.values(db.notes ?? {}).filter((n) => n.spaceId === space.id)),
+      cards: structuredClone(Object.values(db.cards).filter((c) => c.spaceId === space.id)),
+      outputs: structuredClone(Object.values(db.outputs ?? {}).filter((o) => o.spaceId === space.id)),
+    };
+    const path = `/Users/me/Documents/${space.name}.ponderpack`;
+    (db.packs ??= {})[path] = pack;
+    db.lastPack = path;
+    save();
+    return { path, counts: packCounts(pack) };
+  },
+  pack_import: () => {
+    const pack = db.lastPack ? db.packs?.[db.lastPack] : undefined;
+    if (!pack) return null;
+    if (!Array.isArray(pack.sources)) err("invalid", "This study pack is damaged (data/sources.json).");
+    const names = new Set(Object.values(db.spaces).map((x) => x.name.toLowerCase()));
+    let name = pack.name;
+    for (let n = 1; names.has(name.toLowerCase()); n++) name = `${pack.name} (imported${n > 1 ? ` ${n}` : ""})`;
+    const spaceId = id();
+    db.spaces[spaceId] = { ...structuredClone(pack.space), id: spaceId, name, createdAt: now(), updatedAt: now(), lastOpenedAt: null };
+    const map: Record<string, string> = {};
+    for (const s of pack.sources) map[s.id] = id();
+    const sourceIds: string[] = [];
+    for (const s of pack.sources) {
+      const nid = map[s.id];
+      const src: T.Source = { ...structuredClone(s), id: nid, spaceId, status: "processing", progress: 0, error: null };
+      db.sources[nid] = src;
+      sourceIds.push(nid);
+      const text = pack.texts[s.id]?.text;
+      if (text) setTimeout(() => ingest(src, text), 300);
+      else db.sources[nid] = { ...src, status: "error", error: "The original text of this source is missing from the study pack." };
+    }
+    for (const n of pack.notes) {
+      const nn = id();
+      (db.notes ??= {})[nn] = { ...structuredClone(n), id: nn, spaceId, sourceId: n.sourceId ? (map[n.sourceId] ?? null) : null };
+    }
+    for (const c of pack.cards) {
+      const nc = id();
+      db.cards[nc] = { ...structuredClone(c), id: nc, spaceId, sourceId: c.sourceId ? (map[c.sourceId] ?? null) : null, due: now(), state: 0, fsrs: null, spaceName: name };
+    }
+    for (const o of pack.outputs) {
+      const no = id();
+      (db.outputs ??= {})[no] = { ...structuredClone(o), id: no, spaceId };
+    }
+    save();
+    return { spaceId, name, counts: packCounts(pack), sourceIds };
   },
   export_file: (a) => {
     const bytes = a.bytes as number[];

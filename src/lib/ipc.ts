@@ -76,6 +76,9 @@ export const api = {
   backupDelete: (name: string) => call<T.BackupStatus>("backup_delete", { name }),
   backupRestore: (name: string) => call<T.BackupStatus>("backup_restore", { name }),
   backupCancelRestore: () => call<T.BackupStatus>("backup_cancel_restore"),
+  // study packs
+  packExport: (spaceId: string) => call<T.PackExport | null>("pack_export", { spaceId }),
+  packImport: () => call<T.PackImport | null>("pack_import"),
   restartApp: () => call<void>("restart_app"),
   deeplinkTake: () => call<string[]>("deeplink_take"),
   integrationsInfo: () => call<T.IntegrationsInfo>("integrations_info"),

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Command } from "cmdk";
 import * as D from "@radix-ui/react-dialog";
-import { BarChart3, Brain, CalendarCheck, FilePlus2, FolderSync, Gauge, GraduationCap, House, Layers, Notebook, NotebookPen, PencilLine, Plus, Search, Settings, Shapes, Sparkles, SquarePen, SunMoon, Timer, Zap } from "lucide-react";
+import { BarChart3, Brain, CalendarCheck, Download, FilePlus2, Upload, FolderSync, Gauge, GraduationCap, House, Layers, Notebook, NotebookPen, PencilLine, Plus, Search, Settings, Shapes, Sparkles, SquarePen, SunMoon, Timer, Zap } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces, qk, useCaptureStatus } from "../../lib/queries";
 import { splitShortcut } from "../../lib/capture/shortcut";
@@ -14,6 +14,7 @@ import { Kbd } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
 import { useLowEnergy } from "../focus/useLowEnergy";
 import { useHasPlan } from "../plan/TodaySection";
+import { exportStudyPack, importStudyPack } from "../packs/studyPack";
 
 const item =
   "flex h-9 cursor-pointer items-center gap-2.5 rounded-control px-3 font-medium text-fg aria-selected:bg-fill-active data-[disabled=true]:cursor-default data-[disabled=true]:text-muted";
@@ -236,6 +237,20 @@ export function CommandPalette() {
                     <span className="flex-1">{s.palette.notes}</span>
                   </Command.Item>
                 )}
+                {spaceId && (
+                  <Command.Item
+                    className={item}
+                    onSelect={() => run(() => exportStudyPack(spaceId, spaces?.find((x) => x.id === spaceId)?.name ?? ""))}
+                    keywords={["share", "export", "pack", "ponderpack"]}
+                  >
+                    <Download size={15} />
+                    <span className="flex-1">{s.pack.export}</span>
+                  </Command.Item>
+                )}
+                <Command.Item className={item} onSelect={() => run(importStudyPack)} keywords={["share", "import", "pack", "ponderpack", "open"]}>
+                  <Upload size={15} />
+                  <span className="flex-1">{s.pack.import}</span>
+                </Command.Item>
               </Command.Group>
             </Command.List>
           </Command>

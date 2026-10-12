@@ -13,6 +13,7 @@ mod ingest;
 mod exams;
 mod studio;
 mod notes;
+mod pack;
 mod insights;
 mod lan;
 mod music;
@@ -90,6 +91,8 @@ pub fn run() {
             backup::restart_app,
             deeplink::deeplink_take,
             cli::integrations_info,
+            pack::pack_export,
+            pack::pack_import,
             commands::core::list_spaces,
             commands::core::get_space,
             commands::core::create_space,

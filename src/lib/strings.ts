@@ -266,6 +266,18 @@ export const s = {
     copy: "Copy",
     copied: "Copied",
   },
+  pack: {
+    export: "Export study pack…",
+    import: "Import study pack…",
+    exporting: (name: string) => `Exporting “${name}”…`,
+    exported: (sources: number, cards: number, notes: number) =>
+      `Study pack saved: ${sources} ${sources === 1 ? "source" : "sources"}, ${cards} ${cards === 1 ? "card" : "cards"}, ${notes} ${notes === 1 ? "note" : "notes"}`,
+    exportFailed: "Couldn't export the study pack",
+    importing: "Importing study pack…",
+    imported: (name: string, sources: number) =>
+      sources > 0 ? `Imported “${name}”. Indexing ${sources} ${sources === 1 ? "source" : "sources"}…` : `Imported “${name}”`,
+    importFailed: "Couldn't import the study pack",
+  },
   backup: {
     title: "Backups",
     body: "Saves a copy of your spaces, sources, notes and cards to a folder you choose. Backups stay on this computer.",

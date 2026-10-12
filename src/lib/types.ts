@@ -557,6 +557,27 @@ export interface BackupStatus {
   restoreStaged: boolean;
 }
 
+export interface PackCounts {
+  sources: number;
+  chunks: number;
+  notes: number;
+  cards: number;
+  outputs: number;
+  files: number;
+}
+
+export interface PackExport {
+  path: string;
+  counts: PackCounts;
+}
+
+export interface PackImport {
+  spaceId: string;
+  name: string;
+  counts: PackCounts;
+  sourceIds: string[];
+}
+
 export interface IntegrationsInfo {
   exePath: string;
   dbPath: string;
