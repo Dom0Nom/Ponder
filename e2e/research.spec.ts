@@ -113,3 +113,72 @@ test("settings: separate research model and system prompt are used and can be re
   await expect(prompt).toHaveValue(/research assistant that finds study sources/);
   await expect(section.getByRole("button", { name: "Reset to default" })).toBeDisabled();
 });
+
+const runResearch = async (app: Page, q: string) => {
+  await app.getByRole("button", { name: "Add source" }).first().click();
+  await dialog(app).getByRole("tab", { name: "Deep research" }).click();
+  await query(app).fill(q);
+  await dialog(app).getByRole("button", { name: "Research" }).click();
+};
+
+test("deep research keeps running in the background and the toast reopens the results", async ({ app }) => {
+  await newSpace(app, "Biology");
+  await addNote(app, "Mitosis notes");
+  await expect(app.getByRole("region", { name: "Sources" })).toBeVisible();
+  await app.evaluate(() => {
+    (window as unknown as { __mock: { setStreamDelay: (ms: number) => void } }).__mock.setStreamDelay(1500);
+  });
+  await runResearch(app, "how do cells divide");
+  await expect(dialog(app).getByTestId("research-running")).toBeVisible();
+  await app.keyboard.press("Escape");
+  await expect(app.getByTestId("research-indicator")).toBeVisible();
+
+  const toast = app.locator("[data-sonner-toast]").filter({ hasText: /Deep research found \d+ sources?/ });
+  await expect(toast).toBeVisible({ timeout: 15000 });
+  await expect(app.getByTestId("research-indicator")).toHaveCount(0);
+  await toast.getByRole("button", { name: "Review" }).click();
+  await expect(dialog(app).getByTestId("research-results").locator("li").first()).toBeVisible();
+});
+
+test("a report is written from the ticked sources, cites them and imports as a source", async ({ app }) => {
+  await newSpace(app, "Biology");
+  await runResearch(app, "how do cells divide");
+  const results = dialog(app).getByTestId("research-results");
+  await expect(results.locator("li").first()).toBeVisible({ timeout: 15000 });
+
+  await dialog(app).getByRole("button", { name: "Write a report" }).click();
+  const report = dialog(app).getByTestId("research-report");
+  await expect(report).toContainText("Cells divide by mitosis [1]");
+  await expect(report).not.toContainText("[9]");
+  await expect(report).toContainText("## Sources");
+
+  await report.getByRole("button", { name: "Add report as source" }).click();
+  await expect(app.getByText("Report added as a source").first()).toBeVisible();
+  await app.keyboard.press("Escape");
+  await expect(app.getByRole("button", { name: "1 source" })).toBeVisible();
+});
+
+test("settings: engines can be switched, a SearXNG url saved and keys stored then removed", async ({ app }) => {
+  await app.getByRole("button", { name: "Settings", exact: true }).click();
+  const engines = app.getByTestId("search-engines");
+  const openstax = engines.getByRole("switch", { name: "OpenStax textbooks" });
+  await expect(openstax).toBeChecked();
+  await openstax.click();
+  await expect(openstax).not.toBeChecked();
+
+  const searx = engines.getByRole("textbox", { name: "SearXNG instance URL" });
+  await searx.fill("https://searx.example.org");
+  await searx.blur();
+
+  await engines.getByLabel("Brave Search API key").fill("brave-secret");
+  await engines.getByRole("button", { name: "Save key Brave Search" }).click();
+  await expect(engines.getByRole("button", { name: "Remove Brave Search" })).toBeVisible();
+  await expect(engines.getByLabel("Brave Search API key")).toHaveCount(0);
+
+  await app.reload();
+  const again = app.getByTestId("search-engines");
+  await expect(again.getByRole("switch", { name: "OpenStax textbooks" })).not.toBeChecked();
+  await expect(again.getByRole("textbox", { name: "SearXNG instance URL" })).toHaveValue("https://searx.example.org");
+  await again.getByRole("button", { name: "Remove Brave Search" }).click();
+  await expect(again.getByLabel("Brave Search API key")).toBeVisible();
+});

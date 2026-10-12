@@ -245,6 +245,26 @@ const defaultScript: Script = ({ messages, body }) => {
       ]),
     };
   }
+  if (/^A learner wants study sources/.test(lastText)) {
+    return { content: '{"language":"en","queries":["cell biology"]}' };
+  }
+  if (/^The learner's question:/.test(lastText)) {
+    const n = [...lastText.matchAll(/^### \d+$/gm)].length;
+    return {
+      content: JSON.stringify(
+        Array.from({ length: n }, (_, i) => ({ i, about: "cells", answers: true, relevance: 85, credibility: 70, summary: "Explains how cells divide." })),
+      ),
+    };
+  }
+  if (/^Find what a learner's collected sources still don't cover/.test(lastText)) {
+    return { content: '{"gaps": [], "queries": []}' };
+  }
+  if (/^Write a short study report for a learner/.test(lastText)) {
+    const n = [...lastText.matchAll(/<source n="\d+"/g)].length;
+    return {
+      content: `# Cell division\n\nCells divide by mitosis [1]. ${n > 1 ? "Checkpoints keep it orderly [2, 1]. " : ""}A made-up claim [9].\n\n## Not covered\n\nNothing important.`,
+    };
+  }
   if (body.response_format || /Respond with JSON|Return JSON/i.test(sysText + lastText)) {
     return { content: "{}" };
   }
@@ -272,10 +292,42 @@ function sendChannel(channel: { id: number }, index: number, message: T.ProxyEve
   );
 }
 
+/** Search engine answers for deep research: DuckDuckGo finds two pages (a "checkpoint" query finds another), the rest find nothing. */
+function searchFixture(url: URL): { type: string; body: string } | null {
+  const hit = (href: string, title: string) =>
+    `<div class="result"><a rel="nofollow" class="result__a" href="${href}">${title}</a><a class="result__snippet" href="x">About ${title}</a></div>`;
+  switch (url.hostname) {
+    case "html.duckduckgo.com": {
+      const q = url.searchParams.get("q") ?? "";
+      if (q.includes("openstax")) return { type: "text/html", body: hit("https://openstax.org/books/biology/pages/1", "Biology 2e") };
+      if (q.includes("checkpoint")) return { type: "text/html", body: hit("https://example.org/checkpoints", "Cell cycle checkpoints") };
+      return { type: "text/html", body: hit("https://example.org/cells-1", "Cell biology basics") + hit("https://example.org/cells-2", "Mitosis explained") };
+    }
+    case "export.arxiv.org":
+      return { type: "application/atom+xml", body: "<feed></feed>" };
+    case "en.wikipedia.org":
+      return { type: "application/json", body: '{"query":{"search":[]}}' };
+    case "api.openalex.org":
+      return { type: "application/json", body: '{"results":[]}' };
+    default:
+      return null;
+  }
+}
+
 async function httpStream(request: T.ProxyRequest, channel: { id: number }) {
   let i = 0;
   const send = (m: T.ProxyEvent) => sendChannel(channel, i++, m);
   const url = new URL(request.url);
+  if (request.providerId?.startsWith("search:")) {
+    if (!db.secrets[request.providerId]) {
+      send({ type: "error", message: `No API key saved for ${request.providerId.slice(7)}. Add one in Settings.` });
+      return;
+    }
+    send({ type: "head", status: 200, headers: { "content-type": "application/json" } });
+    send({ type: "chunk", data: '{"results":[],"web":{"results":[]}}' });
+    send({ type: "end" });
+    return;
+  }
   const provider = request.providerId ? db.providers[request.providerId] : undefined;
   if (request.providerId && !provider) {
     send({ type: "error", message: "provider not found" });
@@ -297,6 +349,16 @@ async function httpStream(request: T.ProxyRequest, channel: { id: number }) {
     send({ type: "chunk", data: JSON.stringify(list) });
     send({ type: "end" });
     return;
+  }
+  if (!provider) {
+    const page = searchFixture(url);
+    if (page) {
+      await new Promise((r) => setTimeout(r, streamDelayMs));
+      send({ type: "head", status: 200, headers: { "content-type": page.type } });
+      send({ type: "chunk", data: page.body });
+      send({ type: "end" });
+      return;
+    }
   }
   const body = JSON.parse(request.body ?? "{}");
   const reply = script({ messages: body.messages ?? [], body });
@@ -1594,7 +1656,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
       status: 200,
       url,
       contentType: "text/html",
-      body: `<html><head><title>Mock page</title></head><body><article><h1>Mock page</h1><p>This page talks about photosynthesis in detail. Chlorophyll absorbs light.</p><p>A second paragraph with more content so Readability accepts it as an article body worth keeping.</p></article></body></html>`,
+      body: `<html><head><title>Mock page</title></head><body><article><h1>Mock page</h1><p>This page talks about photosynthesis in detail. Chlorophyll absorbs light.</p><p>A second paragraph with more content so Readability accepts it as an article body worth keeping.</p><p>${"Cells divide by mitosis, a process in which one nucleus becomes two identical nuclei, and checkpoints in the cell cycle keep it orderly. ".repeat(5)}</p></article></body></html>`,
     };
   },
 

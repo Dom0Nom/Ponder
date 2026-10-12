@@ -8,8 +8,9 @@ import type { Space } from "../../lib/types";
 import { NoModelError } from "../../lib/chat/llm";
 import { resolveResearch } from "../../lib/research/config";
 import { contextKey, generateResearchQuery, queryCache, sharedQuery } from "../../lib/research/prompts";
-import { deepResearch, type FoundSource, type ResearchStage } from "../../lib/research/deepResearch";
-import { proxyHttp } from "../../lib/importers/http";
+import { writeReport, type FoundSource, type ResearchStage } from "../../lib/research/deepResearch";
+import type { FinishedReport } from "../../lib/research/reportPrompts";
+import { useResearch } from "../../stores/research";
 import { Reveal } from "../../components/motion/Reveal";
 import { TextSwap } from "../../components/motion/TextSwap";
 import { Fx } from "../../components/fx/Fx";
@@ -17,7 +18,7 @@ import { ActivityOrb, type Activity } from "../../components/motion/ActivityOrb"
 import { Button } from "../../components/ui/button";
 import { Checkbox16 } from "../../components/ui/checkbox";
 import { Input } from "../../components/ui/input";
-import { EmptyState } from "../../components/ui/misc";
+import { EmptyState, Spinner } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { useImportFooter } from "./ImportDialog";
 
@@ -28,6 +29,7 @@ const STAGE_ORB: Record<ResearchStage, Activity> = {
   searching: "search",
   fetching: "research",
   ranking: "grade",
+  gaps: "plan",
   done: "research",
 };
 
@@ -36,6 +38,7 @@ const STAGE_LABEL: Record<ResearchStage, string> = {
   searching: s.research.searching,
   fetching: s.research.fetching,
   ranking: s.research.ranking,
+  gaps: s.research.gaps,
   done: "",
 };
 
@@ -50,14 +53,18 @@ export function ResearchPanel({
   initialQuery?: string;
   initialFound?: FoundSource[];
 }) {
-  const [q, setQ] = useState(initialQuery ?? "");
-  const [stage, setStage] = useState<ResearchStage | null>(null);
-  const [detail, setDetail] = useState("");
-  const [found, setFound] = useState<FoundSource[] | null>(initialFound ?? null);
-  const [selected, setSelected] = useState<Set<string>>(new Set(initialFound?.map((f) => f.id)));
+  const run = useResearch((st) => st.runs[space.id]);
+  const [q, setQ] = useState(initialQuery ?? run?.query ?? "");
+  const stage = run?.status === "running" ? run.stage : null;
+  const detail = run?.stage === "searching" && run.round > 1 ? s.research.round(run.round, run.detail) : (run?.detail ?? "");
+  const found: FoundSource[] | null = run?.results ?? initialFound ?? null;
+  const [selected, setSelected] = useState<Set<string>>(new Set(found?.map((f) => f.id)));
   const [importing, setImporting] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
-  const abort = useRef<AbortController | null>(null);
+  const [report, setReport] = useState<FinishedReport | null>(null);
+  const [writing, setWriting] = useState(false);
+  const [reportImporting, setReportImporting] = useState(false);
+  const reportAbort = useRef<AbortController | null>(null);
   const suggestAbort = useRef<AbortController | null>(null);
   const typed = useRef(false);
   const qc = useQueryClient();
@@ -89,37 +96,59 @@ export function ResearchPanel({
   };
 
   useEffect(() => {
-    if (!initialQuery) suggest(false);
-    return () => suggestAbort.current?.abort();
+    if (!initialQuery && !run) suggest(false);
+    return () => {
+      suggestAbort.current?.abort();
+      reportAbort.current?.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const run = async () => {
-    abort.current?.abort();
+  const results = run?.results;
+  useEffect(() => {
+    if (results) {
+      setSelected(new Set(results.map((r) => r.id)));
+      setReport(null);
+    }
+  }, [results]);
+
+  const start = () => {
+    setReport(null);
+    void useResearch.getState().start(space, q);
+  };
+
+  const makeReport = async () => {
+    if (!found) return;
+    reportAbort.current?.abort();
     const ctrl = new AbortController();
-    abort.current = ctrl;
-    setFound(null);
-    setStage("planning");
+    reportAbort.current = ctrl;
+    setWriting(true);
     try {
       const { llm, systemPrompt } = await resolveResearch(space);
-      const res = await deepResearch(q, {
-        llm,
-        systemPrompt,
-        http: proxyHttp,
-        signal: ctrl.signal,
-        onStage: (st, d) => {
-          setStage(st);
-          setDetail(d ?? "");
-        },
-      });
-      setFound(res);
-      setSelected(new Set(res.map((r) => r.id)));
+      const picks = found.filter((f) => selected.has(f.id));
+      const r = await writeReport(run?.query ?? q, picks, { llm, systemPrompt, signal: ctrl.signal });
+      if (!ctrl.signal.aborted) setReport(r);
     } catch (e) {
       if (ctrl.signal.aborted) return;
       if (e instanceof NoModelError) toastError(s.research.needModel, null);
-      else toastError("Deep research failed", e, run);
+      else toastError(s.research.reportFailed, e, makeReport);
     } finally {
-      if (abort.current === ctrl) setStage(null);
+      if (reportAbort.current === ctrl) setWriting(false);
+    }
+  };
+
+  const importReport = async () => {
+    if (!report) return;
+    setReportImporting(true);
+    try {
+      await api.importText(space.id, s.research.reportTitleFor(run?.query ?? q), report.markdown, "text");
+      qc.invalidateQueries({ queryKey: qk.sources(space.id) });
+      toast.success(s.research.reportImported);
+      setReport(null);
+    } catch (e) {
+      toastError(s.sources.importFailed, e, importReport);
+    } finally {
+      setReportImporting(false);
     }
   };
 
@@ -140,6 +169,7 @@ export function ResearchPanel({
     if (failed.length) toastError(s.sources.importFailed, new Error(failed.join("\n")));
     if (failed.length < picks.length) {
       toast.success(`Imported ${picks.length - failed.length} sources`);
+      useResearch.getState().clear(space.id);
       done();
     }
   };
@@ -165,7 +195,7 @@ export function ResearchPanel({
         </p>
         {detail && <p className="truncate text-label text-muted">{detail}</p>}
       </div>
-      <Button size="sm" variant="ghost" className="ml-auto" onClick={() => abort.current?.abort()}>
+      <Button size="sm" variant="ghost" className="ml-auto" onClick={() => useResearch.getState().cancel(space.id)}>
         {s.common.cancel}
       </Button>
     </Reveal>
@@ -177,7 +207,7 @@ export function ResearchPanel({
         className="flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          if (q.trim() && !stage) run();
+          if (q.trim() && !stage) start();
         }}
       >
         <div className="relative flex-1">
@@ -248,6 +278,28 @@ export function ResearchPanel({
               );
             })}
           </ul>
+          {report ? (
+            <div className="flex flex-col gap-2" data-testid="research-report">
+              <p className="font-semibold">{s.research.reportTitle}</p>
+              <p className="text-body leading-[1.5] text-muted">{report.cited.length ? s.research.reportBody : s.research.reportUncited}</p>
+              <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-card border border-border px-3.5 py-3 text-body leading-[1.5]">{report.markdown}</pre>
+              <div className="flex gap-2">
+                <Button size="sm" variant="secondary" disabled={reportImporting} onClick={importReport}>
+                  {s.research.importReport}
+                </Button>
+                <Button size="sm" variant="ghost" disabled={reportImporting} onClick={() => setReport(null)}>
+                  {s.research.discardReport}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <Button size="sm" variant="secondary" disabled={writing || !selected.size} onClick={makeReport}>
+                {writing && <Spinner size={14} />}
+                {writing ? s.research.writingReport : s.research.writeReport}
+              </Button>
+            </div>
+          )}
         </>
       )}
     </div>

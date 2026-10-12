@@ -6,6 +6,7 @@ import { qk, useSources, useWatchedFolders } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { EmbedderStatus, Source, Space } from "../../lib/types";
 import { cn } from "../../lib/utils";
+import { useResearch } from "../../stores/research";
 import { useUi } from "../../stores/ui";
 import { useLowEnergy } from "../focus/useLowEnergy";
 import { useFreshKeys } from "../../lib/useFreshKeys";
@@ -17,7 +18,7 @@ import { Checkbox16 } from "../../components/ui/checkbox";
 import { ConfirmDialog, Dialog } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "../../components/ui/menu";
-import { ErrorState, Skeleton, Tooltip } from "../../components/ui/misc";
+import { ErrorState, Skeleton, Spinner, Tooltip } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { ImportDialog } from "./ImportDialog";
 import { KIND_ICON } from "./kinds";
@@ -51,6 +52,7 @@ export function SourcesPanel({ space, open }: { space: Space; open: boolean }) {
   const dragging = useSourceDrop(space.id);
   const qc = useQueryClient();
   const low = useLowEnergy(space.id);
+  const researching = useResearch((st) => st.runs[space.id]?.status === "running");
 
   const isFresh = useFreshKeys(data?.map((x) => x.id));
   const all = data ?? [];
@@ -85,6 +87,17 @@ export function SourcesPanel({ space, open }: { space: Space; open: boolean }) {
     >
       <div className="flex h-[49px] shrink-0 items-center gap-2 border-b border-divider pl-4 pr-2.5">
         <h2 className="flex-1 text-input font-semibold">{s.panes.sources}</h2>
+        {researching && (
+          <button
+            aria-label={s.research.runningIndicator}
+            title={s.research.runningIndicator}
+            data-testid="research-indicator"
+            onClick={() => setImportDialog({ open: true, tab: "research" })}
+            className="flex size-7 items-center justify-center rounded-btn hover:bg-fill"
+          >
+            <Spinner size={14} />
+          </button>
+        )}
         <Button
           size="sm"
           variant="primary"
