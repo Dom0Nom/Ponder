@@ -15,6 +15,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("007_micro_steps.sql"),
     include_str!("008_thread_pins.sql"),
     include_str!("009_practice_hint.sql"),
+    include_str!("010_source_local_path.sql"),
 ];
 
 static VEC_INIT: Once = Once::new();

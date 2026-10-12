@@ -105,6 +105,10 @@ impl Ingest {
         let c = self.db.conn()?;
         models::get_space(&c, space_id)?;
         let src = models::insert_source(&c, space_id, title, kind, Some(origin))?;
+        if origin != path {
+            // the origin isn't a readable file (e.g. a cloud id): keep the downloaded copy for a retry after restart
+            c.execute("UPDATE sources SET local_path=?2 WHERE id=?1", rusqlite::params![src.id, path])?;
+        }
         self.emit_source(&src);
         self.enqueue(&src.id, Input::File(PathBuf::from(path), kind.into()))?;
         Ok(src)
@@ -434,5 +438,28 @@ pub mod tests {
         assert_eq!(wait_status(&db, &src.id, "ready").chunk_count, 1);
         let o = wait_status(&db, &orphan.id, "error");
         assert!(o.error.unwrap().contains("missing"));
+    }
+
+    #[test]
+    fn cloud_import_still_processing_resumes_from_the_downloaded_copy() {
+        let (db, dir) = crate::db::test_db();
+        let file = dir.path().join("notes.md");
+        std::fs::write(&file, "# Cells\n\nMitochondria make ATP.").unwrap();
+        let space = {
+            let c = db.conn().unwrap();
+            models::create_space(&c, models::SpacePatch { name: Some("S".into()), ..Default::default() }).unwrap().id
+        };
+        let emit: Emit = Arc::new(|_, _| {});
+        // a worker that never runs stands in for the app quitting before the job started
+        let (tx, _rx) = channel();
+        let svc = Arc::new(EmbedderService::ready(Arc::new(FakeEmbedder), emit.clone()));
+        let dead = Ingest { db: db.clone(), tx, embedder: svc.clone(), emit: emit.clone() };
+        let src = dead.import_file_as(&space, &file.to_string_lossy(), "Cells", "gdrive://abc").unwrap();
+        assert_eq!(models::get_source(&db.conn().unwrap(), &src.id).unwrap().status, "processing");
+
+        let _ing = Ingest::spawn(db.clone(), svc, emit).unwrap();
+        let s = wait_status(&db, &src.id, "ready");
+        assert_eq!(s.origin.as_deref(), Some("gdrive://abc"));
+        assert!(s.chunk_count >= 1);
     }
 }

@@ -1,6 +1,7 @@
 use crate::db::models::{self as m, *};
 use crate::error::AppResult;
 use crate::AppState;
+use rusqlite::OptionalExtension;
 use serde_json::Value;
 use tauri::State;
 
@@ -53,7 +54,19 @@ pub async fn update_source(state: State<'_, AppState>, id: String, patch: Source
 
 #[tauri::command]
 pub async fn delete_source(state: State<'_, AppState>, id: String) -> AppResult<()> {
-    m::delete_source(&state.db.conn()?, &id)
+    let c = state.db.conn()?;
+    let local: Option<String> = c
+        .query_row("SELECT local_path FROM sources WHERE id=?1", [&id], |r| r.get(0))
+        .optional()?
+        .flatten();
+    m::delete_source(&c, &id)?;
+    if let Some(dir) = local.as_deref().and_then(|p| std::path::Path::new(p).parent()) {
+        // cloud downloads live in <data>/imports/<uuid>/; never touch anything else
+        if dir.parent() == Some(state.data_dir.join("imports").as_path()) {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+    }
+    Ok(())
 }
 
 #[tauri::command]

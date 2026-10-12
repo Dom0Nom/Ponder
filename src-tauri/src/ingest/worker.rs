@@ -127,7 +127,12 @@ impl Worker {
                     let pages = pages.and_then(|p| serde_json::from_str::<Vec<(i64, i64)>>(&p).ok());
                     return Ok(Extracted { text, pages });
                 }
-                match (&src.origin, src.kind.as_str()) {
+                let local: Option<String> = c
+                    .query_row("SELECT local_path FROM sources WHERE id=?1", [&src.id], |r| r.get(0))
+                    .optional()
+                    .map_err(db_err)?
+                    .flatten();
+                match (local.or_else(|| src.origin.clone()), src.kind.as_str()) {
                     (Some(path), "pdf" | "epub" | "docx" | "markdown" | "text") => {
                         extract::extract_file(&PathBuf::from(path), &src.kind)
                     }
