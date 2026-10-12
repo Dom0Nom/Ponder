@@ -96,9 +96,7 @@ Cut: calendar sync, essay coach (separate from exam-simulator essay grading, whi
 
 Every roadmap item above is built except the parts listed here (details in `docs/HANDOFF.md` → Known gaps):
 - Spoken voice tutor: replies are spoken sentence by sentence while they stream; there is no barge-in by voice (the mic button interrupts).
-- Free local TTS voice (Kokoro on CPU): not built; speech uses a cloud service (Kokoro via OpenRouter by default).
-- PDF annotation: highlights and margin notes work on a PDF's extracted text, not on the rendered page.
-- MCP client: local stdio servers only, no remote HTTP servers.
+- Free local TTS voice: built (Kokoro-82M in the webview, "On this computer"), English voices only, never run on a real machine. The default stays Kokoro via OpenRouter.
 - Windows and Linux: the Rust code compiles for Windows (GNU target) and CI builds bundles for all three, but no Windows or Linux bundle was built or run here. No web build.
 
 ## Architecture
