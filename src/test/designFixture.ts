@@ -550,6 +550,18 @@ function seedGed(db: DB, o: FixtureOptions, at: (n: number) => number, x: <V ext
     topics: topics.map((t) => ({ id: t.id, title: t.title, description: t.description, group: t.group })),
     updatedAt: at(10 * D),
   };
+  if (!empty) {
+    db.plans[sp] = {
+      spaceId: sp,
+      goal: "GED (all four subjects)",
+      examDate: "2026-11-10",
+      weeklyMinutes: 300,
+      studyDays: [1, 2, 3, 4, 5],
+      replannedAt: null,
+      createdAt: at(14 * D),
+      updatedAt: at(14 * D),
+    };
+  }
   db.levels[sp] = {};
   for (const t of CURRICULA.plan) {
     db.levels[sp][t.id] = { topicId: t.id, level: LEVELS[t.id], evidence: null, updatedAt: at(3 * D) };

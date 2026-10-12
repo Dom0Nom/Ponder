@@ -14,6 +14,7 @@ mod oauth;
 mod icons;
 mod openrouter;
 mod placement;
+mod plans;
 mod practice;
 mod proxy;
 mod retrieval;
@@ -122,6 +123,11 @@ pub fn run() {
             placement::course_create,
             placement::course_delete,
             placement::lesson_set_status,
+            plans::get_study_plan,
+            plans::save_study_plan,
+            plans::set_plan_task_done,
+            plans::delete_study_plan,
+            plans::list_plan_tasks,
             commands::core::list_memory,
             commands::core::add_memory,
             commands::core::update_memory,

@@ -95,7 +95,8 @@ export function FocusStartDialog() {
 
   useEffect(() => {
     if (open) {
-      setGoal("");
+      setGoal(useUi.getState().focusGoalPreset ?? "");
+      useUi.setState({ focusGoalPreset: null });
       setEnergy("normal");
       setStepsReady(null);
       setNeedGoal(false);

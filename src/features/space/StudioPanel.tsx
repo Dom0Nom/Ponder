@@ -16,7 +16,9 @@ import type { ReactNode } from "react";
 import { Skeleton } from "../../components/ui/misc";
 import { LearnChevron } from "../../components/motion/LearnChevron";
 import { api } from "../../lib/ipc";
-import { useCourses, useCurriculum, useDueCounts, useJournal } from "../../lib/queries";
+import { todayDate } from "../../lib/plan/clock";
+import { weekInfo } from "../../lib/plan/schedule";
+import { useCourses, useCurriculum, useDueCounts, useJournal, useStudyPlan } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Space } from "../../lib/types";
 import { cn, dayLabel } from "../../lib/utils";
@@ -97,6 +99,8 @@ function ToolGrid({ space }: { space: Space }) {
   const counts = useDueCounts();
   const abilities = useQuery({ queryKey: ["abilities", space.id], queryFn: () => api.abilitiesList(space.id) });
   const cur = useCurriculum(space.id);
+  const plan = useStudyPlan(space.id);
+  const week = plan.data ? weekInfo(plan.data.plan, todayDate()) : { current: 1, total: 1 };
   const courses = useCourses(space.id);
   const journal = useJournal(space.id);
 
@@ -130,8 +134,8 @@ function ToolGrid({ space }: { space: Space }) {
         </Meta>
       </Tile>
       <Tile icon={MapIcon} name={s.studio.plan} testId="plan-tile" onClick={() => setStudioView("plan")}>
-        <Meta loading={cur.isLoading} error={!!cur.error}>
-          {cur.data ? cur.data.title : s.studio.planPick}
+        <Meta loading={cur.isLoading || plan.isLoading} error={!!cur.error || !!plan.error}>
+          {plan.data ? s.studio.planWeek(week.current, week.total) : cur.data ? cur.data.title : s.studio.planPick}
         </Meta>
       </Tile>
       <Tile icon={GraduationCap} name={s.studio.course} testId="course-tile" onClick={() => setStudioView("course")}>

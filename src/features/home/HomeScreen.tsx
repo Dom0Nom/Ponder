@@ -14,6 +14,7 @@ import { EmptyState, ErrorState, Skeleton } from "../../components/ui/misc";
 import { ConfirmDialog } from "../../components/ui/dialog";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../../components/ui/menu";
 import { toastError } from "../../components/ui/toast";
+import { TodaySection } from "../plan/TodaySection";
 import { SpaceDialog } from "./SpaceDialog";
 
 export function HomeScreen() {
@@ -60,6 +61,7 @@ export function HomeScreen() {
             {s.home.newSpace}
           </Button>
         </div>
+        <TodaySection />
         {isLoading && (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
             {Array.from({ length: 6 }).map((_, i) => (

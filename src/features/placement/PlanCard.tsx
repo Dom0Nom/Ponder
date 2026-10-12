@@ -25,6 +25,7 @@ import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { toast, toastError } from "../../components/ui/toast";
 import { PanelList, panelRow } from "../space/PanelList";
 import { StudioSubpanel } from "../space/StudioSubpanel";
+import { ScheduleSection } from "../plan/ScheduleSection";
 
 const COVERAGE_ICON: Record<CoverageLevel, typeof Circle> = {
   covered: CircleCheck,
@@ -40,6 +41,7 @@ export function PlanPanel({ space, onBack }: { space: Space; onBack: () => void 
       {cur.error && <ErrorState title={s.errors.generic} error={cur.error} onRetry={() => cur.refetch()} />}
       {cur.data === null && <CurriculumPicker space={space} />}
       {cur.data && <CoverageMap space={space} curriculum={cur.data} />}
+      {!cur.isLoading && !cur.error && <ScheduleSection space={space} />}
     </StudioSubpanel>
   );
 }

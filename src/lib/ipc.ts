@@ -115,6 +115,14 @@ export const api = {
   lessonSetStatus: (id: string, status: T.Lesson["status"], score?: number | null) =>
     call<void>("lesson_set_status", { id, status, score: score ?? null }),
 
+  // study plans
+  getStudyPlan: (spaceId: string) => call<T.StudyPlanBundle | null>("get_study_plan", { spaceId }),
+  saveStudyPlan: (spaceId: string, plan: T.PlanFields, replanned: boolean, tasks: T.NewPlanTask[]) =>
+    call<T.StudyPlanBundle>("save_study_plan", { spaceId, plan, replanned, tasks }),
+  setPlanTaskDone: (id: string, done: boolean) => call<T.PlanTask>("set_plan_task_done", { id, done }),
+  deleteStudyPlan: (spaceId: string) => call<void>("delete_study_plan", { spaceId }),
+  listPlanTasks: (fromDate: string, toDate: string) => call<T.DatedPlanTask[]>("list_plan_tasks", { fromDate, toDate }),
+
   // flashcards
   cardsAdd: (spaceId: string, cards: T.NewCard[]) => call<T.Card[]>("cards_add", { spaceId, cards }),
   cardUpdate: (id: string, patch: { front?: string; back?: string; data?: T.CardData; suspended?: boolean }) =>

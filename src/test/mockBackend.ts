@@ -54,6 +54,8 @@ export interface DB {
   levels: Record<string, Row<T.TopicLevel>>;
   assessments: Row<T.Assessment>;
   courses: Row<T.Course>;
+  plans: Row<T.StudyPlan>;
+  planTasks: Row<T.PlanTask>;
   watched: Row<T.WatchedFolder>;
   nextId: number;
   clockOffset: number;
@@ -118,6 +120,8 @@ function emptyDb(): DB {
     levels: {},
     assessments: {},
     courses: {},
+    plans: {},
+    planTasks: {},
     watched: {},
     nextId: 1,
     clockOffset: 0,
@@ -152,6 +156,15 @@ function err(code: string, message: string): never {
 function spaceOut(sp: Omit<T.Space, "sourceCount">): T.Space {
   const override = (sp as { sourceCountOverride?: number }).sourceCountOverride;
   return { ...sp, sourceCount: override ?? Object.values(db.sources).filter((x) => x.spaceId === sp.id).length };
+}
+
+function planBundle(spaceId: string): T.StudyPlanBundle | null {
+  const plan = db.plans[spaceId];
+  if (!plan) return null;
+  const tasks = Object.values(db.planTasks)
+    .filter((x) => x.spaceId === spaceId)
+    .sort((x, y) => x.date.localeCompare(y.date) || x.ord - y.ord);
+  return { plan, tasks };
 }
 
 function microList(spaceId: string | null): T.MicroStep[] {
@@ -970,6 +983,8 @@ const handlers: Record<string, (a: Args) => unknown> = {
     for (const t of Object.values(db.threads)) if (t.spaceId === sid) delete db.threads[t.id];
     for (const w of Object.values(db.watched)) if (w.spaceId === sid) delete db.watched[w.id];
     for (const m of Object.values(db.microSteps)) if (m.spaceId === sid) delete db.microSteps[m.id];
+    delete db.plans[sid];
+    for (const x of Object.values(db.planTasks)) if (x.spaceId === sid) delete db.planTasks[x.id];
     save();
     return null;
   },
@@ -1774,6 +1789,57 @@ const handlers: Record<string, (a: Args) => unknown> = {
     save();
     return null;
   },
+  get_study_plan: (a) => planBundle(a.spaceId as string),
+  save_study_plan: (a) => {
+    const sid = a.spaceId as string;
+    if (!db.spaces[sid]) err("not_found", "space not found");
+    const f = a.plan as T.PlanFields;
+    const tasks = a.tasks as T.NewPlanTask[];
+    if (!f.goal.trim()) err("invalid", "A plan needs a goal");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(f.examDate)) err("invalid", "The exam date must look like 2026-12-31");
+    if (!(f.weeklyMinutes > 0)) err("invalid", "Weekly study time must be more than zero");
+    if (!f.studyDays.length || f.studyDays.some((d) => d < 0 || d > 6)) err("invalid", "Pick at least one study day");
+    for (const x of tasks) {
+      if (!["learn", "practice", "review", "mock"].includes(x.kind)) err("invalid", `Unknown task kind: ${x.kind}`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(x.date) || !(x.minutes > 0) || !x.title.trim()) err("invalid", "Invalid plan task");
+    }
+    const prev = db.plans[sid];
+    db.plans[sid] = {
+      spaceId: sid,
+      goal: f.goal.trim(),
+      examDate: f.examDate,
+      weeklyMinutes: f.weeklyMinutes,
+      studyDays: f.studyDays,
+      replannedAt: a.replanned ? now() : (prev?.replannedAt ?? null),
+      createdAt: prev?.createdAt ?? now(),
+      updatedAt: now(),
+    };
+    for (const x of Object.values(db.planTasks)) if (x.spaceId === sid && !x.doneAt) delete db.planTasks[x.id];
+    for (const x of tasks) {
+      const row: T.PlanTask = { ...x, title: x.title.trim(), id: id(), spaceId: sid, doneAt: null };
+      db.planTasks[row.id] = row;
+    }
+    save();
+    return planBundle(sid);
+  },
+  set_plan_task_done: (a) => {
+    const x = db.planTasks[a.id as string] ?? err("not_found", "plan task not found");
+    x.doneAt = a.done ? now() : null;
+    save();
+    return x;
+  },
+  delete_study_plan: (a) => {
+    const sid = a.spaceId as string;
+    delete db.plans[sid];
+    for (const x of Object.values(db.planTasks)) if (x.spaceId === sid) delete db.planTasks[x.id];
+    save();
+    return null;
+  },
+  list_plan_tasks: (a) =>
+    Object.values(db.planTasks)
+      .filter((x) => x.date >= (a.fromDate as string) && x.date <= (a.toDate as string) && db.spaces[x.spaceId])
+      .map((x): T.DatedPlanTask => ({ ...x, spaceName: db.spaces[x.spaceId].name, spaceIcon: db.spaces[x.spaceId].icon }))
+      .sort((x, y) => x.date.localeCompare(y.date) || x.spaceName.localeCompare(y.spaceName) || x.ord - y.ord),
   ...cloudHandlers,
 };
 
