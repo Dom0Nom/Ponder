@@ -101,6 +101,9 @@ export function cleanMermaid(code: string): string | null {
 }
 
 /** Validates a model reply for one output kind; null when it is unusable. */
+/** Process timelines date their events "Step 1", "Phase 2"…; a reply that mixes them with history keeps the larger group. */
+const STEP_DATE = /^(step|stage|phase|schritt|stufe|etappe|étape|paso|fase)\b/i;
+
 export function parseOutput<K extends OutputKind>(kind: K, text: string): Parsed<K> | null {
   const o = extractJson<Record<string, unknown>>(text);
   if (!o || Array.isArray(o)) return null;
@@ -135,7 +138,9 @@ export function parseOutput<K extends OutputKind>(kind: K, text: string): Parsed
           return { date: str(e.date), title: str(e.title), detail: str(e.detail) };
         })
         .filter((e) => e.date && e.title);
-      return events.length >= 3 ? done({ events }) : null;
+      const steps = events.filter((e) => STEP_DATE.test(e.date));
+      const kept = steps.length * 2 > events.length ? steps : events.filter((e) => !STEP_DATE.test(e.date));
+      return kept.length >= 3 ? done({ events: kept }) : null;
     }
     case "table": {
       const columns = strs(o.columns);

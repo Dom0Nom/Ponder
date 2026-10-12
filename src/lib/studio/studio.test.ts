@@ -135,3 +135,12 @@ describe("mind map layout", () => {
     expect(wrapText("", 9)).toEqual([]);
   });
 });
+
+describe("timeline axis", () => {
+  it("keeps the larger group when steps and dated events are mixed", () => {
+    const ev = (date: string) => ({ date, title: date, detail: "" });
+    const mixed = (dates: string[]) => parseOutput("timeline", JSON.stringify({ title: "T", events: dates.map(ev) }))!.data.events.map((e) => e.date);
+    expect(mixed(["Step 1", "Step 2", "Step 3", "Step 4", "1771", "1779"])).toEqual(["Step 1", "Step 2", "Step 3", "Step 4"]);
+    expect(mixed(["Step 1", "1771", "1779", "1950s"])).toEqual(["1771", "1779", "1950s"]);
+  });
+});

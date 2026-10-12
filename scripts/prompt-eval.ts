@@ -948,7 +948,89 @@ const essayGradeEval: Task = {
   })),
 };
 
-const TASKS: Task[] = [tutor, buddy, micro, quiz, practice, grade, classify, cards, selfcheck, stepcheck, researchQuery, researchPlan, researchRank, summary, curriculum, examTask, essayTaskEval, essayGradeEval];
+const studioMaterial = {
+  en: {
+    sources: ["Biology notes", "Plant physiology handout"],
+    passages: [
+      ...passages.photosynthesis.map((x) => ({ source: 1, text: x.text })),
+      { source: 2, text: "In 1771 Joseph Priestley showed that a mint plant could restore air in which a candle had burned out. In 1779 Jan Ingenhousz found that only the green parts of plants do this, and only in light. In the 1950s Melvin Calvin traced the path of carbon through the cycle that now carries his name." },
+      { source: 2, text: "C4 plants such as maize first fix carbon dioxide into a four-carbon compound in mesophyll cells, then release it to the Calvin cycle in bundle-sheath cells. This limits photorespiration in hot, dry conditions. About 3% of plant species use C4 photosynthesis, but they account for roughly 23% of the carbon fixed on land." },
+      { source: 2, text: "The overall equation is 6 CO2 + 6 H2O + light energy → C6H12O6 + 6 O2. Chlorophyll a absorbs mostly blue (about 430 nm) and red (about 662 nm) light, which is why leaves look green." },
+    ],
+    summaries: [],
+  },
+  de: {
+    sources: ["Politik-Skript"],
+    passages: [
+      ...passages.verfassung.map((x) => ({ source: 1, text: x.text })),
+      { source: 1, text: "Der Bundespräsident wird von der Bundesversammlung für fünf Jahre gewählt. Die Bundesregierung besteht aus dem Bundeskanzler und den Bundesministern. Der Bundeskanzler wird vom Bundestag gewählt und bestimmt die Richtlinien der Politik." },
+      { source: 1, text: "Das Bundesverfassungsgericht in Karlsruhe prüft, ob Gesetze mit dem Grundgesetz vereinbar sind. Die Artikel 1 bis 19 enthalten die Grundrechte. Artikel 20 legt fest, dass Deutschland ein demokratischer und sozialer Bundesstaat ist." },
+    ],
+    summaries: [],
+  },
+};
+
+const studioOutputs: Task = {
+  id: "studio-outputs",
+  purpose: "Studio outputs built only from the learner's own material: report with [n] citations, cheat sheet, worksheet with answer key, timeline, comparison table, mind map, Mermaid diagram, slide deck and infographic plan. JSON output.",
+  dims: ["grounding", "calibration", "format"],
+  cases: (
+    [
+      ["report", "en"],
+      ["report", "de"],
+      ["cheatsheet", "en"],
+      ["worksheet", "en"],
+      ["timeline", "en"],
+      ["table", "en"],
+      ["mindmap", "de"],
+      ["diagram", "en"],
+      ["slides", "en"],
+      ["infographic", "en"],
+    ] as const
+  ).map(([kind, l]) => ({
+    name: `${kind} ${l}`,
+    run: async () => {
+      const g = await lib("studio/generate.ts");
+      const m = studioMaterial[l];
+      let r: { title: string; data: Record<string, any> } | null = null;
+      let err = "";
+      try {
+        r = await g.generateOutput(gen, kind, m);
+      } catch (e) {
+        err = String(e);
+      }
+      const d = r?.data ?? {};
+      const text = JSON.stringify(d);
+      const kindChecks: Check[] = [];
+      if (kind === "report") {
+        const cites = [...String(d.markdown).matchAll(/\[(\d+)\]/g)].map((x) => Number(x[1]));
+        kindChecks.push(check("cites", cites.length >= 3, String(cites.length)), check("valid [n]", cites.every((n) => n >= 1 && n <= m.sources.length), cites.join(",")));
+      }
+      if (kind === "worksheet") kindChecks.push(check("8–12 questions", (d.questions?.length ?? 0) >= 8 && d.questions.length <= 12, String(d.questions?.length)));
+      if (kind === "timeline") kindChecks.push(check("≥3 events", (d.events?.length ?? 0) >= 3, String(d.events?.length)));
+      if (kind === "table") kindChecks.push(check("3–6 columns", (d.columns?.length ?? 0) >= 3 && d.columns.length <= 6, String(d.columns?.length)));
+      if (kind === "slides") kindChecks.push(check("6–10 slides", (d.slides?.length ?? 0) >= 6 && d.slides.length <= 10, String(d.slides?.length)));
+      if (kind === "infographic") {
+        const nums = (d.stats ?? []).map((x: { value: string }) => x.value.match(/\d+/)?.[0]).filter(Boolean) as string[];
+        const src = m.passages.map((x) => x.text).join(" ");
+        kindChecks.push(check("stats from material", nums.every((n) => src.includes(n)), nums.join(",")));
+      }
+      if (kind === "diagram") kindChecks.push(check("no styling", !/\bstyle\b|classDef|<br|%%/.test(String(d.code))));
+      return {
+        output: cur().at(-1)?.output ?? err,
+        expect: `A ${kind} in ${l === "de" ? "German" : "English"} built only from the material; title at most 8 words.`,
+        checks: [
+          check("parsed", !!r, err),
+          check("title ≤8 words", !!r && words(r.title) <= 8, r?.title),
+          check("language", l === "en" ? lang(text) !== "de" : lang(text + " und die der") === "de", lang(text)),
+          ...kindChecks,
+        ],
+      };
+    },
+  })),
+};
+
+const TASKS: Task[] = [tutor, buddy, micro, quiz, practice, grade, classify, cards, selfcheck, stepcheck, researchQuery, researchPlan, researchRank, summary, curriculum, examTask, essayTaskEval, essayGradeEval, studioOutputs];
 
 // ---------- judge ----------
 async function judge(task: Task, caseName: string, r: CaseResult, prompt: string): Promise<Record<string, number> & { rationale?: unknown }> {

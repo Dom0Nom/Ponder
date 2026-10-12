@@ -119,4 +119,13 @@ Unchanged prompts moved by up to ±0.36 between runs (micro-steps 4.47 → 4.83,
 | essay-task | 83% → 94% | 5.00 | first run reused an avoided issue; fixed with a random issue area per try and `repeatsIssue` rejection in code. One passage of 6 came in under 250 words (parser accepts ≥120) |
 | essay-grade | 100% | 5.00 | strong essay 5–6, weak 0–2, off-topic 0 |
 
-Open findings for later passes: classify-error labels "15% of 80 = 1200" inconsistently (concept/procedure/units); practice-problem hints sometimes name an intermediate number; research-query scores low because the judge wants more specific queries than a ≤30-word suggestion allows.
+### Studio output prompts (new, 2026-10-12)
+
+`studio-outputs`: one case per kind plus a German report and mind map, built from a 2-source photosynthesis set and a German civics script (`src/lib/studio/prompts.ts`).
+
+| run | checks | judge | notes |
+|---|---|---|---|
+| first | 100% | 4.73 | table mixed stages, people and the equation in one table; timeline mixed history with process steps; German report padded short material to 400 words by repeating facts |
+| after rewrite | 100% | 4.77 / 4.57 | report padding fixed ("or shorter when the material is short"); table usually one item type now but deepseek still mixes sometimes; timeline still mixes in the raw reply, so `parseOutput` keeps the larger group (steps vs dated events). The judge scores the raw reply, so it doesn't see that fix |
+
+Open findings for later passes: classify-error labels "15% of 80 = 1200" inconsistently (concept/procedure/units); practice-problem hints sometimes name an intermediate number; research-query scores low because the judge wants more specific queries than a ≤30-word suggestion allows; studio table sometimes mixes item types with deepseek-v4.1-flash.

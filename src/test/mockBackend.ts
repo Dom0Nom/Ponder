@@ -226,7 +226,7 @@ const defaultScript: Script = ({ messages, body }) => {
   }
   if (/multiple-choice quiz/i.test(lastText)) {
     const ids = [...lastText.matchAll(/id \\?"([^"\\]+)\\?"/g)].map((m) => m[1]);
-    const per = Number(lastText.match(/write (\d+) question/)?.[1] ?? 1);
+    const per = Number(lastText.match(/write (?:exactly )?(\d+) question/)?.[1] ?? 1);
     const qs = ids.flatMap((tid) =>
       Array.from({ length: per }, (_, k) => ({
         topicId: tid,

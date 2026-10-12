@@ -21,7 +21,7 @@ const NOUN: Record<OutputKind, string> = {
 
 const TASK: Record<OutputKind, string[]> = {
   report: [
-    "Write a structured report of 400–700 words in Markdown: a one-paragraph overview, then 3–5 `##` sections, then `## Key takeaways` with 3–5 bullets.",
+    "Write a structured report in Markdown, 400–700 words, or shorter when the material is short (never repeat a fact or pad to reach a length): a one-paragraph overview, then 3–5 `##` sections, then `## Key takeaways` with 3–5 bullets.",
     "Cite the material with [n] markers right after the sentence they support, where n is a source number from SOURCES. Every section has at least one citation. Only use numbers that exist in SOURCES.",
     "Leave out anything the material doesn't support; the learner trusts this report as a summary of their own sources.",
   ],
@@ -35,11 +35,12 @@ const TASK: Record<OutputKind, string[]> = {
     "instructions is one sentence telling the learner how to work through the sheet.",
   ],
   timeline: [
-    "List 6–15 events in chronological order. date is as precise as the material allows (a year, a date, or a stage like \"Step 1\" when the material describes a process rather than history).",
+    "Pick one axis: history (dates or years) or a process (date is \"Step 1\", \"Step 2\"…), whichever covers more of the material. Never mix them: a process timeline has no years, a history timeline has no steps.",
+    "List 6–15 events in chronological order, fewer if the chosen axis has fewer. date is as precise as the material allows (a year, a date, or a stage like \"Step 1\" when the material describes a process rather than history).",
     "title is at most 8 words; detail is one sentence on why the event matters.",
   ],
   table: [
-    "Build one comparison table that organises the material's key facts: 3–6 columns, 4–15 rows. The first column names the items being compared.",
+    "Build one comparison table: 3–6 columns, 4–15 rows (fewer only if the material has fewer such items). Every row is the same type of item (stages, people, terms, events…); pick the comparison the material supports best and leave out facts that don't fit it. The first column names the items being compared.",
     "Cells are short (a number, a term, or a few words). Use an empty string when the material has no value for a cell rather than guessing.",
     "caption is one sentence saying what the table compares.",
   ],
