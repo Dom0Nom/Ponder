@@ -23,6 +23,10 @@ class Dots {
   fill(x: number, y: number, w: number, h: number) {
     for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) this.set(i, j);
   }
+  clear(x: number, y: number, w: number, h: number) {
+    for (let j = y; j < y + h; j++)
+      for (let i = x; i < x + w; i++) if (i >= 0 && i < DOTS_W && j >= 0 && j < DOTS_H) this.bits[j * DOTS_W + i] = 0;
+  }
 }
 
 type Rect = [number, number, number, number];
@@ -107,12 +111,17 @@ export function rasterize(m: Model, blinkOn: boolean): Uint8Array {
   } else {
     let y = -(m.cut ?? 0);
     for (const row of m.rows) {
-      const lb = layout(row.l || "");
+      const lb = layout(row.m ?? (row.l || ""));
       const rb = row.r !== undefined ? layout(row.r) : null;
       const asc = Math.max(lb.asc, rb?.asc ?? 0);
       const desc = Math.max(lb.desc, rb?.desc ?? 0);
       const base = y + asc;
-      drawOps(d, lb.ops, X0, base, p);
+      drawOps(d, lb.ops, X0 - (row.shift ?? 0), base, p);
+      if (row.shift) {
+        // `◂` covers the baseline box of cell 0; raised pixels of that cell stay visible
+        d.clear(0, base - 7, X0 + 6, 8);
+        drawOps(d, layout("◂").ops, X0, base, p);
+      }
       if (rb) drawOps(d, rb.ops, X0 + DOTS_W - rb.w, base, p);
       y += asc + desc;
     }

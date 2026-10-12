@@ -17,6 +17,8 @@ export class CalcError extends Error {
   constructor(
     public code: ErrCode,
     public pos?: number,
+    /** The failing operation is a power template: the cursor goes to the end of its exponent. */
+    public inSlot?: boolean,
   ) {
     super(code);
   }
