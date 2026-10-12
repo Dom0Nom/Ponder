@@ -118,11 +118,13 @@ export function drawPlot(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     const axisX = Math.max(30, Math.min(w - 4, ax - 5));
     for (const t of ticks(b.xmin, b.xmax, xStep)) {
       if (Math.abs(t) < xStep * 1e-9) continue;
-      text(formatTick(t, xStep), sx(t), axisY, "center", "top");
+      const label = formatTick(t, xStep);
+      const half = ctx.measureText(label).width / 2 + 2;
+      text(label, Math.max(half, Math.min(w - half, sx(t))), axisY, "center", "top");
     }
     for (const t of ticks(b.ymin, b.ymax, yStep)) {
       if (Math.abs(t) < yStep * 1e-9) continue;
-      text(formatTick(t, yStep), axisX, sy(t), "right", "middle");
+      text(formatTick(t, yStep), axisX, Math.max(8, Math.min(h - 8, sy(t))), "right", "middle");
     }
     if (b.xmin <= 0 && b.xmax >= 0 && b.ymin <= 0 && b.ymax >= 0) text("0", ax - 5, ay + 4, "right", "top");
   }

@@ -22,6 +22,9 @@ async function call<R>(cmd: string, args?: Record<string, unknown>): Promise<R> 
   }
 }
 
+type McpTarget = Pick<T.McpServer, "id" | "command" | "args" | "url">;
+const mcpTarget = (s: McpTarget) => ({ id: s.id, command: s.command, args: s.args, url: s.url ?? null });
+
 export const api = {
   // spaces
   listSpaces: () => call<T.Space[]>("list_spaces"),
@@ -223,11 +226,14 @@ export const api = {
   lanScan: () => call<T.LanServer[]>("lan_scan"),
 
   // mcp client
-  mcpTools: (server: Pick<T.McpServer, "id" | "command" | "args">) =>
-    call<T.McpTool[]>("mcp_client_tools", { server: { id: server.id, command: server.command, args: server.args } }),
-  mcpCall: (server: Pick<T.McpServer, "id" | "command" | "args">, tool: string, args: unknown) =>
-    call<T.McpCallResult>("mcp_client_call", { server: { id: server.id, command: server.command, args: server.args }, tool, arguments: args }),
+  mcpTools: (server: McpTarget) => call<T.McpTool[]>("mcp_client_tools", { server: mcpTarget(server) }),
+  mcpCall: (server: McpTarget, tool: string, args: unknown) =>
+    call<T.McpCallResult>("mcp_client_call", { server: mcpTarget(server), tool, arguments: args }),
   mcpStop: (id: string) => call<void>("mcp_client_stop", { id }),
+  sourcePdf: (id: string) => call<ArrayBuffer>("source_pdf", { id }),
+  mcpAuthStatus: (id: string) => call<{ signedIn: boolean }>("mcp_client_auth_status", { id }),
+  mcpSignIn: (server: McpTarget) => call<void>("mcp_client_sign_in", { server: mcpTarget(server) }),
+  mcpSignOut: (id: string) => call<void>("mcp_client_sign_out", { id }),
 
   // oauth
   oauthChatgptStart: (providerId: string) => call<{ authUrl: string }>("oauth_chatgpt_start", { providerId }),

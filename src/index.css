@@ -64,6 +64,9 @@
   --warn: #8a5a00;
   --warn-soft: #fff1d6;
   --highlight: #ebebeb;
+  --pdf-highlight: #e0e0e0;
+  --pdf-highlight-note: #8a8a8a;
+  --pdf-selection: rgb(0 0 0 / 0.16);
   --timer-warm: #e8710a;
   --timer-break: #137333;
   --timer-track: #e3e3e3;
@@ -141,6 +144,9 @@
   --warn: #f3c062;
   --warn-soft: #3d2e0e;
   --highlight: #2a2a2a;
+  --pdf-highlight: #e0e0e0;
+  --pdf-highlight-note: #8a8a8a;
+  --pdf-selection: rgb(0 0 0 / 0.16);
   --timer-warm: #fcad70;
   --timer-break: #81c995;
   --timer-track: #333333;
