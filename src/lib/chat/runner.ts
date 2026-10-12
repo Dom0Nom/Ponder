@@ -311,7 +311,9 @@ async function runTurnInner(input: TurnInput): Promise<Message> {
 }
 
 async function loadTools(calls: ToolCallMeta[]): Promise<McpToolSet | null> {
-  const settings = await api.getSettings().catch(() => undefined);
+  const settings = await Promise.resolve()
+    .then(() => api.getSettings())
+    .catch(() => undefined);
   const servers = mcpServers(settings).filter((x) => x.enabled);
   if (!servers.length) return null;
   return mcpToolSet(servers, (c) => calls.push(c));
