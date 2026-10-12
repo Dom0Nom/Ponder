@@ -1,3 +1,4 @@
+import { s } from "../strings";
 import { generateText } from "ai";
 import { extractJson } from "../chat/json";
 import type { ResolvedModel } from "../chat/llm";
@@ -99,7 +100,7 @@ export async function generateEssayTask(llm: ResolvedModel, avoid: string[] = []
     fallback ??= task;
   }
   if (fallback) return fallback;
-  throw new Error("The model didn't return a usable essay task. Try again or pick another model.");
+  throw new Error(s.exam.essayTaskFailed);
 }
 
 export function essayGradePrompt(task: EssayTask, essay: string): string {
@@ -144,12 +145,12 @@ export async function gradeEssay(llm: ResolvedModel, task: EssayTask, essay: str
     return {
       traits: TRAITS.map((t) => ({ trait: t.trait, score: 0, reason: "" })),
       total: 0,
-      summary: "The response is too short to score. Aim for four or five paragraphs that take a side and quote both passages.",
+      summary: s.exam.essayTooShort,
     };
   for (let i = 0; i < 2; i++) {
     const r = await generateText({ model: llm.model, prompt: essayGradePrompt(task, essay), abortSignal: signal, ...llm.options({ thinking: false }) });
     const g = parseEssayGrade(r.text);
     if (g) return g;
   }
-  throw new Error("The essay couldn't be scored. Try again or pick another model.");
+  throw new Error(s.exam.essayScoreFailed);
 }

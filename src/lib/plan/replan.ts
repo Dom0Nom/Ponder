@@ -38,9 +38,12 @@ export function replanSpaceOnce(spaceId: string): Promise<number> {
     const bundle = await api.getStudyPlan(spaceId);
     if (!bundle) return 0;
     const result = replanIfMissed(bundle.plan, bundle.tasks, today, await loadScheduleContext(spaceId));
-    markChecked(spaceId, today);
-    if (!result) return 0;
+    if (!result) {
+      markChecked(spaceId, today);
+      return 0;
+    }
     await api.saveStudyPlan(spaceId, bundle.plan, true, result.tasks);
+    markChecked(spaceId, today);
     invalidatePlans(spaceId);
     return result.moved;
   })().finally(() => running.delete(spaceId));

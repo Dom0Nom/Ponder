@@ -168,7 +168,7 @@ export function ResearchPanel({
     setImporting(false);
     if (failed.length) toastError(s.sources.importFailed, new Error(failed.join("\n")));
     if (failed.length < picks.length) {
-      toast.success(`Imported ${picks.length - failed.length} sources`);
+      toast.success(s.sources.importedMany(picks.length - failed.length));
       useResearch.getState().clear(space.id);
       done();
     }

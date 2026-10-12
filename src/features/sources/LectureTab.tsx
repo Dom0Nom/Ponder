@@ -22,7 +22,17 @@ export function useLectureAvailable() {
   return !!providers?.some((p) => p.type === "openrouter") && typeof MediaRecorder !== "undefined";
 }
 
-export function LectureTab({ space, done }: { space: Space; done: () => void }) {
+export function LectureTab({
+  space,
+  done,
+  active,
+  setHold,
+}: {
+  space: Space;
+  done: () => void;
+  active: boolean;
+  setHold: (hold: boolean) => void;
+}) {
   const qc = useQueryClient();
   const { data: providers } = useProviders();
   const { data: settings } = useSettings();
@@ -36,6 +46,7 @@ export function LectureTab({ space, done }: { space: Space; done: () => void }) 
   const rec = useRef<MediaRecorder | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const live = useRef(false);
+  const gen = useRef(0);
   const elapsed = useRef(0);
   const cfg = useRef({ settings, providers });
   cfg.current = { settings, providers };
@@ -49,12 +60,21 @@ export function LectureTab({ space, done }: { space: Space; done: () => void }) 
 
   const release = () => {
     live.current = false;
+    gen.current++;
     clearTimeout(timer.current);
     if (rec.current?.state === "recording") rec.current.stop();
     stream.current?.getTracks().forEach((t) => t.stop());
     stream.current = null;
   };
-  useEffect(() => release, []);
+  const starting = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      release();
+    };
+  }, []);
 
   useEffect(() => {
     if (!recording) return;
@@ -62,42 +82,71 @@ export function LectureTab({ space, done }: { space: Space; done: () => void }) 
     return () => clearInterval(id);
   }, [recording]);
 
-  const segment = (t0: number) => {
-    if (!stream.current) return;
-    const r = new MediaRecorder(stream.current);
+  const fail = (e: unknown) => {
+    release();
+    setRecording(false);
+    toastError(s.lecture.recorderFailed, e);
+  };
+
+  const segment = (t0: number, st: MediaStream, g: number) => {
+    let r: MediaRecorder;
+    try {
+      r = new MediaRecorder(st);
+    } catch (e) {
+      fail(e);
+      return;
+    }
     const parts: Blob[] = [];
     const start = Date.now() - t0;
     r.ondataavailable = (e) => e.data.size && parts.push(e.data);
+    r.onerror = (e) => g === gen.current && fail((e as unknown as { error?: unknown }).error ?? e);
     r.onstop = () => {
       q.add(new Blob(parts, { type: r.mimeType }), r.mimeType, start);
-      if (live.current) segment(t0);
-      else {
-        stream.current?.getTracks().forEach((t) => t.stop());
-        stream.current = null;
+      if (live.current && g === gen.current) segment(t0, st, g);
+      else if (st !== stream.current || !live.current) {
+        st.getTracks().forEach((t) => t.stop());
+        if (st === stream.current) stream.current = null;
       }
     };
     rec.current = r;
-    r.start();
+    try {
+      r.start();
+    } catch (e) {
+      fail(e);
+      return;
+    }
     timer.current = setTimeout(() => r.state === "recording" && r.stop(), SEGMENT_MS);
   };
 
   const start = async () => {
+    if (starting.current || live.current) return;
+    starting.current = true;
+    let st: MediaStream;
     try {
-      stream.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      st = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (e) {
       toastError(s.speech.dictate.noMic, e);
       return;
+    } finally {
+      starting.current = false;
     }
+    if (!mounted.current) {
+      st.getTracks().forEach((t) => t.stop());
+      return;
+    }
+    stream.current = st;
+    const g = ++gen.current;
     const t0 = Date.now() - elapsed.current;
     live.current = true;
     setStartedAt(t0);
     setNow(Date.now());
     setRecording(true);
-    segment(t0);
+    segment(t0, st, g);
   };
 
   const stop = () => {
     live.current = false;
+    gen.current++;
     elapsed.current = Date.now() - startedAt;
     clearTimeout(timer.current);
     if (rec.current?.state === "recording") rec.current.stop();
@@ -105,12 +154,19 @@ export function LectureTab({ space, done }: { space: Space; done: () => void }) 
   };
 
   const text = q.text;
+  const [saved, setSaved] = useState(false);
+  useEffect(() => setSaved(false), [text]);
+  const hold = recording || q.pending || (!!text && !saved);
+  useEffect(() => setHold(hold), [hold, setHold]);
+  useEffect(() => () => setHold(false), [setHold]);
   const save = async () => {
     setBusy(true);
     try {
       const src = await pasteImporter.import(space.id, { title: title.trim() || s.lecture.defaultTitle(new Date()), text });
       qc.invalidateQueries({ queryKey: qk.sources(space.id) });
       toast.success(s.sources.imported(src.title));
+      setSaved(true);
+      setHold(false);
       done();
     } catch (e) {
       toastError(s.sources.importFailed, e, save);
@@ -120,7 +176,17 @@ export function LectureTab({ space, done }: { space: Space; done: () => void }) 
   };
 
   const status = recording ? s.lecture.recording(clock(now - startedAt)) : q.pending ? s.lecture.transcribing : undefined;
-  useImportFooter({ label: s.lecture.save, disabled: recording || q.pending || !text, busy, status, run: save });
+  useImportFooter(
+    active
+      ? {
+          label: q.failed ? s.lecture.saveWithoutFailed(q.failed) : s.lecture.save,
+          disabled: recording || q.pending || !text,
+          busy,
+          status,
+          run: save,
+        }
+      : null,
+  );
 
   return (
     <div data-testid="lecture-tab" data-state={recording ? "recording" : q.pending ? "transcribing" : "idle"} className="flex flex-col gap-3">

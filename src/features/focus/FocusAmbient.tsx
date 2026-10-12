@@ -20,7 +20,7 @@ export function FocusAmbient() {
     } else player.current?.stop();
   }, [working, sound, volume]);
 
-  useEffect(() => () => player.current?.stop(0.2), []);
+  useEffect(() => () => player.current?.close(), []);
 
   useEffect(() => {
     const un = events.focusDistraction((n) => toast(s.distraction.nudge(n.app.name, n.remainingMs)));

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { episodeText, isFeed, parseFeed, pickTranscript, splitMp3, transcriptText, type Episode } from "./podcast";
+import { audioFormat, episodeText, isFeed, parseFeed, pickTranscript, splitMp3, transcriptText, type Episode } from "./podcast";
 
 const FEED = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0">
@@ -66,5 +66,17 @@ describe("podcast feeds", () => {
 
     await expect(episodeText({ ...noT, audioBytes: 500 * 1024 * 1024 }, deps)).rejects.toThrow("tooLong");
     await expect(episodeText({ ...noT, audioUrl: null }, deps)).rejects.toThrow("noAudio");
+  });
+});
+
+describe("audioFormat", () => {
+  it("trusts the MIME type over the file name", () => {
+    expect(audioFormat("audio/ogg", "https://cdn.example.com/ep.mp3")).toBe("ogg");
+    expect(audioFormat("audio/mp4", "https://cdn.example.com/mp3/ep")).toBe("m4a");
+  });
+  it("falls back to the file extension, ignoring the path and query", () => {
+    expect(audioFormat("", "https://example.com/mp3s/ep.m4a?x=wav")).toBe("m4a");
+    expect(audioFormat("application/octet-stream", "https://example.com/ep.flac")).toBe("flac");
+    expect(audioFormat("", "https://example.com/ep")).toBeNull();
   });
 });

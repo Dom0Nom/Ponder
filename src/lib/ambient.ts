@@ -108,11 +108,14 @@ export class AmbientPlayer {
   private src: AudioBufferSourceNode | null = null;
   private gain: GainNode | null = null;
   private cache = new Map<AmbientSound, AudioBuffer>();
+  private token = 0;
   current: AmbientSound | null = null;
 
   async play(kind: AmbientSound, volume: number) {
+    const token = ++this.token;
     this.ctx ??= new AudioContext();
     if (this.ctx.state === "suspended") await this.ctx.resume().catch(() => {});
+    if (token !== this.token || !this.ctx) return;
     if (this.current === kind && this.src) return this.setVolume(volume);
     this.stop(0.4);
     let buf = this.cache.get(kind);
@@ -142,6 +145,7 @@ export class AmbientPlayer {
   }
 
   stop(fade = 1) {
+    this.token++;
     const { ctx, src, gain } = this;
     this.src = null;
     this.gain = null;
@@ -150,6 +154,13 @@ export class AmbientPlayer {
     gain.gain.cancelScheduledValues(ctx.currentTime);
     gain.gain.setTargetAtTime(0, ctx.currentTime, fade / 4);
     src.stop(ctx.currentTime + fade);
+  }
+
+  close() {
+    this.stop(0);
+    void this.ctx?.close().catch(() => {});
+    this.ctx = null;
+    this.cache.clear();
   }
 
   get playing() {

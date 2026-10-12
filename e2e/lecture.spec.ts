@@ -48,12 +48,36 @@ test("lecture capture: record, transcribe, record more, save as a source", async
   await tab.getByLabel("Title").fill("Lecture 3: light reactions");
   await dialog.getByRole("button", { name: "Save as source" }).click();
   await expect(dialog).toBeHidden();
-  const text = await app.evaluate(() => {
-    const db = (window as unknown as W).__mock.db();
-    const src = Object.values(db.sources).find((x) => x.title === "Lecture 3: light reactions");
-    return src ? db.texts[src.id]?.text : null;
-  });
-  expect(text).toMatch(/^\[0:00\] Chloroplasts capture light energy\.\n\n\[0:0[1-9]\] Chloroplasts capture light energy\.$/);
+  const text = () =>
+    app.evaluate(() => {
+      const db = (window as unknown as W).__mock.db();
+      const src = Object.values(db.sources).find((x) => x.title === "Lecture 3: light reactions");
+      return src ? (db.texts[src.id]?.text ?? "") : "";
+    });
+  await expect.poll(text).toMatch(/^\[0:00\] Chloroplasts capture light energy\.\n\n\[0:0[1-9]\] Chloroplasts capture light energy\.$/);
+});
+
+test("lecture capture survives a tab switch and warns before closing unsaved", async ({ app }) => {
+  await app.getByRole("button", { name: "New space" }).first().click();
+  await app.getByLabel("Name").fill("Biology");
+  await app.getByRole("button", { name: "Create" }).click();
+  await app.getByRole("button", { name: "Add source" }).click();
+  await app.getByRole("tab", { name: "Record" }).click();
+  const tab = app.getByTestId("lecture-tab");
+  const dialog = app.getByRole("dialog");
+  await tab.getByTestId("lecture-start").click();
+  await expect(tab).toHaveAttribute("data-state", "recording");
+  await app.getByRole("tab", { name: "Paste text" }).click();
+  await expect(dialog.getByRole("button", { name: "Save as source" })).toHaveCount(0);
+  await app.getByRole("tab", { name: "Record" }).click();
+  await expect(tab).toHaveAttribute("data-state", "recording");
+  await tab.getByTestId("lecture-stop").click();
+  await expect(tab.getByTestId("lecture-transcript").locator("> div").first()).toHaveAttribute("data-state", "done");
+
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toContainText("The recording isn't saved yet");
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toBeHidden();
 });
 
 test("podcast feed: pick an episode, import its transcript or transcribe the audio", async ({ app }) => {

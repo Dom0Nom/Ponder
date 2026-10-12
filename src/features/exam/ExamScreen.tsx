@@ -340,8 +340,10 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const timeUp = useRef(false);
   useEffect(() => {
-    if (left <= 0 && !finished.current) {
+    if (left <= 0 && !finished.current && !timeUp.current) {
+      timeUp.current = true;
       toast(s.exam.timeUp);
       void finish();
     }

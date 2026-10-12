@@ -173,9 +173,12 @@ export const MAX_AUDIO_BYTES = 150 * 1024 * 1024;
 export const PIECE_BYTES = 8 * 1024 * 1024;
 
 export function audioFormat(type: string, url: string): "mp3" | "m4a" | "ogg" | "wav" | "aac" | "flac" | null {
-  const t = `${type} ${url.split("?")[0].toLowerCase()}`;
+  return formatIn(type.toLowerCase()) ?? formatIn(url.split("?")[0].toLowerCase().split("/").pop() ?? "");
+}
+
+function formatIn(t: string): ReturnType<typeof audioFormat> {
   if (/mpeg|mp3/.test(t)) return "mp3";
-  if (/m4a|mp4|x-m4a/.test(t)) return "m4a";
+  if (/m4a|mp4/.test(t)) return "m4a";
   if (/aac/.test(t)) return "aac";
   if (/ogg|opus/.test(t)) return "ogg";
   if (/wav/.test(t)) return "wav";

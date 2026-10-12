@@ -1,3 +1,4 @@
+import { s } from "../strings";
 import { Readability } from "@mozilla/readability";
 import { isFeed, parseFeed, type Feed } from "./podcast";
 import TurndownService from "turndown";
@@ -108,19 +109,19 @@ export async function fetchReadable(url: string): Promise<ExtractedPage & { url:
   try {
     page = await api.httpGetText(url);
   } catch (e) {
-    throw new Error(`Couldn't load the page: ${(e as Error).message}`);
+    throw new Error(s.sources.pageLoadFailed((e as Error).message));
   }
-  if (page.status >= 400) throw new Error(`The page returned HTTP ${page.status}.`);
+  if (page.status >= 400) throw new Error(s.sources.pageHttp(page.status));
   const type = page.contentType ?? "";
   if (isFeed(page.body)) throw new FeedFound(parseFeed(page.body));
   if (type.includes("text/plain") || type.includes("markdown")) {
     return { url: page.url, title: page.url, markdown: page.body, excerpt: null, byline: null, siteName: null };
   }
   if (type && !type.includes("html") && !type.includes("xml")) {
-    throw new Error(`This link isn't a web page (${type.split(";")[0]}). Download the file and add it as a file source.`);
+    throw new Error(s.sources.notAWebPage(type.split(";")[0]));
   }
   const extracted = extractReadable(page.body, page.url);
-  if (!extracted) throw new Error("No readable article text found on this page.");
+  if (!extracted) throw new Error(s.sources.noReadableText);
   return { ...extracted, url: page.url };
 }
 

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useUi } from "../../stores/ui";
 import * as Tabs from "@radix-ui/react-tabs";
 import { useQueryClient } from "@tanstack/react-query";
@@ -28,21 +28,25 @@ export interface ImportFooter {
   busy?: boolean;
   status?: string;
   run: () => void;
+  owner?: string;
 }
 
-const FooterCtx = createContext<(f: ImportFooter | null) => void>(() => {});
+const FooterCtx = createContext<Dispatch<SetStateAction<ImportFooter | null>>>(() => {});
 
 /** Registers the active tab's primary action in the dialog footer. */
 export function useImportFooter(f: ImportFooter | null) {
   const set = useContext(FooterCtx);
+  const owner = useId();
   const run = useRef(f?.run);
   run.current = f?.run;
   const key = f ? `${f.label}|${!!f.disabled}|${!!f.busy}|${f.status ?? ""}` : "";
   useEffect(() => {
-    set(f ? { ...f, run: () => run.current?.() } : null);
-    return () => set(null);
+    if (!f) return;
+    set({ ...f, owner, run: () => run.current?.() });
+    // a tab that unmounts after the next one registered must not clear its footer
+    return () => set((cur) => (cur?.owner === owner ? null : cur));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, set]);
+  }, [key, set, owner]);
 }
 
 const WIDTH: Record<string, number> = { lecture: 522, file: 522, paste: 522, url: 522, youtube: 522, research: 602, gdrive: 682, dropbox: 682 };
@@ -72,6 +76,16 @@ export function ImportDialog({
   const [tab, setTab] = useState(initialTab ?? "file");
   const [footer, setFooter] = useState<ImportFooter | null>(null);
   const lecture = useLectureAvailable();
+  const [hold, setHold] = useState(false);
+  const [warned, setWarned] = useState(false);
+  useEffect(() => setWarned(false), [hold, open]);
+  const requestOpenChange = (o: boolean) => {
+    if (!o && hold && !warned) {
+      setWarned(true);
+      return;
+    }
+    onOpenChange(o);
+  };
   const query = useUi((st) => st.importDialog.query);
   const found = useUi((st) => st.importDialog.found);
   const setSourcesOpen = useUi((st) => st.setSourcesOpen);
@@ -85,18 +99,24 @@ export function ImportDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={requestOpenChange}
       title={s.sources.importTitle}
       className="max-h-[720px]"
       style={{ width: `min(${WIDTH[tab] ?? 520}px, calc(100vw - 32px))` }}
       footer={
         <>
-          {footer?.status && (
-            <span className="mr-auto min-w-0 truncate text-muted">
-              <TextSwap text={footer.status} />
+          {warned ? (
+            <span className="mr-auto min-w-0 truncate text-danger" role="status">
+              {s.lecture.leaveWarning}
             </span>
+          ) : (
+            footer?.status && (
+              <span className="mr-auto min-w-0 truncate text-muted">
+                <TextSwap text={footer.status} />
+              </span>
+            )
           )}
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" onClick={() => requestOpenChange(false)}>
             {s.common.cancel}
           </Button>
           <Button variant="primary" disabled={!footer || footer.disabled || footer.busy} onClick={() => footer?.run()}>
@@ -138,8 +158,8 @@ export function ImportDialog({
             <CloudTab service="dropbox" space={space} done={done} />
           </Tabs.Content>
           {lecture && (
-            <Tabs.Content value="lecture" className="t-panel-slide" data-open="true">
-              <LectureTab space={space} done={done} />
+            <Tabs.Content value="lecture" forceMount hidden={tab !== "lecture"} className="t-panel-slide" data-open="true">
+              <LectureTab space={space} done={done} active={tab === "lecture"} setHold={setHold} />
             </Tabs.Content>
           )}
           <Tabs.Content value="research" className="t-panel-slide" data-open="true">

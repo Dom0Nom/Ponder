@@ -16,11 +16,21 @@ export function AmbientSettings() {
   const [previewing, setPreviewing] = useState(false);
   const [volume, setVolume] = useState<number | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const pending = useRef<(() => void) | null>(null);
+  const latest = useRef(prefs.ambient);
+  latest.current = prefs.ambient;
+
+  const flush = () => {
+    clearTimeout(timer.current);
+    const run = pending.current;
+    pending.current = null;
+    run?.();
+  };
 
   useEffect(
     () => () => {
-      clearTimeout(timer.current);
-      player.current?.stop(0.2);
+      flush();
+      player.current?.close();
     },
     [],
   );
@@ -62,7 +72,8 @@ export function AmbientSettings() {
                 setPreviewing(false);
               } else void player.current?.play(sound, vol);
             }
-            void save({ ...a, sound });
+            flush();
+            void save({ ...latest.current, volume: vol, sound });
           }}
           options={[{ value: "off" as const, label: s.ambient.off }, ...AMBIENT_SOUNDS.map((v) => ({ value: v, label: s.ambient.sounds[v] }))]}
         />
@@ -84,7 +95,8 @@ export function AmbientSettings() {
               setVolume(v / 100);
               player.current?.setVolume(v / 100);
               clearTimeout(timer.current);
-              timer.current = setTimeout(() => void save({ ...a, volume: v / 100 }), 400);
+              pending.current = () => void save({ ...latest.current, volume: v / 100 });
+              timer.current = setTimeout(flush, 400);
             }}
           />
         </SettingsRow>
