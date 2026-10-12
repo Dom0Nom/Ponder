@@ -48,7 +48,18 @@ impl Ingest {
         for id in pending {
             let _ = tx.send(Job::Ingest { source_id: id, input: Input::Stored });
         }
-        if embedder.files_present() {
+        let (index_model, has_chunks) = {
+            let c = db.conn()?;
+            let index_model = models::get_setting(&c, embed::SETTING_INDEX_MODEL)?
+                .and_then(|v| v.as_str().map(str::to_string))
+                .unwrap_or_else(|| embed::DEFAULT_MODEL.to_string());
+            let has_chunks: bool = c.query_row("SELECT EXISTS (SELECT 1 FROM chunks)", [], |r| r.get(0))?;
+            (index_model, has_chunks)
+        };
+        if has_chunks && index_model != embedder.model_id() {
+            // a switch that didn't finish before the app quit
+            let _ = tx.send(Job::Reembed);
+        } else if embedder.files_present() || has_chunks {
             let _ = tx.send(Job::Warmup);
         }
         let w = Worker::new(db.clone(), embedder.clone(), emit.clone());
@@ -129,6 +140,20 @@ impl Ingest {
         Ok(src)
     }
 
+    /// Switches the local embedding model and re-embeds every chunk with it in the background.
+    pub fn set_embedding_model(&self, model_id: &str) -> AppResult<()> {
+        if !embed::MODELS.iter().any(|m| m.id == model_id) {
+            return Err(invalid(format!("Unknown embedding model: {model_id}")));
+        }
+        models::set_setting(&self.db.conn()?, embed::SETTING_MODEL, &serde_json::json!(model_id))?;
+        if self.embedder.switch(model_id) {
+            self.tx
+                .send(Job::Reembed)
+                .map_err(|_| AppError::Other("The import worker stopped. Restart the app.".into()))?;
+        }
+        Ok(())
+    }
+
     pub fn reindex(&self, id: &str) -> AppResult<models::Source> {
         let c = self.db.conn()?;
         models::get_source(&c, id)?;
@@ -160,7 +185,7 @@ impl Ingest {
         source_ids: Option<&[String]>,
     ) -> AppResult<Vec<SearchHit>> {
         let qv = match self.embedder.current() {
-            Some(m) if !query.trim().is_empty() => match m.embed(&[query.to_string()]) {
+            Some(m) if !query.trim().is_empty() => match m.embed_queries(&[query.to_string()]) {
                 Ok(mut v) => v.pop(),
                 Err(e) => {
                     log::warn!("query embedding failed, using FTS only: {e}");
@@ -180,12 +205,17 @@ impl Ingest {
         let vecs = match self.embedder.current() {
             Some(m) if !topics.is_empty() => {
                 let texts: Vec<String> = topics.iter().map(|t| t.text.clone()).collect();
-                m.embed(&texts).map_err(|e| log::warn!("topic embedding failed, keyword coverage only: {e}")).ok()
+                m.embed_queries(&texts).map_err(|e| log::warn!("topic embedding failed, keyword coverage only: {e}")).ok()
             }
             _ => None,
         };
         let c = self.db.conn()?;
-        retrieval::coverage(&c, space_id, topics, vecs.as_deref())
+        let spec = embed::spec(&self.embedder.model_id());
+        let mut out = retrieval::coverage(&c, space_id, topics, vecs.as_deref())?;
+        for t in &mut out {
+            t.similarity = t.similarity.map(|s| spec.calibrated(s));
+        }
+        Ok(out)
     }
 }
 
@@ -194,7 +224,13 @@ pub fn start(app: &AppHandle, db: Db, data_dir: PathBuf) {
     let emit: Emit = Arc::new(move |event: &str, payload: serde_json::Value| {
         let _ = handle.emit(event, payload);
     });
-    let embedder = Arc::new(EmbedderService::new(data_dir.join("models").join(embed::MODEL_NAME), emit.clone()));
+    let model_id = db
+        .conn()
+        .ok()
+        .and_then(|c| models::get_setting(&c, embed::SETTING_MODEL).ok().flatten())
+        .and_then(|v| v.as_str().map(str::to_string))
+        .unwrap_or_else(|| embed::DEFAULT_MODEL.to_string());
+    let embedder = Arc::new(EmbedderService::new(data_dir.join("models"), &model_id, emit.clone()));
     match Ingest::spawn(db, embedder, emit) {
         Ok(ingest) => {
             app.manage(ingest);
@@ -252,6 +288,29 @@ pub mod tests {
                 |r| r.get(0),
             )
             .unwrap()
+    }
+
+    #[test]
+    fn switching_the_embedding_model_drops_old_vectors() {
+        let (ing, db, _d, events, space) = setup(Some(Arc::new(FakeEmbedder)));
+        let src = ing.import_text(&space, "Notes", "Photosynthese im Blatt.\n\nLicht wird zu Zucker.", "text", None).unwrap();
+        let done = wait_status(&db, &src.id, "ready");
+        assert_eq!(vec_count(&db, &src.id), done.chunk_count);
+        assert!(ing.set_embedding_model("nope").is_err());
+        ing.set_embedding_model("multilingual-e5-small").unwrap();
+        assert_eq!(ing.embedder.model_id(), "multilingual-e5-small");
+        let t = Instant::now();
+        while vec_count(&db, &src.id) > 0 {
+            assert!(t.elapsed() < Duration::from_secs(10), "old vectors kept");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        let c = db.conn().unwrap();
+        assert_eq!(models::get_setting(&c, embed::SETTING_MODEL).unwrap(), Some(serde_json::json!("multilingual-e5-small")));
+        assert_eq!(models::get_setting(&c, embed::SETTING_INDEX_MODEL).unwrap(), Some(serde_json::json!("multilingual-e5-small")));
+        assert_eq!(ing.embedder.status().model, "multilingual-e5-small");
+        // no model available in tests: search falls back to keywords instead of failing
+        assert!(ing.search(&space, "Photosynthese", 4, None).unwrap()[0].text.contains("Photosynthese"));
+        assert!(events.lock().unwrap().iter().any(|(e, p)| e == "embedder://status" && p["model"] == "multilingual-e5-small"));
     }
 
     #[test]

@@ -49,6 +49,16 @@ pub async fn embedder_status(state: State<'_, Ingest>) -> AppResult<EmbedderStat
 }
 
 #[tauri::command]
+pub async fn embedding_models() -> AppResult<Vec<super::embed::ModelSpec>> {
+    Ok(super::embed::MODELS.to_vec())
+}
+
+#[tauri::command]
+pub async fn set_embedding_model(state: State<'_, Ingest>, model: String) -> AppResult<()> {
+    state.set_embedding_model(&model)
+}
+
+#[tauri::command]
 pub async fn topic_coverage(
     state: State<'_, Ingest>,
     space_id: String,

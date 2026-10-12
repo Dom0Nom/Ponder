@@ -123,6 +123,7 @@ export const s = {
     openOriginal: "Open original",
     options: "Source options",
     embedderLoading: "Loading the search model…",
+    embedderIndexing: (p: number) => `Re-indexing your sources… ${Math.round(p * 100)}%`,
     chosen: (n: number) => (n === 1 ? "1 file chosen" : `${n} files chosen`),
     kinds: { pdf: "PDF", epub: "EPUB", docx: "Word", markdown: "Note", text: "Note", url: "Web page", youtube: "YouTube" },
     emptyTitle: "No sources yet",
@@ -218,6 +219,17 @@ export const s = {
     reset: "Reset",
     registerFailed: "Couldn't set the shortcut",
     notRegistered: "The shortcut isn't active",
+  },
+  searchModel: {
+    title: "Search model",
+    body: "Runs on this computer and finds the passages answers cite. Switching downloads the new model once and re-indexes every source.",
+    names: { "all-MiniLM-L6-v2": "English", "multilingual-e5-small": "Multilingual" } as Record<string, string>,
+    detail: (sizeMb: number, multilingual: boolean) =>
+      `${multilingual ? "German, French, Spanish and about 90 more languages, also across languages" : "Best for English sources"} · ${sizeMb} MB download`,
+    label: "Search model",
+    ready: "Ready",
+    missing: "Downloads with the first import",
+    switched: "Search model changed. Re-indexing in the background.",
   },
   research: {
     placeholder: "What do you want to learn about?",

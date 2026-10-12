@@ -5,7 +5,7 @@ import type { QuizQuestion, TopicCoverage, TopicLevelValue, TopicRef } from "../
 
 export type CoverageLevel = "covered" | "partial" | "missing";
 
-/** all-MiniLM-L6-v2 cosine: on-topic chunks score ~0.6, unrelated ones ≤ 0.15 (see real_model_coverage_calibration). */
+/** all-MiniLM-L6-v2 cosine (other models are mapped onto it in Rust): on-topic chunks score ~0.6, unrelated ones ≤ 0.15 (see real_model_coverage_calibration). */
 export const COVERED_SIM = 0.5;
 export const PARTIAL_SIM = 0.3;
 

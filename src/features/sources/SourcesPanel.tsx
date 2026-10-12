@@ -178,9 +178,13 @@ function EmbedderBanner() {
         <>
           <p className="flex items-center gap-2">
             <ActivityOrb activity="plan" size={16} />
-            {st.state === "downloading" ? s.sources.embedderDownloading(st.progress) : s.sources.embedderLoading}
+            {st.state === "downloading"
+              ? s.sources.embedderDownloading(st.progress)
+              : st.state === "indexing"
+                ? s.sources.embedderIndexing(st.progress)
+                : s.sources.embedderLoading}
           </p>
-          {st.state === "downloading" && (
+          {(st.state === "downloading" || st.state === "indexing") && (
             <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-divider">
               <div className="m-progress h-full bg-fg" style={{ width: `${Math.round(st.progress * 100)}%` }} />
             </div>

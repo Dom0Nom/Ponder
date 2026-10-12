@@ -1,4 +1,4 @@
-//! Local sentence embeddings (all-MiniLM-L6-v2 via candle, 384 dims) and the model lifecycle.
+//! Local sentence embeddings (BERT-style models via candle, 384 dims) and the model lifecycle.
 
 use super::Emit;
 use crate::error::{AppError, AppResult};
@@ -13,14 +13,77 @@ use tokenizers::{PaddingParams, Tokenizer, TruncationParams};
 
 #[cfg(test)]
 pub const DIMS: usize = 384;
-pub const MODEL_NAME: &str = "all-MiniLM-L6-v2";
-const MODEL_URL: &str = "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main";
-/// (file, approximate size for progress weighting)
-const MODEL_FILES: &[(&str, u64)] =
-    &[("config.json", 612), ("tokenizer.json", 466_247), ("model.safetensors", 90_868_376)];
+
+/// A downloadable local embedding model. All of them output 384-dim vectors, so switching only
+/// needs a re-embed, not a schema change.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelSpec {
+    pub id: &'static str,
+    #[serde(skip)]
+    pub url: &'static str,
+    /// (file, approximate size for progress weighting)
+    #[serde(skip)]
+    pub files: &'static [(&'static str, u64)],
+    #[serde(skip)]
+    pub query_prefix: &'static str,
+    #[serde(skip)]
+    pub passage_prefix: &'static str,
+    pub size_mb: u32,
+    pub multilingual: bool,
+    /// Linear map from this model's cosine to the all-MiniLM-L6-v2 scale the coverage thresholds
+    /// use (see real_model_coverage_calibration): (scale, offset).
+    #[serde(skip)]
+    pub sim_map: (f64, f64),
+}
+
+impl ModelSpec {
+    pub fn calibrated(&self, sim: f64) -> f64 {
+        sim * self.sim_map.0 + self.sim_map.1
+    }
+}
+
+pub const MODELS: &[ModelSpec] = &[
+    ModelSpec {
+        id: "all-MiniLM-L6-v2",
+        url: "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main",
+        files: &[("config.json", 612), ("tokenizer.json", 466_247), ("model.safetensors", 90_868_376)],
+        query_prefix: "",
+        passage_prefix: "",
+        size_mb: 91,
+        multilingual: false,
+        sim_map: (1.0, 0.0),
+    },
+    ModelSpec {
+        id: "multilingual-e5-small",
+        url: "https://huggingface.co/intfloat/multilingual-e5-small/resolve/main",
+        files: &[("config.json", 655), ("tokenizer.json", 17_082_730), ("model.safetensors", 470_641_600)],
+        query_prefix: "query: ",
+        passage_prefix: "passage: ",
+        size_mb: 488,
+        multilingual: true,
+        // related-but-off-topic ≈ 0.80 → 0.15, on-topic ≈ 0.885 → 0.62
+        sim_map: (5.53, -4.274),
+    },
+];
+
+pub const DEFAULT_MODEL: &str = "all-MiniLM-L6-v2";
+/// Settings key for the chosen model.
+pub const SETTING_MODEL: &str = "embeddingModel";
+/// Settings key for the model the stored vectors were made with.
+pub const SETTING_INDEX_MODEL: &str = "embeddingIndexModel";
+
+pub fn spec(id: &str) -> &'static ModelSpec {
+    MODELS.iter().find(|m| m.id == id).unwrap_or(&MODELS[0])
+}
 
 pub trait Embedder: Send + Sync {
+    /// Embeds passages (chunks).
     fn embed(&self, texts: &[String]) -> AppResult<Vec<Vec<f32>>>;
+    /// Embeds search queries; models trained with prefixes treat them differently from passages.
+    fn embed_queries(&self, texts: &[String]) -> AppResult<Vec<Vec<f32>>> {
+        self.embed(texts)
+    }
 }
 
 fn other<E: std::fmt::Display>(e: E) -> AppError {
@@ -31,14 +94,20 @@ pub struct BertEmbedder {
     model: BertModel,
     tokenizer: Tokenizer,
     device: Device,
+    query_prefix: &'static str,
+    passage_prefix: &'static str,
 }
 
 impl BertEmbedder {
-    pub fn load(dir: &Path) -> AppResult<Self> {
+    pub fn load(dir: &Path, spec: &ModelSpec) -> AppResult<Self> {
         let device = Device::Cpu;
         let cfg: Config = serde_json::from_str(&std::fs::read_to_string(dir.join("config.json"))?)?;
         let mut tokenizer = Tokenizer::from_file(dir.join("tokenizer.json")).map_err(other)?;
-        tokenizer.with_padding(Some(PaddingParams::default()));
+        let (pad_id, pad_token) = ["[PAD]", "<pad>"]
+            .iter()
+            .find_map(|t| tokenizer.token_to_id(t).map(|id| (id, t.to_string())))
+            .unwrap_or((0, "[PAD]".into()));
+        tokenizer.with_padding(Some(PaddingParams { pad_id, pad_token, ..Default::default() }));
         tokenizer
             .with_truncation(Some(TruncationParams { max_length: 256, ..Default::default() }))
             .map_err(other)?;
@@ -47,7 +116,18 @@ impl BertEmbedder {
             VarBuilder::from_mmaped_safetensors(&[dir.join("model.safetensors")], DType::F32, &device).map_err(other)?
         };
         let model = BertModel::load(vb, &cfg).map_err(other)?;
-        Ok(Self { model, tokenizer, device })
+        Ok(Self { model, tokenizer, device, query_prefix: spec.query_prefix, passage_prefix: spec.passage_prefix })
+    }
+
+    fn embed_prefixed(&self, prefix: &str, texts: &[String]) -> AppResult<Vec<Vec<f32>>> {
+        if texts.is_empty() {
+            return Ok(vec![]);
+        }
+        if prefix.is_empty() {
+            return self.embed_batch(texts).map_err(other);
+        }
+        let texts: Vec<String> = texts.iter().map(|t| format!("{prefix}{t}")).collect();
+        self.embed_batch(&texts).map_err(other)
     }
 
     fn embed_batch(&self, texts: &[String]) -> candle_core::Result<Vec<Vec<f32>>> {
@@ -73,10 +153,10 @@ impl BertEmbedder {
 
 impl Embedder for BertEmbedder {
     fn embed(&self, texts: &[String]) -> AppResult<Vec<Vec<f32>>> {
-        if texts.is_empty() {
-            return Ok(vec![]);
-        }
-        self.embed_batch(texts).map_err(other)
+        self.embed_prefixed(self.passage_prefix, texts)
+    }
+    fn embed_queries(&self, texts: &[String]) -> AppResult<Vec<Vec<f32>>> {
+        self.embed_prefixed(self.query_prefix, texts)
     }
 }
 
@@ -114,13 +194,15 @@ pub fn fake_vector(text: &str) -> Vec<f32> {
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbedderStatus {
-    /// missing | downloading | loading | ready | error
+    /// missing | downloading | loading | indexing | ready | error
     pub state: String,
+    pub model: String,
     pub progress: f64,
     pub error: Option<String>,
 }
 
 struct Inner {
+    spec: &'static ModelSpec,
     status: EmbedderStatus,
     model: Option<Arc<dyn Embedder>>,
     last_failure: Option<Instant>,
@@ -129,7 +211,8 @@ struct Inner {
 
 /// Owns the model lifecycle: download on first use, load, expose to the worker and to search.
 pub struct EmbedderService {
-    dir: Option<PathBuf>,
+    /// Folder holding one sub-folder per model.
+    root: Option<PathBuf>,
     inner: Mutex<Inner>,
     emit: Emit,
 }
@@ -137,27 +220,29 @@ pub struct EmbedderService {
 const RETRY_AFTER: Duration = Duration::from_secs(30);
 
 impl EmbedderService {
-    pub fn new(dir: PathBuf, emit: Emit) -> Self {
-        let state = if files_present(&dir) { "loading" } else { "missing" };
-        Self::with(Some(dir), state, None, emit)
+    pub fn new(root: PathBuf, model_id: &str, emit: Emit) -> Self {
+        let spec = spec(model_id);
+        let state = if files_present(&root.join(spec.id), spec) { "loading" } else { "missing" };
+        Self::with(Some(root), spec, state, None, emit)
     }
 
     #[cfg(test)]
     pub fn ready(model: Arc<dyn Embedder>, emit: Emit) -> Self {
-        Self::with(None, "ready", Some(model), emit)
+        Self::with(None, &MODELS[0], "ready", Some(model), emit)
     }
 
     #[cfg(test)]
     pub fn unavailable(emit: Emit) -> Self {
-        Self::with(None, "missing", None, emit)
+        Self::with(None, &MODELS[0], "missing", None, emit)
     }
 
-    fn with(dir: Option<PathBuf>, state: &str, model: Option<Arc<dyn Embedder>>, emit: Emit) -> Self {
+    fn with(root: Option<PathBuf>, spec: &'static ModelSpec, state: &str, model: Option<Arc<dyn Embedder>>, emit: Emit) -> Self {
         let progress = if model.is_some() { 1.0 } else { 0.0 };
         Self {
-            dir,
+            root,
             inner: Mutex::new(Inner {
-                status: EmbedderStatus { state: state.into(), progress, error: None },
+                spec,
+                status: EmbedderStatus { state: state.into(), model: spec.id.into(), progress, error: None },
                 model,
                 last_failure: None,
                 last_emit: None,
@@ -166,8 +251,35 @@ impl EmbedderService {
         }
     }
 
+    pub fn model_id(&self) -> &'static str {
+        self.inner.lock().unwrap().spec.id
+    }
+
+    fn dir(&self) -> Option<(PathBuf, &'static ModelSpec)> {
+        let spec = self.inner.lock().unwrap().spec;
+        self.root.as_ref().map(|r| (r.join(spec.id), spec))
+    }
+
     pub fn files_present(&self) -> bool {
-        self.dir.as_deref().map(files_present).unwrap_or(false)
+        self.dir().map(|(d, spec)| files_present(&d, spec)).unwrap_or(false)
+    }
+
+    /// Switches to another model. The old one is dropped at once; search runs FTS-only until the
+    /// new one is downloaded and loaded by the worker. Returns false when it was already active.
+    pub fn switch(&self, model_id: &str) -> bool {
+        let spec = spec(model_id);
+        let present = self.root.as_ref().is_some_and(|r| files_present(&r.join(spec.id), spec));
+        {
+            let mut g = self.inner.lock().unwrap();
+            if g.spec.id == spec.id && (g.model.is_some() || g.status.state != "error") {
+                return false;
+            }
+            g.spec = spec;
+            g.model = None;
+            g.last_failure = None;
+        }
+        self.set(if present { "loading" } else { "missing" }, 0.0, None, true);
+        true
     }
 
     pub fn status(&self) -> EmbedderStatus {
@@ -186,11 +298,19 @@ impl EmbedderService {
             g.status.progress = progress;
             return;
         }
-        g.status = EmbedderStatus { state: state.into(), progress, error };
+        g.status = EmbedderStatus { state: state.into(), model: g.spec.id.into(), progress, error };
         g.last_emit = Some(Instant::now());
         let payload = serde_json::to_value(&g.status).unwrap_or_default();
         drop(g);
         (self.emit)("embedder://status", payload);
+    }
+
+    /// Progress of embedding chunks that have no vectors yet (after a model switch or on startup).
+    pub fn report_indexing(&self, progress: Option<f64>) {
+        match progress {
+            Some(p) => self.set("indexing", p, None, false),
+            None => self.set("ready", 1.0, None, true),
+        }
     }
 
     /// Downloads and loads the model if needed. Blocking; call only from the ingest worker.
@@ -205,11 +325,17 @@ impl EmbedderService {
                 return None;
             }
         }
-        let dir = self.dir.clone()?;
-        match self.download_and_load(&dir) {
+        let (dir, spec) = self.dir()?;
+        match self.download_and_load(&dir, spec) {
             Ok(m) => {
                 let m: Arc<dyn Embedder> = Arc::new(m);
-                self.inner.lock().unwrap().model = Some(m.clone());
+                let mut g = self.inner.lock().unwrap();
+                if g.spec.id != spec.id {
+                    // switched while this one was loading
+                    return None;
+                }
+                g.model = Some(m.clone());
+                drop(g);
                 self.set("ready", 1.0, None, true);
                 Some(m)
             }
@@ -222,15 +348,15 @@ impl EmbedderService {
         }
     }
 
-    fn download_and_load(&self, dir: &Path) -> Result<BertEmbedder, String> {
-        if !files_present(dir) {
+    fn download_and_load(&self, dir: &Path, spec: &'static ModelSpec) -> Result<BertEmbedder, String> {
+        if !files_present(dir, spec) {
             self.set("downloading", 0.0, None, true);
-            download(dir, |p| self.set("downloading", p, None, false))
+            download(dir, spec, |p| self.set("downloading", p, None, false))
                 .map_err(|e| format!("Couldn't download the embedding model: {e}"))?;
         }
         self.set("loading", 1.0, None, true);
-        BertEmbedder::load(dir).map_err(|e| {
-            for (f, _) in MODEL_FILES {
+        BertEmbedder::load(dir, spec).map_err(|e| {
+            for (f, _) in spec.files {
                 let _ = std::fs::remove_file(dir.join(f));
             }
             format!("Couldn't load the embedding model (it will be downloaded again): {e}")
@@ -238,11 +364,11 @@ impl EmbedderService {
     }
 }
 
-fn files_present(dir: &Path) -> bool {
-    MODEL_FILES.iter().all(|(f, _)| dir.join(f).is_file())
+fn files_present(dir: &Path, spec: &ModelSpec) -> bool {
+    spec.files.iter().all(|(f, _)| dir.join(f).is_file())
 }
 
-fn download(dir: &Path, progress: impl Fn(f64)) -> Result<(), String> {
+fn download(dir: &Path, spec: &ModelSpec, progress: impl Fn(f64)) -> Result<(), String> {
     use futures_util::StreamExt;
     use std::io::Write;
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
@@ -253,16 +379,16 @@ fn download(dir: &Path, progress: impl Fn(f64)) -> Result<(), String> {
             .read_timeout(Duration::from_secs(60))
             .build()
             .map_err(|e| e.to_string())?;
-        let total: u64 = MODEL_FILES.iter().map(|(_, s)| s).sum();
+        let total: u64 = spec.files.iter().map(|(_, s)| s).sum();
         let mut done_before = 0u64;
-        for (name, approx) in MODEL_FILES {
+        for (name, approx) in spec.files {
             let dest = dir.join(name);
             if dest.is_file() {
                 done_before += approx;
                 continue;
             }
             let resp = client
-                .get(format!("{MODEL_URL}/{name}"))
+                .get(format!("{}/{name}", spec.url))
                 .send()
                 .await
                 .and_then(|r| r.error_for_status())
@@ -296,6 +422,21 @@ mod tests {
         a.iter().zip(b).map(|(x, y)| x * y).sum()
     }
 
+    /// Model files for the ignored real-model tests: EMBED_MODEL_DIR, else the dev app's download
+    /// (`<data dir>/models/<EMBED_MODEL or the default>`). None (test skipped) when missing.
+    fn test_model() -> Option<(PathBuf, &'static ModelSpec)> {
+        let spec = spec(&std::env::var("EMBED_MODEL").unwrap_or_else(|_| DEFAULT_MODEL.into()));
+        let dir = std::env::var("EMBED_MODEL_DIR").map(PathBuf::from).unwrap_or_else(|_| {
+            let home = std::env::var("HOME").unwrap_or_default();
+            Path::new(&home).join("Library/Application Support/dev.ponder.app/models").join(spec.id)
+        });
+        if !files_present(&dir, spec) {
+            eprintln!("no model files in {}; set EMBED_MODEL_DIR", dir.display());
+            return None;
+        }
+        Some((dir, spec))
+    }
+
     #[test]
     fn fake_embedder_is_normalized_and_deterministic() {
         let v = fake_vector("Chlorophyll absorbs light");
@@ -316,11 +457,9 @@ mod tests {
     #[test]
     #[ignore]
     fn real_model_semantic_similarity() {
-        let dir = std::env::var("EMBED_MODEL_DIR").unwrap_or_else(|_| {
-            "/private/tmp/claude-501/-Users-dominic-ai-learning-app/eecc4610-edc5-48b9-b717-507ee1ed0547/scratchpad/probe/m".into()
-        });
+        let Some((dir, spec)) = test_model() else { return };
         let t = Instant::now();
-        let m = BertEmbedder::load(Path::new(&dir)).unwrap();
+        let m = BertEmbedder::load(&dir, spec).unwrap();
         let load = t.elapsed();
         let texts = vec![
             "photosynthesis in plants".to_string(),
@@ -336,21 +475,42 @@ mod tests {
         let bio = cos(&v[0], &v[1]);
         let tax = cos(&v[0], &v[2]);
         println!("load {load:?}, embed 3 in {embed:?}, sim(bio)={bio:.3}, sim(tax)={tax:.3}");
-        assert!(bio > tax + 0.1, "bio {bio} tax {tax}");
+        assert!(spec.calibrated(bio as f64) > spec.calibrated(tax as f64) + 0.1, "bio {bio} tax {tax}");
         let batch: Vec<String> = (0..16).map(|i| format!("{i} {}", texts[1]).repeat(5)).collect();
         let t = Instant::now();
         m.embed(&batch).unwrap();
         println!("batch of 16 (~150 tokens each) in {:?}", t.elapsed());
     }
 
+    /// German question vs. English passage (and the reverse). Run with EMBED_MODEL=multilingual-e5-small.
+    #[test]
+    #[ignore]
+    fn real_model_cross_lingual() {
+        let Some((dir, spec)) = test_model() else { return };
+        let m = BertEmbedder::load(&dir, spec).unwrap();
+        let q = m.embed_queries(&["Wie funktioniert die Photosynthese?".to_string(), "how do database joins work".to_string()]).unwrap();
+        let p = m
+            .embed(&[
+                "Chlorophyll in the chloroplasts absorbs sunlight, which leaves use to turn carbon dioxide and water into glucose.".to_string(),
+                "Under the tax code, capital gains on assets held longer than one year are taxed at a reduced rate.".to_string(),
+                "JOIN verknüpft zwei Tabellen über einen Fremdschlüssel, sodass zusammengehörige Zeilen gemeinsam abgefragt werden.".to_string(),
+            ])
+            .unwrap();
+        let (bio, tax, sql) = (cos(&q[0], &p[0]), cos(&q[0], &p[1]), cos(&q[1], &p[2]));
+        let sql_off = cos(&q[1], &p[1]);
+        println!("{}: de→en bio={bio:.3} tax={tax:.3}; en→de sql={sql:.3} off={sql_off:.3}", spec.id);
+        if spec.multilingual {
+            assert!(bio > tax + 0.03, "bio {bio} tax {tax}");
+            assert!(sql > sql_off + 0.03, "sql {sql} off {sql_off}");
+        }
+    }
+
     /// Prints topic-vs-chunk similarities used to pick the coverage thresholds in the UI.
     #[test]
     #[ignore]
     fn real_model_coverage_calibration() {
-        let dir = std::env::var("EMBED_MODEL_DIR").unwrap_or_else(|_| {
-            "/private/tmp/claude-501/-Users-dominic-ai-learning-app/eecc4610-edc5-48b9-b717-507ee1ed0547/scratchpad/probe/m".into()
-        });
-        let m = BertEmbedder::load(Path::new(&dir)).unwrap();
+        let Some((dir, spec)) = test_model() else { return };
+        let m = BertEmbedder::load(&dir, spec).unwrap();
         let topics = [
             "Percents: percent of a number, percent change, interest, discounts",
             "Life science: cells, human body systems, health, genetics and heredity, evolution, ecosystems",
@@ -367,7 +527,11 @@ mod tests {
         let tv = m.embed(&topics.iter().map(|s| s.to_string()).collect::<Vec<_>>()).unwrap();
         let cv = m.embed(&chunks.iter().map(|c| c.1.to_string()).collect::<Vec<_>>()).unwrap();
         for (i, t) in topics.iter().enumerate() {
-            let row: Vec<String> = chunks.iter().enumerate().map(|(j, c)| format!("{}={:.2}", c.0, cos(&tv[i], &cv[j]))).collect();
+            let row: Vec<String> = chunks
+                .iter()
+                .enumerate()
+                .map(|(j, c)| format!("{}={:.2}", c.0, spec.calibrated(cos(&tv[i], &cv[j]) as f64)))
+                .collect();
             println!("{}\n   {}", &t[..t.find(':').unwrap()], row.join("  "));
         }
     }

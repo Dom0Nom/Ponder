@@ -10,6 +10,7 @@ import { ResearchSection } from "./ResearchSection";
 import { MemorySection } from "./MemorySection";
 import { CaptureSection } from "./CaptureSection";
 import { CloudSection } from "./CloudSection";
+import { SearchModelSection } from "./SearchModelSection";
 import { FocusPackSection } from "./FocusPackSection";
 import { SettingsGroup, SettingsRow, SettingsSection } from "./layout";
 import { AddProviderPage } from "./AddProviderPage";
@@ -122,6 +123,9 @@ export function SettingsScreen() {
         </SettingsSection>
         <SettingsSection id="settings-cloud" title={s.cloud.sectionTitle} body={s.cloud.sectionBody}>
           <CloudSection />
+        </SettingsSection>
+        <SettingsSection id="settings-search" title={s.searchModel.title} body={s.searchModel.body}>
+          <SearchModelSection />
         </SettingsSection>
         <SettingsSection id="settings-motion" title={s.settings.motion}>
           <SettingsGroup>

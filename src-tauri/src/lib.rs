@@ -131,6 +131,8 @@ pub fn run() {
             ingest::commands::reindex_source,
             ingest::commands::search_chunks,
             ingest::commands::embedder_status,
+            ingest::commands::embedding_models,
+            ingest::commands::set_embedding_model,
             ingest::commands::topic_coverage,
             watch::commands::watch_list,
             watch::commands::watch_add,

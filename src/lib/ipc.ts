@@ -50,6 +50,8 @@ export const api = {
   searchChunks: (spaceId: string, query: string, limit?: number, sourceIds?: string[]) =>
     call<T.SearchHit[]>("search_chunks", { spaceId, query, limit: limit ?? null, sourceIds: sourceIds ?? null }),
   embedderStatus: () => call<T.EmbedderStatus>("embedder_status"),
+  embeddingModels: () => call<T.EmbeddingModel[]>("embedding_models"),
+  setEmbeddingModel: (model: string) => call<void>("set_embedding_model", { model }),
 
   // watched folders
   watchList: (spaceId: string) => call<T.WatchedFolder[]>("watch_list", { spaceId }),

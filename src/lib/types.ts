@@ -426,9 +426,16 @@ export interface FetchedPage {
 }
 
 export interface EmbedderStatus {
-  state: "missing" | "downloading" | "loading" | "ready" | "error";
+  state: "missing" | "downloading" | "loading" | "indexing" | "ready" | "error";
+  model: string;
   progress: number;
   error: string | null;
+}
+
+export interface EmbeddingModel {
+  id: string;
+  sizeMb: number;
+  multilingual: boolean;
 }
 
 export interface AppError {

@@ -62,3 +62,18 @@ test("import dialog: one footer action per tab, chosen tab sets the width", asyn
   await expect.poll(async () => (await dialog.boundingBox())!.width).toBeGreaterThan(narrow);
   await expect(dialog.getByRole("button", { name: "Import" })).toBeDisabled();
 });
+
+test("settings: switching the search model re-indexes", async ({ app }) => {
+  await app.getByRole("button", { name: "Settings", exact: true }).click();
+  const section = app.getByTestId("search-model-section");
+  await section.scrollIntoViewIfNeeded();
+  const select = section.getByLabel("Search model");
+  await expect(select).toHaveValue("all-MiniLM-L6-v2");
+  await expect(section.getByTestId("search-model-status")).toHaveText("Ready");
+  await select.selectOption("multilingual-e5-small");
+  await expect(app.getByText("Search model changed. Re-indexing in the background.")).toBeVisible();
+  await expect(section).toContainText("Multilingual");
+  await expect(section).toContainText("488 MB");
+  await expect(section.getByTestId("search-model-status")).toHaveText("Ready", { timeout: 5000 });
+  await expect(select).toHaveValue("multilingual-e5-small");
+});

@@ -13,6 +13,7 @@ export const queryClient = new QueryClient({
 
 export const qk = {
   openrouterModels: ["openrouterModels"] as const,
+  embeddingModels: ["embeddingModels"] as const,
   spaces: ["spaces"] as const,
   space: (id: string) => ["space", id] as const,
   sources: (spaceId: string) => ["sources", spaceId] as const,

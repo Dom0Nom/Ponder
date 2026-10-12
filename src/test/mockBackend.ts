@@ -680,6 +680,18 @@ function withActive(t: number, op?: (f: MockFocus, trans: MockTransition[]) => v
   }
 }
 
+const EMBEDDING_MODELS: T.EmbeddingModel[] = [
+  { id: "all-MiniLM-L6-v2", sizeMb: 91, multilingual: false },
+  { id: "multilingual-e5-small", sizeMb: 488, multilingual: true },
+];
+const embeddingModel = () => (db.settings.embeddingModel as string | undefined) ?? EMBEDDING_MODELS[0].id;
+const embedderStatus = (state: T.EmbedderStatus["state"], progress: number): T.EmbedderStatus => ({
+  state,
+  model: embeddingModel(),
+  progress,
+  error: null,
+});
+
 function emitOutcome(out: FocusOutcome) {
   for (const tr of out.transitions) emit("focus://transition", { from: tr.from, to: tr.to, state: tr.state });
   emit("focus://tick", out.state);
@@ -1010,7 +1022,18 @@ const handlers: Record<string, (a: Args) => unknown> = {
   },
   search_chunks: (a) =>
     search(a.spaceId as string, a.query as string, (a.limit as number) ?? 8, (a.sourceIds as string[]) ?? null),
-  embedder_status: () => ({ state: "ready", progress: 1, error: null }),
+  embedder_status: () => embedderStatus("ready", 1),
+  embedding_models: () => EMBEDDING_MODELS,
+  set_embedding_model: (a) => {
+    const model = a.model as string;
+    if (!EMBEDDING_MODELS.some((m) => m.id === model)) throw err("invalid", `Unknown embedding model: ${model}`);
+    if (embeddingModel() === model) return null;
+    db.settings.embeddingModel = model;
+    emit("embedder://status", embedderStatus("downloading", 0));
+    setTimeout(() => emit("embedder://status", embedderStatus("indexing", 0.5)), 400);
+    setTimeout(() => emit("embedder://status", embedderStatus("ready", 1)), 900);
+    return null;
+  },
 
   watch_list: (a) =>
     Object.values(db.watched)

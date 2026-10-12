@@ -29,6 +29,8 @@ pub enum Job {
     Ingest { source_id: String, input: Input },
     /// load the model if its files exist, then embed chunks that have no vectors yet
     Warmup,
+    /// the embedding model changed: drop all vectors, then embed everything with the new model
+    Reembed,
 }
 
 enum Outcome {
@@ -61,6 +63,16 @@ impl Worker {
         match job {
             Job::Ingest { source_id, input } => self.process(&source_id, input),
             Job::Warmup => {
+                if let Some(e) = self.embedder.ensure_loaded() {
+                    self.backfill(e.as_ref());
+                }
+            }
+            Job::Reembed => {
+                if let Err(e) = self.clear_vectors() {
+                    log::warn!("couldn't clear vectors for the new embedding model: {e}");
+                    return;
+                }
+                self.needs_backfill = true;
                 if let Some(e) = self.embedder.ensure_loaded() {
                     self.backfill(e.as_ref());
                 }
@@ -213,6 +225,15 @@ impl Worker {
         Ok(Outcome::Done)
     }
 
+    fn clear_vectors(&self) -> AppResult<()> {
+        let c = self.db.conn()?;
+        let model = self.embedder.model_id();
+        c.execute("DELETE FROM vec_chunks", [])?;
+        models::set_setting(&c, super::embed::SETTING_INDEX_MODEL, &serde_json::json!(model))?;
+        log::info!("vectors cleared; re-embedding with {model}");
+        Ok(())
+    }
+
     /// Embeds chunks of ready sources that have no vector yet (model became available later).
     fn backfill(&mut self, emb: &dyn Embedder) {
         let res = (|| -> AppResult<()> {
@@ -228,7 +249,11 @@ impl Worker {
             if !missing.is_empty() {
                 log::info!("embedding {} chunks that have no vectors yet", missing.len());
             }
-            for batch in missing.chunks(EMBED_BATCH) {
+            let total = missing.len();
+            for (i, batch) in missing.chunks(EMBED_BATCH).enumerate() {
+                if total > EMBED_BATCH {
+                    self.embedder.report_indexing(Some((i * EMBED_BATCH) as f64 / total as f64));
+                }
                 let texts: Vec<String> = batch.iter().map(|m| m.2.clone()).collect();
                 let vecs = emb.embed(&texts)?;
                 let tx = c.transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -237,11 +262,17 @@ impl Worker {
                 }
                 tx.commit()?;
             }
+            if total > EMBED_BATCH {
+                self.embedder.report_indexing(None);
+            }
             Ok(())
         })();
         match res {
             Ok(()) => self.needs_backfill = false,
-            Err(e) => log::warn!("vector backfill failed: {e}"),
+            Err(e) => {
+                log::warn!("vector backfill failed: {e}");
+                self.embedder.report_indexing(None);
+            }
         }
     }
 }
