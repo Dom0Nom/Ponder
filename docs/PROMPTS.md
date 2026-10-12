@@ -111,4 +111,12 @@ Baseline = the prompts before this pass; new = rewrites. 2 samples per case (pra
 
 Unchanged prompts moved by up to ±0.36 between runs (micro-steps 4.47 → 4.83, custom-curriculum 5.00 → 4.78, research-query 3.08 → 2.83), so judge differences under ~0.3 are noise; the check rate decides close calls.
 
+### Exam prompts (new, 2026-10-12)
+
+| prompt | checks | judge | notes |
+|---|---|---|---|
+| exam-questions | 100% | 5.00 | per-topic counts, 4 options, no "all of the above", no figures |
+| essay-task | 83% → 94% | 5.00 | first run reused an avoided issue; fixed with a random issue area per try and `repeatsIssue` rejection in code. One passage of 6 came in under 250 words (parser accepts ≥120) |
+| essay-grade | 100% | 5.00 | strong essay 5–6, weak 0–2, off-topic 0 |
+
 Open findings for later passes: classify-error labels "15% of 80 = 1200" inconsistently (concept/procedure/units); practice-problem hints sometimes name an intermediate number; research-query scores low because the judge wants more specific queries than a ≤30-word suggestion allows.
