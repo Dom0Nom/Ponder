@@ -126,7 +126,7 @@ test.describe("motion allowed", () => {
     await studio.getByTestId("flashcards-tile").click();
     await expect(slide).toHaveAttribute("data-page", "2");
     await expect(studio.getByTestId("flashcards-card")).toBeVisible();
-    await studio.getByRole("button", { name: "Back", exact: true }).click();
+    await studio.getByRole("button", { name: "Back to Studio" }).click();
     await expect(slide).toHaveAttribute("data-page", "1");
   });
 });

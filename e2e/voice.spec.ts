@@ -96,6 +96,7 @@ test("voice tutor: ends the take after the learner stops talking", async ({ app 
   await app.getByTestId("voice-start").click();
   await expect(bar(app)).toHaveAttribute("data-phase", "listening");
   await app.evaluate(() => ((window as unknown as W).__level = 0.1));
+  await expect(bar(app).locator("span[aria-hidden] > span").first()).not.toHaveAttribute("style", /height: 4px/);
   await app.waitForTimeout(700);
   await app.evaluate(() => ((window as unknown as W).__level = 0.001));
   const t0 = Date.now();
