@@ -94,7 +94,7 @@ test("settings: separate research model and system prompt are used and can be re
   await prompt.blur();
   await expect(section.getByRole("button", { name: "Reset to default" })).toBeEnabled();
 
-  await app.getByRole("button", { name: "Back" }).click();
+  await app.getByRole("button", { name: "Back", exact: true }).click();
   await app.getByRole("button", { name: "Add source" }).first().click();
   await dialog(app).getByRole("tab", { name: "Deep research" }).click();
   await expect(query(app)).toHaveValue("Cell biology and genetics basics");
