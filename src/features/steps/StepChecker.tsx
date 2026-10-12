@@ -186,15 +186,16 @@ export function StepCheckerPanel({
       if (r.firstWrong != null) {
         const v = r.verdicts[r.firstWrong];
         try {
-          await api.mistakesAdd(spaceId, [
-            {
-              origin: s.steps.origin,
-              question: problem.trim() || lines[0],
-              given: lines[r.firstWrong],
-              correct: v.fix ?? v.issue ?? s.steps.calcHint,
-              explanation: v.fix ? (v.issue ?? null) : (v.hint ?? null),
-            },
-          ]);
+          const item = {
+            origin: s.steps.origin,
+            question: problem.trim() || lines[0],
+            given: lines[r.firstWrong],
+            correct: v.fix ?? v.issue ?? s.steps.calcHint,
+            explanation: v.fix ? (v.issue ?? null) : (v.hint ?? null),
+          };
+          const saved = await api.mistakesList(spaceId);
+          if (saved.some((m) => m.origin === item.origin && m.question === item.question && m.given === item.given && m.correct === item.correct)) return;
+          await api.mistakesAdd(spaceId, [item]);
           invalidateCards(spaceId);
           toast.success(s.steps.saved);
         } catch (e) {

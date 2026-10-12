@@ -61,6 +61,11 @@ export function PracticeScreen({ spaceId, topicKey }: { spaceId: string; topicKe
     navigate({ name: "practice", spaceId, topicKey: key, topicTitle: t?.title ?? (key.startsWith("free:") ? key.slice(5) : undefined) });
   };
 
+  if (selected && abilities.isLoading) return <Skeleton className="m-6 h-64 rounded-pane" />;
+  if (selected && abilities.error && !abilities.data) {
+    return <ErrorState className="pt-24" title={s.practice.loadFailed} error={abilities.error} onRetry={() => abilities.refetch()} />;
+  }
+
   if (!selected) return <PracticeHub spaceId={spaceId} topics={all} abilityByKey={abilityByKey} onPick={pick} />;
   return (
     <Session
@@ -108,6 +113,17 @@ function Session({
   const [showHint, setShowHint] = useState(false);
 
   const prefetched = useRef<Promise<PracticeItem> | null>(null);
+  const progress = useRef<{
+    itemId: string;
+    response: string;
+    grade?: Grade;
+    errorType?: ErrorType | null;
+    errorNote?: string | null;
+    attempted?: boolean;
+    mistakeId?: string;
+    errorTypeSet?: boolean;
+    levelSet?: boolean;
+  } | null>(null);
 
   const makeNext = async (atTheta: number) => {
     const llm = await resolveChatModel(space);
@@ -151,46 +167,63 @@ function Session({
     if (!item || !response.trim()) return;
     setBusy("grade");
     try {
-      const llm = await resolveChatModel(space);
-      const grade = await gradeResponse(llm, item, response.trim());
-      const after = updateTheta(theta, item.difficulty, grade.correct, n);
-      let errorType: ErrorType | null = null;
-      let errorNote: string | null = null;
-      const correctText = item.kind === "mcq" ? item.options![Number(item.answer)] : item.answer;
       const givenText = item.kind === "mcq" ? item.options![Number(response)] ?? response : response.trim();
-      if (!grade.correct) {
-        const c = await classifyError(llm, { question: item.question, answer: correctText, solution: item.solution }, givenText).catch(() => null);
-        errorType = c?.errorType ?? null;
-        errorNote = c?.note ?? null;
+      if (progress.current?.itemId !== item.id || progress.current.response !== givenText) progress.current = { itemId: item.id, response: givenText };
+      const p = progress.current;
+      const correctText = item.kind === "mcq" ? item.options![Number(item.answer)] : item.answer;
+      if (!p.grade) {
+        const llm = await resolveChatModel(space);
+        p.grade = await gradeResponse(llm, item, response.trim());
+        if (!p.grade.correct) {
+          const c = await classifyError(llm, { question: item.question, answer: correctText, solution: item.solution }, givenText).catch(() => null);
+          p.errorType = c?.errorType ?? null;
+          p.errorNote = c?.note ?? null;
+        }
       }
-      await api.practiceAttempt(space.id, {
-        itemId: item.id,
-        topicKey: topic.key,
-        topicTitle: topic.title,
-        response: givenText,
-        correct: grade.correct,
-        thetaBefore: theta,
-        thetaAfter: after,
-        errorType,
-      });
+      const grade = p.grade;
+      const errorType = p.errorType ?? null;
+      const errorNote = p.errorNote ?? null;
+      const after = updateTheta(theta, item.difficulty, grade.correct, n);
+      if (!p.attempted) {
+        await api.practiceAttempt(space.id, {
+          itemId: item.id,
+          topicKey: topic.key,
+          topicTitle: topic.title,
+          response: givenText,
+          correct: grade.correct,
+          thetaBefore: theta,
+          thetaAfter: after,
+          errorType,
+        });
+        p.attempted = true;
+      }
       if (!grade.correct) {
-        const [m] = await api.mistakesAdd(space.id, [
-          {
-            origin: "practice",
-            question: item.question,
-            given: givenText,
-            correct: correctText,
-            explanation: errorNote ?? item.solution.slice(0, 600),
-            topic: topic.title,
-            options: item.options,
-          },
-        ]);
-        if (errorType) await api.mistakeSetErrorType(m.id, errorType);
-        invalidateCards(space.id);
+        if (!p.mistakeId) {
+          const [m] = await api.mistakesAdd(space.id, [
+            {
+              origin: "practice",
+              question: item.question,
+              given: givenText,
+              correct: correctText,
+              explanation: errorNote ?? item.solution.slice(0, 600),
+              topic: topic.title,
+              options: item.options,
+            },
+          ]);
+          p.mistakeId = m.id;
+          invalidateCards(space.id);
+        }
+        if (errorType && !p.errorTypeSet) {
+          await api.mistakeSetErrorType(p.mistakeId, errorType);
+          p.errorTypeSet = true;
+        }
       }
       if (isCurriculumTopic) {
         const level = levelFromTheta(after, n + 1);
-        if (level !== "unknown") await api.topicLevelSet(space.id, topic.key, level, `practice: ${skillPercent(after)}/100 after ${n + 1} problems`);
+        if (level !== "unknown" && !p.levelSet) {
+          await api.topicLevelSet(space.id, topic.key, level, `practice: ${skillPercent(after)}/100 after ${n + 1} problems`);
+          p.levelSet = true;
+        }
         qc.invalidateQueries({ queryKey: qk.levels(space.id) });
       }
       qc.invalidateQueries({ queryKey: qkAbilities(space.id) });
@@ -220,7 +253,7 @@ function Session({
             <span className="text-muted" data-testid="practice-skill">
               {s.practice.problems(n)}
             </span>
-            <Button variant="ghost" size="sm" className="ml-auto" onClick={() => load()} disabled={busy === "new"}>
+            <Button variant="ghost" size="sm" className="ml-auto" onClick={() => load()} disabled={busy != null}>
               {s.practice.skip}
             </Button>
           </div>

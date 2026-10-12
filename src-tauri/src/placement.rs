@@ -100,12 +100,25 @@ pub fn set_curriculum(c: &Connection, space_id: &str, curriculum_id: &str, title
     if !topics.is_array() || topics.as_array().map(|a| a.is_empty()).unwrap_or(true) {
         return Err(invalid("A curriculum needs at least one topic"));
     }
+    let tx = c.unchecked_transaction()?;
+    let c = &tx;
+    let changed = match get_curriculum(c, space_id)? {
+        Some(old) => old.curriculum_id != curriculum_id || &old.topics != topics,
+        None => false,
+    };
+    if changed {
+        c.execute("DELETE FROM topic_levels WHERE space_id=?1", [space_id])?;
+        c.execute("DELETE FROM abilities WHERE space_id=?1 AND topic_key NOT LIKE 'free:%'", [space_id])?;
+        c.execute("DELETE FROM plan_tasks WHERE space_id=?1 AND topic_id IS NOT NULL AND done_at IS NULL", [space_id])?;
+    }
     c.execute(
         "INSERT INTO space_curricula (space_id, curriculum_id, title, topics, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)
          ON CONFLICT(space_id) DO UPDATE SET curriculum_id=?2, title=?3, topics=?4, updated_at=?5",
         params![space_id, curriculum_id, title, topics.to_string(), now_ms()],
     )?;
-    get_curriculum(c, space_id)?.ok_or_else(|| AppError::NotFound("curriculum".into()))
+    let out = get_curriculum(c, space_id)?.ok_or_else(|| AppError::NotFound("curriculum".into()));
+    tx.commit()?;
+    out
 }
 
 pub fn clear_curriculum(c: &Connection, space_id: &str) -> AppResult<()> {
@@ -399,5 +412,35 @@ mod tests {
 
         models::delete_source(&c, &src.id).unwrap();
         assert!(list_courses(&c, &sp.id).unwrap().is_empty());
+    }
+
+    #[test]
+    fn replacing_curriculum_clears_topic_state() {
+        let (db, _d) = test_db();
+        let c = db.conn().unwrap();
+        let sp = models::create_space(&c, models::SpacePatch { name: Some("X".into()), ..Default::default() }).unwrap();
+        let first = json!([{"id": "custom.1", "title": "Old"}, {"id": "custom.2", "title": "Old 2"}]);
+        set_curriculum(&c, &sp.id, "custom", "A", &first).unwrap();
+        set_level(&c, &sp.id, "custom.1", "strong", None).unwrap();
+        c.execute(
+            "INSERT INTO abilities (space_id, topic_key, topic_title, theta, n, updated_at) VALUES (?1, 'custom.1', 'Old', 1.0, 3, 0), (?1, 'free:x', 'x', 0.5, 1, 0)",
+            [&sp.id],
+        )
+        .unwrap();
+        c.execute(
+            "INSERT INTO plan_tasks (id, space_id, date, ord, kind, topic_id, title, minutes, done_at) VALUES ('t1', ?1, '2030-01-01', 0, 'study', 'custom.1', 'Old', 30, NULL)",
+            [&sp.id],
+        )
+        .unwrap();
+
+        set_curriculum(&c, &sp.id, "custom", "A", &first).unwrap();
+        assert_eq!(list_levels(&c, &sp.id).unwrap().len(), 1);
+
+        set_curriculum(&c, &sp.id, "custom", "B", &json!([{"id": "custom.1", "title": "New"}, {"id": "custom.2", "title": "New 2"}])).unwrap();
+        assert!(list_levels(&c, &sp.id).unwrap().is_empty());
+        let keys: Vec<String> = c.prepare("SELECT topic_key FROM abilities WHERE space_id=?1").unwrap().query_map([&sp.id], |r| r.get(0)).unwrap().map(|r| r.unwrap()).collect();
+        assert_eq!(keys, vec!["free:x".to_string()]);
+        let n: i64 = c.query_row("SELECT count(*) FROM plan_tasks WHERE space_id=?1", [&sp.id], |r| r.get(0)).unwrap();
+        assert_eq!(n, 0);
     }
 }

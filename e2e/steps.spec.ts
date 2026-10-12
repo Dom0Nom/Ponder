@@ -51,6 +51,20 @@ test("flags the exact step with a sign error and saves it as a mistake", async (
   await expect(checker.getByTestId("step-row").and(app.locator('[data-status="ok"]'))).toHaveCount(3);
 });
 
+test("checking the same steps again doesn't add a second mistake", async ({ app }) => {
+  const checker = await openChecker(app);
+  await checker.getByLabel("Problem").fill("Solve -2(x-3)+4=10");
+  await checker.getByLabel("Your steps, one per line").fill("-2x-6+4=10\n-2x-2=10\n-2x=12\nx=-6");
+  await checker.getByRole("button", { name: "Check my steps" }).click();
+  await expect(checker.getByTestId("step-summary")).toContainText("Step 1 is where it goes wrong");
+  await expect(app.getByText("Saved to your mistake notebook")).toBeVisible();
+  await checker.getByRole("button", { name: "Edit steps" }).click();
+  await checker.getByRole("button", { name: "Check my steps" }).click();
+  await expect(checker.getByTestId("step-summary")).toContainText("Step 1 is where it goes wrong");
+  const mistakes = await app.evaluate(() => Object.values((window as any).__mock.db().mistakes) as any[]);
+  expect(mistakes).toHaveLength(1);
+});
+
 test("reads steps from an uploaded photo, then checks them", async ({ app }) => {
   const checker = await openChecker(app);
   await checker.getByRole("button", { name: "Use a photo" }).click();

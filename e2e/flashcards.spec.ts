@@ -35,6 +35,44 @@ test("make cards from sources, review them, and see them leave the queue", async
   expect(states.every((s: number) => s === 2)).toBe(true);
 });
 
+test("the last card hides its answer again when it comes back after Again", async ({ app }) => {
+  await spaceWithSource(app);
+  await app.getByRole("button", { name: /^Flashcards/ }).click();
+  const card = app.getByTestId("flashcards-card");
+  await card.getByRole("button", { name: "Make cards from sources" }).click();
+  await app.getByRole("dialog").getByRole("button", { name: "Make flashcards" }).click();
+  await expect(card.getByTestId("card-counts")).toContainText("2 total");
+  await card.getByRole("button", { name: "Review" }).click();
+  const session = app.getByTestId("review-session");
+  await app.keyboard.press("Space");
+  await app.keyboard.press("4");
+  await expect(session).toContainText("1 reviewed");
+  await expect(session).toContainText("1 left");
+  await app.getByRole("button", { name: "Show answer" }).click();
+  await session.getByRole("button", { name: /Again/ }).click();
+  await expect(session).toContainText("2 reviewed");
+  await expect(session).toContainText("1 left");
+  await expect(app.getByRole("button", { name: "Show answer" })).toBeVisible();
+});
+
+test("reopening Review picks up cards that became due meanwhile", async ({ app }) => {
+  await spaceWithSource(app);
+  await app.getByRole("button", { name: /^Flashcards/ }).click();
+  const card = app.getByTestId("flashcards-card");
+  await card.getByRole("button", { name: "Make cards from sources" }).click();
+  await app.getByRole("dialog").getByRole("button", { name: "Make flashcards" }).click();
+  await expect(card.getByTestId("card-counts")).toContainText("2 total");
+  await card.getByRole("button", { name: "Review" }).click();
+  await expect(app.getByTestId("review-session")).toContainText("2 left");
+  await app.evaluate(() => {
+    const db = (window as any).__mock.db();
+    for (const c of Object.values(db.cards) as any[]) c.due = Date.now() + 3_600_000;
+  });
+  await app.getByRole("tab", { name: "Mistake notebook" }).click();
+  await app.getByRole("tab", { name: "Cards" }).click();
+  await expect(app.getByTestId("review-empty")).toBeVisible();
+});
+
 test("quiz mistakes go to the notebook and come back as review cards", async ({ app }) => {
   await spaceWithSource(app);
   await app.getByRole("button", { name: /^Flashcards/ }).click();

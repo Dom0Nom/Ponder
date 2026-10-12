@@ -4,7 +4,7 @@ import { api } from "../../lib/ipc";
 import { loadScheduleContext } from "../../lib/plan/context";
 import { todayDate } from "../../lib/plan/clock";
 import { invalidatePlans, replanSpaceOnce } from "../../lib/plan/replan";
-import { addDays, buildSchedule, completedTopicIds, topicNeed, weekInfo } from "../../lib/plan/schedule";
+import { addDays, buildSchedule, completedTopicIds, topicNeed, weekInfo, withRemainingNeed } from "../../lib/plan/schedule";
 import { useCourses, useCurriculum, useStudyPlan } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { PlanTask, Space, StudyPlanBundle } from "../../lib/types";
@@ -89,7 +89,7 @@ function ScheduleForm({
         examDate,
         weeklyMinutes,
         studyDays: days,
-        topics: ctx.topics,
+        topics: withRemainingNeed(ctx.topics, done),
         lessons: ctx.lessons,
         doneTopicIds: [...ctx.doneTopicIds, ...completedTopicIds(ctx.topics, done)],
         hasCards: ctx.hasCards,

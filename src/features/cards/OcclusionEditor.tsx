@@ -58,6 +58,13 @@ export function OcclusionEditor({
   const [picking, setPicking] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const createdRef = useRef(new Map<string, Card>());
+  const deletedRef = useRef(new Set<string>());
+  useEffect(() => {
+    createdRef.current.clear();
+    deletedRef.current.clear();
+  }, [open]);
+
   const cardsRef = useRef(cards);
   cardsRef.current = cards;
   const groupKey = cards?.map((c) => c.id).join(",") ?? "";
@@ -109,7 +116,8 @@ export function OcclusionEditor({
         await api.cardsAdd(spaceId, clean.map(toNew));
         toast.success(s.occlusion.saved(clean.length));
       } else {
-        const byMask = new Map(cards!.map((c) => [c.data?.mask, c]));
+        const existing = cards!.filter((c) => !deletedRef.current.has(c.id));
+        const byMask = new Map([...existing.map((c) => [c.data?.mask, c] as const), ...createdRef.current]);
         const keep = new Set(clean.map((m) => m.id));
         const added = clean.filter((m) => !byMask.has(m.id));
         await Promise.all(
@@ -120,8 +128,24 @@ export function OcclusionEditor({
               return api.cardUpdate(byMask.get(m.id)!.id, { front, back, data: data ?? undefined });
             }),
         );
-        if (added.length) await api.cardsAdd(spaceId, added.map(toNew));
-        await Promise.all(cards!.filter((c) => !c.data?.mask || !keep.has(c.data.mask)).map((c) => api.cardDelete(c.id)));
+        if (added.length) {
+          const made = await api.cardsAdd(spaceId, added.map(toNew));
+          added.forEach((m, i) => createdRef.current.set(m.id, made[i]));
+        }
+        const stale = [
+          ...new Map(
+            [
+              ...existing.filter((c) => !c.data?.mask || !keep.has(c.data.mask)),
+              ...[...createdRef.current].filter(([mask]) => !keep.has(mask)).map(([, c]) => c),
+            ].map((c) => [c.id, c]),
+          ).values(),
+        ].filter((c) => !deletedRef.current.has(c.id));
+        await Promise.all(
+          stale.map(async (c) => {
+            await api.cardDelete(c.id);
+            deletedRef.current.add(c.id);
+          }),
+        );
         toast.success(s.occlusion.updated);
       }
       onOpenChange(false);
