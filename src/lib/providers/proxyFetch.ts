@@ -55,37 +55,62 @@ export function createProxyFetch(providerId?: string | null): typeof fetch {
 
     const id = newId();
     return new Promise<Response>((resolve, reject) => {
-      let controller!: ReadableStreamDefaultController<Uint8Array>;
+      // Own queue instead of the stream's: `controller.error()` drops chunks that are queued but not
+      // read yet, so an error that arrives while the reader is busy would lose the answer's tail.
+      const queue: Uint8Array[] = [];
+      let ended = false;
+      let failure: { err: unknown } | null = null;
+      let wake: (() => void) | null = null;
       let headReceived = false;
       let finished = false;
       const encoder = new TextEncoder();
 
+      const notify = () => {
+        const w = wake;
+        wake = null;
+        w?.();
+      };
       const finish = () => {
         finished = true;
         signal?.removeEventListener("abort", onAbort);
       };
-      const fail = (err: unknown) => {
+      const fail = (err: unknown, dropQueued = false) => {
         if (finished) return;
         finish();
-        if (headReceived) controller.error(err);
+        if (dropQueued) queue.length = 0;
+        failure = { err };
+        if (headReceived) notify();
         else reject(err);
       };
       const onAbort = () => {
         if (finished) return;
         api.httpAbort(id).catch(() => {});
-        fail(abortError(signal));
+        fail(abortError(signal), true);
       };
 
-      const stream = new ReadableStream<Uint8Array>({
-        start(c) {
-          controller = c;
+      const stream = new ReadableStream<Uint8Array>(
+        {
+          pull(controller) {
+            return new Promise<void>((done) => {
+              const deliver = () => {
+                if (queue.length) controller.enqueue(queue.shift()!);
+                else if (failure) controller.error(failure.err);
+                else if (ended) controller.close();
+                else return void (wake = deliver);
+                done();
+              };
+              deliver();
+            });
+          },
+          cancel() {
+            queue.length = 0;
+            if (finished) return;
+            finish();
+            api.httpAbort(id).catch(() => {});
+          },
         },
-        cancel() {
-          if (finished) return;
-          finish();
-          api.httpAbort(id).catch(() => {});
-        },
-      });
+        { highWaterMark: 0 },
+      );
 
       const channel = new Channel<ProxyEvent>();
       channel.onmessage = (ev) => {
@@ -102,12 +127,17 @@ export function createProxyFetch(providerId?: string | null): typeof fetch {
             break;
           }
           case "chunk":
-            if (headReceived && ev.data) controller.enqueue(encoder.encode(ev.data));
+            if (headReceived && ev.data) {
+              queue.push(encoder.encode(ev.data));
+              notify();
+            }
             break;
           case "end":
             finish();
-            if (headReceived) controller.close();
-            else reject(new Error("The connection closed before a response arrived"));
+            if (headReceived) {
+              ended = true;
+              notify();
+            } else reject(new Error("The connection closed before a response arrived"));
             break;
           case "error":
             fail(new Error(ev.message));

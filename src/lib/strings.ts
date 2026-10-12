@@ -260,7 +260,9 @@ export const s = {
     thoughtFor: (sec: number) =>
       sec < 60 ? `Thought for ${sec} second${sec === 1 ? "" : "s"}` : `Thought for ${Math.round(sec / 60)} min`,
     streamBroke: (cause: string) =>
-      `The connection to the model broke off mid-answer${cause ? ` (${cause})` : ""}. Retry to get the full answer.`,
+      /closed before the answer finished|stopped sending data/.test(cause)
+        ? `${cause}. Retry to get the full answer.`
+        : `The connection to the model broke off mid-answer${cause ? ` (${cause})` : ""}. Retry to get the full answer.`,
     notFromSources: "Not from your sources",
     noSourceCited: "No source cited",
     inferredCitation: "Matched to this passage by the app; the model didn't cite it.",

@@ -250,27 +250,54 @@ pub async fn run(http: &reqwest::Client, req: Prepared, mut cancel: oneshot::Rec
             return emit(ProxyEvent::Error { message: m });
         }
     }
+    let is_sse = resp
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|v| v.contains("text/event-stream"));
     emit(ProxyEvent::Head { status, headers: header_map(resp.headers()) });
     let mut dec = Utf8Decoder::default();
     let mut received = 0usize;
+    let mut tail = String::new();
     loop {
         let next = tokio::select! {
-            c = resp.chunk() => c,
+            c = tokio::time::timeout(STREAM_IDLE_TIMEOUT, resp.chunk()) => c,
             _ = &mut cancel => return emit(ProxyEvent::Error { message: "aborted".into() }),
         };
         match next {
-            Ok(Some(bytes)) => {
+            Ok(Ok(Some(bytes))) => {
                 received += bytes.len();
                 let s = dec.push(&bytes);
                 if !s.is_empty() {
+                    if is_sse {
+                        keep_tail(&mut tail, &s);
+                    }
                     emit(ProxyEvent::Chunk { data: s });
                 }
             }
-            Ok(None) => break,
-            Err(e) => {
-                let message = describe_reqwest(&e, &req.url);
+            Ok(Ok(None)) => break,
+            Ok(Err(e)) => {
+                // Some servers drop the connection right after the final event instead of closing
+                // the body cleanly; the answer is complete, so that isn't an error.
+                if is_sse && sse_finished(&tail) {
+                    log::info!("stream closed uncleanly after its final event ({received} bytes)");
+                    break;
+                }
+                let host = host_of(&req.url);
+                let message = if received > 0 {
+                    format!("The connection to {host} closed before the answer finished ({})", root_cause(&e))
+                } else {
+                    describe_reqwest(&e, &req.url)
+                };
                 log::warn!("stream broke after {received} bytes: {message}");
                 return emit(ProxyEvent::Error { message });
+            }
+            Err(_) => {
+                let host = host_of(&req.url);
+                log::warn!("stream idle for {}s after {received} bytes", STREAM_IDLE_TIMEOUT.as_secs());
+                return emit(ProxyEvent::Error {
+                    message: format!("{host} stopped sending data for {} seconds", STREAM_IDLE_TIMEOUT.as_secs()),
+                });
             }
         }
     }
@@ -281,8 +308,52 @@ pub async fn run(http: &reqwest::Client, req: Prepared, mut cancel: oneshot::Rec
     emit(ProxyEvent::End);
 }
 
+/// Longest silence (no bytes, not even SSE keep-alive comments) before a stream counts as dead.
+/// Reasoning models can think for minutes, but providers send keep-alives meanwhile.
+pub const STREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(300);
+
+fn keep_tail(tail: &mut String, s: &str) {
+    tail.push_str(s);
+    if tail.len() > 4096 {
+        let mut cut = tail.len() - 2048;
+        while !tail.is_char_boundary(cut) {
+            cut += 1;
+        }
+        tail.drain(..cut);
+    }
+}
+
+/// True when the last complete SSE event is a provider's end-of-stream marker.
+pub fn sse_finished(tail: &str) -> bool {
+    let t = tail.replace("\r\n", "\n");
+    let Some(end) = t.rfind("\n\n") else {
+        return false;
+    };
+    let last = t[..end].rsplit("\n\n").next().unwrap_or("");
+    last.contains("data: [DONE]")
+        || last.contains("data:[DONE]")
+        || last.contains("event: message_stop")
+        || last.contains("\"type\":\"message_stop\"")
+        || last.contains("\"type\":\"response.completed\"")
+        || last.contains("\"finishReason\"")
+}
+
+fn host_of(url: &str) -> String {
+    url::Url::parse(url).ok().and_then(|u| u.host_str().map(str::to_string)).unwrap_or_default()
+}
+
+fn root_cause(e: &reqwest::Error) -> String {
+    let mut msg = e.to_string();
+    let mut src = std::error::Error::source(e);
+    while let Some(cause) = src {
+        msg = cause.to_string();
+        src = cause.source();
+    }
+    msg
+}
+
 fn describe_reqwest(e: &reqwest::Error, url: &str) -> String {
-    let host = url::Url::parse(url).ok().and_then(|u| u.host_str().map(str::to_string)).unwrap_or_default();
+    let host = host_of(url);
     if e.is_connect() {
         format!("Couldn't connect to {host}. Is the server running and reachable?")
     } else if e.is_timeout() {
@@ -730,5 +801,120 @@ async fn live_openrouter_long_stream() {
         assert!(matches!(events[0], ProxyEvent::Head { status: 200, .. }), "{:?}", events.first());
         assert_eq!(events.last(), Some(&ProxyEvent::End));
         assert!(!content.trim().is_empty());
+    }
+    /// One-connection HTTP/1.1 server that writes `pieces` (delay ms, bytes) and then either ends
+    /// the chunked body properly or drops the socket.
+    async fn raw_sse(pieces: Vec<(u64, Vec<u8>)>, clean_end: bool) -> String {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            let (mut sock, _) = listener.accept().await.unwrap();
+            let mut buf = [0u8; 4096];
+            let _ = sock.read(&mut buf).await;
+            sock.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nTransfer-Encoding: chunked\r\n\r\n").await.unwrap();
+            for (delay, bytes) in pieces {
+                tokio::time::sleep(Duration::from_millis(delay)).await;
+                sock.write_all(format!("{:x}\r\n", bytes.len()).as_bytes()).await.unwrap();
+                sock.write_all(&bytes).await.unwrap();
+                sock.write_all(b"\r\n").await.unwrap();
+                sock.flush().await.unwrap();
+            }
+            if clean_end {
+                sock.write_all(b"0\r\n\r\n").await.unwrap();
+            }
+            drop(sock);
+        });
+        format!("http://{addr}/v1/chat/completions")
+    }
+
+    fn sse_event(content: &str) -> String {
+        format!("data: {}\n\n", serde_json::json!({"choices": [{"delta": {"content": content}}]}))
+    }
+
+    async fn run_raw(url: String) -> (Vec<(Duration, ProxyEvent)>, String) {
+        let prepared = Prepared { url, method: "POST".into(), headers: vec![], body: Some("{}".into()), forbidden_message: None };
+        let (_tx, rx) = oneshot::channel();
+        let start = std::time::Instant::now();
+        let mut events = vec![];
+        run(&stream_client(), prepared, rx, |e| events.push((start.elapsed(), e))).await;
+        let body = events
+            .iter()
+            .filter_map(|(_, e)| match e {
+                ProxyEvent::Chunk { data } => Some(data.as_str()),
+                _ => None,
+            })
+            .collect();
+        (events, body)
+    }
+
+    #[tokio::test]
+    async fn chunks_arrive_before_a_pause_ends() {
+        let pieces = vec![(0, sse_event("Hallo ").into_bytes()), (1500, sse_event("Welt").into_bytes()), (0, b"data: [DONE]\n\n".to_vec())];
+        let (events, body) = run_raw(raw_sse(pieces, true).await).await;
+        let first = events.iter().find(|(_, e)| matches!(e, ProxyEvent::Chunk { data } if data.contains("Hallo"))).unwrap();
+        assert!(first.0 < Duration::from_millis(1000), "first chunk held back until {:?}", first.0);
+        assert!(body.contains("Welt"));
+        assert_eq!(events.last().unwrap().1, ProxyEvent::End);
+    }
+
+    #[tokio::test]
+    async fn split_utf8_and_json_reassemble() {
+        let full = format!("{}{}data: [DONE]\n\n", sse_event("Lichtenergie — Grüße 🌱"), sse_event("O₂"));
+        let bytes = full.as_bytes();
+        let pieces = bytes.chunks(3).map(|c| (1, c.to_vec())).collect();
+        let (events, body) = run_raw(raw_sse(pieces, true).await).await;
+        assert_eq!(body, full);
+        assert!(!body.contains('\u{FFFD}'));
+        assert_eq!(events.last().unwrap().1, ProxyEvent::End);
+    }
+
+    #[tokio::test]
+    async fn drop_after_final_event_is_not_an_error() {
+        let pieces = vec![(0, sse_event("done").into_bytes()), (0, b"data: [DONE]\n\n".to_vec())];
+        let (events, _) = run_raw(raw_sse(pieces, false).await).await;
+        assert_eq!(events.last().unwrap().1, ProxyEvent::End);
+    }
+
+    #[tokio::test]
+    async fn drop_mid_answer_says_so() {
+        let pieces = vec![(0, sse_event("half an ").into_bytes())];
+        let (events, body) = run_raw(raw_sse(pieces, false).await).await;
+        assert!(body.contains("half an"));
+        match &events.last().unwrap().1 {
+            ProxyEvent::Error { message } => assert!(message.contains("closed before the answer finished"), "{message}"),
+            e => panic!("{e:?}"),
+        }
+    }
+
+    #[test]
+    fn sse_end_markers() {
+        assert!(sse_finished("data: {}\n\ndata: [DONE]\n\n"));
+        assert!(sse_finished("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"));
+        assert!(sse_finished("data: {\"candidates\":[{\"finishReason\":\"STOP\"}]}\r\n\r\n"));
+        assert!(!sse_finished("data: {\"choices\":[]}\n\n"));
+        assert!(!sse_finished("data: [DO"));
+    }
+
+    /// Probes `run` against `scripts/mock-sse-server.ts` (MOCK_SSE=http://127.0.0.1:18765/v1).
+    #[tokio::test]
+    #[ignore]
+    async fn probe_mock_sse() {
+        let Ok(base) = std::env::var("MOCK_SSE") else { return };
+        let models = std::env::var("MOCK_MODELS").unwrap_or_else(|_| "plain,split,pause-5,close-early,close-after-done,gzip".into());
+        for model in models.split(',') {
+            let body = serde_json::json!({"model": model, "stream": true, "messages": []});
+            let prepared = Prepared { url: format!("{base}/chat/completions"), method: "POST".into(), headers: vec![("content-type".into(), "application/json".into())], body: Some(body.to_string()), forbidden_message: None };
+            let (_tx, rx) = oneshot::channel();
+            let start = std::time::Instant::now();
+            let mut log = vec![];
+            let mut bytes = 0usize;
+            run(&stream_client(), prepared, rx, |e| {
+                if let ProxyEvent::Chunk { data } = &e { bytes += data.len(); }
+                log.push((start.elapsed().as_millis(), match &e { ProxyEvent::Chunk { .. } => "chunk".to_string(), other => format!("{other:?}") }));
+            }).await;
+            let max_gap = log.windows(2).map(|w| w[1].0 - w[0].0).max().unwrap_or(0);
+            println!("{model}: {} events, {bytes} bytes, {} ms, max gap {max_gap} ms, last {:?}", log.len(), start.elapsed().as_millis(), log.last());
+        }
     }
 }

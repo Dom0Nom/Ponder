@@ -125,6 +125,7 @@ export async function runTurn(input: TurnInput): Promise<Message> {
   let lastPersist = Date.now();
   let error: string | null = null;
 
+  const paint = new FramePainter((c, r) => useChatStream.getState().update(assistant.id, { content: c, reasoning: r }));
   try {
     const result = streamText({
       model: llm.model,
@@ -143,7 +144,7 @@ export async function runTurn(input: TurnInput): Promise<Message> {
       }
       else if (part.type === "error") throw part.error;
       else continue;
-      useChatStream.getState().update(assistant.id, { content, reasoning });
+      paint.schedule(content, reasoning);
       if (Date.now() - lastPersist > PERSIST_EVERY_MS) {
         lastPersist = Date.now();
         api.updateMessage(assistant.id, { content, reasoning }).catch(() => {});
@@ -152,6 +153,7 @@ export async function runTurn(input: TurnInput): Promise<Message> {
   } catch (e) {
     if (!controller.signal.aborted) error = describeError(e);
   }
+  paint.flush();
 
   timer.finish();
   const stopped = controller.signal.aborted;
@@ -197,11 +199,47 @@ export async function runTurn(input: TurnInput): Promise<Message> {
   return final;
 }
 
+/**
+ * Pushes streamed text to the UI at most once per frame. Deltas can arrive faster than a long
+ * Markdown + KaTeX answer renders; rendering each one backs the stream up until it stalls and
+ * then lands in one burst.
+ */
+export class FramePainter {
+  private pending: [string, string] | null = null;
+  private cancel: (() => void) | null = null;
+  constructor(private readonly paint: (content: string, reasoning: string) => void) {}
+
+  schedule(content: string, reasoning: string) {
+    this.pending = [content, reasoning];
+    if (this.cancel) return;
+    const run = () => {
+      this.cancel = null;
+      this.flush();
+    };
+    if (typeof requestAnimationFrame === "function" && typeof document !== "undefined" && !document.hidden) {
+      const id = requestAnimationFrame(run);
+      this.cancel = () => cancelAnimationFrame(id);
+    } else {
+      const id = setTimeout(run, 50);
+      this.cancel = () => clearTimeout(id);
+    }
+  }
+
+  flush() {
+    this.cancel?.();
+    this.cancel = null;
+    if (!this.pending) return;
+    const [c, r] = this.pending;
+    this.pending = null;
+    this.paint(c, r);
+  }
+}
+
 export function describeError(e: unknown): string {
   const err = e as { message?: string; statusCode?: number; responseBody?: string; cause?: unknown };
   let msg = err?.message ?? String(e);
   const cause = (err?.cause as { message?: string } | undefined)?.message;
-  if (msg === "Failed to process successful response") msg = cause ? s.chat.streamBroke(cause) : s.chat.streamBroke("");
+  if (msg === "Failed to process successful response") return s.chat.streamBroke(cause ?? "");
   if (err?.statusCode === 401 || err?.statusCode === 403) msg = `The provider rejected the request (${err.statusCode}). Check the API key or sign-in in Settings.`;
   else if (err?.statusCode === 404) msg = `The model wasn't found (${err.statusCode}). Pick another model in Settings.`;
   else if (err?.statusCode === 429) msg = "Rate limit or quota reached at the provider. Try again in a moment.";

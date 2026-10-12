@@ -178,3 +178,9 @@ pub fn run() {
         .expect("error while building tauri application")
         .run(focus::on_run_event);
 }
+
+/// The streaming proxy without Tauri, for `examples/proxy_stream.rs` (scripts/stream-check.ts).
+#[doc(hidden)]
+pub mod dev_proxy {
+    pub use crate::proxy::{run, stream_client, Prepared, ProxyEvent};
+}

@@ -17,3 +17,4 @@ src-tauri/gen/schemas/
 .shots/
 design/compare/
 .overnight/
+.native-bin/

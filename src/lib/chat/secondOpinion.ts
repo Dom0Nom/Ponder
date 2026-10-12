@@ -4,7 +4,7 @@ import { queryClient, qk } from "../queries";
 import type { Message, ModelRef, Space } from "../types";
 import { useChatStream } from "../../stores/chatStream";
 import { buildSystemPrompt, historyMessages } from "./context";
-import { describeError } from "./runner";
+import { describeError, FramePainter } from "./runner";
 import { resolveChatModel } from "./llm";
 import { extractMemories } from "./memory";
 
@@ -49,6 +49,7 @@ export async function secondOpinion(space: Space, original: Message, model: Mode
   let content = "";
   let reasoning = "";
   let error: string | null = null;
+  const paint = new FramePainter((c, r) => useChatStream.getState().update(msg.id, { content: c, reasoning: r }));
   try {
     const result = streamText({ model: llm.model, system, messages, abortSignal: controller.signal, ...llm.options({ thinking: false }) });
     for await (const part of result.stream) {
@@ -56,11 +57,12 @@ export async function secondOpinion(space: Space, original: Message, model: Mode
       else if (part.type === "reasoning-delta") reasoning += part.text;
       else if (part.type === "error") throw part.error;
       else continue;
-      useChatStream.getState().update(msg.id, { content, reasoning });
+      paint.schedule(content, reasoning);
     }
   } catch (e) {
     if (!controller.signal.aborted) error = describeError(e);
   }
+  paint.flush();
   const final = await api.updateMessage(msg.id, {
     content: extractMemories(content).clean,
     reasoning,
