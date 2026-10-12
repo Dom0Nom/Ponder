@@ -2,6 +2,22 @@
 
 Source of truth for the builder of `src/features/calculator/`. Written clean-room: from observing the reference emulator as a black box (keys clicked, LCD pixels read) and from TI's public *reference calculator guidebook* (2019 edition, cited as **GB p.N**). No code, artwork or font data from the reference is used or described here.
 
+## Changes (third random check)
+
+Three more random runs (seeds 1-3, 600 sequences) and targeted probes. 60 new verified vectors (705 in total). Real differences found:
+
+- **π results** (§7.4): an integer coefficient of π stays exact up to 10 digits (`9999999999π`); 11 digits go decimal. `\f{1}{n}π` stays `\f{π}{n}` up to n = 1000.
+- **Fraction results keep denominators up to 1000** (§8): `\f{1}{1000}` stays a fraction, `\f{1}{1001}` is `0.000999001`.
+- **Toggle finds no radical in a decimal** (§7.5): `10^{.5}` → toggle → `3.16227766`, not `√{10}`.
+- **x-root index** (§9): `2nd`,`pow` takes the whole operand before the cursor as the index (number, `(…)`, function call, power, `%`, implied product, fraction), `ans` on an empty line, and an empty index after an operator.
+- **Delete in templates** (§5): deleting the last character of a √, x-root, e^, 10^ or power slot removes the template, as does `delete` in any empty slot. Fractions need one more `delete` once a slot is empty. `e^{}` goes with its `e`; `10^{}` leaves `10`.
+- **Parentheses from `x²`/`x⁻¹` then `pow` are real** (§9): `clear` in the exponent leaves `(8^{2})`.
+- **`clear` deletes from the cursor to the end** (§5). Inside a template it starts at that template.
+- **`2nd`,`frac` not after a number** opens a mixed number with an empty whole-part slot (§8).
+- **After an error, `clear` puts the cursor on the token where evaluation stopped**, in overwrite mode (§21).
+- **Layout** (§3.1, §3.2): a stacked fraction takes its wider part + 1 cells. A fraction in a superscript keeps the normal fraction size. Parentheses next to a fraction are tall. An empty slot holding the cursor is one cell, and the end-of-line cursor cell is still reserved after it.
+- **Open** (QUESTIONS Q16): the 13th digit of eˣ, and the scroll offset for lines that contain fractions or radicals.
+
 ## Changes (second differential check)
 
 Second run of `scripts/calc-diff.ts` (all 645 vectors, 200 random sequences, seed 1). Vectors all match except the history cut below; these random sequences showed real differences (read from the reference screen; the encoded text in the report is unreliable for empty templates because the LCD reader can't read placeholder dots):
@@ -57,7 +73,7 @@ The first version of this file was written without access to the reference. It h
 
 ## 0. Status
 
-All 645 vectors (578 from the first draft, 47 probes from the verification pass, 20 from the differential check) in `vectors.json` were run on the reference (each one from a page reload plus a device reset) and read back pixel by pixel. Vectors whose result differed from the first draft were captured at least twice more and kept only where the runs agreed (three were flaky in the first run and fixed by the re-runs). Tags:
+All 705 vectors (578 from the first draft, 47 probes from the verification pass, 20 from the differential check, 60 from the third random check) in `vectors.json` were run on the reference (each one from a page reload plus a device reset) and read back pixel by pixel. Vectors whose result differed from the first draft were captured at least twice more and kept only where the runs agreed (three were flaky in the first run and fixed by the re-runs). Tags:
 - **[ref]**: observed on the reference.
 - **[GB]**: from the guidebook; where it disagrees with the reference, the reference wins.
 
@@ -183,16 +199,22 @@ The Home screen scrolls by dot rows, so the top row can be cut. A row is written
 - **Normal font:** 5×7 glyphs in **monospaced 6×8 cells**, 16 cells per row, starting at dot column 1. Narrow glyphs (`.`, `1`, `'`, `°`, `(`) are drawn inside the same 6-dot cell, so spacing is always by whole cells.
 - **Small font:** 5×5 glyphs at a 6-dot pitch. Used for superscripts (raised so their bottom is 2 dots below the top of the normal cell) and for numerator and denominator of stacked fractions. A superscript inside a small-font group is raised a further 2 dots.
 - **Menu font:** 4×5 glyphs at a 5-dot pitch, 6-dot rows. Used on the mode screen, the stat setup screens and in the data editor / table grids.
-- Stacked fraction: numerator (small font), one blank dot row, a 1-dot bar as wide as the wider part plus one dot each side, one blank row, denominator. The bar sits on the middle row (row 3) of the line's normal cell.
-- Tall parentheses: around a superscript-height group 9 dots tall; around a stacked fraction 13 dots tall.
+- Stacked fraction: numerator (small font), one blank dot row, a 1-dot bar, one blank row, denominator. The bar sits on the middle row (row 3) of the line's normal cell.
+- **Fraction width:** a fraction whose wider part has n cells takes **n+1 cells**. If it starts at cell boundary column s, the bar runs from s+1 to s+6n+3, and both parts are centred with their glyph cells starting at s+3 (a half-cell offset). The next element starts at the next cell boundary. Examples: an empty fraction (n=1) takes 2 cells, with a 9-dot bar and the placeholder at s+3..s+7. `\f{1}{1000}π`: bar at columns 2-28, `π` in cell 5. The result `\f{π}{2}` sits right-aligned with its bar at columns 86-94.
+- **Fraction inside a superscript** keeps the normal fraction size (small-font parts, 5×5 placeholders). Its bar sits on the superscript's middle row and the line grows upward. In `2 pow 1 frac 3` the bar is at text row 10, `1` at rows 4-8, `3` at rows 12-16, and the base `2` drops to rows 14-20.
+- Placeholders: an empty slot is a dotted outline of 8 dots. In the normal size it is 5×7 with dots on rows 0, 3 and 6; in the small size it is 5×5 with dots on rows 0, 2 and 4.
+- Tall parentheses: 9 dots tall around a superscript-height group, and 13 dots tall (text rows 4-16) around or next to a stacked fraction. This includes the `(` of a function name followed by a fraction (`tan(` before `\f{…}{…}`) and a `(` typed right before a fraction.
+- `◂` at the left edge replaces the baseline glyph box of cell 0. Any raised (superscript) pixels of that cell stay visible above it.
 - Radical: a check stroke starting at the bottom-left and a 1-dot bar over the radicand.
 - Inverse video: black box with the glyphs left unlit; normal-font boxes cover the 8-dot cell row (7 rows + the row below), menu-font boxes cover 6 rows.
 
 ### 3.2 Home screen layout
 - History grows from the top. Each calculation shows the entry left-aligned and the result right-aligned.
-- **Same row or next row:** a result shares the entry's row when entry cells + result cells ≤ 14 (at least two empty cells between them); otherwise it goes right-aligned on the next row. Cell counts: one per character; a stacked fraction counts as its wider part; a superscript counts its characters; `√{…}` counts 1 + its content; `\r{n}{…}` counts index + 1 + content; `◂▸` is one cell, `▸F◂▸d` four, `▸n/d◂▸Un/d` five. Two exceptions put the result on its own row even when it fits: a result that is a stacked fraction containing a radical (`sin(45)` / `\t\f{√{2}}{2}`), and an entry with a fraction nested in a fraction. This matches all 625 vectors.
+- **Same row or next row:** a result shares the entry's row when entry cells + result cells ≤ 14 (at least two empty cells between them); otherwise it goes right-aligned on the next row. Cell counts: one per character; a stacked fraction counts as its wider part + 1 (§3.1; `\f{1}{9999}` + `0.00010001` = 5 + 10 → next row, `\f{2}{3}◂▸` + `0.666666667` = 3 + 11 → same row); a superscript counts its characters; `√{…}` counts 1 + its content; `\r{n}{…}` counts index + 1 + content; `◂▸` is one cell, `▸F◂▸d` four, `▸n/d◂▸Un/d` five. Two exceptions put the result on its own row even when it fits: a result that is a stacked fraction containing a radical (`sin(45)` / `\t\f{√{2}}{2}`), and an entry with a fraction nested in a fraction. This matches all 705 vectors.
 - Rows that contain superscripts or fractions are taller; the screen scrolls by dot rows, so the top row may be cut (§2.3).
 - An entry that does not fit scrolls horizontally. **The cursor cell at the end counts**: entry plus cursor may use 16 cells, so 15 digits still fit and 16 digits show `◂34567890123456`. The first or last cell then shows the overflow mark: `◂67890123456789` (cursor at the end), `123456789012345▸` (cursor at the start). History rows that are too long are cut at the 16th cell and end with `▸`, also inside a superscript: `sin(30)^{2}+cos(30▸`, `(ans^{2})^{3+252*tan}▸`.
+- **An empty slot holding the cursor** counts as one cell, and the end cursor cell is still reserved after it. `12345678901234` `pow` fits: 14 digits, the raised placeholder in cell 14, and cell 15 empty. With 15 digits it scrolls to `◂3456789012345`, then the placeholder, then an empty cell. `2nd tan . pi 5 2nd lparen div recip pow` fits without scrolling: `t a n ⁻¹ ( . π 5 % ÷ ( ⁻1 ) □` takes cells 0-14. The `⁻¹` of `tan⁻¹(` is one cell, and the `⁻1` with no base is two raised cells inside tall parentheses.
+- An empty fraction at the end needs 2 cells. When those don't fit, the line ends with `▸` instead.
 
 ### 3.3 Indicator band
 Items and their left edge in canvas pixels (canvas 192 px = 96 dots wide):
@@ -227,10 +249,23 @@ Observed combinations: fresh screen: none; after `enter`: `↑ ↓`; typing a ne
 
 - Typing at the end of the entry appends. With the cursor inside the entry, typing **overwrites** the character under the cursor (`1 2 3 left left 9` → `193`).
 - `2nd`,`delete` switches to insert for the following characters (`1 2 3 left left 2nd delete 9` → `1923`); the cursor becomes an underline.
-- `delete` deletes the character under the cursor; at the end of the entry it deletes the last character (`1 2 3 delete` → `12`). Deleting the last character of a superscript removes the template, and the next keys go on the baseline (`2 pow 6 delete 8` → `28`).
+- `delete` deletes the character under the cursor; at the end of the entry it deletes the last character (`1 2 3 delete` → `12`).
+- **Deleting in templates:**
+  - Deleting the only character left in a power, √, x-root radicand, `e^{}` or `10^{}` slot removes the template too, and the next keys go on the baseline. Examples: `2 pow 6 delete 8` → `28`; `2nd square 4 delete 5` → `5`; `1 2 2nd pow 3 delete 5` → `125`; `2nd ln 3 delete 5` → `5`. The same happens with the cursor on that character (`1 2 2nd pow 3 left delete` → `12`). With more characters in the slot, `delete` removes one as usual.
+  - `delete` in an empty slot removes the template. The content of its other slots stays inline: `3 frac delete 4` → `34`, `frac 1 2 down delete` → `12`, `2 2nd frac 1 down delete 7` → `217`, `3 2nd pow delete 4` → `34`, `2 mul 2nd pow 3 right 4 delete 6` → `2*36`.
+  - Fractions: deleting the last character of a numerator or denominator leaves the slot empty, so it takes one more `delete` to remove the template (`1 2 frac 3 4 delete delete delete 5` → `125`; `1 2 frac 3 delete 5` → `\f{12}{5}`).
+  - `e^{}` is removed whole, `e` included: `2nd ln delete 9` → `9`, `1 var 2nd ln delete 9` → `1x9`, `5 2nd ln delete delete 9` → `9`.
+  - `10^{}` leaves `10`: `2 2nd log delete 5` → `2105`. `*10^{}` from `x10n` leaves `*10` (`2 x10n delete 5` → `2*105`).
+  - Once the template is gone, the next `delete` removes the character before it: `1 2 2nd pow 3 delete delete 4` → `14`.
 - A function token (`sin(`, `log(`, `ans`) is one element for the cursor and for `delete` (`sin(30) 2nd left delete` leaves `30)`, which is a SYNTAX error on `enter`).
 - `left`/`right` move one element; `2nd`,`left` / `2nd`,`right` jump to the start/end. `left` at the start stays there.
-- `clear`: with the cursor in a MathPrint template, removes only that template and its content (`4 pow 5 clear 9` → `49`; `)(4^{}`, `left`, `9`, `clear` → `)(49`); otherwise clears the entry line; on an empty entry line clears the screen (history still reachable with `up`); on an error screen returns to the entry with the cursor at the error; in a menu goes back.
+- `clear` **deletes from the cursor to the end of the entry**. Cases:
+  - With the cursor on the baseline: `1 2 3 left left clear 9` → `19`, `1 2 3 left clear` → `12`, `div 0 2 2nd rparen lparen 0 0 left clear` → `ans÷02▸%(0`.
+  - With the cursor at the start, or at the end of a non-empty entry, it clears the whole line.
+  - With the cursor inside a MathPrint template, the deletion starts at that template, which is removed with its content and everything after it. Examples: `4 pow 5 clear 9` → `49`; `4 pow 5 6 left clear 9` → `49`; `frac 1 2 down 3 4 left clear 9` → `9`; `1 2 pow 3 right 4 5 left left left clear` → `12`; `)(4^{}`, `left`, `9`, `clear` → `)(49`.
+  - On an empty entry line it clears the screen (history still reachable with `up`).
+  - On an error screen it returns to the entry with the cursor on the error token (§21).
+  - In a menu it goes back.
 - History: `up` from the empty entry line highlights the last **result**, the next `up` its **entry**, and so on upwards. The highlighted item is shown inverse (`2+2\t«4»`). `enter` pastes it at the cursor. Pasting into a started entry inserts at the cursor (`2*` + pasted `15` → `2*15`).
 - **Implicit ans:** a first key that is a binary or postfix operator (`add sub mul div pow square recip sto`, `%`, angle marks, `nPr`, `nCr`, `!`) inserts `ans` first: `ans*3`, `ans→y`, `ans°`, `ans nPr`. `neg` does not.
 - `enter` on an empty entry line repeats the last entry (`2+3 enter enter` → two rows `2+3\t5`). On a fresh screen it does nothing.
@@ -257,6 +292,7 @@ Examples [ref]: `60+5*⁻12` = 0, `⁻3^{2}` = ⁻9, `⁻3!` = ⁻6, `2*5 nCr 2`
 ### 7.1 Precision
 - 13 significant digits inside; toggling a decimal pastes the 13-digit value (`3.142857142857◂▸`, `0.7853981633975◂▸`, `0.6666666666667◂▸`).
 - Display rounds half up.
+- The reference's eˣ is a few units low in the 13th digit (`e^{2}` toggles to `7.389056098929◂▸`, true 7.38905609893065; `e^{3}` → `20.08553692315`). Other functions checked are correctly rounded at 13 digits (`e^{1}`, `ln(2)`, `10^{.5}` → `3.162277660168`, `3cos(332)` → `2.648842778577`). This is a known divergence (QUESTIONS Q10). Ponder rounds correctly, and the 10-digit display is not affected.
 
 ### 7.2 FLOAT and FIX
 - FLOAT shows at most 10 digits **counting the leading zero**: |x| ≥ 1 → 10 significant digits (`1.414213562`, `666.6666667`); |x| < 1 → 9 decimals (`0.333333333`, `0.301029996`, `0.000666667`, `0.000000143`). Trailing zeros removed.
@@ -274,7 +310,10 @@ Examples [ref]: `60+5*⁻12` = 0, `⁻3^{2}` = ⁻9, `⁻3!` = ⁻6, `2*5 nCr 2`
 - Exact rational results come from: the `n/d` template (`\f{1}{2}+\f{1}{3}` → `\f{5}{6}`, `\f{6}{3}` → `2`), negative integer powers and `x⁻¹` (`10^{⁻2}` → `\f{1}{100}`, `2^{⁻1}` → `\f{1}{2}`), and exact trig values (`sin(30)` → `\f{1}{2}`, `5*cos(60)` → `\f{5}{2}`).
 - Roots simplify: `√{8}` → `2√{2}`, `√{2}*√{3}` → `√{6}`; `√{\f{1}{2}}` gives a decimal (`0.707106781`).
 - Special angles: `sin(45)` → `\f{√{2}}{2}`, `tan(30)` → `\f{√{3}}{3}`, `tan(60)` → `√{3}`, `sin(⁻30)` → `⁻\f{1}{2}`; RAD `5*cos(\f{π}{4})` → `\f{5√{2}}{2}`, RAD `180°` → `π`.
-- π multiples: `2*π` → `2π`, `π*12^{2}` → `144π`, but `π+1` and `π*1.5` are decimal.
+- π multiples: `2*π` → `2π`, `π*12^{2}` → `144π`, `π+π` and `3π-π` → `2π`, `38^{2}π68` → `98192π`, `2^{10}π` → `1024π`. But `π+1` and `π*1.5` are decimal.
+  - The integer coefficient may have up to 10 digits: `1234567π` and `9999999999π` stay. 11 digits go to the normal decimal format: `12345678901π` → `3.878509417*10^{10}`, and `9999999999π+π` → scientific. A result too long for the row goes right-aligned on the next row.
+  - A rational coefficient gives `\f{kπ}{d}` while d ≤ 1000: `π*\f{1}{2}` → `\f{π}{2}`, `\f{1}{999}π` → `\f{π}{999}`, `\f{1}{1000}π` → `\f{π}{1000}`. Above that it is decimal: `\f{1}{10000}π` → `0.000314159`.
+  - `π^{2}`, `ππ`, `π^{⁻1}` (`0.318309886`) and `√{2}π` are decimal.
 - Any decimal point in the input gives a decimal result (`\f{1.2+1.3}{4}` → `0.625`, `sin(30.0)` → `0.5`).
 - A negative fraction is written with the sign in front: `⁻\f{3}{4}`.
 - In Classic, results are decimal unless the input used `n/d`: `1÷2` → `0.5`, `10^⁻2` → `0.01`, `1⁄8` → `1⁄8`.
@@ -283,25 +322,38 @@ Examples [ref]: `60+5*⁻12` = 0, `⁻3^{2}` = ⁻9, `⁻3!` = ⁻6, `2*5 nCr 2`
 
 - While an entry is being typed, `toggle` inserts a `◂▸` token at the cursor. At the end of a complete expression it makes `enter` show the other result form (`log(37π)◂▸` → `\t2.065351597`); anywhere else it is a SYNTAX error on `enter` (`4◂▸2`). On an empty line it shows `◂▸`, and a following `√{8}` is a SYNTAX error.
 - Adds a history row: the previous result followed by `◂▸`, then the other form: `\f{1}{8}◂▸` / `0.125`; `2√{2}◂▸` / `2.828427125`; `2π◂▸` / `6.283185307`; a decimal toggles to its exact form with the 13-digit value shown: `3.142857142857◂▸` / `\f{22}{7}`, `0.7853981633975◂▸` / `\f{π}{4}`.
+- Radical forms are not recovered from decimals. A decimal from a power, or one typed in, toggles to the decimal again: `10^{.5}` → `3.162277660168◂▸` / `3.16227766`; `2^{.5}` → `1.414213562373◂▸` / `1.414213562`; a typed `1.414213562` → `1.414213562◂▸` / `1.414213562`. Toggling back a value that was shown as `√{2}` gives `√{2}` again (`2nd square 2 enter toggle toggle`).
 - On an empty line, the conversion keys paste the previous **value**: `2nd prb 6` → `0▸DMS`; after `\f{7}{4}`, `2nd x10n` → `\f{7}{4}▸n/d◂▸Un/d`.
 
 ## 8. Fractions [ref, GB p.13-14]
 
 - MathPrint: `frac` before a number opens an empty template; a number typed first becomes the numerator; `down` moves to the denominator; `right` leaves the template. Numerator and denominator may contain expressions.
 - `2nd`,`frac` after a whole number starts a mixed number: `1\f{1}{2}`.
+- Elsewhere (empty line, after an operator), `2nd`,`frac` inserts a whole-part slot (a normal-size placeholder) followed by an empty fraction, with the cursor in the whole part. Keys typed there go on the baseline: `add delete div 2nd frac div 9 4` builds `ans÷÷94` followed by the empty fraction. `right` from a filled whole part enters the numerator.
 - Results are improper fractions in lowest terms: `4\f{5}{9}` → `\f{41}{9}`.
 - `▸n/d◂▸Un/d` converts both ways: `\f{9}{2}` → `4\f{1}{2}`, `3\f{1}{4}` → `\f{13}{4}`.
 - `▸F◂▸d`: `4\f{1}{2}▸F◂▸d` → `4.5`, `0.25▸F◂▸d` → `\f{1}{4}`.
-- A fraction result with a large denominator falls back to decimal: `\f{1}{999}+\f{1}{998}` → `0.002003005`.
+- A fraction result keeps its form while the denominator is ≤ 1000. Above that it is decimal: `\f{1}{1000}` → `\f{1}{1000}`; `\f{1}{1001}` → `0.000999001`; `\f{1}{9999}` → `0.00010001` (next row, §3.2); `\f{1}{999}+\f{1}{998}` → `0.002003005`.
 - `sto` inside a template is a SYNTAX error (`1 frac 4 sto var enter` → SYNTAX).
 - Classic: `3⁄4+1␣7⁄12` → `7⁄3`, `9⁄2▸n/d◂▸Un/d` → `4␣1⁄2`, `4␣1⁄2▸F◂▸d` → `4.5`.
 
 ## 9. Powers, roots, π, logs [ref]
 
 - `pow` opens a superscript in MathPrint (leave with `right`); in Classic it is a `^` operator.
-- `square` appends `^{2}` (Classic `²`), `recip` appends `^{⁻1}` (Classic `⁻¹`). Repeating them shows automatic parentheses: `(3^{2})^{2}`, `(4^{⁻1})^{⁻1}`.
+- `square` appends `^{2}` (Classic `²`), `recip` appends `^{⁻1}` (Classic `⁻¹`). Repeating them shows automatic parentheses: `(3^{2})^{2}`, `(4^{⁻1})^{⁻1}`. `pow` after them also wraps the power: `8 square pow 5` → `(8^{2})^{5}`. These parentheses are real entry tokens. `clear` in the exponent leaves them: `8 square pow 5 clear` → `(8^{2})`, then `enter` → `64`, or `3` → `(8^{2})3`; `8 recip pow 5 clear` → `(8^{⁻1})`.
 - `2nd`,`square`: MathPrint radical template `√{…}`; Classic `√(`.
-- `2nd`,`pow`: index from the number before: `\r{3}{64}`; Classic `3ˣ√64`.
+- `2nd`,`pow` (MathPrint x-root): the index is the whole operand just before the cursor, and the cursor goes to the radicand.
+  - A number, including a decimal: `1.5 2nd pow 8` → `\r{1.5}{8}` = `4`. Only the last operand of a sum is taken: `1+\r{3}{8}` = `3`. A leading negation stays outside: `⁻\r{3}{8}` = `⁻2`.
+  - A parenthesized group: `\r{(1+2)}{8}` = `2`.
+  - A function call: `\r{sin(30)}{4}` = `16`.
+  - A power: `\r{2^{3}}{64}` = `1.681792831`, `\r{3^{2}}{512}` = `2`.
+  - A postfix `%`: `\r{47%}{2}` = `4.370079649`.
+  - A fraction: `\r{\f{2}{34}}{8}` = `2.251799814*10^{15}`.
+  - An implied product: with x = 8, `\r{3x}{64}` = `1.189207115`.
+  - `π` or `x` alone.
+  - On an empty line the index is `ans`: `27 enter 2nd pow 8 enter` → `\r{ans}{8}` = `1.080059739`.
+  - After an operator the index is an empty slot and the cursor goes into it: `2 mul 2nd pow 3` → `2*\r{3}{}` with an empty radicand placeholder; `right` moves to the radicand. Leaving both empty gives SYNTAX (`2*2nd pow 8 enter`).
+  - Classic: `3ˣ√64`.
 - `2nd`,`log` / `2nd`,`ln`: MathPrint `10^{…}` / `e^{…}`; Classic `10^(` / `e^(`.
 - `log(`, `ln(`: name with an open parenthesis; enter closes it (`log(1000` → `3`).
 - Values: `log(2)` → `0.301029996`, `ln(10)` → `2.302585093`, `e^{1}` → `2.718281828`, `e^{.5}` → `1.648721271`.
@@ -377,7 +429,20 @@ Examples [ref]: `60+5*⁻12` = 0, `⁻3^{2}` = ⁻9, `⁻3!` = ⁻6, `2*5 nCr 2`
 
 ## 21. Errors [ref]
 
-Screen: `["", "<MESSAGE>", "Error"]`; `clear` returns to the entry with the cursor at the error.
+Screen: `["", "<MESSAGE>", "Error"]`.
+
+`clear` returns to the entry with the cursor **on** the token where evaluation stopped, in overwrite mode. The next key replaces that token:
+
+| entry | cursor on | `clear 5 enter` (or `7`) |
+|---|---|---|
+| `1÷0+2` | `+` | `1÷052` → `0.019230769` |
+| `2÷0*3` | `*` | `2÷053` → `0.037735849` |
+| `log(0)+1` | `)` | `log(05+1` → `0.77815125` |
+| `1+*2` | `*` | `1+52` → `53` |
+| `1→` | `→` | `17` → `17` |
+| `1→2` | `→` | `172` → `172` |
+
+When the error is found at the end of the entry (`1+`, `2÷0`, `2+1÷0`), the cursor is at the end.
 
 The entry is evaluated from the left and the first error met is shown: `ans^{⁻1}7÷4*+` (Ans 0) → DOMAIN, `2÷0-1+` → DIVIDE BY 0, `log(0)+*` → DOMAIN; `1++2÷0` → SYNTAX because the syntax error comes first.
 
@@ -407,3 +472,4 @@ The entry is evaluated from the left and the first error met is shown: `ans^{⁻
 2. The rand generator itself is unknown (only its outputs after reset and after seed 5).
 3. Contrast keys (`2nd`,`sub` / `2nd`,`add`) are not simulated.
 4. Screens not covered by vectors (deep menu scrolling, Ask-x table editing) follow the same rules but were not all observed.
+5. Scroll offset for lines with fractions or radicals, and the 13th digit of eˣ (QUESTIONS Q10, Q16).

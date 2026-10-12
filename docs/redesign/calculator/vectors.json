@@ -1,6 +1,6 @@
 {
  "version": 1,
- "status": "Verified against the reference emulator: 645 of 645 vectors.",
+ "status": "Verified against the reference emulator: 705 of 705 vectors.",
  "encoding": "BEHAVIOR.md §2",
  "keyNames": "BEHAVIOR.md §1",
  "start": {
@@ -107,7 +107,7 @@
    "clear"
   ]
  },
- "count": 645,
+ "count": 705,
  "vectors": [
   {
    "id": "arith-onePlusOne",
@@ -18903,6 +18903,1660 @@
     ]
    },
    "source": "reference (differential check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-piCoefFromSquare",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "3",
+    "8",
+    "square",
+    "pi",
+    "6",
+    "8",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "38^{2}π68\t98192π"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-piCoef6Digits",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "pi",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "123456π\t123456π"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-piCoef7Digits",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "pi",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "1234567π",
+     "\t1234567π"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-piCoef10Digits",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "9",
+    "9",
+    "9",
+    "9",
+    "9",
+    "9",
+    "9",
+    "9",
+    "9",
+    "9",
+    "pi",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "9999999999π",
+     "\t9999999999π"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-piCoef11Digits",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "pi",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "12345678901π",
+     "\t3.878509417*10^{10}"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-piCoefPower",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "pow",
+    "1",
+    "0",
+    "right",
+    "pi",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "2^{10}π\t1024π"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-piCoefPower20",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "pow",
+    "2",
+    "0",
+    "right",
+    "pi",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "2^{20}π\t1048576π"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "frac-piOver1000",
+   "category": "frac",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "down",
+    "1",
+    "0",
+    "0",
+    "0",
+    "right",
+    "pi",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{1}{1000}π\t\\f{π}{1000}"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "frac-piOver10000",
+   "category": "frac",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "down",
+    "1",
+    "0",
+    "0",
+    "0",
+    "0",
+    "right",
+    "pi",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{1}{10000}π",
+     "\t0.000314159"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "frac-den1000",
+   "category": "frac",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "down",
+    "1",
+    "0",
+    "0",
+    "0",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{1}{1000}\t\\f{1}{1000}"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "frac-den1001",
+   "category": "frac",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "down",
+    "1",
+    "0",
+    "0",
+    "1",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{1}{1001}",
+     "\t0.000999001"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "frac-den9999",
+   "category": "frac",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "down",
+    "9",
+    "9",
+    "9",
+    "9",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{1}{9999}",
+     "\t0.00010001"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "frac-toggleRowWidth",
+   "category": "frac",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "2",
+    "down",
+    "3",
+    "right",
+    "toggle",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{2}{3}◂▸\t0.666666667"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-xrootAnsIndex",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "7",
+    "enter",
+    "2nd",
+    "pow",
+    "8",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "27\t27",
+     "\\r{ans}{8}",
+     "\t1.080059739"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-xrootParenIndex",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "lparen",
+    "1",
+    "add",
+    "2",
+    "rparen",
+    "2nd",
+    "pow",
+    "8",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "\\r{(1+2)}{8}\t2"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-xrootFuncIndex",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "sin",
+    "3",
+    "0",
+    "rparen",
+    "2nd",
+    "pow",
+    "4",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "\\r{sin(30)}{4}\t16"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-xrootPowerIndex",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "pow",
+    "3",
+    "right",
+    "2nd",
+    "pow",
+    "6",
+    "4",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "\\r{2^{3}}{64}",
+     "\t1.681792831"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-xrootSquareIndex",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "3",
+    "square",
+    "2nd",
+    "pow",
+    "5",
+    "1",
+    "2",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "\\r{3^{2}}{512}\t2"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-xrootPercentIndex",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "4",
+    "7",
+    "2nd",
+    "lparen",
+    "2nd",
+    "pow",
+    "2",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "\\r{47%}{2}",
+     "\t4.370079649"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-xrootDecimalIndex",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    ".",
+    "5",
+    "2nd",
+    "pow",
+    "8",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "\\r{1.5}{8}\t4"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-xrootProductIndex",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "8",
+    "sto",
+    "var",
+    "enter",
+    "3",
+    "var",
+    "2nd",
+    "pow",
+    "6",
+    "4",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "8→x\t8",
+     "\\r{3x}{64}",
+     "\t1.189207115"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-xrootFractionIndex",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "frac",
+    "3",
+    "down",
+    "4",
+    "right",
+    "2nd",
+    "pow",
+    "8",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "\\r{\\f{2}{34}}{8}",
+     "\t2.251799814*10^{15}"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-xrootAfterOperator",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "mul",
+    "2nd",
+    "pow",
+    "3"
+   ],
+   "expect": {
+    "lines": [
+     "2*\\r{3}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteEmptyExp",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "ln",
+    "delete",
+    "9"
+   ],
+   "expect": {
+    "lines": [
+     "9"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteEmptyExpAfterVar",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "var",
+    "2nd",
+    "ln",
+    "delete",
+    "9"
+   ],
+   "expect": {
+    "lines": [
+     "1x9"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteEmptyExpTwice",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "5",
+    "2nd",
+    "ln",
+    "delete",
+    "delete",
+    "9"
+   ],
+   "expect": {
+    "lines": [
+     "9"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteLastExpDigit",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "ln",
+    "3",
+    "delete",
+    "5",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "5\t5"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteEmptyTenPower",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "2nd",
+    "log",
+    "delete",
+    "5"
+   ],
+   "expect": {
+    "lines": [
+     "2105"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteEmptyDenominator",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "3",
+    "frac",
+    "delete",
+    "4"
+   ],
+   "expect": {
+    "lines": [
+     "34"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteEmptyNumerator",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "2",
+    "down",
+    "delete"
+   ],
+   "expect": {
+    "lines": [
+     "12"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteFractionStepwise",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "frac",
+    "3",
+    "4",
+    "delete",
+    "delete",
+    "delete",
+    "5"
+   ],
+   "expect": {
+    "lines": [
+     "125"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteMixedDenominator",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "2nd",
+    "frac",
+    "1",
+    "down",
+    "delete",
+    "7"
+   ],
+   "expect": {
+    "lines": [
+     "217"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteEmptyRadicand",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "3",
+    "2nd",
+    "pow",
+    "delete",
+    "4"
+   ],
+   "expect": {
+    "lines": [
+     "34"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteRootDigit",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "2nd",
+    "pow",
+    "3",
+    "delete",
+    "5",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "125\t125"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteRootThenIndex",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "2nd",
+    "pow",
+    "3",
+    "delete",
+    "delete",
+    "4",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "14\t14"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteRootOnDigit",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "2nd",
+    "pow",
+    "3",
+    "left",
+    "delete"
+   ],
+   "expect": {
+    "lines": [
+     "12"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteRootAfterOperator",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "mul",
+    "2nd",
+    "pow",
+    "3",
+    "right",
+    "4",
+    "delete",
+    "6",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "2*36\t72"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-deleteSqrtDigit",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "square",
+    "4",
+    "delete",
+    "5",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "5\t5"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-squarePowClear",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "8",
+    "square",
+    "pow",
+    "5",
+    "clear"
+   ],
+   "expect": {
+    "lines": [
+     "(8^{2})"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-squarePowClearEnter",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "8",
+    "square",
+    "pow",
+    "5",
+    "clear",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "(8^{2})\t64"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-squarePowClearType",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "8",
+    "square",
+    "pow",
+    "5",
+    "clear",
+    "3"
+   ],
+   "expect": {
+    "lines": [
+     "(8^{2})3"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "pow-recipPowClear",
+   "category": "pow",
+   "mode": "mathprint",
+   "keys": [
+    "8",
+    "recip",
+    "pow",
+    "5",
+    "clear"
+   ],
+   "expect": {
+    "lines": [
+     "(8^{⁻1})"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-clearToEnd",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "left",
+    "left",
+    "clear",
+    "9"
+   ],
+   "expect": {
+    "lines": [
+     "19"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-clearLastChar",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "left",
+    "clear"
+   ],
+   "expect": {
+    "lines": [
+     "12"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-clearToEndTokens",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "div",
+    "0",
+    "2",
+    "2nd",
+    "rparen",
+    "lparen",
+    "0",
+    "0",
+    "left",
+    "clear"
+   ],
+   "expect": {
+    "lines": [
+     "ans÷02▸%(0"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-clearFromExponent",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "pow",
+    "3",
+    "right",
+    "4",
+    "5",
+    "left",
+    "left",
+    "left",
+    "clear"
+   ],
+   "expect": {
+    "lines": [
+     "12"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-clearMixedWhole",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "add",
+    "delete",
+    "div",
+    "2nd",
+    "frac",
+    "div",
+    "9",
+    "4",
+    "clear"
+   ],
+   "expect": {
+    "lines": [
+     "ans÷÷94"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-clearMixedWholeMid",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "add",
+    "delete",
+    "div",
+    "2nd",
+    "frac",
+    "9",
+    "4",
+    "left",
+    "clear"
+   ],
+   "expect": {
+    "lines": [
+     "ans÷9"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-clearCursorOnStore",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "sto",
+    "enter",
+    "clear",
+    "7"
+   ],
+   "expect": {
+    "lines": [
+     "17"
+    ],
+    "indicators": [
+     "DEG",
+     "↑"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-clearCursorOnStoreEval",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "sto",
+    "enter",
+    "clear",
+    "7",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "17\t17"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-clearCursorOnStoreTarget",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "sto",
+    "2",
+    "enter",
+    "clear",
+    "7",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "172\t172"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-clearCursorAfterDivZero",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "div",
+    "0",
+    "add",
+    "2",
+    "enter",
+    "clear",
+    "5",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "1÷052",
+     "\t0.019230769"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-clearCursorAfterDivZeroMul",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "div",
+    "0",
+    "mul",
+    "3",
+    "enter",
+    "clear",
+    "5",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "2÷053",
+     "\t0.037735849"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-clearCursorDomain",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "log",
+    "0",
+    "rparen",
+    "add",
+    "1",
+    "enter",
+    "clear",
+    "5",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "log(05+1",
+     "\t0.77815125"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-clearCursorSyntax",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "add",
+    "mul",
+    "2",
+    "enter",
+    "clear",
+    "5",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "1+52\t53"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "fmt-toggleTenPowerDecimal",
+   "category": "fmt",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "log",
+    ".",
+    "5",
+    "enter",
+    "toggle"
+   ],
+   "expect": {
+    "lines": [
+     "10^{.5}\t3.16227766",
+     "3.162277660168◂▸",
+     "\t3.16227766"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "fmt-togglePowerDecimal",
+   "category": "fmt",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "pow",
+    ".",
+    "5",
+    "enter",
+    "toggle"
+   ],
+   "expect": {
+    "lines": [
+     "2^{.5}\t1.414213562",
+     "1.414213562373◂▸",
+     "\t1.414213562"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "fmt-toggleTypedDecimal",
+   "category": "fmt",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    ".",
+    "4",
+    "1",
+    "4",
+    "2",
+    "1",
+    "3",
+    "5",
+    "6",
+    "2",
+    "enter",
+    "toggle"
+   ],
+   "expect": {
+    "lines": [
+     "1.414213562",
+     "\t1.414213562",
+     "1.414213562◂▸",
+     "\t1.414213562"
+    ],
+    "indicators": [
+     "DEG",
+     "↑",
+     "↓"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-scrollEmptyExp14",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "pow"
+   ],
+   "expect": {
+    "lines": [
+     "12345678901234^{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-scrollEmptyExp15",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "pow"
+   ],
+   "expect": {
+    "lines": [
+     "◂3456789012345^{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (third random check)",
    "confidence": "high",
    "verified": true
   }
