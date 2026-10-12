@@ -7,6 +7,7 @@ mod db;
 mod error;
 mod focus;
 mod ingest;
+mod exams;
 mod insights;
 mod lan;
 mod music;
@@ -95,6 +96,10 @@ pub fn run() {
             cards::mistakes_add,
             cards::mistakes_list,
             insights::insights_activity,
+            exams::exam_save,
+            exams::exams_list,
+            exams::exam_get,
+            exams::exam_delete,
             cards::mistake_set_resolved,
             cards::mistake_delete,
             cards::image_store,

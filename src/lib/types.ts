@@ -731,3 +731,17 @@ export interface InsightsActivity {
   focus: FocusRow[];
   attempts: AttemptRow[];
 }
+
+export interface ExamAttempt {
+  id: string;
+  spaceId: string;
+  examId: string;
+  section: string;
+  length: "short" | "full";
+  data: import("./exam/attempt").ExamData;
+  score: number | null;
+  scaled: number | null;
+  startedAt: number;
+  completedAt: number | null;
+  timeUsedMs: number;
+}

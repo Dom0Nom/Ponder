@@ -14,6 +14,8 @@ import { SpaceScreen } from "../features/space/SpaceScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { ReviewScreen } from "../features/review/ReviewScreen";
 import { PracticeScreen } from "../features/practice/PracticeScreen";
+import { InsightsScreen } from "../features/insights/InsightsScreen";
+import { ExamScreen } from "../features/exam/ExamScreen";
 import { CommandPalette } from "../features/palette/CommandPalette";
 import { FocusLayer } from "../features/focus/FocusLayer";
 import { QuizLayer } from "../features/placement/QuizDialog";
@@ -37,6 +39,18 @@ function RouteScreen({ route }: { route: Route }) {
     return (
       <ContentCard scroll={false}>
         <ReviewScreen spaceId={route.spaceId} tab={route.tab} />
+      </ContentCard>
+    );
+  if (route.name === "insights")
+    return (
+      <ContentCard scroll={false}>
+        <InsightsScreen spaceId={route.spaceId} />
+      </ContentCard>
+    );
+  if (route.name === "exam")
+    return (
+      <ContentCard scroll={false}>
+        <ExamScreen key={route.spaceId ?? ""} spaceId={route.spaceId} attemptId={route.attemptId} />
       </ContentCard>
     );
   if (route.name === "practice")

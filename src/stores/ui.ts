@@ -9,7 +9,9 @@ export type Route =
   | { name: "space"; spaceId: string }
   | { name: "settings"; section?: string; page?: SettingsPage }
   | { name: "review"; spaceId?: string; tab?: "cards" | "mistakes" }
-  | { name: "practice"; spaceId: string; topicKey?: string; topicTitle?: string };
+  | { name: "practice"; spaceId: string; topicKey?: string; topicTitle?: string }
+  | { name: "insights"; spaceId?: string }
+  | { name: "exam"; spaceId?: string; attemptId?: string };
 export type SettingsPage =
   | { kind: "addProvider"; type?: ProviderType }
   | { kind: "lanScan" }

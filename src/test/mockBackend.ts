@@ -50,6 +50,7 @@ export interface DB {
   practiceItems: Row<T.PracticeItem & { spaceId: string }>;
   attempts: (T.NewAttempt & { spaceId: string; at: number })[];
   reviews?: T.ReviewRow[];
+  exams?: Row<T.ExamAttempt>;
   images: Record<string, string>;
   curricula: Row<T.SpaceCurriculum>;
   levels: Record<string, Row<T.TopicLevel>>;
@@ -1709,6 +1710,21 @@ const handlers: Record<string, (a: Args) => unknown> = {
       .sort((x, y) => y.startedAt - x.startedAt)
       .slice(0, 500),
   focus_events: (a) => db.focusEvents.filter((e) => e.sessionId === a.sessionId),
+  exam_save: (a) => {
+    const x = structuredClone(a.attempt as T.ExamAttempt);
+    if (!x.id) x.id = id();
+    if (!x.startedAt) x.startedAt = now();
+    (db.exams ??= {})[x.id] = x;
+    return x;
+  },
+  exams_list: (a) =>
+    Object.values(db.exams ?? {})
+      .filter((x) => x.spaceId === a.spaceId)
+      .sort((x, y) => y.startedAt - x.startedAt),
+  exam_get: (a) => db.exams?.[a.id as string] ?? null,
+  exam_delete: (a) => {
+    delete db.exams?.[a.id as string];
+  },
   insights_activity: (a) => {
     const since = a.since as number;
     const inSpace = (id: string | null) => !a.spaceId || id === a.spaceId;
@@ -1819,6 +1835,7 @@ export function installMockBackend() {
     save();
   } else load();
   void import("../stores/ui").then((m) => ((window as unknown as { __ui: unknown }).__ui = m.useUi));
+  void import("../lib/queries").then((m) => ((window as unknown as { __qc: unknown }).__qc = m.queryClient));
   const handle = async (cmd: string, args?: unknown) => {
     if (cmd.startsWith("plugin:")) {
       if (cmd === "plugin:dialog|open") {

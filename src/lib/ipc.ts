@@ -136,6 +136,10 @@ export const api = {
   // adaptive practice
   abilitiesList: (spaceId: string) => call<T.Ability[]>("abilities_list", { spaceId }),
   insightsActivity: (spaceId: string | null, since: number) => call<T.InsightsActivity>("insights_activity", { spaceId, since }),
+  examSave: (attempt: T.ExamAttempt) => call<T.ExamAttempt>("exam_save", { attempt }),
+  examsList: (spaceId: string) => call<T.ExamAttempt[]>("exams_list", { spaceId }),
+  examGet: (id: string) => call<T.ExamAttempt | null>("exam_get", { id }),
+  examDelete: (id: string) => call<void>("exam_delete", { id }),
   abilityGet: (spaceId: string, topicKey: string) => call<T.Ability | null>("ability_get", { spaceId, topicKey }),
   practiceItemAdd: (spaceId: string, item: Omit<T.PracticeItem, "id" | "createdAt">) =>
     call<T.PracticeItem>("practice_item_add", { spaceId, item: { id: "", createdAt: 0, ...item } }),
