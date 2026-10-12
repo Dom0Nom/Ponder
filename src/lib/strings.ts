@@ -1802,6 +1802,12 @@ export const s = {
       mmd: "Mermaid source (.mmd)",
       mp3: "Audio (.mp3)",
       html: "Web page (.html)",
+      video: "Narrated video",
+    },
+    video: {
+      voicing: (done: number, total: number) => `Recording narration… slide ${done} of ${total}`,
+      recording: (done: number, total: number) => `Recording video… ${done} of ${total} s`,
+      unsupported: "This system can't record video here.",
     },
     explainer: {
       frameTitle: "Interactive explainer",

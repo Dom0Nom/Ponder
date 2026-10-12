@@ -143,3 +143,27 @@ test("dictation records from the microphone and puts the transcript in the compo
   const call = (await speech(app)).find((c) => c.url.endsWith("/audio/transcriptions"));
   expect(call?.body).toMatchObject({ model: "openai/whisper-large-v3-turbo", input_audio: { format: "webm" } });
 });
+
+test("slides export as a narrated video", async ({ app }) => {
+  await app.getByRole("button", { name: "New space" }).first().click();
+  await app.getByLabel("Name").fill("Biology");
+  await app.getByRole("button", { name: "Create" }).click();
+  await app.getByRole("button", { name: "Add source" }).click();
+  await app.getByRole("tab", { name: "Paste text" }).click();
+  await app.locator("#paste-title").fill("Photosynthesis notes");
+  await app.getByRole("textbox", { name: "Text", exact: true }).fill("Photosynthesis happens in the chloroplasts. The Calvin cycle fixes carbon dioxide into sugar.");
+  await app.getByRole("button", { name: "Import" }).click();
+  await expect(app.locator('[data-testid="source-row"][data-status="ready"]')).toHaveCount(1);
+
+  await app.getByTestId("create-row").click();
+  await app.getByTestId("create-panel").locator('[data-kind="slides"]').click();
+  const screen = app.getByTestId("output-screen");
+  await expect(screen.getByTestId("slide-counter")).toHaveText("Slide 1 of 4");
+  await screen.getByTestId("output-export").click();
+  await app.getByRole("menuitem", { name: "Narrated video" }).click();
+  await expect(app.getByText(/Saved to \/Users\/me\/Downloads\/Photosynthesis in 5 slides\.(mp4|webm)/)).toBeVisible({ timeout: 30_000 });
+  const narrated = (await speech(app)).filter((c) => c.url.endsWith("/audio/speech")).length;
+  expect(narrated).toBeGreaterThanOrEqual(4);
+  const last = await app.evaluate(() => (window as unknown as { __mock: { db: () => { exports: { extension: string; size: number }[] } } }).__mock.db().exports.at(-1));
+  expect(last?.size).toBeGreaterThan(1000);
+});

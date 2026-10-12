@@ -42,7 +42,7 @@ const FORMATS: Record<StudioOutput["kind"], Format[]> = {
   table: ["xlsx", "csv"],
   mindmap: ["svg", "png", "md"],
   diagram: ["svg", "png", "mmd"],
-  slides: ["pptx", "md"],
+  slides: ["pptx", "md", "video"],
   infographic: ["png", "svg"],
   audio: ["mp3", "md"],
   explainer: ["html"],
@@ -168,11 +168,34 @@ export function OutputScreen({ spaceId, outputId }: { spaceId: string; outputId:
           toast.dismiss(t);
         }
       }
+      case "video":
+        throw new Error("video");
+    }
+  };
+
+  const exportVideo = async () => {
+    const t = toast.loading(s.outputs.video.voicing(0, 0));
+    try {
+      const { recordVideo } = await import("../../lib/video/video");
+      const { bytes, ext } = await recordVideo(out.title, (out.data as OutputDataMap["slides"]).slides, (p) =>
+        toast.loading(p.phase === "voice" ? s.outputs.video.voicing(p.done, p.total) : s.outputs.video.recording(p.done, p.total), { id: t }),
+      );
+      return { bytes, ext };
+    } catch (e) {
+      throw e instanceof Error && e.message === "video-unsupported" ? new Error(s.outputs.video.unsupported) : e;
+    } finally {
+      toast.dismiss(t);
     }
   };
 
   const exportAs = async (f: Format) => {
     try {
+      if (f === "video") {
+        const v = await exportVideo();
+        const path = await api.exportFile(out.title, v.ext, v.bytes);
+        if (path) toast.success(s.outputs.exported(path));
+        return;
+      }
       const path = await api.exportFile(out.title, f, await bytesFor(f));
       if (path) toast.success(s.outputs.exported(path));
     } catch (e) {
