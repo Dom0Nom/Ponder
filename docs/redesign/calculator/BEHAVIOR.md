@@ -2,6 +2,19 @@
 
 Source of truth for the builder of `src/features/calculator/`. Written clean-room: from observing the reference emulator as a black box (keys clicked, LCD pixels read) and from TI's public *reference calculator guidebook* (2019 edition, cited as **GB p.N**). No code, artwork or font data from the reference is used or described here.
 
+## Changes (fourth random check, seed 4)
+
+`calc-diff --random 200 --seed 4` found six real differences (four scroll windows, two error precedences). Each was reproduced with nearby variations: 110 new verified vectors (`*-seed4-*`, 815 in total).
+
+- **Scroll window is computed in dots, every key** (§3.2): the line is shifted by the larger of a content limit (line width + end cell − 96) and a cursor limit. A cursor inside a template slot must start before cell 15; if not, the line shifts so the cursor starts at cell 14. A top-level cursor may sit in cell 15. A line ending in a stacked fraction reserves no end cell. Fractions' half-cell offset lets the left edge fall mid-cell.
+- **Partly scrolled templates** (§2.2): cell 0 under `◂` is never written; a template cut on the left keeps its wrapper and lists only the visible characters; a row whose visible glyphs are all in one superscript is written flat.
+- **A `)` inside a template slot closes that slot early** (§21): when it is the template's last slot, the template's operation runs there (its error is reported); evaluation goes on left to right, and the slot's own end is then an unmatched `)` → SYNTAX only when reached.
+- **An empty slot is a SYNTAX error only when evaluation reaches it** (§21): errors to its left, including in an x-root index or a numerator, win.
+- **On an error screen every key except `clear` is ignored** (§21), including digits, operators, arrows and `enter`. Answers QUESTIONS Q14.
+- **Conversions typed into an empty exponent or radicand go inside it** (§9): `9 pow 2nd x10n` → `9^{▸n/d◂▸Un/d}`, then `enter` → SYNTAX.
+- **x-root index after a power and a number** (§9): `square recip 4 0 4 2nd pow` takes only `404` as the index: `(ans^{2})^{⁻1}\r{404}{}`.
+- **Open** (QUESTIONS Q18): why fraction-ending lines reserve no end cell, exact slot-cursor threshold, and lines with a fraction before other content.
+
 ## Changes (third random check)
 
 Three more random runs (seeds 1-3, 600 sequences) and targeted probes. 60 new verified vectors (705 in total). Real differences found:
@@ -73,7 +86,7 @@ The first version of this file was written without access to the reference. It h
 
 ## 0. Status
 
-All 705 vectors (578 from the first draft, 47 probes from the verification pass, 20 from the differential check, 60 from the third random check) in `vectors.json` were run on the reference (each one from a page reload plus a device reset) and read back pixel by pixel. Vectors whose result differed from the first draft were captured at least twice more and kept only where the runs agreed (three were flaky in the first run and fixed by the re-runs). Tags:
+All 815 vectors (578 from the first draft, 47 probes from the verification pass, 20 from the differential check, 60 from the third random check, 110 from the seed 4 check) in `vectors.json` were run on the reference (each one from a page reload plus a device reset) and read back pixel by pixel. Vectors whose result differed from the first draft were captured at least twice more and kept only where the runs agreed (three were flaky in the first run and fixed by the re-runs). Tags:
 - **[ref]**: observed on the reference.
 - **[GB]**: from the guidebook; where it disagrees with the reference, the reference wins.
 
@@ -181,6 +194,11 @@ MathPrint 2-D objects:
 | exact root / pi results | `2√{2}`, `\f{5√{2}}{2}`, `144π`, `\f{π}{4}` |
 | empty template box | nothing: `\f{}{}` |
 
+**Rows scrolled horizontally** (§3.2):
+- Cell 0 under `◂` is never written, even when raised or numerator pixels of the hidden glyph stay visible. A glyph whose box starts left of dot 7 (partly hidden after a mid-cell shift) is not written either.
+- A template cut off on the left keeps its wrapper and lists only its visible characters: `◂√{2345678901234}`, `◂\f{3456789012345}{}`, `◂\r{0}{3log(9^{▸n/d◂▸Un/d}}` (index `450`, only `0` visible), `◂^{(9067tan⁻¹(8.5}7`.
+- When every visible glyph of the row is inside one superscript (its base scrolled off), the row is written flat: `x10n div 5 cos 9 0 6 7 2nd tan 8 . 5` → `◂(9067tan⁻¹(8.5`.
+
 ### 2.3 Scrolled history
 The Home screen scrolls by dot rows, so the top row can be cut. A row is written only if its own text cells are fully on screen; a stacked fraction counts as visible only if its numerator is. Pieces of a row that are cut off (for example the superscript of `15^{2}` when only `15` and `225` are visible) are left out: that row is written `15\t225`.
 
@@ -215,6 +233,12 @@ The Home screen scrolls by dot rows, so the top row can be cut. A row is written
 - An entry that does not fit scrolls horizontally. **The cursor cell at the end counts**: entry plus cursor may use 16 cells, so 15 digits still fit and 16 digits show `◂34567890123456`. The first or last cell then shows the overflow mark: `◂67890123456789` (cursor at the end), `123456789012345▸` (cursor at the start). History rows that are too long are cut at the 16th cell and end with `▸`, also inside a superscript: `sin(30)^{2}+cos(30▸`, `(ans^{2})^{3+252*tan}▸`.
 - **An empty slot holding the cursor** counts as one cell, and the end cursor cell is still reserved after it. `12345678901234` `pow` fits: 14 digits, the raised placeholder in cell 14, and cell 15 empty. With 15 digits it scrolls to `◂3456789012345`, then the placeholder, then an empty cell. `2nd tan . pi 5 2nd lparen div recip pow` fits without scrolling: `t a n ⁻¹ ( . π 5 % ÷ ( ⁻1 ) □` takes cells 0-14. The `⁻¹` of `tan⁻¹(` is one cell, and the `⁻1` with no base is two raised cells inside tall parentheses.
 - An empty fraction at the end needs 2 cells. When those don't fit, the line ends with `▸` instead.
+- **Window offset (seed 4 check).** The window shift O is in dots and is recomputed after every key (not sticky: `#14 pow 4` scrolls by one cell, `right` scrolls back to 0). O = max(content, cursor, 0):
+  - *content* = W − 96. W is the line width in dots as laid out (§3.1), where a cursor at the end of a slot or in an empty slot takes one cell inside that slot (under the √ bar; it counts toward a fraction's n), plus one end cell after the line, **except when the line ends with a stacked fraction** (no end cell).
+  - *cursor*: a top-level cursor may start at cell 15 (dot 91); beyond that the line shifts so it starts at cell 15. A cursor inside a slot (at its end, in an empty slot, or on a character) may start at most at dot 88; beyond that the line shifts so the cursor starts at cell 14 (dot 85).
+  - Examples: `2nd square #1234567890123` fits; `#12345678901234` (14 digits) in the radicand → O = 6 → `◂√{2345678901234}`; `right` → O = 0. `#12345678901234 pow 4` → `◂345678901234^{4}`. `x10n #123456789012` then `left` → `◂10^{123456789012}` (cursor on the last digit at cell 17 → shift 3 cells). `frac #12345678901234` fits (numerator cursor at dot 88); 15 digits → O = 9 dots → `◂\f{3456789012345}{}`. `1 2 3 frac #123456789012345` → `◂\f{123}{3456789012345}`; `left` → O = 0. `#12345678901234 add frac` → numerator placeholder at dot 94 → O = 9 → `◂45678901234+\f{}{}`. `9 2 4 2nd frac 5 cos 6 7 mul x10n div 1` → O = 15 → `◂\f{5cos(67**10^{÷1}}{}`; one more `var` → O = 21 → `◂\f{cos(67**10^{÷1x}}{}` (the `5` sits under `◂`).
+  - A shift that is not a multiple of 6 leaves the left edge mid-cell: `◂` covers cell 0, and a glyph partly hidden behind it is drawn cut. On a line with a fraction, `◂` is centred on the bar row.
+  - When the cursor moves left out of the window, the left-scroll rule from the second differential check applies (whole tokens kept from the left edge).
 
 ### 3.3 Indicator band
 Items and their left edge in canvas pixels (canvas 192 px = 96 dots wide):
@@ -353,7 +377,9 @@ Examples [ref]: `60+5*⁻12` = 0, `⁻3^{2}` = ⁻9, `⁻3!` = ⁻6, `2*5 nCr 2`
   - `π` or `x` alone.
   - On an empty line the index is `ans`: `27 enter 2nd pow 8 enter` → `\r{ans}{8}` = `1.080059739`.
   - After an operator the index is an empty slot and the cursor goes into it: `2 mul 2nd pow 3` → `2*\r{3}{}` with an empty radicand placeholder; `right` moves to the radicand. Leaving both empty gives SYNTAX (`2*2nd pow 8 enter`).
+  - After a power followed by a number, only the number is the index: `square recip 4 0 4 2nd pow` → `(ans^{2})^{⁻1}\r{404}{}` (not the implied product). After a power alone the power is the index: `0 recip 2nd pow` → `\r{0^{⁻1}}{}`.
   - Classic: `3ˣ√64`.
+- Conversion keys typed into an empty exponent or radicand go inside it, in the small font for an exponent: `9 pow 2nd x10n` → `9^{▸n/d◂▸Un/d}`, `9 pow 2nd table` → `9^{▸F◂▸d}`, `9 pow 2nd rparen` → `9^{▸%}`, `2nd square 2nd x10n` → `√{▸n/d◂▸Un/d}`. Typing continues inside the slot (`9^{▸n/d◂▸Un/d5}`); `enter` gives SYNTAX.
 - `2nd`,`log` / `2nd`,`ln`: MathPrint `10^{…}` / `e^{…}`; Classic `10^(` / `e^(`.
 - `log(`, `ln(`: name with an open parenthesis; enter closes it (`log(1000` → `3`).
 - Values: `log(2)` → `0.301029996`, `ln(10)` → `2.302585093`, `e^{1}` → `2.718281828`, `e^{.5}` → `1.648721271`.
@@ -446,6 +472,30 @@ When the error is found at the end of the entry (`1+`, `2÷0`, `2+1÷0`), the cu
 
 The entry is evaluated from the left and the first error met is shown: `ans^{⁻1}7÷4*+` (Ans 0) → DOMAIN, `2÷0-1+` → DIVIDE BY 0, `log(0)+*` → DOMAIN; `1++2÷0` → SYNTAX because the syntax error comes first.
 
+**Template slots are parenthesised groups** (seed 4 check). Every slot (`√{…}`, `e^{…}`, `10^{…}`, `^{…}`, numerator, denominator, x-root index and radicand) is evaluated like `(…)`. A `)` typed inside a slot closes that group early. If the slot is the template's last operand (radicand, exponent, denominator), the template's operation is applied right there and its error, if any, is reported. Evaluation then goes on left to right at the outer level, and the slot's own end is an unmatched `)`, a SYNTAX error only when evaluation reaches it. So in a numerator the early `)` leads to SYNTAX at the numerator's end, before the division (`\f{1)}{0}` → SYNTAX), unless the numerator itself fails first. An early `)` in an x-root index was not tested.
+
+| keys | entry | result |
+|---|---|---|
+| `2nd ln 4 6 square rparen tan 3 6 5 recip enter` | `e^{46^{2})tan(365^{⁻1}}` | OVERFLOW (`e^{2116}`) |
+| `2nd ln 2 rparen enter` | `e^{2)}` | SYNTAX |
+| `2nd log 1 0 0 rparen enter` | `10^{100)}` | OVERFLOW |
+| `2 pow 1 0 0 0 rparen enter` | `2^{1000)}` | OVERFLOW |
+| `2 pow 2 rparen enter` | `2^{2)}` | SYNTAX |
+| `2nd square 4 rparen enter` | `√{4)}` | SYNTAX |
+| `2nd square 0 sub 1 rparen enter` | `√{0-1)}` | DOMAIN |
+| `2nd square 2 rparen sub 1 div 0 enter` | `√{2)-1÷0}` | DIVIDE BY 0 (evaluation continues after the early close) |
+| `2nd square 4 rparen 1 div 0 enter` | `√{4)1÷0}` | DIVIDE BY 0 |
+| `2nd log 0 recip rparen enter` | `10^{0^{⁻1})}` | DOMAIN |
+| `frac 1 rparen down 0 enter` | `\f{1)}{0}` | SYNTAX |
+| `frac 1 down 0 rparen enter` | `\f{1}{0)}` | DIVIDE BY 0 |
+| `frac 1 div 0 rparen down 2 enter` | `\f{1÷0)}{2}` | DIVIDE BY 0 |
+
+A `(` typed before the template matches the `)` normally: `lparen 2nd square 0 sub 1 rparen enter` → DOMAIN, `lparen 2 pow 1 0 0 0 rparen enter` → OVERFLOW.
+
+**Empty slots** are a SYNTAX error found only when evaluation reaches them; errors to their left win, including errors in an x-root index or a numerator: `0 recip 2nd pow enter` (`\r{0^{⁻1}}{}`) → DOMAIN, `square recip 4 0 4 2nd pow enter` with Ans 0 → DOMAIN, `lparen 1 div 0 rparen 2nd pow enter` → DIVIDE BY 0, `frac 0 recip enter` → DOMAIN, `frac 2 down 0 recip enter` → DOMAIN, `2 2nd pow 0 recip enter` (`\r{2}{0^{⁻1}}`) → DOMAIN; `2 2nd pow enter` → SYNTAX.
+
+**Error screen keys:** while an error message is shown, every key except `clear` is ignored (digits, operators, `left`, `right`, `enter`): `1 div 0 enter 8 enter` and `1 div 0 enter right 5 enter` stay on DIVIDE BY 0; `square recip 4 0 4 2nd pow enter 8 square div right neg 3 pi enter` stays on the first DOMAIN. After `square recip 4 0 4 2nd pow enter clear` the entry `(ans^{2})^{⁻1}\r{404}{}` returns with the cursor at the end of the `⁻1` exponent (the failing power), indicators `DEG ↑`.
+
 | message | observed triggers |
 |---|---|
 | `DIVIDE BY 0` | `1÷0`, `5÷(2-2)`, `\f{1}{0}` |
@@ -472,4 +522,4 @@ The entry is evaluated from the left and the first error met is shown: `ans^{⁻
 2. The rand generator itself is unknown (only its outputs after reset and after seed 5).
 3. Contrast keys (`2nd`,`sub` / `2nd`,`add`) are not simulated.
 4. Screens not covered by vectors (deep menu scrolling, Ask-x table editing) follow the same rules but were not all observed.
-5. Scroll offset for lines with fractions or radicals, and the 13th digit of eˣ (QUESTIONS Q10, Q16).
+5. The 13th digit of eˣ (QUESTIONS Q10). Scroll offsets with fractions and radicals are answered (§3.2); the remaining scroll and error details are in QUESTIONS Q18.

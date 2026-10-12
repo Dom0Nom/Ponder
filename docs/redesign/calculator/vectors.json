@@ -1,6 +1,6 @@
 {
  "version": 1,
- "status": "Verified against the reference emulator: 705 of 705 vectors.",
+ "status": "Verified against the reference emulator: 815 of 815 vectors.",
  "encoding": "BEHAVIOR.md §2",
  "keyNames": "BEHAVIOR.md §1",
  "start": {
@@ -107,7 +107,7 @@
    "clear"
   ]
  },
- "count": 705,
+ "count": 815,
  "vectors": [
   {
    "id": "arith-onePlusOne",
@@ -20558,6 +20558,3368 @@
    },
    "source": "reference (third random check)",
    "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-o109",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "square",
+    "recip",
+    "4",
+    "0",
+    "4",
+    "2nd",
+    "pow",
+    "enter",
+    "8",
+    "square",
+    "div",
+    "right",
+    "neg",
+    "3",
+    "pi",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DOMAIN",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-o163",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "ln",
+    "4",
+    "6",
+    "square",
+    "rparen",
+    "tan",
+    "3",
+    "6",
+    "5",
+    "recip",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "OVERFLOW",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-b4",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "9",
+    "pow",
+    "2nd",
+    "x10n",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "SYNTAX",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-e0",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "square",
+    "recip",
+    "4",
+    "0",
+    "4",
+    "2nd",
+    "pow",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DOMAIN",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-e3",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "2nd",
+    "pow",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "SYNTAX",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-e4",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "0",
+    "recip",
+    "2nd",
+    "pow",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DOMAIN",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-e5",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "0",
+    "recip",
+    "2nd",
+    "pow",
+    "8",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DOMAIN",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-e7",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "lparen",
+    "1",
+    "div",
+    "0",
+    "rparen",
+    "2nd",
+    "pow",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DIVIDE BY 0",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-e9",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "0",
+    "recip",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DOMAIN",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-e10",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "div",
+    "0",
+    "enter",
+    "8",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DIVIDE BY 0",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-e11",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "div",
+    "0",
+    "enter",
+    "8",
+    "square",
+    "div",
+    "right",
+    "neg",
+    "3",
+    "pi",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DIVIDE BY 0",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-f1",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "ln",
+    "4",
+    "6",
+    "square",
+    "rparen",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "OVERFLOW",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-f2",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "ln",
+    "2",
+    "rparen",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "SYNTAX",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-f3",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "ln",
+    "2",
+    "rparen",
+    "3",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "SYNTAX",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-f4",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "pow",
+    "2",
+    "rparen",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "SYNTAX",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-f5",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "log",
+    "1",
+    "0",
+    "0",
+    "rparen",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "OVERFLOW",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-f6",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "square",
+    "4",
+    "rparen",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "SYNTAX",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-f7",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "square",
+    "0",
+    "sub",
+    "1",
+    "rparen",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DOMAIN",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-f8",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "pow",
+    "1",
+    "0",
+    "0",
+    "0",
+    "rparen",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "OVERFLOW",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-f10",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "0",
+    "pow",
+    "1",
+    "0",
+    "0",
+    "rparen",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "OVERFLOW",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-g1",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "rparen",
+    "down",
+    "0",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "SYNTAX",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-g2",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "down",
+    "0",
+    "rparen",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DIVIDE BY 0",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-g3",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "lparen",
+    "2nd",
+    "square",
+    "0",
+    "sub",
+    "1",
+    "rparen",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DOMAIN",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-g4",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "lparen",
+    "2",
+    "pow",
+    "1",
+    "0",
+    "0",
+    "0",
+    "rparen",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "OVERFLOW",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-g5",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "div",
+    "0",
+    "rparen",
+    "down",
+    "2",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DIVIDE BY 0",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-g6",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "square",
+    "2",
+    "rparen",
+    "sub",
+    "1",
+    "div",
+    "0",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DIVIDE BY 0",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-g7",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "square",
+    "0",
+    "sub",
+    "1",
+    "rparen",
+    "add",
+    "rparen",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DOMAIN",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-g8",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "square",
+    "4",
+    "rparen",
+    "1",
+    "div",
+    "0",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DIVIDE BY 0",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-g9",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "2",
+    "down",
+    "0",
+    "recip",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DOMAIN",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-g10",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2",
+    "2nd",
+    "pow",
+    "0",
+    "recip",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DOMAIN",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-g11",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "0",
+    "recip",
+    "2nd",
+    "pow",
+    "add",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DOMAIN",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-g12",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "log",
+    "0",
+    "recip",
+    "rparen",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DOMAIN",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-k1",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "div",
+    "0",
+    "enter",
+    "right"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DIVIDE BY 0",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-k2",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "div",
+    "0",
+    "enter",
+    "right",
+    "5",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DIVIDE BY 0",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-k3",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "div",
+    "0",
+    "enter",
+    "left",
+    "5",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DIVIDE BY 0",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "err-seed4-k4",
+   "category": "err",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "div",
+    "0",
+    "enter",
+    "5",
+    "enter"
+   ],
+   "expect": {
+    "lines": [
+     "",
+     "DIVIDE BY 0",
+     "Error"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-o021",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "4",
+    "5",
+    "0",
+    "2nd",
+    "pow",
+    "3",
+    "log",
+    "9",
+    "pow",
+    "2nd",
+    "x10n",
+    "right"
+   ],
+   "expect": {
+    "lines": [
+     "◂\\r{0}{3log(9^{▸n/d◂▸Un/d}}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "medium",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-b5",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "4",
+    "5",
+    "0",
+    "2nd",
+    "pow",
+    "3",
+    "log",
+    "9",
+    "pow",
+    "2nd",
+    "x10n"
+   ],
+   "expect": {
+    "lines": [
+     "◂\\r{0}{3log(9^{▸n/d◂▸Un/d}}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "medium",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-o026",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "9",
+    "2",
+    "4",
+    "2nd",
+    "frac",
+    "5",
+    "cos",
+    "6",
+    "7",
+    "mul",
+    "x10n",
+    "div",
+    "1",
+    "var"
+   ],
+   "expect": {
+    "lines": [
+     "◂\\f{cos(67**10^{÷1x}}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "medium",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h22",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "9",
+    "2",
+    "4",
+    "2nd",
+    "frac",
+    "5",
+    "cos",
+    "6",
+    "7",
+    "mul",
+    "x10n",
+    "div",
+    "1",
+    "var",
+    "left"
+   ],
+   "expect": {
+    "lines": [
+     "◂\\f{5cos(67**10^{÷1x}}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-d5",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "9",
+    "2",
+    "4",
+    "2nd",
+    "frac",
+    "5",
+    "cos",
+    "6",
+    "7"
+   ],
+   "expect": {
+    "lines": [
+     "924\\f{5cos(67}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-d6",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "9",
+    "2",
+    "4",
+    "2nd",
+    "frac",
+    "5",
+    "cos",
+    "6",
+    "7",
+    "mul",
+    "x10n",
+    "div",
+    "1"
+   ],
+   "expect": {
+    "lines": [
+     "◂\\f{5cos(67**10^{÷1}}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-o031",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "x10n",
+    "div",
+    "5",
+    "cos",
+    "9",
+    "0",
+    "6",
+    "7",
+    "2nd",
+    "tan",
+    "8",
+    ".",
+    "5"
+   ],
+   "expect": {
+    "lines": [
+     "◂(9067tan⁻¹(8.5"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "medium",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h23",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "x10n",
+    "div",
+    "5",
+    "cos",
+    "9",
+    "0",
+    "6",
+    "7",
+    "2nd",
+    "tan",
+    "8",
+    ".",
+    "5",
+    "right"
+   ],
+   "expect": {
+    "lines": [
+     "◂s(9067tan⁻¹(8.5"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "medium",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h24",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "x10n",
+    "div",
+    "5",
+    "cos",
+    "9",
+    "0",
+    "6",
+    "7",
+    "2nd",
+    "tan",
+    "8",
+    ".",
+    "5",
+    "right",
+    "7"
+   ],
+   "expect": {
+    "lines": [
+     "◂^{(9067tan⁻¹(8.5}7"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-o177",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "add",
+    "square",
+    "2",
+    "tan",
+    "2nd",
+    "x10n",
+    "2",
+    "2nd",
+    "square",
+    "lparen"
+   ],
+   "expect": {
+    "lines": [
+     "◂2tan(▸n/d◂▸Un/d2√{(}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "medium",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h25",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "add",
+    "square",
+    "2",
+    "tan",
+    "2nd",
+    "x10n",
+    "2",
+    "2nd",
+    "square",
+    "lparen",
+    "right"
+   ],
+   "expect": {
+    "lines": [
+     "◂^{2}2tan(▸n/d◂▸Un/d2√{(}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-a1",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "x10n",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9"
+   ],
+   "expect": {
+    "lines": [
+     "◂s*10^{123456789}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-a2",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "x10n",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"
+   ],
+   "expect": {
+    "lines": [
+     "ans*10^{12345678}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-a3",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "square",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4"
+   ],
+   "expect": {
+    "lines": [
+     "◂√{2345678901234}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "medium",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-a4",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "square",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3"
+   ],
+   "expect": {
+    "lines": [
+     "√{1234567890123}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-a5",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "square",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "right"
+   ],
+   "expect": {
+    "lines": [
+     "√{12345678901234}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-a10",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "square",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "left"
+   ],
+   "expect": {
+    "lines": [
+     "√{12345678901234}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-a11",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "square",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "left",
+    "left",
+    "left"
+   ],
+   "expect": {
+    "lines": [
+     "√{12345678901234}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-m7",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "square",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "left"
+   ],
+   "expect": {
+    "lines": [
+     "◂√{23456789012345}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "medium",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-a6",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "pow",
+    "4"
+   ],
+   "expect": {
+    "lines": [
+     "1234567890123^{4}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-a7",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "pow",
+    "4"
+   ],
+   "expect": {
+    "lines": [
+     "◂345678901234^{4}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-a8",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "pow",
+    "4"
+   ],
+   "expect": {
+    "lines": [
+     "123456789012^{4}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-a9",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "pow",
+    "4",
+    "right"
+   ],
+   "expect": {
+    "lines": [
+     "12345678901234^{4}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h12",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "pow",
+    "4",
+    "5",
+    "left"
+   ],
+   "expect": {
+    "lines": [
+     "1234567890123^{45}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h13",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "pow",
+    "4",
+    "5",
+    "left"
+   ],
+   "expect": {
+    "lines": [
+     "◂345678901234^{45}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h17",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "pow",
+    "4",
+    "5",
+    "6",
+    "left",
+    "left",
+    "left"
+   ],
+   "expect": {
+    "lines": [
+     "◂34567890123^{456}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-a12",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "x10n",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "left",
+    "left"
+   ],
+   "expect": {
+    "lines": [
+     "◂10^{123456789012}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-m5",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "x10n",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "left"
+   ],
+   "expect": {
+    "lines": [
+     "◂10^{123456789012}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-m6",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "x10n",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "left",
+    "left",
+    "left",
+    "left"
+   ],
+   "expect": {
+    "lines": [
+     "◂10^{123456789012}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-m8",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "left",
+    "left"
+   ],
+   "expect": {
+    "lines": [
+     "◂45678901234567"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-b1",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "9",
+    "pow",
+    "2nd",
+    "x10n"
+   ],
+   "expect": {
+    "lines": [
+     "9^{▸n/d◂▸Un/d}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-b2",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "9",
+    "pow",
+    "2nd",
+    "x10n",
+    "right"
+   ],
+   "expect": {
+    "lines": [
+     "9^{▸n/d◂▸Un/d}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-b3",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "9",
+    "pow",
+    "2nd",
+    "x10n",
+    "5"
+   ],
+   "expect": {
+    "lines": [
+     "9^{▸n/d◂▸Un/d5}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-b6",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "9",
+    "pow",
+    "2",
+    "2nd",
+    "x10n"
+   ],
+   "expect": {
+    "lines": [
+     "9^{2▸n/d◂▸Un/d}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-b7",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "9",
+    "pow",
+    "2nd",
+    "table"
+   ],
+   "expect": {
+    "lines": [
+     "9^{▸F◂▸d}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-b8",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "9",
+    "pow",
+    "2nd",
+    "rparen"
+   ],
+   "expect": {
+    "lines": [
+     "9^{▸%}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-b9",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "square",
+    "2nd",
+    "x10n"
+   ],
+   "expect": {
+    "lines": [
+     "√{▸n/d◂▸Un/d}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-b10",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "square",
+    "9",
+    "pow",
+    "2nd",
+    "x10n",
+    "right",
+    "right"
+   ],
+   "expect": {
+    "lines": [
+     "√{9^{▸n/d◂▸Un/d}}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-d1",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{12345678901234}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-d2",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{1234567890123}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-d3",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{123456789012}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-d4",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{123}{123456789012}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-d7",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "down",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{1}{12345678901234}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h1",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "right"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{12345678901234}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h2",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "right"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{123456789012345}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h3",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{1}{1234567890123}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h4",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{1}{12345678901234}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h5",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+   ],
+   "expect": {
+    "lines": [
+     "◂\\f{3456789012345}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "medium",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h6",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "add",
+    "frac"
+   ],
+   "expect": {
+    "lines": [
+     "1234567890123+\\f{}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h7",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "add",
+    "frac"
+   ],
+   "expect": {
+    "lines": [
+     "◂45678901234+\\f{}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "medium",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h8",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "add",
+    "frac"
+   ],
+   "expect": {
+    "lines": [
+     "123456789012+\\f{}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h9",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "square",
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2"
+   ],
+   "expect": {
+    "lines": [
+     "√{\\f{123456789012}{}}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h10",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "square",
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3"
+   ],
+   "expect": {
+    "lines": [
+     "√{\\f{1234567890123}{}}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h11",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "right"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{1234567890123}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h14",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{12}{12345678901234}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h15",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "down",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "right"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{1}{12345678901234}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h16",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "down",
+    "5"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{1234567890123}{5}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h18",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "frac",
+    "4",
+    "down",
+    "5",
+    "right",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "left",
+    "left",
+    "left",
+    "left",
+    "left",
+    "left",
+    "left",
+    "left",
+    "left",
+    "left",
+    "up"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{123}{45}1234567890"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h20",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "down",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "up"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{1}{123456789012345}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h21",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "down",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "up"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{1}{12345678901234}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-h26",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "right",
+    "5"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{1}{1234567890123}5"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-m1",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "left"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{123}{123456789012345}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-m2",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "left",
+    "left",
+    "left"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{123}{123456789012345}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-m3",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "left"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{123}{12345678901234}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-m4",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "down"
+   ],
+   "expect": {
+    "lines": [
+     "◂\\f{123}{3456789012345}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-m9",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+   ],
+   "expect": {
+    "lines": [
+     "◂\\f{123}{3456789012345}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-m10",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "3",
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{123}{12345678901234}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-m11",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "1",
+    "2",
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{12}{12345678901234}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-m12",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "left"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{12345678901234}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-m13",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "frac",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "left"
+   ],
+   "expect": {
+    "lines": [
+     "\\f{123456789012345}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-f11",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "2nd",
+    "ln",
+    "4",
+    "6",
+    "square",
+    "rparen"
+   ],
+   "expect": {
+    "lines": [
+     "e^{46^{2})}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-e2",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "square",
+    "recip",
+    "4",
+    "0",
+    "4",
+    "2nd",
+    "pow"
+   ],
+   "expect": {
+    "lines": [
+     "(ans^{2})^{⁻1}\\r{404}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-k5",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "square",
+    "recip",
+    "4",
+    "0",
+    "4",
+    "2nd",
+    "pow",
+    "enter",
+    "clear"
+   ],
+   "expect": {
+    "lines": [
+     "(ans^{2})^{⁻1}\\r{404}{}"
+    ],
+    "indicators": [
+     "DEG",
+     "↑"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "high",
+   "verified": true
+  },
+  {
+   "id": "edit-seed4-e12",
+   "category": "edit",
+   "mode": "mathprint",
+   "keys": [
+    "0",
+    "recip",
+    "2nd",
+    "pow"
+   ],
+   "expect": {
+    "lines": [
+     "\\r{0^{⁻1}}{}"
+    ],
+    "indicators": [
+     "DEG"
+    ]
+   },
+   "source": "reference (seed 4 check)",
+   "confidence": "medium",
    "verified": true
   }
  ]
