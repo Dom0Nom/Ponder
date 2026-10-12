@@ -9,6 +9,7 @@ mod focus;
 mod ingest;
 mod exams;
 mod studio;
+mod notes;
 mod insights;
 mod lan;
 mod music;
@@ -108,6 +109,14 @@ pub fn run() {
             studio::output_delete,
             studio::export_file,
             studio::print_window,
+            notes::notes_list,
+            notes::note_get,
+            notes::note_save,
+            notes::note_delete,
+            notes::glossary_get,
+            notes::glossary_save,
+            notes::rewrites_list,
+            notes::rewrite_save,
             cards::mistake_set_resolved,
             cards::mistake_delete,
             cards::image_store,

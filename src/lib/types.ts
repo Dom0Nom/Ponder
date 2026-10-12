@@ -799,3 +799,35 @@ export interface DatedPlanTask extends PlanTask {
   spaceName: string;
   spaceIcon: string;
 }
+
+export interface Note {
+  id: string;
+  spaceId: string;
+  title: string;
+  body: string;
+  useAsSource: boolean;
+  sourceId: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface GlossaryEntry {
+  term: string;
+  definition: string;
+}
+
+export interface Glossary {
+  subjectId: string;
+  textHash: string;
+  entries: GlossaryEntry[];
+  createdAt: number;
+}
+
+export interface PassageRewrite {
+  sourceId: string;
+  kind: string;
+  start: number;
+  end: number;
+  textHash: string;
+  text: string;
+}

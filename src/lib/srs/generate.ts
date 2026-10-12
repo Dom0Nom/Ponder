@@ -70,12 +70,14 @@ export function parseCards(text: string, passages: Passage[]): NewCard[] {
 export async function generateCards(
   llm: ResolvedModel,
   passages: Passage[],
-  opts: { count: number; focus?: string; existingFronts?: string[]; signal?: AbortSignal },
+  opts: { count: number; focus?: string; existingFronts?: string[]; signal?: AbortSignal; only?: "cloze" },
 ): Promise<NewCard[]> {
   const listing = passages.map((p, i) => `[${i + 1}] (${p.sourceTitle})\n${p.text}`).join("\n\n");
   const prompt = [
     `Make ${opts.count} flashcards for a learner from the passages below${opts.focus ? `, focused on: ${opts.focus}` : ""}.`,
-    "Mix two types: question/answer cards ({\"type\":\"basic\",\"front\":question,\"back\":short answer}) and cloze cards ({\"type\":\"cloze\",\"text\":a sentence with the key term as {{c1::term}}}).",
+    opts.only === "cloze"
+      ? "Make only cloze cards: {\"type\":\"cloze\",\"text\":a sentence with the key term as {{c1::term}}}."
+      : "Mix two types: question/answer cards ({\"type\":\"basic\",\"front\":question,\"back\":short answer}) and cloze cards ({\"type\":\"cloze\",\"text\":a sentence with the key term as {{c1::term}}}).",
     "Rules: one fact per card; answers short; test understanding, not trivia like page numbers; only use facts that the passages state; write in the passages' language.",
     "For every card give the passage number it comes from and a short exact quote (5–20 words) from that passage that supports it.",
     opts.existingFronts?.length ? `Don't repeat these existing cards:\n${opts.existingFronts.slice(0, 40).map((f) => `- ${f}`).join("\n")}` : "",
@@ -85,5 +87,6 @@ export async function generateCards(
     .filter(Boolean)
     .join("\n\n");
   const r = await generateText({ model: llm.model, prompt, abortSignal: opts.signal, ...llm.options({ thinking: false }) });
-  return parseCards(r.text, passages).slice(0, opts.count);
+  const cards = parseCards(r.text, passages);
+  return (opts.only === "cloze" ? cards.filter((c) => c.kind === "cloze") : cards).slice(0, opts.count);
 }

@@ -144,6 +144,29 @@ impl Ingest {
         Ok(src)
     }
 
+    /// Replaces the stored text and title of a text source and re-indexes it (summary is cleared so it's rewritten).
+    pub fn replace_text(&self, id: &str, title: &str, text: &str) -> AppResult<models::Source> {
+        if text.trim().is_empty() {
+            return Err(invalid("The source is empty"));
+        }
+        let title = if title.trim().is_empty() { "Untitled" } else { title.trim() };
+        let text = extract::normalize_newlines(text);
+        let mut c = self.db.conn()?;
+        models::get_source(&c, id)?;
+        let tx = c.transaction()?;
+        tx.execute(
+            "INSERT OR REPLACE INTO source_texts (source_id, text, pages) VALUES (?1, ?2, NULL)",
+            rusqlite::params![id, text],
+        )?;
+        tx.execute("UPDATE sources SET title=?2, summary=NULL WHERE id=?1", rusqlite::params![id, title])?;
+        tx.commit()?;
+        models::set_source_status(&c, id, "processing", None, 0.0)?;
+        let src = models::get_source(&c, id)?;
+        self.emit_source(&src);
+        self.enqueue(id, Input::Stored)?;
+        Ok(src)
+    }
+
     /// Switches the local embedding model and re-embeds every chunk with it in the background.
     pub fn set_embedding_model(&self, model_id: &str) -> AppResult<()> {
         if !embed::MODELS.iter().any(|m| m.id == model_id) {
