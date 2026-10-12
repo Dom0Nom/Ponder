@@ -63,6 +63,7 @@ export interface DB {
   plans: Row<T.StudyPlan>;
   planTasks: Row<T.PlanTask>;
   watched: Row<T.WatchedFolder>;
+  speech: { url: string; body: unknown }[];
   nextId: number;
   clockOffset: number;
 }
@@ -129,6 +130,7 @@ function emptyDb(): DB {
     plans: {},
     planTasks: {},
     watched: {},
+    speech: [],
     nextId: 1,
     clockOffset: 0,
   };
@@ -333,6 +335,55 @@ function searchFixture(url: URL): { type: string; body: string } | null {
     default:
       return null;
   }
+}
+
+/** 0.2 s of silence as 16-bit mono WAV at 8 kHz. */
+function silentWav(): Uint8Array {
+  const pcm = 3200;
+  const out = new Uint8Array(44 + pcm);
+  const v = new DataView(out.buffer);
+  [..."RIFF"].forEach((c, i) => v.setUint8(i, c.charCodeAt(0)));
+  v.setUint32(4, 36 + pcm, true);
+  [..."WAVEfmt "].forEach((c, i) => v.setUint8(8 + i, c.charCodeAt(0)));
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true);
+  v.setUint32(24, 8000, true);
+  v.setUint32(28, 16000, true);
+  v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true);
+  [..."data"].forEach((c, i) => v.setUint8(36 + i, c.charCodeAt(0)));
+  v.setUint32(40, pcm, true);
+  return out;
+}
+
+const speechModels = {
+  data: [
+    { id: "hexgrad/kokoro-82m", name: "Kokoro 82M", supported_voices: ["af_heart", "am_adam", "bf_emma"], pricing: { prompt: "0.0000008" } },
+    { id: "fish-audio/s2.1-pro-free:free", name: "Fish Audio S2.1 Pro (free)", supported_voices: null, pricing: { prompt: "0" } },
+  ],
+};
+const transcriptionModels = { data: [{ id: "openai/whisper-large-v3-turbo", name: "Whisper Large v3 Turbo", pricing: { prompt: "0.0000001" } }] };
+
+function httpBytes(request: T.ProxyRequest): ArrayBuffer {
+  const pid = request.providerId ?? "";
+  const provider = db.providers[pid];
+  if (pid.startsWith("tts:") ? !db.secrets[pid] : !provider || (provider.kind === "apiKey" && !db.secrets[pid]))
+    err("auth", `No API key saved for ${provider?.name ?? pid.slice(4)}. Add one in Settings.`);
+  const body = request.body ? JSON.parse(request.body) : null;
+  db.speech.push({ url: request.url, body });
+  save();
+  const enc = (x: unknown) => new TextEncoder().encode(JSON.stringify(x)).buffer as ArrayBuffer;
+  if (request.url.includes("output_modalities=speech")) return enc(speechModels);
+  if (request.url.includes("output_modalities=transcription")) return enc(transcriptionModels);
+  if (request.url.endsWith("/audio/transcriptions")) return enc({ text: "Chloroplasts capture light energy.", usage: { seconds: 2 } });
+  const wav = silentWav();
+  if (request.url.includes(":generateContent")) {
+    let bin = "";
+    wav.subarray(44).forEach((b) => (bin += String.fromCharCode(b)));
+    return enc({ candidates: [{ content: { parts: [{ inlineData: { mimeType: "audio/L16;codec=pcm;rate=8000", data: btoa(bin) } }] } }] });
+  }
+  return wav.buffer as ArrayBuffer;
 }
 
 async function httpStream(request: T.ProxyRequest, channel: { id: number }) {
@@ -1670,6 +1721,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><rect width="8" height="8" rx="2" fill="hsl(${hue} 60% 45%)"/></svg>`;
     return `data:image/svg+xml;base64,${btoa(svg)}`;
   },
+  http_bytes: (a) => httpBytes(a.request as T.ProxyRequest),
   http_abort: (a) => {
     aborted.add(a.id as string);
     return null;

@@ -328,6 +328,25 @@ pub async fn http_stream(
     Ok(())
 }
 
+/// Like `http_stream`, with the same key injection, but returns the whole body as raw bytes (speech audio).
+#[tauri::command]
+pub async fn http_bytes(
+    state: State<'_, AppState>,
+    svc: State<'_, ProviderServices>,
+    request: ProxyRequest,
+) -> AppResult<tauri::ipc::Response> {
+    let provider = match request.provider_id.as_deref().filter(|s| !s.is_empty()) {
+        Some(pid) => match proxy::search_provider(pid) {
+            Some(p) => Some(p),
+            None => Some(m::get_provider(&state.db.conn()?, pid)?),
+        },
+        None => None,
+    };
+    let prepared = proxy::prepare(&request, provider.as_ref(), svc.secrets.as_ref(), &svc.oauth).await?;
+    let bytes = proxy::fetch_bytes(&svc.stream_http, prepared).await?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
 #[tauri::command]
 pub async fn http_abort(svc: State<'_, ProviderServices>, id: String) -> AppResult<()> {
     svc.inflight.abort(&id);

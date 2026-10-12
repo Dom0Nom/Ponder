@@ -185,6 +185,7 @@ pub fn run() {
             commands::providers::oauth_status,
             commands::providers::oauth_sign_out,
             commands::providers::http_stream,
+            commands::providers::http_bytes,
             commands::providers::http_abort,
             commands::providers::http_get_text,
             commands::providers::list_openrouter_models,

@@ -205,6 +205,7 @@ export const api = {
   httpStream: (request: T.ProxyRequest, onEvent: Channel<T.ProxyEvent>) =>
     call<void>("http_stream", { request, onEvent }),
   httpAbort: (id: string) => call<void>("http_abort", { id }),
+  httpBytes: async (request: T.ProxyRequest) => new Uint8Array(await call<ArrayBuffer>("http_bytes", { request })),
   listOpenrouterModels: (force?: boolean) => call<T.OpenRouterCatalog>("list_openrouter_models", { force: force ?? false }),
   siteIcon: (host: string) => call<string | null>("site_icon", { host }),
   httpGetText: (url: string, headers?: Record<string, string>) =>

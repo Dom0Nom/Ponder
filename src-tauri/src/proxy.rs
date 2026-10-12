@@ -55,13 +55,15 @@ pub struct Prepared {
 
 // ---------- auth injection rules ----------
 
-const AUTH_HEADERS: &[&str] = &["authorization", "x-api-key", "x-goog-api-key", "x-subscription-token"];
+const AUTH_HEADERS: &[&str] = &["authorization", "x-api-key", "x-goog-api-key", "x-subscription-token", "xi-api-key"];
 
-/// Web search APIs whose keys live in the secret store under `search:<engine>`.
+/// Web search and speech APIs whose keys live in the secret store under `search:<engine>` / `tts:<service>`.
 pub const SEARCH_ENGINES: &[(&str, &str)] = &[
     ("search:brave", "Brave Search"),
     ("search:tavily", "Tavily"),
     ("search:exa", "Exa"),
+    ("tts:elevenlabs", "ElevenLabs"),
+    ("tts:fish", "Fish Audio"),
 ];
 
 /// A stand-in provider for a search engine, so its key is injected like a provider's.
@@ -94,6 +96,8 @@ pub fn official_base(provider_type: &str) -> Option<&'static str> {
         "search:brave" => "https://api.search.brave.com",
         "search:tavily" => "https://api.tavily.com",
         "search:exa" => "https://api.exa.ai",
+        "tts:elevenlabs" => "https://api.elevenlabs.io",
+        "tts:fish" => "https://api.fish.audio",
         _ => return None,
     })
 }
@@ -140,6 +144,7 @@ pub fn auth_header(provider_type: &str, secret: &str) -> (String, String) {
         "google" => ("x-goog-api-key".into(), secret.into()),
         "search:brave" => ("X-Subscription-Token".into(), secret.into()),
         "search:exa" => ("x-api-key".into(), secret.into()),
+        "tts:elevenlabs" => ("xi-api-key".into(), secret.into()),
         _ => ("Authorization".into(), format!("Bearer {secret}")),
     }
 }
@@ -332,6 +337,56 @@ pub async fn run(http: &reqwest::Client, req: Prepared, mut cancel: oneshot::Rec
         emit(ProxyEvent::Chunk { data: tail });
     }
     emit(ProxyEvent::End);
+}
+
+/// Sends a request and returns the whole body as bytes (audio). Non-2xx answers become errors with
+/// the start of the server's message.
+pub async fn fetch_bytes(http: &reqwest::Client, req: Prepared) -> AppResult<Vec<u8>> {
+    let method = reqwest::Method::from_bytes(req.method.to_ascii_uppercase().as_bytes()).map_err(|_| invalid("Invalid method"))?;
+    let mut rb = http.request(method, &req.url).timeout(BYTES_TIMEOUT);
+    for (k, v) in &req.headers {
+        rb = rb.header(k, v);
+    }
+    if let Some(b) = req.body {
+        rb = rb.body(b);
+    }
+    let resp = rb.send().await.map_err(|e| AppError::Other(describe_reqwest(&e, &req.url)))?;
+    let status = resp.status().as_u16();
+    if status == 403 {
+        if let Some(m) = req.forbidden_message {
+            return Err(AppError::Other(m));
+        }
+    }
+    let bytes = resp.bytes().await.map_err(|e| AppError::Other(describe_reqwest(&e, &req.url)))?;
+    if !(200..300).contains(&status) {
+        return Err(AppError::Other(http_error_message(status, &host_of(&req.url), &bytes)));
+    }
+    Ok(bytes.to_vec())
+}
+
+const BYTES_TIMEOUT: Duration = Duration::from_secs(180);
+
+/// "openrouter.ai answered 400: Voice not found" from a JSON `{error: {message}}`, `{message}`,
+/// `{detail}` body or plain text.
+pub fn http_error_message(status: u16, host: &str, body: &[u8]) -> String {
+    let text = String::from_utf8_lossy(body);
+    let detail = serde_json::from_str::<serde_json::Value>(&text)
+        .ok()
+        .and_then(|v| {
+            let pick = |v: &serde_json::Value| v.as_str().map(str::to_string);
+            pick(&v["error"]["message"])
+                .or_else(|| pick(&v["error"]))
+                .or_else(|| pick(&v["message"]))
+                .or_else(|| pick(&v["detail"]))
+                .or_else(|| pick(&v["detail"]["message"]))
+        })
+        .unwrap_or_else(|| text.trim().to_string());
+    let detail: String = detail.chars().take(300).collect();
+    if detail.is_empty() {
+        format!("{host} answered {status}")
+    } else {
+        format!("{host} answered {status}: {detail}")
+    }
 }
 
 /// Longest silence (no bytes, not even SSE keep-alive comments) before a stream counts as dead.
@@ -543,6 +598,32 @@ mod tests {
         assert!(search_provider("search:exa").is_some());
         assert!(search_provider("search:other").is_none());
         assert!(search_provider("p1").is_none());
+    }
+
+    #[tokio::test]
+    async fn speech_keys_are_injected_only_for_their_service() {
+        let store = MemoryStore::default();
+        store.set("tts:elevenlabs", "el-real").unwrap();
+        store.set("tts:fish", "fish-real").unwrap();
+        let oauth = OAuth::new(Arc::new(MemoryStore::default()));
+        let el = search_provider("tts:elevenlabs").unwrap();
+        let r = req("https://api.elevenlabs.io/v1/text-to-speech/abc", &[("xi-api-key", "dummy")]);
+        let out = prepare(&r, Some(&el), &store, &oauth).await.unwrap();
+        assert_eq!(find(&out.headers, "xi-api-key"), Some("el-real"));
+        let out = prepare(&req("https://api.fish.audio/v1/tts", &[("xi-api-key", "dummy")]), Some(&el), &store, &oauth).await.unwrap();
+        assert!(out.headers.is_empty());
+        let fish = search_provider("tts:fish").unwrap();
+        let out = prepare(&req("https://api.fish.audio/v1/tts", &[]), Some(&fish), &store, &oauth).await.unwrap();
+        assert_eq!(find(&out.headers, "authorization"), Some("Bearer fish-real"));
+    }
+
+    #[test]
+    fn http_errors_name_the_host_and_the_servers_message() {
+        assert_eq!(http_error_message(400, "openrouter.ai", br#"{"error":{"message":"Voice not found","code":400}}"#), "openrouter.ai answered 400: Voice not found");
+        assert_eq!(http_error_message(401, "api.elevenlabs.io", br#"{"detail":{"status":"invalid_api_key","message":"Invalid API key"}}"#), "api.elevenlabs.io answered 401: Invalid API key");
+        assert_eq!(http_error_message(500, "api.fish.audio", b"  upstream down "), "api.fish.audio answered 500: upstream down");
+        assert_eq!(http_error_message(502, "x.ai", b""), "x.ai answered 502");
+        assert_eq!(http_error_message(400, "h", "é".repeat(400).as_bytes()).chars().count(), "h answered 400: ".len() + 300);
     }
 
     #[tokio::test]

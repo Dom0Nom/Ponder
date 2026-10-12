@@ -13,6 +13,7 @@ import { toastError } from "../../components/ui/toast";
 import { useAddCard } from "../cards/FlashcardsCard";
 import { useLowEnergy } from "../focus/useLowEnergy";
 import { KIND_ICON } from "../sources/kinds";
+import { ListenButton } from "../speech/ListenButton";
 import { ActionTipGroup } from "./ActionTipGroup";
 import { CheckButton, SecondOpinionButton } from "./AnswerTools";
 import { actionIconBtn, actionTextBtn } from "./actionButton";
@@ -128,6 +129,7 @@ export function AnswerActions({ message, space, content }: { message: Message; s
             <Check size={14} data-icon="b" className="t-icon" />
           </span>
         </button>
+        <ListenButton id={`msg-${message.id}`} text={() => plainAnswer(content)} className={actionIconBtn} />
         <CheckButton message={message} space={space} />
         <SecondOpinionButton message={message} space={space} />
         <RetryButton message={message} space={space} subtle />

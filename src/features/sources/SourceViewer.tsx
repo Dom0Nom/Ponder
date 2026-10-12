@@ -1,3 +1,4 @@
+import { ListenButton } from "../speech/ListenButton";
 import { Reveal } from "../../components/motion/Reveal";
 import { motionReduced } from "../../app/useTheme";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -75,6 +76,9 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
             </button>
           ))}
         </div>
+        {source.data && text.data && (
+          <ListenButton id={`source-${source.data.id}`} text={text.data.text} className="flex size-7 items-center justify-center gap-1.5 rounded-btn text-fg hover:bg-fill" />
+        )}
         {source.data && text.data && <MakeCourseButton source={source.data} text={text.data.text} />}
         {source.data?.origin && /^https?:/.test(source.data.origin) && (
           <Tooltip content={s.sources.openOriginal}>

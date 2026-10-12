@@ -12,6 +12,7 @@ import { CaptureSection } from "./CaptureSection";
 import { CloudSection } from "./CloudSection";
 import { SearchModelSection } from "./SearchModelSection";
 import { FocusPackSection } from "./FocusPackSection";
+import { VoiceSection } from "./VoiceSection";
 import { SettingsGroup, SettingsRow, SettingsSection } from "./layout";
 import { AddProviderPage } from "./AddProviderPage";
 import { LanScanPage } from "./LanScanPage";
@@ -126,6 +127,9 @@ export function SettingsScreen() {
         </SettingsSection>
         <SettingsSection id="settings-search" title={s.searchModel.title} body={s.searchModel.body}>
           <SearchModelSection />
+        </SettingsSection>
+        <SettingsSection id="settings-voice" title={s.speech.settingsTitle} body={s.speech.settingsBody}>
+          <VoiceSection />
         </SettingsSection>
         <SettingsSection id="settings-motion" title={s.settings.motion}>
           <SettingsGroup>
