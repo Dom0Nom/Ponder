@@ -151,7 +151,7 @@ test("cancelling the region select does nothing", async ({ app }) => {
 });
 
 test("overlay without spaces says what to do", async ({ app }) => {
-  await openOverlay(app);
+  await app.goto("/?window=ask&seed");
   await expect(app.getByText("Create a space in Ponder first, then ask from here.")).toBeVisible();
   await expect(app.getByLabel("Ask anything", { exact: true })).toBeDisabled();
 });
