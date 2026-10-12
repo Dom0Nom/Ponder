@@ -63,7 +63,7 @@ interface UiState {
   focusGoalPreset: string | null;
   captureOpen: boolean;
   watchDialogOpen: boolean;
-  importDialog: { open: boolean; tab?: string; query?: string; found?: FoundSource[] };
+  importDialog: { open: boolean; tab?: string; query?: string; found?: FoundSource[]; url?: string; file?: string };
   /** active thread per space */
   activeThread: Record<string, string>;
   /** source viewer target */
@@ -92,7 +92,7 @@ interface UiState {
   openFocusDialog: (goal?: string) => void;
   setCaptureOpen: (o: boolean) => void;
   setWatchDialogOpen: (o: boolean) => void;
-  setImportDialog: (d: { open: boolean; tab?: string; query?: string }) => void;
+  setImportDialog: (d: { open: boolean; tab?: string; query?: string; url?: string; file?: string }) => void;
   setActiveThread: (spaceId: string, threadId: string) => void;
   openViewer: (v: { sourceId: string; start?: number; end?: number } | null) => void;
 }

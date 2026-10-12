@@ -5,6 +5,7 @@ description = "Ponder: local-first AI learning app"
 authors = ["Dom0Nom"]
 license = "MIT"
 edition = "2021"
+default-run = "ponder"
 
 [lib]
 name = "app_lib"
@@ -45,12 +46,16 @@ if-addrs = "0.13"
 notify = "8"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-notification = "2"
+tauri-plugin-deep-link = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 candle-core = { version = "0.11", features = ["accelerate"] }
 candle-nn = { version = "0.11", features = ["accelerate"] }
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSWorkspace", "NSRunningApplication"] }
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSArray"] }
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 
 [dev-dependencies]
 wiremock = "0.6"

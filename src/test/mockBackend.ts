@@ -26,6 +26,17 @@ interface MockChunk {
   page: number | null;
 }
 
+interface MockPack {
+  name: string;
+  space: Omit<T.Space, "sourceCount">;
+  sources: T.Source[];
+  texts: Record<string, T.SourceText>;
+  chunks: MockChunk[];
+  notes: T.Note[];
+  cards: T.Card[];
+  outputs: T.StudioOutput[];
+}
+
 export interface DB {
   spaces: Row<Omit<T.Space, "sourceCount">>;
   sources: Row<T.Source>;
@@ -68,6 +79,10 @@ export interface DB {
   planTasks: Row<T.PlanTask>;
   watched: Row<T.WatchedFolder>;
   speech: { url: string; body: unknown }[];
+  packs?: Record<string, MockPack>;
+  lastPack?: string;
+  backups: T.BackupInfo[];
+  backup: { folder: string | null; enabled: boolean; frequency: "daily" | "weekly"; keep: number; restoreStaged: boolean; lastError: string | null };
   nextId: number;
   clockOffset: number;
 }
@@ -135,6 +150,8 @@ function emptyDb(): DB {
     planTasks: {},
     watched: {},
     speech: [],
+    backups: [],
+    backup: { folder: null, enabled: false, frequency: "daily", keep: 7, restoreStaged: false, lastError: null },
     nextId: 1,
     clockOffset: 0,
   };
@@ -540,6 +557,28 @@ function ingest(src: T.Source, text: string) {
   db.sources[src.id] = done;
   save();
   setTimeout(() => emit("source://updated", done), 50);
+}
+
+const deepLinkQueue: string[] = [];
+
+const packCounts = (p: MockPack): T.PackCounts => ({
+  sources: p.sources.length,
+  chunks: p.chunks.length,
+  notes: p.notes.length,
+  cards: p.cards.length,
+  outputs: p.outputs.length,
+  files: 0,
+});
+
+function backupStatus(): T.BackupStatus {
+  const { folder, enabled, frequency, keep, restoreStaged, lastError } = db.backup;
+  return {
+    config: { folder, enabled, frequency, keep },
+    backups: folder ? [...db.backups].sort((x, y) => y.createdAt - x.createdAt) : [],
+    running: false,
+    lastError,
+    restoreStaged,
+  };
 }
 
 function captureStatus(): T.CaptureStatus {
@@ -1324,6 +1363,51 @@ const handlers: Record<string, (a: Args) => unknown> = {
     if (w.__snipCancel) return null;
     return { mediaType: "image/png", data: SNIP_PNG };
   },
+  backup_status: () => backupStatus(),
+  backup_configure: (a) => {
+    if (a.enabled && !db.backup.folder) err("invalid", "Choose a backup folder first.");
+    db.backup.enabled = !!a.enabled;
+    db.backup.frequency = a.frequency === "weekly" ? "weekly" : "daily";
+    db.backup.keep = Math.min(100, Math.max(1, Number(a.keep) || 7));
+    save();
+    return backupStatus();
+  },
+  backup_choose_folder: () => {
+    db.backup.folder = "/Users/me/Backups/Ponder";
+    save();
+    return backupStatus();
+  },
+  backup_now: () => {
+    if (!db.backup.folder) err("invalid", "Choose a backup folder first.");
+    const t = now();
+    const info: T.BackupInfo = { name: `ponder-backup-${new Date(t).toISOString().slice(0, 19).replace("T", "-").replace(/:/g, "")}.zip`, size: 2_400_000 + db.backups.length * 1000, createdAt: t };
+    db.backups = [info, ...db.backups.filter((b) => b.name !== info.name)].slice(0, db.backup.keep);
+    save();
+    return info;
+  },
+  backup_delete: (a) => {
+    db.backups = db.backups.filter((b) => b.name !== a.name);
+    save();
+    return backupStatus();
+  },
+  backup_restore: (a) => {
+    if (!db.backups.some((b) => b.name === a.name)) err("not_found", "backup not found");
+    db.backup.restoreStaged = true;
+    save();
+    return backupStatus();
+  },
+  backup_cancel_restore: () => {
+    db.backup.restoreStaged = false;
+    save();
+    return backupStatus();
+  },
+  deeplink_take: () => deepLinkQueue.splice(0),
+  integrations_info: () => ({ exePath: "/Applications/Ponder.app/Contents/MacOS/ponder", dbPath: "/Users/me/Library/Application Support/dev.ponder.app/app.db" }),
+  restart_app: () => {
+    db.backup.restoreStaged = false;
+    save();
+    return null;
+  },
 
   list_threads: (a) =>
     Object.values(db.threads)
@@ -2025,6 +2109,62 @@ const handlers: Record<string, (a: Args) => unknown> = {
     save();
     return null;
   },
+  pack_export: (a) => {
+    const space = db.spaces[a.spaceId as string] ?? err("not_found", "Space not found");
+    const sources = Object.values(db.sources).filter((x) => x.spaceId === space.id);
+    const ids = new Set(sources.map((x) => x.id));
+    const pack: MockPack = {
+      name: space.name,
+      space: structuredClone(space),
+      sources: structuredClone(sources),
+      texts: structuredClone(Object.fromEntries(Object.entries(db.texts).filter(([k]) => ids.has(k)))),
+      chunks: structuredClone(db.chunks.filter((c) => c.spaceId === space.id)),
+      notes: structuredClone(Object.values(db.notes ?? {}).filter((n) => n.spaceId === space.id)),
+      cards: structuredClone(Object.values(db.cards).filter((c) => c.spaceId === space.id)),
+      outputs: structuredClone(Object.values(db.outputs ?? {}).filter((o) => o.spaceId === space.id)),
+    };
+    const path = `/Users/me/Documents/${space.name}.ponderpack`;
+    (db.packs ??= {})[path] = pack;
+    db.lastPack = path;
+    save();
+    return { path, counts: packCounts(pack) };
+  },
+  pack_import: () => {
+    const pack = db.lastPack ? db.packs?.[db.lastPack] : undefined;
+    if (!pack) return null;
+    if (!Array.isArray(pack.sources)) err("invalid", "This study pack is damaged (data/sources.json).");
+    const names = new Set(Object.values(db.spaces).map((x) => x.name.toLowerCase()));
+    let name = pack.name;
+    for (let n = 1; names.has(name.toLowerCase()); n++) name = `${pack.name} (imported${n > 1 ? ` ${n}` : ""})`;
+    const spaceId = id();
+    db.spaces[spaceId] = { ...structuredClone(pack.space), id: spaceId, name, createdAt: now(), updatedAt: now(), lastOpenedAt: null };
+    const map: Record<string, string> = {};
+    for (const s of pack.sources) map[s.id] = id();
+    const sourceIds: string[] = [];
+    for (const s of pack.sources) {
+      const nid = map[s.id];
+      const src: T.Source = { ...structuredClone(s), id: nid, spaceId, status: "processing", progress: 0, error: null };
+      db.sources[nid] = src;
+      sourceIds.push(nid);
+      const text = pack.texts[s.id]?.text;
+      if (text) setTimeout(() => ingest(src, text), 300);
+      else db.sources[nid] = { ...src, status: "error", error: "The original text of this source is missing from the study pack." };
+    }
+    for (const n of pack.notes) {
+      const nn = id();
+      (db.notes ??= {})[nn] = { ...structuredClone(n), id: nn, spaceId, sourceId: n.sourceId ? (map[n.sourceId] ?? null) : null };
+    }
+    for (const c of pack.cards) {
+      const nc = id();
+      db.cards[nc] = { ...structuredClone(c), id: nc, spaceId, sourceId: c.sourceId ? (map[c.sourceId] ?? null) : null, due: now(), state: 0, fsrs: null, spaceName: name };
+    }
+    for (const o of pack.outputs) {
+      const no = id();
+      (db.outputs ??= {})[no] = { ...structuredClone(o), id: no, spaceId };
+    }
+    save();
+    return { spaceId, name, counts: packCounts(pack), sourceIds };
+  },
   export_file: (a) => {
     const bytes = a.bytes as number[];
     (db.exports ??= []).push({ name: a.name as string, extension: a.extension as string, size: bytes.length });
@@ -2178,6 +2318,8 @@ export interface MockControls {
   db: () => DB;
   /** emit a backend event, e.g. a distraction nudge */
   emit: (event: string, payload: unknown) => void;
+  /** queue a ponder:// link as if the OS delivered it */
+  deepLink: (url: string) => void;
 }
 
 export function installMockBackend() {
@@ -2271,6 +2413,10 @@ export function installMockBackend() {
     },
     seedProvider,
     db: () => db,
+    deepLink: (url) => {
+      deepLinkQueue.push(url);
+      void emit("deeplink://pending");
+    },
   };
   (window as unknown as { __mock: MockControls }).__mock = controls;
   if (new URLSearchParams(location.search).has("seed")) seedProvider();

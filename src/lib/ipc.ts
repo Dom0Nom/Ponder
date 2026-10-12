@@ -77,6 +77,21 @@ export const api = {
   askOpenInMain: (request: T.AskOpenRequest) => call<void>("ask_open_in_main", { request }),
   /** null when the user cancelled the region select */
   snipScreen: () => call<T.SnipImage | null>("snip_screen"),
+  // backups
+  backupStatus: () => call<T.BackupStatus>("backup_status"),
+  backupConfigure: (enabled: boolean, frequency: T.BackupConfig["frequency"], keep: number) =>
+    call<T.BackupStatus>("backup_configure", { enabled, frequency, keep }),
+  backupChooseFolder: () => call<T.BackupStatus>("backup_choose_folder"),
+  backupNow: () => call<T.BackupInfo>("backup_now"),
+  backupDelete: (name: string) => call<T.BackupStatus>("backup_delete", { name }),
+  backupRestore: (name: string) => call<T.BackupStatus>("backup_restore", { name }),
+  backupCancelRestore: () => call<T.BackupStatus>("backup_cancel_restore"),
+  // study packs
+  packExport: (spaceId: string) => call<T.PackExport | null>("pack_export", { spaceId }),
+  packImport: () => call<T.PackImport | null>("pack_import"),
+  restartApp: () => call<void>("restart_app"),
+  deeplinkTake: () => call<string[]>("deeplink_take"),
+  integrationsInfo: () => call<T.IntegrationsInfo>("integrations_info"),
 
   // focus music
   musicStatus: () => call<T.MusicStatus>("music_status"),
@@ -287,6 +302,8 @@ export const events = {
   askStatus: (cb: (s: T.AskStatus) => void) => listen<T.AskStatus>("ask://status", (e) => cb(e.payload)),
   /** "Open in Ponder" from the overlay */
   askNavigate: (cb: (r: T.AskOpenRequest) => void) => listen<T.AskOpenRequest>("ask://navigate", (e) => cb(e.payload)),
+  backupUpdated: (cb: () => void) => listen("backup://updated", () => cb()),
+  deeplinkPending: (cb: () => void) => listen("deeplink://pending", () => cb()),
 };
 
 export type { UnlistenFn };

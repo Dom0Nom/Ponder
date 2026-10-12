@@ -41,6 +41,8 @@ export const qk = {
   watched: (spaceId: string) => ["watched", spaceId] as const,
   capture: ["capture"] as const,
   ask: ["ask"] as const,
+  backups: ["backups"] as const,
+  integrations: ["integrations"] as const,
   music: ["music"] as const,
 };
 
@@ -115,6 +117,8 @@ export const useWatchedFolders = (spaceId: string) =>
 export const useMusicStatus = () => useQuery({ queryKey: qk.music, queryFn: api.musicStatus });
 export const useCaptureStatus = () => useQuery({ queryKey: qk.capture, queryFn: api.captureStatus });
 export const useAskStatus = () => useQuery({ queryKey: qk.ask, queryFn: api.askStatus });
+export const useIntegrationsInfo = () => useQuery({ queryKey: qk.integrations, queryFn: api.integrationsInfo, staleTime: Infinity });
+export const useBackupStatus = () => useQuery({ queryKey: qk.backups, queryFn: api.backupStatus });
 export const useCards = (spaceId: string) => useQuery({ queryKey: qk.cards(spaceId), queryFn: () => api.cardsList(spaceId) });
 export const useDueCounts = () => useQuery({ queryKey: qk.dueCounts, queryFn: api.cardsDueCounts, refetchInterval: 60_000 });
 export const useMistakes = (spaceId: string | null) =>

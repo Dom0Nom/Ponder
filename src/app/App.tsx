@@ -24,6 +24,7 @@ import { QuizLayer } from "../features/placement/QuizDialog";
 import { QuickCaptureDialog } from "../features/capture/QuickCaptureDialog";
 import { useGlobalShortcuts } from "./useGlobalShortcuts";
 import { useBackgroundSync } from "./useBackgroundSync";
+import { useDeepLinks } from "./useDeepLinks";
 import { useStudyBuddy } from "../features/chat/useStudyBuddy";
 
 const depth = (r: Route) =>
@@ -99,6 +100,7 @@ function Shell() {
   useApplyAppearance();
   useGlobalShortcuts();
   useBackgroundSync();
+  useDeepLinks();
   useStudyBuddy();
   return (
     <div className="flex h-full bg-chrome text-fg">

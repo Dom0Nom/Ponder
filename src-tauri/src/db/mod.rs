@@ -22,6 +22,10 @@ const MIGRATIONS: &[&str] = &[
     include_str!("014_notes.sql"),
 ];
 
+pub fn schema_version() -> i64 {
+    MIGRATIONS.len() as i64
+}
+
 static VEC_INIT: Once = Once::new();
 
 fn register_sqlite_vec() {

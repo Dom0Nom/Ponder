@@ -153,7 +153,10 @@ export function ImportDialog({
 
 function FileTab({ space, done }: { space: Space; done: () => void }) {
   const qc = useQueryClient();
-  const [staged, setStaged] = useState<string[]>([]);
+  const [staged, setStaged] = useState<string[]>(() => {
+    const file = useUi.getState().importDialog.file;
+    return file ? [file] : [];
+  });
   const [busy, setBusy] = useState(false);
   const choose = async () => {
     try {
@@ -250,7 +253,7 @@ function PasteTab({ space, done }: { space: Space; done: () => void }) {
 
 function UrlTab({ space, kind, done }: { space: Space; kind: "url" | "youtube"; done: () => void }) {
   const qc = useQueryClient();
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(() => useUi.getState().importDialog.url ?? "");
   const [busy, setBusy] = useState(false);
   const [feed, setFeed] = useState<Feed | null>(null);
   const valid = kind === "youtube" ? isYouTubeUrl(url) : !!normalizeUrl(url);

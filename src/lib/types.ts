@@ -535,6 +535,54 @@ export interface WatchedFolder {
   error: string | null;
 }
 
+export interface BackupConfig {
+  enabled: boolean;
+  folder: string | null;
+  frequency: "daily" | "weekly";
+  keep: number;
+}
+
+export interface BackupInfo {
+  name: string;
+  size: number;
+  createdAt: number;
+}
+
+export interface BackupStatus {
+  config: BackupConfig;
+  backups: BackupInfo[];
+  running: boolean;
+  lastError: string | null;
+  /** a restore is validated and waiting for the next start */
+  restoreStaged: boolean;
+}
+
+export interface PackCounts {
+  sources: number;
+  chunks: number;
+  notes: number;
+  cards: number;
+  outputs: number;
+  files: number;
+}
+
+export interface PackExport {
+  path: string;
+  counts: PackCounts;
+}
+
+export interface PackImport {
+  spaceId: string;
+  name: string;
+  counts: PackCounts;
+  sourceIds: string[];
+}
+
+export interface IntegrationsInfo {
+  exePath: string;
+  dbPath: string;
+}
+
 export interface CaptureStatus {
   enabled: boolean;
   /** Tauri accelerator, e.g. Alt+CommandOrControl+N */

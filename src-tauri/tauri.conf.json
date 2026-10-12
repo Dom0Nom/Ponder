@@ -27,6 +27,13 @@
       "csp": null
     }
   },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["ponder"]
+      }
+    }
+  },
   "bundle": {
     "active": true,
     "targets": [

@@ -1,0 +1,37 @@
+import { api } from "../../lib/ipc";
+import { queryClient, qk } from "../../lib/queries";
+import { s } from "../../lib/strings";
+import { useUi } from "../../stores/ui";
+import { toast, toastError } from "../../components/ui/toast";
+
+// sonner drops a dismiss that lands before the toast has mounted
+const dismissLater = (id: string | number) => setTimeout(() => toast.dismiss(id), 120);
+
+export async function exportStudyPack(spaceId: string, spaceName: string) {
+  const id = toast.loading(s.pack.exporting(spaceName));
+  try {
+    const res = await api.packExport(spaceId);
+    if (!res) dismissLater(id);
+    else toast.success(s.pack.exported(res.counts.sources, res.counts.cards, res.counts.notes), { id, description: res.path });
+  } catch (e) {
+    dismissLater(id);
+    toastError(s.pack.exportFailed, e, () => void exportStudyPack(spaceId, spaceName));
+  }
+}
+
+export async function importStudyPack() {
+  const id = toast.loading(s.pack.importing);
+  try {
+    const res = await api.packImport();
+    if (!res) {
+      dismissLater(id);
+      return;
+    }
+    for (const k of [qk.spaces, qk.dueCounts]) await queryClient.invalidateQueries({ queryKey: k });
+    toast.success(s.pack.imported(res.name, res.counts.sources), { id });
+    useUi.getState().navigate({ name: "space", spaceId: res.spaceId });
+  } catch (e) {
+    dismissLater(id);
+    toastError(s.pack.importFailed, e, () => void importStudyPack());
+  }
+}

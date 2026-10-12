@@ -1,21 +1,27 @@
 mod ask;
+mod backup;
 mod calculator;
 mod capture;
+pub mod cli;
 mod cards;
 mod cloud;
 mod commands;
 mod db;
+mod deeplink;
 mod error;
 mod focus;
 mod ingest;
 mod exams;
 mod studio;
 mod notes;
+mod pack;
 mod insights;
 mod lan;
 mod music;
 mod micro_steps;
 mod oauth;
+pub mod mcp;
+pub mod paths;
 mod icons;
 mod openrouter;
 mod placement;
@@ -37,7 +43,10 @@ pub struct AppState {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(any(target_os = "macos", windows, target_os = "linux"))]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| deeplink::show_main(app)));
+    builder
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(log::LevelFilter::Info)
@@ -46,25 +55,47 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(capture::plugin())
         .on_window_event(focus::on_window_event)
         .manage(music::MusicService::new(music::default_backend()))
+        .manage(backup::BackupService::default())
+        .manage(deeplink::DeepLinks::default())
         .manage(commands::providers::ProviderServices::new())
         .manage(std::sync::Arc::new(cloud::CloudServices::new(secrets::default_store())))
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
             secrets::init(&data_dir);
+            match backup::apply_pending_restore(&data_dir) {
+                Ok(true) => log::info!("restored the database from a backup"),
+                Ok(false) => {}
+                Err(e) => log::error!("restoring the backup failed: {e}"),
+            }
             let db = Db::open(data_dir.join("app.db"))?;
             ingest::start(app.handle(), db.clone(), data_dir.clone());
             focus::start(app.handle(), db.clone());
             watch::start(app.handle(), db.clone());
             capture::init(app.handle(), &db);
             ask::init(app.handle(), &db);
+            backup::start(app.handle(), db.clone(), data_dir.clone());
+            deeplink::init(app.handle());
             app.manage(AppState { db, data_dir });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            backup::backup_status,
+            backup::backup_configure,
+            backup::backup_choose_folder,
+            backup::backup_now,
+            backup::backup_delete,
+            backup::backup_restore,
+            backup::backup_cancel_restore,
+            backup::restart_app,
+            deeplink::deeplink_take,
+            cli::integrations_info,
+            pack::pack_export,
+            pack::pack_import,
             commands::core::list_spaces,
             commands::core::get_space,
             commands::core::create_space,
