@@ -274,6 +274,13 @@ export const s = {
     noProvider: (name: string) => `Add a ${name} provider in Settings to use this voice.`,
     noAudio: "The speech service sent no audio.",
     noTranscript: "The transcription service sent no text.",
+    dictate: {
+      start: "Dictate",
+      stop: "Stop and transcribe",
+      transcribing: "Transcribing…",
+      noMic: "Couldn't use the microphone",
+      failed: "Couldn't transcribe the recording",
+    },
     briefing: {
       play: "Today's briefing",
       desc: "Hear what's on today: plan, reviews and open mistakes",

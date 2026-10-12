@@ -15,6 +15,7 @@ import { useLowEnergy } from "../focus/useLowEnergy";
 import { PhotoDialog } from "../steps/PhotoDialog";
 import { Menu, MenuContent, MenuItem, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../../components/ui/menu";
 import { Tooltip } from "../../components/ui/misc";
+import { DictateButton } from "../speech/DictateButton";
 import { toast, toastError } from "../../components/ui/toast";
 import { ModelMenu } from "./ModelMenu";
 
@@ -164,7 +165,14 @@ export function Composer({
             </button>
           </Tooltip>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1">
+          <DictateButton
+            className={iconBtn}
+            onText={(t) => {
+              setText((cur) => [cur.trim(), t].filter(Boolean).join(" "));
+              ref.current?.focus();
+            }}
+          />
           <button
             aria-label={running ? s.chat.stop : s.chat.send}
             disabled={!running && (disabled || !text.trim())}

@@ -29,6 +29,8 @@ const test = base.extend<{ app: Page }>({
   },
 });
 
+test.use({ launchOptions: { args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] }, permissions: ["microphone"] });
+
 const speech = (app: Page) => app.evaluate(() => (window as unknown as W).__mock.db().speech);
 
 test("listen reads a chat answer aloud through OpenRouter", async ({ app }) => {
@@ -123,4 +125,21 @@ test("daily briefing on Home: written from today's facts and read aloud", async 
   await briefing.click();
   await expect.poll(async () => (await speech(app)).map((c) => String(c.body?.input ?? "")).join(" ")).toContain("Calvin cycle");
   await expect(briefing).toHaveAttribute("data-state", "idle", { timeout: 10_000 });
+});
+
+test("dictation records from the microphone and puts the transcript in the composer", async ({ app }) => {
+  await app.getByRole("button", { name: "New space" }).first().click();
+  await app.getByLabel("Name").fill("Biology");
+  await app.getByRole("button", { name: "Create" }).click();
+  const box = app.getByLabel("Ask about your sources…");
+  await box.fill("Question:");
+  const mic = app.getByTestId("dictate");
+  await mic.click();
+  await expect(mic).toHaveAttribute("data-state", "recording");
+  await app.waitForTimeout(600);
+  await mic.click();
+  await expect(box).toHaveValue("Question: Chloroplasts capture light energy.");
+  await expect(mic).toHaveAttribute("data-state", "idle");
+  const call = (await speech(app)).find((c) => c.url.endsWith("/audio/transcriptions"));
+  expect(call?.body).toMatchObject({ model: "openai/whisper-large-v3-turbo", input_audio: { format: "webm" } });
 });

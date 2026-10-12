@@ -6,5 +6,7 @@
 	<string>The app controls Spotify to play your focus playlist during work blocks and pause it on breaks.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>The camera takes photos of your handwritten work so the app can check your steps. An iPhone with Continuity Camera works too.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>The microphone records your voice when you dictate a question or note. The recording is sent to your transcription service and not kept.</string>
 </dict>
 </plist>
