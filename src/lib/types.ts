@@ -946,6 +946,8 @@ export interface McpServer {
   name: string;
   command: string;
   args: string[];
+  /** Streamable HTTP endpoint for a remote server; `command` is empty then */
+  url?: string;
   enabled: boolean;
 }
 

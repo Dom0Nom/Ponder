@@ -71,6 +71,7 @@ export interface DB {
   annotations?: T.Annotation[];
   exports?: { name: string; extension: string; size: number }[];
   mcpCalls?: { server: string; tool: string; arguments: unknown }[];
+  mcpAuth?: Record<string, boolean>;
   prints?: number;
   images: Record<string, string>;
   curricula: Row<T.SpaceCurriculum>;
@@ -1860,8 +1861,9 @@ const handlers: Record<string, (a: Args) => unknown> = {
     return null;
   },
   mcp_client_tools: (a) => {
-    const srv = a.server as { id: string; command: string };
+    const srv = a.server as { id: string; command: string; url?: string | null };
     if (srv.command === "missing-server") err("other", "Couldn't start missing-server: No such file or directory");
+    if (srv.url && !db.mcpAuth?.[srv.id]) err("auth", "This MCP server needs you to sign in.");
     return [
       {
         name: "lookup",
@@ -1878,6 +1880,20 @@ const handlers: Record<string, (a: Args) => unknown> = {
     return { text: `${term}: water moving across a membrane`, isError: false };
   },
   mcp_client_stop: () => null,
+  mcp_client_auth_status: (a) => ({ signedIn: !!db.mcpAuth?.[a.id as string] }),
+  mcp_client_sign_in: async (a) => {
+    const srv = a.server as { id: string; url?: string | null };
+    if (!srv.url) err("invalid", "Only servers added by URL can sign in.");
+    await new Promise((r) => setTimeout(r, 300));
+    (db.mcpAuth ??= {})[srv.id] = true;
+    save();
+    return null;
+  },
+  mcp_client_sign_out: (a) => {
+    if (db.mcpAuth) delete db.mcpAuth[a.id as string];
+    save();
+    return null;
+  },
   lan_scan: async () => {
     await new Promise((r) => setTimeout(r, 400));
     return [{ kind: "lmstudio", baseUrl: "http://192.168.1.50:1234/v1", models: ["mock-model"] }];

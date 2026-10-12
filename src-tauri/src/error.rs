@@ -17,6 +17,8 @@ pub enum AppError {
     #[error("{0}")]
     Invalid(String),
     #[error("{0}")]
+    Auth(String),
+    #[error("{0}")]
     Other(String),
 }
 
@@ -30,6 +32,7 @@ impl AppError {
             AppError::Keychain(_) => "keychain",
             AppError::NotFound(_) => "not_found",
             AppError::Invalid(_) => "invalid",
+            AppError::Auth(_) => "auth",
             AppError::Other(_) => "other",
         }
     }

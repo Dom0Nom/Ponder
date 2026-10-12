@@ -9,14 +9,29 @@ export function mcpServers(settings: Record<string, unknown> | undefined): McpSe
   const raw = settings?.[MCP_KEY];
   if (!Array.isArray(raw)) return [];
   return raw
-    .filter((x): x is Record<string, unknown> => !!x && typeof x === "object" && typeof x.id === "string" && typeof x.command === "string")
-    .map((x) => ({
-      id: x.id as string,
-      name: typeof x.name === "string" && x.name.trim() ? x.name.trim() : (x.command as string),
-      command: x.command as string,
-      args: Array.isArray(x.args) ? x.args.filter((a): a is string => typeof a === "string") : [],
-      enabled: x.enabled !== false,
-    }));
+    .filter((x): x is Record<string, unknown> => !!x && typeof x === "object" && typeof x.id === "string" && (typeof x.command === "string" || typeof x.url === "string"))
+    .map((x) => {
+      const url = typeof x.url === "string" && x.url.trim() ? x.url.trim() : undefined;
+      const command = typeof x.command === "string" ? x.command : "";
+      return {
+        id: x.id as string,
+        name: typeof x.name === "string" && x.name.trim() ? x.name.trim() : (url ? hostOf(url) : command),
+        command,
+        args: Array.isArray(x.args) ? x.args.filter((a): a is string => typeof a === "string") : [],
+        ...(url ? { url } : {}),
+        enabled: x.enabled !== false,
+      };
+    });
+}
+
+export const isUrl = (text: string) => /^https?:\/\/\S+$/i.test(text.trim());
+
+export function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
 }
 
 /** Splits a command line on spaces, honouring quotes and backslashes. No variable or ~ expansion. */

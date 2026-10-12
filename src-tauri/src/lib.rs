@@ -23,6 +23,7 @@ mod micro_steps;
 mod oauth;
 pub mod mcp;
 mod mcp_client;
+mod mcp_oauth;
 pub mod paths;
 mod icons;
 mod openrouter;
@@ -154,6 +155,9 @@ pub fn run() {
             mcp_client::mcp_client_tools,
             mcp_client::mcp_client_call,
             mcp_client::mcp_client_stop,
+            mcp_client::mcp_client_auth_status,
+            mcp_client::mcp_client_sign_in,
+            mcp_client::mcp_client_sign_out,
             notes::notes_list,
             notes::note_get,
             notes::note_save,

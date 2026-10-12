@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { useSetSetting, useSettings } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { McpServer } from "../../lib/types";
-import { MCP_KEY, joinCommand, mcpServers, splitCommand } from "../../lib/mcp/client";
+import { MCP_KEY, hostOf, isUrl, joinCommand, mcpServers, splitCommand } from "../../lib/mcp/client";
 import { Button } from "../../components/ui/button";
 import { Input, Label, Textarea, fieldLabel } from "../../components/ui/input";
 import { Spinner, Switch } from "../../components/ui/misc";
@@ -16,17 +16,25 @@ const envAccount = (id: string) => `mcp-env:${id}`;
 
 function ServerForm({ server, onDone }: { server: McpServer | null; onDone: (saved: McpServer | null, env: string) => void }) {
   const [name, setName] = useState(server?.name ?? "");
-  const [command, setCommand] = useState(server ? joinCommand([server.command, ...server.args]) : "");
+  const [command, setCommand] = useState(server ? (server.url ?? joinCommand([server.command, ...server.args])) : "");
   const [env, setEnv] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const remote = isUrl(command);
   const submit = () => {
+    const id = server?.id ?? crypto.randomUUID();
+    const enabled = server?.enabled ?? true;
+    if (remote) {
+      const url = command.trim();
+      onDone({ id, name: name.trim() || hostOf(url), command: "", args: [], url, enabled }, env);
+      return;
+    }
     const parts = splitCommand(command.trim());
     if (!parts.length || !parts[0]) {
       setError(t.commandRequired);
       return;
     }
     const [cmd, ...args] = parts;
-    onDone({ id: server?.id ?? crypto.randomUUID(), name: name.trim() || cmd, command: cmd, args, enabled: server?.enabled ?? true }, env);
+    onDone({ id, name: name.trim() || cmd, command: cmd, args, enabled }, env);
   };
   return (
     <form
@@ -62,10 +70,17 @@ function ServerForm({ server, onDone }: { server: McpServer | null; onDone: (sav
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="mcp-env" className={fieldLabel}>
-          {t.env}
+          {remote ? t.headers : t.env}
         </Label>
-        <Textarea id="mcp-env" rows={2} value={env} placeholder={t.envPlaceholder} spellCheck={false} onChange={(e) => setEnv(e.target.value)} />
-        <p className="text-caption text-muted">{server ? t.envKept : t.envHint}</p>
+        <Textarea
+          id="mcp-env"
+          rows={2}
+          value={env}
+          placeholder={remote ? t.headersPlaceholder : t.envPlaceholder}
+          spellCheck={false}
+          onChange={(e) => setEnv(e.target.value)}
+        />
+        <p className="text-caption text-muted">{remote ? (server ? t.headersKept : t.headersHint) : server ? t.envKept : t.envHint}</p>
       </div>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={() => onDone(null, "")}>
@@ -82,6 +97,22 @@ function ServerForm({ server, onDone }: { server: McpServer | null; onDone: (sav
 function ServerRow({ server, onToggle, onEdit, onRemove }: { server: McpServer; onToggle: (on: boolean) => void; onEdit: () => void; onRemove: () => void }) {
   const [testing, setTesting] = useState(false);
   const [count, setCount] = useState<number | null>(null);
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
+  const remote = !!server.url;
+
+  useEffect(() => {
+    if (!remote) return;
+    let live = true;
+    api
+      .mcpAuthStatus(server.id)
+      .then((r) => live && setSignedIn(r.signedIn))
+      .catch(() => live && setSignedIn(false));
+    return () => {
+      live = false;
+    };
+  }, [remote, server.id]);
+
   const test = async () => {
     setTesting(true);
     try {
@@ -89,9 +120,33 @@ function ServerRow({ server, onToggle, onEdit, onRemove }: { server: McpServer; 
       setCount((await api.mcpTools(server)).length);
     } catch (e) {
       setCount(null);
-      toastError(t.testFailed(server.name), e);
+      if ((e as { code?: string }).code === "auth") toastError(t.needsSignIn(server.name), e, () => void signIn());
+      else toastError(t.testFailed(server.name), e);
     } finally {
       setTesting(false);
+    }
+  };
+
+  const signIn = async () => {
+    setSigningIn(true);
+    try {
+      await api.mcpSignIn(server);
+      setSignedIn(true);
+      setCount((await api.mcpTools(server)).length);
+    } catch (e) {
+      toastError(t.signInFailed(server.name), e, () => void signIn());
+    } finally {
+      setSigningIn(false);
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      await api.mcpSignOut(server.id);
+      setSignedIn(false);
+      setCount(null);
+    } catch (e) {
+      toastError(t.signInFailed(server.name), e);
     }
   };
   return (
@@ -99,12 +154,25 @@ function ServerRow({ server, onToggle, onEdit, onRemove }: { server: McpServer; 
       title={server.name}
       description={
         <span className="flex flex-col gap-0.5">
-          <span className="truncate font-mono">{joinCommand([server.command, ...server.args])}</span>
-          {count != null && <span data-testid="mcp-tool-count">{t.tools(count)}</span>}
+          <span className="truncate font-mono">{server.url ?? joinCommand([server.command, ...server.args])}</span>
+          {(count != null || signedIn) && (
+            <span data-testid="mcp-tool-count">{[signedIn ? t.signedIn : null, count != null ? t.tools(count) : null].filter(Boolean).join(" · ")}</span>
+          )}
         </span>
       }
     >
       <div className="flex shrink-0 items-center gap-1" data-testid="mcp-server" data-name={server.name}>
+        {remote && signedIn === false && (
+          <Button size="sm" variant="ghost" onClick={signIn} disabled={signingIn}>
+            {signingIn ? <Spinner size={14} /> : null}
+            {signingIn ? t.signingIn : t.signIn}
+          </Button>
+        )}
+        {remote && signedIn && (
+          <Button size="sm" variant="ghost" onClick={signOut}>
+            {t.signOut}
+          </Button>
+        )}
         <Button size="sm" variant="ghost" onClick={test} disabled={testing}>
           {testing ? <Spinner size={14} /> : null}
           {testing ? t.testing : t.test}
@@ -157,6 +225,7 @@ export function McpClientSection() {
       await save(servers.filter((x) => x.id !== server.id));
       await api.mcpStop(server.id).catch(() => {});
       await api.deleteSecret(envAccount(server.id)).catch(() => {});
+      if (server.url) await api.mcpSignOut(server.id).catch(() => {});
       toast.success(`${t.remove}: ${server.name}`);
     } catch {
       // save already reported it

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { joinCommand, mcpServers, mcpToolSet, splitCommand, toolKey } from "./client";
+import { isUrl, joinCommand, mcpServers, mcpToolSet, splitCommand, toolKey } from "./client";
 import { api } from "../ipc";
 
 vi.mock("../ipc", () => ({ api: { mcpTools: vi.fn(), mcpCall: vi.fn() } }));
@@ -30,6 +30,14 @@ describe("mcpServers", () => {
       { id: "a", name: "npx", command: "npx", args: ["-y"], enabled: true },
     ]);
     expect(mcpServers({})).toEqual([]);
+  });
+
+  it("reads remote servers and names them after the host", () => {
+    expect(mcpServers({ "mcp.servers": [{ id: "r", url: " https://mcp.example.com/mcp ", enabled: false }] })).toEqual([
+      { id: "r", name: "mcp.example.com", command: "", args: [], url: "https://mcp.example.com/mcp", enabled: false },
+    ]);
+    expect(isUrl("https://a.example/mcp")).toBe(true);
+    expect(isUrl("npx https://a")).toBe(false);
   });
 });
 
