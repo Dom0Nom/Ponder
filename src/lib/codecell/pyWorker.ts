@@ -32,7 +32,15 @@ self.onmessage = async (e: MessageEvent<{ code: string; base: string }>) => {
   const t0 = performance.now();
   try {
     ready ??= boot(e.data.base);
-    const py = await ready;
+    let py: Pyodide;
+    try {
+      py = await ready;
+    } catch (err) {
+      ready = null;
+      const msg = err instanceof Error ? err.message : String(err);
+      self.postMessage({ ok: false, output: "", error: msg, ms: performance.now() - t0, bootFailed: true });
+      return;
+    }
     const t1 = performance.now();
     const value = await py.runPythonAsync(e.data.code);
     if (value !== undefined && value !== null) sink.push(String(value));

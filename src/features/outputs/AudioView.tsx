@@ -40,11 +40,18 @@ export function AudioView({ id, title, data, space }: { id: string; title: strin
   const [thinking, setThinking] = useState(false);
   const [asides, setAsides] = useState<Aside[]>([]);
   const lineRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const asking = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (mine) setCursor(player.segment);
   }, [mine, player.segment]);
-  useEffect(() => () => stopSpeaking(), []);
+  useEffect(
+    () => () => {
+      asking.current?.abort();
+      stopSpeaking();
+    },
+    [],
+  );
   useEffect(() => {
     if (line >= 0) lineRefs.current[line]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [line]);
@@ -59,24 +66,28 @@ export function AudioView({ id, title, data, space }: { id: string; title: strin
     if (!q || !space) return;
     const at = cursor;
     stopSpeaking();
+    asking.current?.abort();
+    const ac = new AbortController();
+    asking.current = ac;
     setThinking(true);
     try {
       const [llm, material] = await Promise.all([resolveChatModel(space), gatherMaterial(space.id, q)]);
       const prompt = audioAnswerPrompt(material, title, data.lines.slice(Math.max(0, at - 3), at + 1), q);
-      const r = await generateText({ model: llm.model, prompt, ...llm.options({ thinking: false }) });
+      const r = await generateText({ model: llm.model, prompt, abortSignal: ac.signal, ...llm.options({ thinking: false }) });
+      if (ac.signal.aborted) return;
       const lines = parseAudioAnswer(r.text);
       if (!lines) throw new Error(s.outputs.unreadable);
       setAsides((a) => [...a, { at, question: q, lines }]);
       setQuestion("");
       setThinking(false);
       if (ready) {
-        await speakSegments(askKey, segs(lines));
-        if (usePlayer.getState().key === null) playFrom(at);
+        const finished = await speakSegments(askKey, segs(lines));
+        if (finished && !ac.signal.aborted) playFrom(at);
       }
     } catch (e) {
-      toastError(s.outputs.audio.askFailed, e);
+      if (!ac.signal.aborted) toastError(s.outputs.audio.askFailed, e);
     } finally {
-      setThinking(false);
+      if (!ac.signal.aborted) setThinking(false);
     }
   };
 
@@ -107,7 +118,7 @@ export function AudioView({ id, title, data, space }: { id: string; title: strin
           <Button variant="ghost-muted" size="icon-sm" aria-label={s.outputs.audio.next} disabled={cursor >= total - 1} onClick={() => playFrom(Math.min(total - 1, cursor + 1))}>
             <ChevronRight size={15} />
           </Button>
-          {status !== "idle" && (
+          {(status !== "idle" || answering) && (
             <Button variant="ghost-muted" size="icon-sm" aria-label={s.outputs.audio.stop} onClick={stopSpeaking}>
               <Square size={12} />
             </Button>

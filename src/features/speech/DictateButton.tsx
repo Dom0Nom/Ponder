@@ -18,23 +18,37 @@ export function DictateButton({ onText, className }: { onText: (text: string) =>
   const { data: settings } = useSettings();
   const [state, setState] = useState<"idle" | "recording" | "transcribing">("idle");
   const rec = useRef<MediaRecorder | null>(null);
-  useEffect(() => () => rec.current?.stream.getTracks().forEach((t) => t.stop()), []);
+  const starting = useRef(false);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      rec.current?.stream.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
   if (!providers?.some((p) => p.type === "openrouter") || typeof MediaRecorder === "undefined") return null;
 
   const start = async () => {
+    if (starting.current || rec.current) return;
+    starting.current = true;
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (e) {
       toastError(s.speech.dictate.noMic, e);
       return;
+    } finally {
+      starting.current = false;
     }
+    if (!alive.current) return stream.getTracks().forEach((t) => t.stop());
     const r = new MediaRecorder(stream);
     const parts: Blob[] = [];
     r.ondataavailable = (e) => e.data.size && parts.push(e.data);
     r.onstop = async () => {
       stream.getTracks().forEach((t) => t.stop());
       rec.current = null;
+      if (!alive.current) return;
       const blob = new Blob(parts, { type: r.mimeType });
       if (!blob.size) return setState("idle");
       setState("transcribing");

@@ -60,7 +60,7 @@ function AskCard() {
   const [copied, setCopied] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const card = useRef<HTMLDivElement>(null);
-  const abort = useRef<AbortController | null>(null);
+  const askId = useRef(0);
   const snippingRef = useRef(false);
   const savingRef = useRef(false);
   const hadFocus = useRef(false);
@@ -78,8 +78,8 @@ function AskCard() {
   }, []);
 
   const reset = useCallback(() => {
+    askId.current++;
     useChatStream.getState().stop(THREAD);
-    abort.current?.abort();
     setText("");
     setSnip(null);
     setExchange(null);
@@ -172,6 +172,8 @@ function AskCard() {
     const question = text.trim() || (snip ? s.ask.defaultImageQuestion : "");
     if (!question) return;
     const image = snip ? imageFromSnip(snip) : undefined;
+    const my = ++askId.current;
+    const stale = () => my !== askId.current;
     setBusy(true);
     setNotice(null);
     setSavedSource(null);
@@ -179,6 +181,7 @@ function AskCard() {
     setExchange({ question, hadImage: !!image, assistant: null, final: null, error: null });
     try {
       const llm = image ? await resolveVisionModel(space) : await resolveChatModel(space);
+      if (stale()) return;
       if (image && !looksVisionCapable(llm.provider, llm.modelId)) setNotice(s.ask.noVision);
       const final = await runTurn({
         space,
@@ -189,14 +192,25 @@ function AskCard() {
         image,
         llm,
         ephemeral: true,
-        onStart: (assistant) => setExchange((x) => (x ? { ...x, assistant } : x)),
+        onStart: (assistant) => {
+          if (stale()) useChatStream.getState().stop(THREAD);
+          else setExchange((x) => (x ? { ...x, assistant } : x));
+        },
       });
+      if (stale()) return;
       setExchange((x) => (x ? { ...x, final, error: final.status === "error" ? (final.error ?? s.ask.failed) : null } : x));
     } catch (e) {
-      setExchange((x) => (x ? { ...x, error: e instanceof NoModelError ? s.chat.noModel : describeError(e) } : x));
+      if (!stale()) setExchange((x) => (x ? { ...x, error: e instanceof NoModelError ? s.chat.noModel : describeError(e) } : x));
     } finally {
-      setBusy(false);
+      if (!stale()) setBusy(false);
     }
+  };
+
+  const stopAsk = () => {
+    if (exchange?.assistant) return useChatStream.getState().stop(THREAD);
+    askId.current++;
+    setBusy(false);
+    setExchange(null);
   };
 
   const saveAsSource = async () => {
@@ -250,7 +264,12 @@ function AskCard() {
   };
 
   const copy = async () => {
-    await navigator.clipboard.writeText(plainAnswer(content));
+    try {
+      await navigator.clipboard.writeText(plainAnswer(content));
+    } catch (e) {
+      setNotice(`${s.ask.copyFailed}: ${describeError(e)}`);
+      return;
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -280,7 +299,7 @@ function AskCard() {
             className="h-10 min-w-0 flex-1 bg-transparent text-section outline-none placeholder:text-faint focus-visible:outline-none"
           />
           {busy ? (
-            <Button size="icon" variant="secondary" aria-label={s.ask.stop} onClick={() => useChatStream.getState().stop(THREAD)}>
+            <Button size="icon" variant="secondary" aria-label={s.ask.stop} onClick={stopAsk}>
               <Square size={13} />
             </Button>
           ) : (

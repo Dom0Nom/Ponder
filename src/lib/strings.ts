@@ -257,6 +257,7 @@ export const s = {
     openFailed: "Couldn't open the thread",
     copy: "Copy",
     copied: "Copied",
+    copyFailed: "Couldn't copy",
     failed: "Couldn't answer",
     loadError: "Couldn't load your spaces",
     noVision: "This model may not read images. Pick a vision model in Settings.",
@@ -494,6 +495,10 @@ export const s = {
     thoughts: "Reasoning",
     thoughtFor: (sec: number) =>
       sec < 60 ? `Thought for ${sec} second${sec === 1 ? "" : "s"}` : `Thought for ${Math.round(sec / 60)} min`,
+    rejected: (code?: number) => `The provider rejected the request (${code}). Check the API key or sign-in in Settings.`,
+    modelNotFound: (code?: number) => `The model wasn't found (${code}). Pick another model in Settings.`,
+    rateLimited: "Rate limit or quota reached at the provider. Try again in a moment.",
+    unreachable: (msg: string) => `Couldn't reach the model server: ${msg}`,
     streamBroke: (cause: string) =>
       /closed before the answer finished|stopped sending data/.test(cause)
         ? `${cause}. Retry to get the full answer.`

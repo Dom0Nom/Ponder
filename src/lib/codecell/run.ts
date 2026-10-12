@@ -13,6 +13,7 @@ const pyBase = () => new URL(`${import.meta.env.BASE_URL}pyodide/`, location.hre
 
 let py: Worker | null = null;
 let pyBooted = false;
+let pyQueue: Promise<unknown> = Promise.resolve();
 
 function newWorker(lang: CellLang): Worker {
   return lang === "js"
@@ -20,8 +21,15 @@ function newWorker(lang: CellLang): Worker {
     : new Worker(new URL("./pyWorker.ts", import.meta.url), { type: "module" });
 }
 
-/** JS runs in a fresh worker per run; Python keeps one worker so later cells see earlier definitions. */
+/** JS runs in a fresh worker per run; Python keeps one worker so later cells see earlier definitions, one run at a time. */
 export function runCell(lang: CellLang, code: string): Promise<CellResult> {
+  if (lang === "js") return runOnce(lang, code);
+  const next = pyQueue.then(() => runOnce(lang, code));
+  pyQueue = next.catch(() => undefined);
+  return next;
+}
+
+function runOnce(lang: CellLang, code: string): Promise<CellResult> {
   const w = lang === "js" ? newWorker("js") : (py ??= newWorker("python"));
   const limit = RUN_TIMEOUT_MS[lang] + (lang === "python" && !pyBooted ? BOOT_TIMEOUT_MS : 0);
   return new Promise((resolve, reject) => {
@@ -42,9 +50,10 @@ export function runCell(lang: CellLang, code: string): Promise<CellResult> {
       kill();
       reject(new CellTimeout(Math.round(RUN_TIMEOUT_MS[lang] / 1000)));
     }, limit);
-    w.onmessage = (e: MessageEvent<CellResult & { bootMs?: number }>) => {
+    w.onmessage = (e: MessageEvent<CellResult & { bootMs?: number; bootFailed?: boolean }>) => {
       done();
-      if (lang === "python") pyBooted = true;
+      if (e.data.bootFailed) kill();
+      else if (lang === "python") pyBooted = true;
       resolve(e.data);
     };
     w.onerror = (e) => {

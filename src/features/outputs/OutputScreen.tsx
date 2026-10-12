@@ -69,12 +69,31 @@ export function OutputScreen({ spaceId, outputId }: { spaceId: string; outputId:
   const svgRef = useRef<SVGSVGElement>(null);
   const diagramSvg = useRef<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unsaved = useRef<StudioOutput | null>(null);
 
-  useEffect(() => setDraft(q.data ?? null), [q.data]);
+  const save = (next: StudioOutput) =>
+    api
+      .outputSave(next)
+      .then((saved) => {
+        if (unsaved.current === next) {
+          unsaved.current = null;
+          qc.setQueryData(qkOutput(saved.id), saved);
+        }
+        void qc.invalidateQueries({ queryKey: qkOutputs(spaceId) });
+      })
+      .catch((e) => toastError(s.errors.generic, e));
+
+  useEffect(() => {
+    if (!unsaved.current) setDraft(q.data ?? null);
+  }, [q.data]);
   useEffect(
     () => () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (saveTimer.current && unsaved.current) {
+        clearTimeout(saveTimer.current);
+        void save(unsaved.current);
+      }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
@@ -91,15 +110,11 @@ export function OutputScreen({ spaceId, outputId }: { spaceId: string; outputId:
 
   const persist = (next: StudioOutput) => {
     setDraft(next);
+    unsaved.current = next;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      api
-        .outputSave(next)
-        .then((saved) => {
-          qc.setQueryData(qkOutput(saved.id), saved);
-          void qc.invalidateQueries({ queryKey: qkOutputs(spaceId) });
-        })
-        .catch((e) => toastError(s.errors.generic, e));
+      saveTimer.current = null;
+      void save(next);
     }, 600);
   };
 

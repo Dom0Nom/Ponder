@@ -302,9 +302,9 @@ export function describeError(e: unknown): string {
   let msg = err?.message ?? String(e);
   const cause = (err?.cause as { message?: string } | undefined)?.message;
   if (msg === "Failed to process successful response") return s.chat.streamBroke(cause ?? "");
-  if (err?.statusCode === 401 || err?.statusCode === 403) msg = `The provider rejected the request (${err.statusCode}). Check the API key or sign-in in Settings.`;
-  else if (err?.statusCode === 404) msg = `The model wasn't found (${err.statusCode}). Pick another model in Settings.`;
-  else if (err?.statusCode === 429) msg = "Rate limit or quota reached at the provider. Try again in a moment.";
-  else if (/fetch|network|connect|ECONNREFUSED|timed out/i.test(msg)) msg = `Couldn't reach the model server: ${msg}`;
+  if (err?.statusCode === 401 || err?.statusCode === 403) msg = s.chat.rejected(err.statusCode);
+  else if (err?.statusCode === 404) msg = s.chat.modelNotFound(err.statusCode);
+  else if (err?.statusCode === 429) msg = s.chat.rateLimited;
+  else if (/fetch|network|connect|ECONNREFUSED|timed out/i.test(msg)) msg = s.chat.unreachable(msg);
   return msg;
 }

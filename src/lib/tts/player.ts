@@ -71,11 +71,12 @@ export const voiceFor = (cfg: SpeechSettings, voice: 0 | 1 | undefined): SpeechS
  * Plays segments in order from `start`, synthesizing sentence chunks one ahead of playback so long text starts
  * quickly. A new call or `stopSpeaking` cancels the previous one. Resolves when playback ends or is cancelled.
  */
-export async function speakSegments(key: string, segments: Segment[], start = 0): Promise<void> {
+/** Resolves true when every segment played, false when stopped or replaced. */
+export async function speakSegments(key: string, segments: Segment[], start = 0): Promise<boolean> {
   stopSpeaking();
   const my = run;
   const queue = segments.slice(start).flatMap((seg, i) => speechChunks(speakable(seg.text)).map((text) => ({ text, voice: seg.voice, segment: start + i })));
-  if (!queue.length) return;
+  if (!queue.length) return true;
   usePlayer.setState({ key, status: "loading", segment: queue[0].segment });
   try {
     const [settings, providers] = await Promise.all([api.getSettings(), api.listProviders()]);
@@ -91,13 +92,15 @@ export async function speakSegments(key: string, segments: Segment[], start = 0)
       prefetch(i);
       prefetch(i + 1);
       const clip = await pending[i];
-      if (my !== run) return;
+      if (my !== run) return false;
       usePlayer.setState({ segment: queue[i].segment });
       await playClip(clip, cfg.speed, my);
-      if (my !== run) return;
+      if (my !== run) return false;
     }
+    return true;
   } catch (e) {
     if (my === run) throw e;
+    return false;
   } finally {
     if (my === run) stopSpeaking();
   }

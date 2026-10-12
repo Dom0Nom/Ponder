@@ -2,7 +2,7 @@ import { createReadStream, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Plugin } from "vite";
 
-const FILES = ["pyodide.mjs", "pyodide.asm.mjs", "pyodide.asm.js", "pyodide.asm.wasm", "python_stdlib.zip", "pyodide-lock.json"];
+const FILES = ["pyodide.mjs", "pyodide.asm.mjs", "pyodide.asm.wasm", "python_stdlib.zip", "pyodide-lock.json"];
 const TYPES: Record<string, string> = { mjs: "text/javascript", js: "text/javascript", wasm: "application/wasm", zip: "application/zip", json: "application/json" };
 
 /** Serves and bundles the Pyodide core under /pyodide/ so Python code cells run offline. */
@@ -19,7 +19,10 @@ export function pyodide(): Plugin {
       });
     },
     generateBundle() {
-      for (const name of FILES) this.emitFile({ type: "asset", fileName: `pyodide/${name}`, source: readFileSync(join(dir, name)) });
+      for (const name of FILES) {
+        if (!existsSync(join(dir, name))) this.error(`pyodide: missing ${name}`);
+        this.emitFile({ type: "asset", fileName: `pyodide/${name}`, source: readFileSync(join(dir, name)) });
+      }
     },
   };
 }
