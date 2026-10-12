@@ -743,6 +743,24 @@ export interface StudioOutput {
   updatedAt: number;
 }
 
+export type PlanTaskKind = "learn" | "practice" | "review" | "mock";
+
+export interface PlanFields {
+  goal: string;
+  /** YYYY-MM-DD */
+  examDate: string;
+  weeklyMinutes: number;
+  /** 0 = Sunday … 6 = Saturday */
+  studyDays: number[];
+}
+
+export interface StudyPlan extends PlanFields {
+  spaceId: string;
+  replannedAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface ExamAttempt {
   id: string;
   spaceId: string;
@@ -755,4 +773,29 @@ export interface ExamAttempt {
   startedAt: number;
   completedAt: number | null;
   timeUsedMs: number;
+}
+
+export interface NewPlanTask {
+  date: string;
+  ord: number;
+  kind: PlanTaskKind;
+  topicId: string | null;
+  title: string;
+  minutes: number;
+}
+
+export interface PlanTask extends NewPlanTask {
+  id: string;
+  spaceId: string;
+  doneAt: number | null;
+}
+
+export interface StudyPlanBundle {
+  plan: StudyPlan;
+  tasks: PlanTask[];
+}
+
+export interface DatedPlanTask extends PlanTask {
+  spaceName: string;
+  spaceIcon: string;
 }

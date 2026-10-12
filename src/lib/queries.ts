@@ -33,6 +33,8 @@ export const qk = {
   coverage: (spaceId: string) => ["coverage", spaceId] as const,
   assessments: (spaceId: string) => ["assessments", spaceId] as const,
   courses: (spaceId: string) => ["courses", spaceId] as const,
+  studyPlan: (spaceId: string) => ["studyPlan", spaceId] as const,
+  planTasks: ["planTasks"] as const,
   focusHistory: (spaceId: string | null) => ["focusHistory", spaceId] as const,
   microSteps: (spaceId: string | null) => ["microSteps", spaceId] as const,
   parking: (sessionId: string | null) => ["parking", sessionId] as const,
@@ -103,6 +105,10 @@ export const useCurriculum = (spaceId: string) =>
   useQuery({ queryKey: qk.curriculum(spaceId), queryFn: () => api.curriculumGet(spaceId) });
 export const useLevels = (spaceId: string) => useQuery({ queryKey: qk.levels(spaceId), queryFn: () => api.topicLevels(spaceId) });
 export const useCourses = (spaceId: string) => useQuery({ queryKey: qk.courses(spaceId), queryFn: () => api.coursesList(spaceId) });
+export const useStudyPlan = (spaceId: string) => useQuery({ queryKey: qk.studyPlan(spaceId), queryFn: () => api.getStudyPlan(spaceId) });
+/** Every scheduled task across spaces; the Today view and palette derive from it. */
+export const useAllPlanTasks = () =>
+  useQuery({ queryKey: [...qk.planTasks, "all"], queryFn: () => api.listPlanTasks("0000-01-01", "9999-12-31") });
 export const useWatchedFolders = (spaceId: string) =>
   useQuery({ queryKey: qk.watched(spaceId), queryFn: () => api.watchList(spaceId) });
 export const useMusicStatus = () => useQuery({ queryKey: qk.music, queryFn: api.musicStatus });

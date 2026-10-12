@@ -3,7 +3,7 @@ import { FIXTURE_NOW, readOptions, seedDesignFixture, SPACES, THREADS } from "./
 import type { DB } from "./mockBackend";
 
 const emptyDb = () =>
-  ({ spaces: {}, sources: {}, texts: {}, chunks: [], threads: {}, messages: {}, journal: {}, providers: {}, secrets: {}, oauth: {}, cloud: {}, settings: {}, focus: null, sessions: {}, focusEvents: [], musicCalls: [], microSteps: {}, parking: {}, memory: {}, cards: {}, mistakes: {}, abilities: {}, practiceItems: {}, attempts: [], images: {}, curricula: {}, levels: {}, assessments: {}, courses: {}, watched: {}, nextId: 1, clockOffset: 0 }) as unknown as DB;
+  ({ spaces: {}, sources: {}, texts: {}, chunks: [], threads: {}, messages: {}, journal: {}, providers: {}, secrets: {}, oauth: {}, cloud: {}, settings: {}, focus: null, sessions: {}, focusEvents: [], musicCalls: [], microSteps: {}, parking: {}, memory: {}, cards: {}, mistakes: {}, abilities: {}, practiceItems: {}, attempts: [], images: {}, curricula: {}, levels: {}, assessments: {}, courses: {}, watched: {}, plans: {}, planTasks: {}, nextId: 1, clockOffset: 0 }) as unknown as DB;
 
 describe("design fixture", () => {
   it("seeds the 2a space, threads and chat", () => {

@@ -57,6 +57,8 @@ interface UiState {
   sourcesOpen: Record<string, boolean>;
   paletteOpen: boolean;
   focusDialogOpen: boolean;
+  /** goal the next Focus start dialog opens with; consumed on open */
+  focusGoalPreset: string | null;
   captureOpen: boolean;
   watchDialogOpen: boolean;
   importDialog: { open: boolean; tab?: string; query?: string; found?: FoundSource[] };
@@ -85,6 +87,7 @@ interface UiState {
   setSourcesOpen: (spaceId: string, open: boolean) => void;
   setPaletteOpen: (o: boolean) => void;
   setFocusDialogOpen: (o: boolean) => void;
+  openFocusDialog: (goal?: string) => void;
   setCaptureOpen: (o: boolean) => void;
   setWatchDialogOpen: (o: boolean) => void;
   setImportDialog: (d: { open: boolean; tab?: string; query?: string }) => void;
@@ -113,6 +116,7 @@ export const useUi = create<UiState>()(
       sourcesOpen: {},
       paletteOpen: false,
       focusDialogOpen: false,
+      focusGoalPreset: null,
       captureOpen: false,
       watchDialogOpen: false,
       importDialog: { open: false },
@@ -158,6 +162,7 @@ export const useUi = create<UiState>()(
       setSourcesOpen: (spaceId, open) => set((st) => ({ sourcesOpen: { ...st.sourcesOpen, [spaceId]: open } })),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
       setFocusDialogOpen: (focusDialogOpen) => set({ focusDialogOpen }),
+      openFocusDialog: (goal) => set({ focusDialogOpen: true, focusGoalPreset: goal ?? null }),
       setCaptureOpen: (captureOpen) => set({ captureOpen }),
       setWatchDialogOpen: (watchDialogOpen) => set({ watchDialogOpen }),
       setImportDialog: (importDialog) => set({ importDialog }),

@@ -66,7 +66,7 @@ async function walk(page: Page) {
   await add.getByRole("tab", { name: "Deep research" }).click();
   await add.getByLabel("What do you want to learn about?").fill("photosynthesis");
   await add.getByRole("button", { name: "Research", exact: true }).click();
-  await expect(add.getByText("No usable sources found. Try a broader question.")).toBeVisible();
+  await expect(add.getByText("Found sources")).toBeVisible();
   await page.waitForTimeout(600);
   expect(await contexts(page)).toBe(0);
 }

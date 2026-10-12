@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Command } from "cmdk";
 import * as D from "@radix-ui/react-dialog";
-import { BarChart3, Brain, FilePlus2, FolderSync, Gauge, GraduationCap, House, Layers, Notebook, PencilLine, Plus, Search, Settings, Shapes, Sparkles, SquarePen, SunMoon, Timer, Zap } from "lucide-react";
+import { BarChart3, Brain, CalendarCheck, FilePlus2, FolderSync, Gauge, GraduationCap, House, Layers, Notebook, PencilLine, Plus, Search, Settings, Shapes, Sparkles, SquarePen, SunMoon, Timer, Zap } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces, qk, useCaptureStatus } from "../../lib/queries";
 import { splitShortcut } from "../../lib/capture/shortcut";
@@ -13,6 +13,7 @@ import { useUi } from "../../stores/ui";
 import { Kbd } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
 import { useLowEnergy } from "../focus/useLowEnergy";
+import { useHasPlan } from "../plan/TodaySection";
 
 const item =
   "flex h-9 cursor-pointer items-center gap-2.5 rounded-control px-3 font-medium text-fg aria-selected:bg-fill-active data-[disabled=true]:cursor-default data-[disabled=true]:text-muted";
@@ -27,6 +28,7 @@ export function CommandPalette() {
   const qc = useQueryClient();
   const spaceId = ui.route.name === "space" ? ui.route.spaceId : null;
   const { data: capture } = useCaptureStatus();
+  const hasPlan = useHasPlan();
   const low = useLowEnergy(spaceId ?? undefined);
   const lowNote = low.active && <span className="text-label font-normal text-muted">{low.reason}</span>;
   const [query, setQuery] = useState("");
@@ -134,6 +136,21 @@ export function CommandPalette() {
                   <House size={15} />
                   <span className="flex-1">{s.palette.goHome}</span>
                 </Command.Item>
+                {hasPlan && (
+                  <Command.Item
+                    className={item}
+                    onSelect={() =>
+                      run(() => {
+                        ui.navigate({ name: "home" });
+                        setTimeout(() => document.getElementById("today")?.scrollIntoView({ block: "start" }), 60);
+                      })
+                    }
+                    keywords={["plan", "schedule"]}
+                  >
+                    <CalendarCheck size={15} />
+                    <span className="flex-1">{s.palette.today}</span>
+                  </Command.Item>
+                )}
                 <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "review" }))} keywords={["flashcards", "cards", "fsrs", "due"]}>
                   <Layers size={15} />
                   <span className="flex-1">{s.palette.review}</span>
