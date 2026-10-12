@@ -9,6 +9,7 @@ import {
   Map as MapIcon,
   NotebookPen,
   PencilLine,
+  Shapes,
   SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
@@ -32,6 +33,8 @@ import { MicroStepsView } from "../focus/MicroSteps";
 import { StudioTimer } from "../focus/StudioTimer";
 import { useLowEnergy } from "../focus/useLowEnergy";
 import { StepCheckerPanel } from "../steps/StepChecker";
+import { CreatePanel } from "../outputs/CreatePanel";
+import { KIND_ICON } from "../outputs/kindIcons";
 import { JournalView } from "./JournalView";
 import { SpaceSettingsPanel } from "./SpaceSettingsPanel";
 import { useStudioRecent, type RecentItem } from "./useStudioRecent";
@@ -41,6 +44,7 @@ const RECENT_ICON: Record<RecentItem["kind"], LucideIcon> = {
   cards: Layers,
   course: GraduationCap,
   journal: FileText,
+  output: Shapes,
 };
 
 function Meta({ loading, error, children }: { loading: boolean; error: boolean; children: ReactNode }) {
@@ -150,6 +154,7 @@ function ToolGrid({ space }: { space: Space }) {
 
 function Recent({ spaceId }: { spaceId: string }) {
   const setStudioView = useUi((st) => st.setStudioView);
+  const navigate = useUi((st) => st.navigate);
   const items = useStudioRecent(spaceId);
   if (items.length === 0) return null;
   return (
@@ -157,12 +162,12 @@ function Recent({ spaceId }: { spaceId: string }) {
       <h3 className="px-4 pb-1.5 pt-5.5 text-label font-semibold text-muted">{s.studio.recent}</h3>
       <ul className="mx-4 border-t border-divider">
         {items.map((x) => {
-          const Icon = RECENT_ICON[x.kind];
+          const Icon = x.output ? KIND_ICON[x.output.kind] : RECENT_ICON[x.kind];
           return (
             <li key={x.id}>
               <button
                 type="button"
-                onClick={() => setStudioView(x.view)}
+                onClick={() => (x.output ? navigate({ name: "output", spaceId, outputId: x.output.id }) : setStudioView(x.view))}
                 className="-mx-1 flex h-9.75 w-[calc(100%+8px)] items-center gap-2.5 border-b border-divider px-1 text-left text-body hover:bg-fill-subtle"
               >
                 <Icon size={14} className="shrink-0" />
@@ -195,6 +200,25 @@ function LowEnergyRow() {
   );
 }
 
+function CreateRow() {
+  const setStudioView = useUi((st) => st.setStudioView);
+  return (
+    <button
+      type="button"
+      onClick={() => setStudioView("create")}
+      data-testid="create-row"
+      className="mx-4 mb-4 mt-4 flex min-h-13 shrink-0 items-center gap-3 rounded-card border border-border px-3.5 text-left text-body hover:bg-fill-subtle"
+    >
+      <Shapes size={15} />
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="font-medium">{s.outputs.row}</span>
+        <span className="truncate text-label text-muted">{s.outputs.rowMeta}</span>
+      </span>
+      <LearnChevron size={14} />
+    </button>
+  );
+}
+
 function MainView({ space }: { space: Space }) {
   const setStudioView = useUi((st) => st.setStudioView);
   const low = useLowEnergy(space.id);
@@ -204,6 +228,7 @@ function MainView({ space }: { space: Space }) {
       {low.active && <LowEnergyRow />}
       <ToolGrid space={space} />
       <Recent spaceId={space.id} />
+      <CreateRow />
       <button
         type="button"
         onClick={() => setStudioView("settings")}
@@ -239,6 +264,8 @@ function SubView({ space, view }: { space: Space; view: StudioView }) {
       return <PlanPanel space={space} onBack={back} />;
     case "course":
       return <CoursePanel space={space} onBack={back} />;
+    case "create":
+      return <CreatePanel space={space} onBack={back} />;
     case "calculator":
       return (
         <div className="flex h-full min-h-0 flex-col">

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Command } from "cmdk";
 import * as D from "@radix-ui/react-dialog";
-import { BarChart3, Brain, FilePlus2, FolderSync, Gauge, GraduationCap, House, Layers, Notebook, PencilLine, Plus, Search, Settings, Sparkles, SquarePen, SunMoon, Timer, Zap } from "lucide-react";
+import { BarChart3, Brain, FilePlus2, FolderSync, Gauge, GraduationCap, House, Layers, Notebook, PencilLine, Plus, Search, Settings, Shapes, Sparkles, SquarePen, SunMoon, Timer, Zap } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces, qk, useCaptureStatus } from "../../lib/queries";
 import { splitShortcut } from "../../lib/capture/shortcut";
@@ -115,6 +115,19 @@ export function CommandPalette() {
                       <span className="flex-1">{s.practice.title}</span>
                       {lowNote}
                     </Command.Item>
+                    <Command.Item
+                      className={item}
+                      onSelect={() =>
+                        run(() => {
+                          if (!ui.studioOpen) ui.toggleStudio();
+                          ui.setStudioView("create");
+                        })
+                      }
+                      keywords={["create", "report", "slides", "mind map", "worksheet", "timeline", "table", "diagram", "infographic", "cheat sheet"]}
+                    >
+                      <Shapes size={15} />
+                      <span className="flex-1">{s.palette.create}</span>
+                    </Command.Item>
                   </>
                 )}
                 <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "home" }))}>
@@ -128,22 +141,6 @@ export function CommandPalette() {
                 <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "review", tab: "mistakes" }))} keywords={["mistakes", "wrong"]}>
                   <Notebook size={15} />
                   <span className="flex-1">{s.palette.mistakes}</span>
-                </Command.Item>
-                <Command.Item
-                  className={item}
-                  onSelect={() => run(() => ui.navigate({ name: "insights", spaceId: spaceId ?? undefined }))}
-                  keywords={["stats", "progress", "retention", "mastery", "readiness"]}
-                >
-                  <BarChart3 size={15} />
-                  <span className="flex-1">{s.palette.insights}</span>
-                </Command.Item>
-                <Command.Item
-                  className={item}
-                  onSelect={() => run(() => ui.navigate({ name: "exam", spaceId: spaceId ?? undefined }))}
-                  keywords={["exam", "test", "mock", "ged", "sat", "timed"]}
-                >
-                  <GraduationCap size={15} />
-                  <span className="flex-1">{s.palette.exam}</span>
                 </Command.Item>
                 <Command.Item
                   className={item}
@@ -195,6 +192,22 @@ export function CommandPalette() {
                 >
                   <Brain size={15} />
                   <span className="flex-1">{s.memory.title}</span>
+                </Command.Item>
+                <Command.Item
+                  className={item}
+                  onSelect={() => run(() => ui.navigate({ name: "insights", spaceId: spaceId ?? undefined }))}
+                  keywords={["stats", "progress", "retention", "mastery", "readiness"]}
+                >
+                  <BarChart3 size={15} />
+                  <span className="flex-1">{s.palette.insights}</span>
+                </Command.Item>
+                <Command.Item
+                  className={item}
+                  onSelect={() => run(() => ui.navigate({ name: "exam", spaceId: spaceId ?? undefined }))}
+                  keywords={["exam", "test", "mock", "ged", "sat", "timed"]}
+                >
+                  <GraduationCap size={15} />
+                  <span className="flex-1">{s.palette.exam}</span>
                 </Command.Item>
               </Command.Group>
             </Command.List>

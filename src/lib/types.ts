@@ -732,6 +732,17 @@ export interface InsightsActivity {
   attempts: AttemptRow[];
 }
 
+export interface StudioOutput {
+  id: string;
+  spaceId: string;
+  kind: import("./studio/kinds").OutputKind;
+  title: string;
+  focus: string | null;
+  data: import("./studio/kinds").OutputData;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface ExamAttempt {
   id: string;
   spaceId: string;

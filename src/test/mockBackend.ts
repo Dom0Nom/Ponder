@@ -3,6 +3,7 @@
  * (plain browser, Playwright). State is snapshotted to localStorage so reloads behave like the
  * real app. `window.__mock` exposes test hooks (clock control, LLM script, reset).
  */
+import { studioReply } from "./studioFixtures";
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { emit } from "@tauri-apps/api/event";
 import type * as T from "../lib/types";
@@ -51,6 +52,9 @@ export interface DB {
   attempts: (T.NewAttempt & { spaceId: string; at: number })[];
   reviews?: T.ReviewRow[];
   exams?: Row<T.ExamAttempt>;
+  outputs?: Row<T.StudioOutput>;
+  exports?: { name: string; extension: string; size: number }[];
+  prints?: number;
   images: Record<string, string>;
   curricula: Row<T.SpaceCurriculum>;
   levels: Record<string, Row<T.TopicLevel>>;
@@ -267,6 +271,8 @@ const defaultScript: Script = ({ messages, body }) => {
       content: `# Cell division\n\nCells divide by mitosis [1]. ${n > 1 ? "Checkpoints keep it orderly [2, 1]. " : ""}A made-up claim [9].\n\n## Not covered\n\nNothing important.`,
     };
   }
+  const studio = studioReply(lastText);
+  if (studio) return { content: studio };
   if (body.response_format || /Respond with JSON|Return JSON/i.test(sysText + lastText)) {
     return { content: "{}" };
   }
@@ -1786,6 +1792,30 @@ const handlers: Record<string, (a: Args) => unknown> = {
   exam_get: (a) => db.exams?.[a.id as string] ?? null,
   exam_delete: (a) => {
     delete db.exams?.[a.id as string];
+  },
+  output_save: (a) => {
+    const x = structuredClone(a.output as T.StudioOutput);
+    if (!x.id) x.id = id();
+    if (!x.createdAt) x.createdAt = now();
+    x.updatedAt = Math.max(now(), (db.outputs?.[x.id]?.updatedAt ?? 0) + 1);
+    (db.outputs ??= {})[x.id] = x;
+    return x;
+  },
+  outputs_list: (a) =>
+    Object.values(db.outputs ?? {})
+      .filter((x) => x.spaceId === a.spaceId)
+      .sort((x, y) => y.updatedAt - x.updatedAt),
+  output_get: (a) => db.outputs?.[a.id as string] ?? null,
+  output_delete: (a) => {
+    delete db.outputs?.[a.id as string];
+  },
+  export_file: (a) => {
+    const bytes = a.bytes as number[];
+    (db.exports ??= []).push({ name: a.name as string, extension: a.extension as string, size: bytes.length });
+    return `/Users/me/Downloads/${a.name}.${a.extension}`;
+  },
+  print_window: () => {
+    db.prints = (db.prints ?? 0) + 1;
   },
   insights_activity: (a) => {
     const since = a.since as number;

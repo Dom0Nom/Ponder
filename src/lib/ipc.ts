@@ -139,6 +139,14 @@ export const api = {
   examSave: (attempt: T.ExamAttempt) => call<T.ExamAttempt>("exam_save", { attempt }),
   examsList: (spaceId: string) => call<T.ExamAttempt[]>("exams_list", { spaceId }),
   examGet: (id: string) => call<T.ExamAttempt | null>("exam_get", { id }),
+  outputSave: (output: T.StudioOutput) => call<T.StudioOutput>("output_save", { output }),
+  outputsList: (spaceId: string) => call<T.StudioOutput[]>("outputs_list", { spaceId }),
+  outputGet: (id: string) => call<T.StudioOutput | null>("output_get", { id }),
+  outputDelete: (id: string) => call<void>("output_delete", { id }),
+  /** Native save dialog; null when cancelled. Returns the saved path. */
+  exportFile: (name: string, extension: string, bytes: Uint8Array) =>
+    call<string | null>("export_file", { name, extension, bytes: Array.from(bytes) }),
+  printWindow: () => call<void>("print_window"),
   examDelete: (id: string) => call<void>("exam_delete", { id }),
   abilityGet: (spaceId: string, topicKey: string) => call<T.Ability | null>("ability_get", { spaceId, topicKey }),
   practiceItemAdd: (spaceId: string, item: Omit<T.PracticeItem, "id" | "createdAt">) =>

@@ -8,6 +8,7 @@ mod error;
 mod focus;
 mod ingest;
 mod exams;
+mod studio;
 mod insights;
 mod lan;
 mod music;
@@ -100,6 +101,12 @@ pub fn run() {
             exams::exams_list,
             exams::exam_get,
             exams::exam_delete,
+            studio::output_save,
+            studio::outputs_list,
+            studio::output_get,
+            studio::output_delete,
+            studio::export_file,
+            studio::print_window,
             cards::mistake_set_resolved,
             cards::mistake_delete,
             cards::image_store,

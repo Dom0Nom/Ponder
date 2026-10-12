@@ -11,7 +11,8 @@ export type Route =
   | { name: "review"; spaceId?: string; tab?: "cards" | "mistakes" }
   | { name: "practice"; spaceId: string; topicKey?: string; topicTitle?: string }
   | { name: "insights"; spaceId?: string }
-  | { name: "exam"; spaceId?: string; attemptId?: string };
+  | { name: "exam"; spaceId?: string; attemptId?: string }
+  | { name: "output"; spaceId: string; outputId: string };
 export type SettingsPage =
   | { kind: "addProvider"; type?: ProviderType }
   | { kind: "lanScan" }
@@ -27,7 +28,8 @@ export type StudioView =
   | "plan"
   | "course"
   | "settings"
-  | "calculator";
+  | "calculator"
+  | "create";
 export type ThemePref = "system" | "light" | "dark";
 export type FontPref = "default" | "dyslexic";
 

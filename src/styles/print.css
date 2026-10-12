@@ -1,0 +1,41 @@
+/* Printing a Studio output: only .print-root is shown, always in light colors. */
+@media print {
+  @page {
+    margin: 16mm;
+  }
+  html,
+  body,
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .print-root,
+  .print-root * {
+    visibility: visible;
+  }
+  .print-root {
+    position: absolute;
+    inset: 0 0 auto 0;
+    --surface: #ffffff;
+    --fill: #f2f2f2;
+    --fill-subtle: #f7f7f7;
+    --border: #d9d9d9;
+    --border-hover: #bdbdbd;
+    --divider: #e6e6e6;
+    --text: #111111;
+    --text-secondary: #333333;
+    --text-muted: #5f5f5f;
+    --text-faint: #8a8a8a;
+    --primary: #111111;
+    --on-primary: #ffffff;
+    color: var(--text);
+    background: var(--surface);
+  }
+  .print-root .break-inside-avoid {
+    break-inside: avoid;
+  }
+}

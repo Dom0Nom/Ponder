@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
+import "./styles/print.css";
 
 /** The calculator pop-out window renders only the calculator (`?window=calculator` or the Tauri window label). */
 async function isCalculatorWindow(mock: boolean): Promise<boolean> {
