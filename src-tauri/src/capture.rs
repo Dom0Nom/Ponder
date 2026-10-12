@@ -48,14 +48,14 @@ fn prefs(db: &Db) -> (bool, String) {
     (enabled, shortcut)
 }
 
-fn register<R: Runtime>(app: &AppHandle<R>, shortcut: &str) -> Result<(), String> {
+pub(crate) fn register<R: Runtime>(app: &AppHandle<R>, shortcut: &str) -> Result<(), String> {
     let sc = parse_shortcut(shortcut).map_err(|e| e.to_string())?;
     app.global_shortcut().register(sc).map_err(|e| {
         format!("This shortcut is already used by another app or by macOS. Choose a different one. ({e})")
     })
 }
 
-fn unregister<R: Runtime>(app: &AppHandle<R>, shortcut: &str) {
+pub(crate) fn unregister<R: Runtime>(app: &AppHandle<R>, shortcut: &str) {
     if let Ok(sc) = parse_shortcut(shortcut) {
         let _ = app.global_shortcut().unregister(sc);
     }
@@ -63,11 +63,16 @@ fn unregister<R: Runtime>(app: &AppHandle<R>, shortcut: &str) {
 
 pub fn plugin<R: Runtime>() -> tauri::plugin::TauriPlugin<R> {
     tauri_plugin_global_shortcut::Builder::new()
-        .with_handler(|app, _shortcut, event| {
+        .with_handler(|app, shortcut, event| {
             if event.state == ShortcutState::Pressed {
                 let app = app.clone();
+                let pressed = *shortcut;
                 // window calls from the hotkey callback would run re-entrantly on the main thread
-                std::thread::spawn(move || open(&app));
+                std::thread::spawn(move || {
+                    if !crate::ask::handle_hotkey(&app, &pressed) {
+                        open(&app);
+                    }
+                });
             }
         })
         .build()
@@ -102,6 +107,13 @@ pub fn open<R: Runtime>(app: &AppHandle<R>) {
         let _ = w.set_focus();
     }
     let _ = app.emit("capture://open", ());
+}
+
+/// The quick-capture shortcut as configured, whether or not it is registered.
+pub fn current_shortcut<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
+    let state = app.try_state::<CaptureState>()?;
+    let st = state.0.lock().unwrap_or_else(|e| e.into_inner());
+    Some(st.shortcut.clone())
 }
 
 #[tauri::command]

@@ -67,6 +67,17 @@ export const api = {
   captureConfigure: (enabled: boolean, shortcut: string) =>
     call<T.CaptureStatus>("capture_configure", { enabled, shortcut }),
 
+  // ask-anything overlay and screen snip
+  askStatus: () => call<T.AskStatus>("ask_status"),
+  askConfigure: (enabled: boolean, shortcut: string, snipEnabled: boolean, snipShortcut: string) =>
+    call<T.AskStatus>("ask_configure", { enabled, shortcut, snipEnabled, snipShortcut }),
+  askTakePending: () => call<boolean>("ask_take_pending"),
+  askClose: () => call<void>("ask_close"),
+  askSetHeight: (height: number) => call<void>("ask_set_height", { height }),
+  askOpenInMain: (request: T.AskOpenRequest) => call<void>("ask_open_in_main", { request }),
+  /** null when the user cancelled the region select */
+  snipScreen: () => call<T.SnipImage | null>("snip_screen"),
+
   // focus music
   musicStatus: () => call<T.MusicStatus>("music_status"),
   musicTest: (playlist: string) => call<void>("music_test", { playlist }),
@@ -271,6 +282,11 @@ export const events = {
   captureOpen: (cb: () => void) => listen("capture://open", () => cb()),
   captureStatus: (cb: (s: T.CaptureStatus) => void) =>
     listen<T.CaptureStatus>("capture://status", (e) => cb(e.payload)),
+  /** the overlay window was summoned again while it already exists */
+  askOpen: (cb: () => void) => listen("ask://open", () => cb()),
+  askStatus: (cb: (s: T.AskStatus) => void) => listen<T.AskStatus>("ask://status", (e) => cb(e.payload)),
+  /** "Open in Ponder" from the overlay */
+  askNavigate: (cb: (r: T.AskOpenRequest) => void) => listen<T.AskOpenRequest>("ask://navigate", (e) => cb(e.payload)),
 };
 
 export type { UnlistenFn };

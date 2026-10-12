@@ -9,6 +9,7 @@ import { ModelPicker } from "./ModelPicker";
 import { ResearchSection } from "./ResearchSection";
 import { MemorySection } from "./MemorySection";
 import { CaptureSection } from "./CaptureSection";
+import { AskSection } from "./AskSection";
 import { CloudSection } from "./CloudSection";
 import { SearchModelSection } from "./SearchModelSection";
 import { FocusPackSection } from "./FocusPackSection";
@@ -103,6 +104,9 @@ export function SettingsScreen() {
         </SettingsSection>
         <SettingsSection id="settings-capture" title={s.capture.settingsTitle} body={s.capture.settingsBody}>
           <CaptureSection />
+        </SettingsSection>
+        <SettingsSection id="settings-ask" title={s.ask.settingsTitle} body={s.ask.settingsBody}>
+          <AskSection />
         </SettingsSection>
         <SettingsSection id="settings-memory" title={s.memory.title} body={s.memory.body}>
           <MemorySection />

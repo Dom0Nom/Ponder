@@ -1,3 +1,4 @@
+mod ask;
 mod calculator;
 mod capture;
 mod cards;
@@ -59,6 +60,7 @@ pub fn run() {
             focus::start(app.handle(), db.clone());
             watch::start(app.handle(), db.clone());
             capture::init(app.handle(), &db);
+            ask::init(app.handle(), &db);
             app.manage(AppState { db, data_dir });
             Ok(())
         })
@@ -169,6 +171,13 @@ pub fn run() {
             watch::commands::watch_add,
             watch::commands::watch_remove,
             calculator::open_calculator_window,
+            ask::ask_status,
+            ask::ask_configure,
+            ask::ask_take_pending,
+            ask::ask_close,
+            ask::ask_set_height,
+            ask::ask_open_in_main,
+            ask::snip_screen,
             capture::capture_status,
             capture::capture_configure,
             focus::commands::focus_start,
