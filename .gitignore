@@ -19,3 +19,4 @@ design/compare/
 .overnight/
 .native-bin/
 *.tsbuildinfo
+dist-linux/
