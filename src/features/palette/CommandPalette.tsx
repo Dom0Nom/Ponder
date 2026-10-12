@@ -12,9 +12,10 @@ import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
 import { Kbd } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
+import { useLowEnergy } from "../focus/useLowEnergy";
 
 const item =
-  "flex h-9 cursor-pointer items-center gap-2.5 rounded-control px-3 font-medium text-fg aria-selected:bg-fill-active";
+  "flex h-9 cursor-pointer items-center gap-2.5 rounded-control px-3 font-medium text-fg aria-selected:bg-fill-active data-[disabled=true]:cursor-default data-[disabled=true]:text-muted";
 const group =
   "[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-label [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-muted";
 
@@ -26,6 +27,8 @@ export function CommandPalette() {
   const qc = useQueryClient();
   const spaceId = ui.route.name === "space" ? ui.route.spaceId : null;
   const { data: capture } = useCaptureStatus();
+  const low = useLowEnergy(spaceId ?? undefined);
+  const lowNote = low.active && <span className="text-label font-normal text-muted">{low.reason}</span>;
   const [query, setQuery] = useState("");
   useEffect(() => {
     if (!open) setQuery("");
@@ -93,9 +96,10 @@ export function CommandPalette() {
                       <SquarePen size={15} />
                       <span className="flex-1">{s.palette.newChat}</span>
                     </Command.Item>
-                    <Command.Item className={item} onSelect={() => run(() => ui.setImportDialog({ open: true }))}>
+                    <Command.Item className={item} disabled={low.active} onSelect={() => run(() => ui.setImportDialog({ open: true }))}>
                       <FilePlus2 size={15} />
                       <span className="flex-1">{s.palette.addSource}</span>
+                      {lowNote}
                     </Command.Item>
                     <Command.Item className={item} onSelect={() => run(() => ui.setWatchDialogOpen(true))} keywords={["folder", "watch", "sync"]}>
                       <FolderSync size={15} />
@@ -103,11 +107,13 @@ export function CommandPalette() {
                     </Command.Item>
                     <Command.Item
                       className={item}
+                      disabled={low.active}
                       onSelect={() => run(() => ui.navigate({ name: "practice", spaceId }))}
                       keywords={["practice", "problems", "exercises", "drill"]}
                     >
                       <PencilLine size={15} />
                       <span className="flex-1">{s.practice.title}</span>
+                      {lowNote}
                     </Command.Item>
                   </>
                 )}

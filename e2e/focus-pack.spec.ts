@@ -72,6 +72,13 @@ test("low-energy session shows the review-only card and blocks new material", as
   await app.getByRole("button", { name: "Back to Studio" }).click();
   await app.keyboard.press("ControlOrMeta+Shift+KeyS");
   await expect(app.getByRole("button", { name: "Add source" })).toBeDisabled();
+  await app.keyboard.press("ControlOrMeta+KeyK");
+  const addItem = app.getByRole("option", { name: /^Add source/ });
+  await expect(addItem).toHaveAttribute("aria-disabled", "true");
+  await expect(addItem).toContainText("Paused during a low-energy session");
+  await addItem.click({ force: true });
+  await expect(app.getByRole("dialog", { name: "Add a source" })).toHaveCount(0);
+  await app.keyboard.press("Escape");
 
   await app.getByRole("button", { name: /^Low-energy session/ }).click();
   await card.getByRole("button", { name: /Re-test mistakes/ }).click();
