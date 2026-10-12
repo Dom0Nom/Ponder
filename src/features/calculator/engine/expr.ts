@@ -5,7 +5,7 @@ import { CalcError, type Val, err, int, dec, PI, E13, PI13, isRational } from ".
 
 export type Angle = "DEG" | "RAD" | "GRAD";
 
-type Node =
+type Node = (
   | { t: "num"; v: Val }
   | { t: "sym"; name: string }
   | { t: "bin"; op: string; a: Node; b: Node }
@@ -15,7 +15,8 @@ type Node =
   | { t: "root"; i: Node; a: Node }
   | { t: "fn"; name: string; args: Node[] }
   | { t: "frac"; a: Node; b: Node }
-  | { t: "mixed"; w: Node; a: Node; b: Node };
+  | { t: "mixed"; w: Node; a: Node; b: Node }
+) & { end?: number };
 
 type Flagged = Node & { dms?: boolean };
 
@@ -45,7 +46,7 @@ export const FUNCS = [
   "x'(",
   "y'(",
 ];
-const CONV: Record<string, Hint> = { "▸n/d◂▸Un/d": "mixed", "▸F◂▸d": "fd", "▸DMS": "dms", "▸%": "pct", "◂▸": undefined };
+const CONV: Record<string, Hint> = { "▸n/d◂▸Un/d": "mixed", "▸F◂▸d": "fd", "▸DMS": "dms", "▸%": "pct", "◂▸": "toggle" };
 const isConv = (v: string | undefined) => v !== undefined && v in CONV;
 const POSTFIX = new Set(["²", "⁻¹", "!", "%", "°", "'", '"', "ʳ", "ᵍ"]);
 const SYMS = /^(π|e|ans|rand|[xyztabc]|stat:.+|L[123])$/;
@@ -72,13 +73,34 @@ class Parser {
     const e = this.peek();
     return e && e.k === "t" ? e.v : undefined;
   }
-  sub(list: El[]): Node {
-    if (!list.length) err("SYNTAX");
-    const p = new Parser(list);
-    const n = p.add();
-    if (p.i < list.length) err("SYNTAX");
-    if (p.usedFrac) this.usedFrac = true;
+  fail(at = this.i): never {
+    throw new CalcError("SYNTAX", at);
+  }
+  /** Node ending at the current index: an error in it puts the cursor there. */
+  at<T extends Node>(n: T): T {
+    n.end = this.i;
     return n;
+  }
+
+  /** A template slot. Errors inside it point just after the template. */
+  sub(list: El[]): Node {
+    try {
+      if (!list.length) this.fail();
+      const p = new Parser(list);
+      const n = p.add();
+      if (p.i < list.length) this.fail();
+      if (p.usedFrac) this.usedFrac = true;
+      const mark = (x: Node) => {
+        x.end = this.i;
+        for (const v of Object.values(x)) if (v && typeof v === "object" && "t" in v) mark(v as Node);
+        if (x.t === "fn") x.args.forEach(mark);
+      };
+      mark(n);
+      return n;
+    } catch (e) {
+      if (e instanceof CalcError) e.pos = this.i;
+      throw e;
+    }
   }
 
   top(): Parsed {
@@ -91,13 +113,13 @@ class Parser {
     }
     let store: string | undefined;
     if (this.isT("→")) {
-      this.i++;
+      const arrow = this.i++;
       const v = this.tv();
-      if (!v || !(VARS.includes(v) || v === "rand")) err("SYNTAX");
+      if (!v || !(VARS.includes(v) || v === "rand")) this.fail(arrow);
       store = v;
       this.i++;
     }
-    if (this.i < this.els.length) err("SYNTAX");
+    if (this.i < this.els.length) this.fail();
     return { node, hint, store, usedFrac: this.usedFrac };
   }
 
@@ -106,7 +128,7 @@ class Parser {
     while (this.isT("+") || this.isT("-")) {
       const op = this.tv()!;
       this.i++;
-      a = { t: "bin", op, a, b: this.mul() };
+      a = this.at({ t: "bin", op, a, b: this.mul() });
     }
     return a;
   }
@@ -123,11 +145,11 @@ class Parser {
       if (this.isT("*") || this.isT("÷")) {
         const op = this.tv()!;
         this.i++;
-        a = { t: "bin", op, a, b: this.perm() };
+        a = this.at({ t: "bin", op, a, b: this.perm() });
       } else if (this.startsPrimary(this.peek())) {
         const b: Flagged = this.perm();
-        if (a.dms && b.dms) a = { t: "bin", op: "+", a, b, dms: true } as Flagged;
-        else a = { t: "bin", op: "*", a, b };
+        if (a.dms && b.dms) a = this.at({ t: "bin", op: "+", a, b, dms: true } as Flagged);
+        else a = this.at({ t: "bin", op: "*", a, b });
       } else return a;
     }
   }
@@ -137,7 +159,7 @@ class Parser {
     while (this.isT(" nPr ") || this.isT(" nCr ")) {
       const op = this.tv()!;
       this.i++;
-      a = { t: "bin", op, a, b: this.neg() };
+      a = this.at({ t: "bin", op, a, b: this.neg() });
     }
     return a;
   }
@@ -145,7 +167,7 @@ class Parser {
   neg(): Node {
     if (this.isT("⁻")) {
       this.i++;
-      return { t: "neg", a: this.neg() };
+      return this.at({ t: "neg", a: this.neg() });
     }
     return this.pow();
   }
@@ -162,7 +184,7 @@ class Parser {
       }
       let b = this.post();
       for (let k = 0; k < negs; k++) b = { t: "neg", a: b };
-      a = op === "^" ? { t: "pow", a, b } : { t: "root", i: a, a: b };
+      a = this.at(op === "^" ? { t: "pow", a, b } : { t: "root", i: a, a: b });
     }
     return a;
   }
@@ -173,11 +195,11 @@ class Parser {
       const e = this.peek();
       if (e && e.k === "pow") {
         this.i++;
-        a = { t: "pow", a, b: this.sub(e.s[0]) };
+        a = this.at({ t: "pow", a, b: this.sub(e.s[0]) });
       } else if (e && e.k === "t" && POSTFIX.has(e.v)) {
         this.i++;
         const dms = e.v === "°" || e.v === "'" || e.v === '"';
-        a = { t: "post", op: e.v, a, dms } as Flagged;
+        a = this.at({ t: "post", op: e.v, a, dms } as Flagged);
       } else return a;
     }
   }
@@ -188,8 +210,8 @@ class Parser {
       s += this.tv();
       this.i++;
     }
-    if ((s.match(/\./g) ?? []).length > 1 || s === ".") err("SYNTAX");
-    return { t: "num", v: s.includes(".") ? dec(Number(s)) : int(Number(s)) };
+    if ((s.match(/\./g) ?? []).length > 1 || s === ".") this.fail();
+    return this.at({ t: "num", v: s.includes(".") ? dec(Number(s)) : int(Number(s)) });
   }
 
   classicOperand(): Node {
@@ -199,12 +221,18 @@ class Parser {
       this.i++;
       return { t: "sym", name: v };
     }
-    return err("SYNTAX");
+    return this.fail();
   }
 
   primary(): Node {
+    const n = this.primaryNode();
+    n.end ??= this.i;
+    return n;
+  }
+
+  primaryNode(): Node {
     const e = this.peek();
-    if (!e) return err("SYNTAX");
+    if (!e) return this.fail();
     if (e.k !== "t") {
       this.i++;
       switch (e.k) {
@@ -219,7 +247,7 @@ class Parser {
         case "root":
           return { t: "root", i: this.sub(e.s[0]), a: this.sub(e.s[1]) };
         default:
-          return err("SYNTAX");
+          return this.fail(this.i - 1);
       }
     }
     const v = e.v;
@@ -228,7 +256,7 @@ class Parser {
       if (this.isT("␣")) {
         this.i++;
         const a = this.classicOperand();
-        if (!this.isT("⁄")) err("SYNTAX");
+        if (!this.isT("⁄")) this.fail();
         this.i++;
         this.usedFrac = true;
         return { t: "mixed", w: n, a, b: this.classicOperand() };
@@ -263,15 +291,16 @@ class Parser {
         this.i++;
         args.push(this.add());
       }
+      const n = this.at<Node>({ t: "fn", name: v, args });
       this.close();
-      return { t: "fn", name: v, args };
+      return n;
     }
-    return err("SYNTAX");
+    return this.fail();
   }
 
   close() {
     if (this.isT(")")) this.i++;
-    else if (this.i < this.els.length && !this.isConvOrStore()) err("SYNTAX");
+    else if (this.i < this.els.length && !this.isConvOrStore()) this.fail();
   }
 
   isConvOrStore(): boolean {
@@ -398,6 +427,15 @@ function needInt(v: Val) {
 }
 
 export function evaluate(node: Node, ctx: Ctx): Val {
+  try {
+    return evalNode(node, ctx);
+  } catch (e) {
+    if (e instanceof CalcError && e.pos === undefined) e.pos = node.end;
+    throw e;
+  }
+}
+
+function evalNode(node: Node, ctx: Ctx): Val {
   const ev = (n: Node) => evaluate(n, ctx);
   switch (node.t) {
     case "num":

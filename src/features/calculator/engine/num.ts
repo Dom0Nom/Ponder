@@ -13,7 +13,11 @@ export type ErrCode =
   | "MEMORY LIMIT";
 
 export class CalcError extends Error {
-  constructor(public code: ErrCode) {
+  /** Entry index the cursor goes to when the error screen is cleared (BEHAVIOR §21). */
+  constructor(
+    public code: ErrCode,
+    public pos?: number,
+  ) {
     super(code);
   }
 }
@@ -275,13 +279,6 @@ export function findExact(d: number, opts: { rationalOnly?: boolean } = {}): Q |
   for (let m = 1; m < 100; m++) {
     const n = p * m;
     if (Math.abs(n) < 1000 && near(n)) return normQ(Math.round(n), m, 1, 1);
-  }
-  for (let m = 1; m < 100; m++) {
-    const s = d * m * d * m;
-    if (s < 1e5 && near(s)) {
-      const q = normQ(d < 0 ? -1 : 1, m, Math.round(s));
-      if (q && q.r > 1) return q;
-    }
   }
   return undefined;
 }

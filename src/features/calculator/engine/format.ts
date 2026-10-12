@@ -153,10 +153,12 @@ export function formatQ(q: Q, mathprint: boolean): string | undefined {
   const a = Math.abs(q.n);
   if (q.r === 1 && q.pi === 0) {
     if (q.m === 1) return undefined;
-    if (q.m >= 1000 || a >= 1e6) return undefined;
+    if (q.m > 1000 || a >= 1e6) return undefined;
     return mathprint ? `${sign}\\f{${a}}{${q.m}}` : `${sign}${a}⁄${q.m}`;
   }
-  if (!mathprint || q.m >= 1000 || a >= 1000 || q.r >= 1000 || (q.r > 1 && q.pi)) return undefined;
+  if (!mathprint || (q.r > 1 && q.pi)) return undefined;
+  // π keeps a coefficient of up to 10 digits over a denominator up to 1000 (BEHAVIOR §7.4)
+  if (q.pi ? q.m > 1000 || a >= 1e10 : q.m >= 1000 || a >= 1000 || q.r >= 1000) return undefined;
   const coef = a === 1 ? "" : String(a);
   const body = q.pi ? `${coef}π` : `${coef}√{${q.r}}`;
   return q.m === 1 ? sign + body : `${sign}\\f{${body}}{${q.m}}`;
@@ -172,7 +174,16 @@ export function formatMixed(q: Q, mathprint: boolean): string | undefined {
   return mathprint ? `${sign}${w}\\f{${rem}}{${q.m}}` : `${sign}${w}␣${rem}⁄${q.m}`;
 }
 
-export type Hint = "mixed" | "improper" | "fd" | "pct" | "dms" | "decimal" | "exact" | undefined;
+export type Hint = "mixed" | "improper" | "fd" | "pct" | "dms" | "decimal" | "exact" | "toggle" | undefined;
+
+export const isDecimalText = (m: string) => !/\\f|√|π|⁄|␣/.test(m);
+
+/** The other form of a result (answer toggle, BEHAVIOR §7.5): exact → decimal, decimal → a rational or π form. */
+export function toggled(v: Val, shown: string, fmt: Fmt): string {
+  if (!isDecimalText(shown)) return formatDecimal(v.d, fmt);
+  const q = findExactFor(v);
+  return (q && formatQ(q, fmt.mathprint)) || formatDecimal(v.d, fmt);
+}
 
 export function formatDMS(x: number): string {
   const neg = x < 0;
@@ -198,6 +209,7 @@ export function formatResult(v: Val, fmt: Fmt, opts: { hint?: Hint; usedFrac?: b
   if (hint === "dms") return formatDMS(v.d);
   if (hint === "pct") return formatDecimal(t13(v.d * 100), fmt) + "%";
   if (hint === "decimal") return formatDecimal(v.d, fmt);
+  if (hint === "toggle") return toggled(v, formatResult(v, fmt, { usedFrac: opts.usedFrac }), fmt);
   if (hint === "improper" && v.q) return formatQ(v.q, fmt.mathprint) ?? formatDecimal(v.d, fmt);
   if (hint === "mixed") {
     const q = v.q ?? findExact(v.d, { rationalOnly: true });
