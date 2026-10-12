@@ -236,6 +236,7 @@ pub fn due_counts(c: &Connection, now: i64) -> AppResult<Vec<DueCount>> {
 }
 
 /// Stores the scheduler's new state for a card and logs the review.
+#[allow(clippy::too_many_arguments)]
 pub fn review_card(
     c: &Connection,
     id: &str,

@@ -237,7 +237,7 @@ impl Ingest {
             _ => None,
         };
         let c = self.db.conn()?;
-        let spec = embed::spec(&self.embedder.model_id());
+        let spec = embed::spec(self.embedder.model_id());
         let mut out = retrieval::coverage(&c, space_id, topics, vecs.as_deref())?;
         for t in &mut out {
             t.similarity = t.similarity.map(|s| spec.calibrated(s));

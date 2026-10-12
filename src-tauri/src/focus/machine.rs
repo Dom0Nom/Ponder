@@ -275,7 +275,7 @@ impl FocusMachine {
     fn next_break(&self, worked_ms: i64) -> (Phase, i64) {
         match self.technique {
             Technique::Flowtime => (Phase::Break, (((worked_ms as f64) / 5.0).round() as i64).max(MIN)),
-            Technique::Pomodoro | Technique::Custom if self.block % self.cycles_before_long == 0 => {
+            Technique::Pomodoro | Technique::Custom if self.block.is_multiple_of(self.cycles_before_long) => {
                 (Phase::LongBreak, self.long_break_ms)
             }
             _ => (Phase::Break, self.break_ms),
@@ -640,7 +640,7 @@ mod tests {
         }
         assert_eq!(st["pauseReason"], "needApp");
         assert_eq!(st["technique"], "custom");
-        let tr = serde_json::to_value(&m.clone().tick(T0)).unwrap();
+        let tr = serde_json::to_value(m.clone().tick(T0)).unwrap();
         assert_eq!(tr, serde_json::json!([]));
     }
 

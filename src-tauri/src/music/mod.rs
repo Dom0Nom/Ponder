@@ -69,12 +69,6 @@ impl MusicService {
         let _ = app.emit("music://error", err);
     }
 
-    fn status(&self) -> MusicStatus {
-        let mut st = backend_status(self.backend.as_ref());
-        st.last_error = self.last_error.lock().unwrap_or_else(|e| e.into_inner()).clone();
-        st
-    }
-
     fn run(&self, action: Action, uri: &str) -> AppResult<()> {
         let _guard = self.exec.lock().unwrap_or_else(|e| e.into_inner());
         match action {

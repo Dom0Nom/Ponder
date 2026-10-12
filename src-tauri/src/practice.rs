@@ -183,7 +183,7 @@ pub fn error_patterns(c: &Connection, space_id: Option<&str>) -> AppResult<Vec<E
                 None => tally.push((t.to_string(), 1)),
             }
         }
-        tally.sort_by(|a, b| b.1.cmp(&a.1));
+        tally.sort_by_key(|t| std::cmp::Reverse(t.1));
         out.push(ErrorPattern { error_type, count, last_at, topics: tally.into_iter().take(3).map(|(t, _)| t).collect() });
     }
     Ok(out)

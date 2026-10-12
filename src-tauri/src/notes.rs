@@ -115,6 +115,7 @@ fn sync_source(c: &Connection, ingest: &Ingest, note: &Note) -> AppResult<()> {
     }
 }
 
+#[cfg(test)]
 pub fn save(c: &Connection, ingest: &Ingest, n: &Note) -> AppResult<Note> {
     save_with(c, ingest, n, true)
 }

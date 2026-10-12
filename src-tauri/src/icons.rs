@@ -191,7 +191,7 @@ fn parse_links(html: &str, base: &str) -> Vec<Link> {
         };
         out.push(Link { href: href.to_string(), score });
     }
-    out.sort_by(|a, b| b.score.cmp(&a.score));
+    out.sort_by_key(|o| std::cmp::Reverse(o.score));
     let mut seen = std::collections::HashSet::new();
     out.retain(|l| seen.insert(l.href.clone()));
     out

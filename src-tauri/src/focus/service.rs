@@ -570,7 +570,7 @@ mod tests {
         assert_eq!(st.phase_started_at, T0 + 15 * MIN);
         assert_eq!(st.total_focus_ms, 10 * MIN);
         assert_eq!(kinds(&svc, &id), vec!["start", "phase", "phase", "auto_pause_sleep"]);
-        assert!(60 * MIN - 15 * MIN > SLEEP_GRACE_MS);
+        const { assert!(60 * MIN - 15 * MIN > SLEEP_GRACE_MS) };
     }
 
     #[test]
