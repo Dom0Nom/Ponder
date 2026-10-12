@@ -5,12 +5,8 @@ import { Tooltip } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
 import { useProviders, useSettings } from "../../lib/queries";
 import { s } from "../../lib/strings";
-import { AUDIO_FORMATS, speechSettings, transcribe } from "../../lib/tts/speech";
+import { audioFormatOf, speechSettings, transcribe } from "../../lib/tts/speech";
 import { cn } from "../../lib/utils";
-
-type Format = (typeof AUDIO_FORMATS)[number];
-
-const formatOf = (mime: string): Format => (mime.includes("mp4") || mime.includes("aac") ? "m4a" : mime.includes("ogg") ? "ogg" : "webm");
 
 /** Records from the microphone and hands the transcript to `onText`. Shown only with an OpenRouter provider. */
 export function DictateButton({ onText, className }: { onText: (text: string) => void; className?: string }) {
@@ -53,7 +49,7 @@ export function DictateButton({ onText, className }: { onText: (text: string) =>
       if (!blob.size) return setState("idle");
       setState("transcribing");
       try {
-        const text = await transcribe(speechSettings(settings), new Uint8Array(await blob.arrayBuffer()), formatOf(r.mimeType), undefined, providers);
+        const text = await transcribe(speechSettings(settings), new Uint8Array(await blob.arrayBuffer()), audioFormatOf(r.mimeType), undefined, providers);
         if (text) onText(text);
       } catch (e) {
         toastError(s.speech.dictate.failed, e);

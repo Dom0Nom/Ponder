@@ -18,7 +18,12 @@ const TUTOR: Record<TutorStyle, string> = {
     "Tutor style: mixed. Start with one guiding question or hint; if the learner is stuck or asks directly, explain fully.",
 };
 
+export const VOICE_INSTRUCTION =
+  'Voice conversation: the learner is speaking to you and a speech engine reads your reply aloud, so talk the way a tutor does in person. Hard limits: at most 4 short sentences (about 60 words), plain sentences only (no Markdown, lists, tables, headings, code or emoji), and at most one question, at the end. Say numbers and math in words ("x squared plus three"). Keep the [n] citation marks after cited sentences as usual, but never rely on them in the wording (they are not spoken); name the source in words when it helps. Do not add follow-up lines. If a full answer needs more than that, give the first part and ask whether to go on. Reply in the language the learner just spoke.';
+
 export interface ContextInput {
+  /** the answer is read aloud to a learner who is talking */
+  voice?: boolean;
   space: Pick<Space, "name" | "strictGrounding">;
   tutorStyle: TutorStyle;
   passages: Passage[];
@@ -116,6 +121,7 @@ export function buildSystemPrompt(input: ContextInput): string {
   const focus = describeFocus(input.focus, input.now);
   if (focus) parts.push(`Focus session: ${focus}`);
   if (input.extraInstructions) parts.push(input.extraInstructions);
+  if (input.voice) parts.push(VOICE_INSTRUCTION);
   return parts.join("\n\n");
 }
 

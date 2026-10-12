@@ -9,6 +9,7 @@ All calls go through `generateText`/`streamText` from the `ai` SDK; there is no 
 | id | where (src/lib unless noted) | purpose | model | output → parser |
 |---|---|---|---|---|
 | tutor-system | `chat/context.ts` `buildSystemPrompt`, tutor styles `TUTOR`, `describeFocus` | main tutor reply | chat + user's thinking controls | Markdown/LaTeX, `[n]` citations, `{{general}}…{{/general}}`, `{{remember: …}}`, `{{followup: …}}` → `extractFollowUps`, `extractMemories`, `citations.ts`, `remarkCitations.ts` |
+| tutor-voice | `chat/context.ts` `VOICE_INSTRUCTION` (appended last when `voice` is set; `runTurn({ voice: true })`) | tutor reply in a spoken conversation: ≤4 short sentences (~60 words), no Markdown/LaTeX/lists, ≤1 question, math in words, `[n]` kept (not spoken), first part + "want me to go on?" for long requests | chat + user's thinking controls | text → `plainAnswer` → read aloud |
 | tutor-history | `chat/context.ts` `historyMessages`, `chat/runner.ts` buddy wrapper | last 12 turns, buddy notes and events | – | strips `{{general}}` |
 | buddy-instruction | `buddy/prompts.ts` `buddyInstruction` | focus-timer events: session start, check-in, recall, block quiz, post-break, session summary (normal and low-energy) | chat, thinking off | Markdown; quiz answers below `---`; summary saved to the journal |
 | topic-start / lesson-study | `placement/flows.ts` | start a topic, re-teach prerequisites, study a chapter | chat | as tutor |
@@ -112,6 +113,10 @@ Baseline = the prompts before this pass; new = rewrites. 2 samples per case (pra
 | classify-error | 94% → 93% | 4.60 → 4.77 | no: sharper type definitions didn't fix the 15%-of-80 case and added "units" answers; reverted |
 
 Unchanged prompts moved by up to ±0.36 between runs (micro-steps 4.47 → 4.83, custom-curriculum 5.00 → 4.78, research-query 3.08 → 2.83), so judge differences under ~0.3 are noise; the check rate decides close calls.
+
+### Voice tutor prompt (new, 2026-10-12)
+
+`tutor-voice`: 5 cases (EN grounded, DE grounded, math in words, long request, Socratic), 2 samples, deepseek-v4.1-flash judged by claude-haiku-4.5. Checks 99% (word, sentence, question limits, no Markdown or LaTeX, language, citations, no emoji; one reply carried a `{{followup}}` line, which `runTurn` strips before the text is spoken), judge 4.06. The judge scores calibration 2 on replies that put a "want me to go on?" question after three sentences; the deterministic limits pass. Long requests: first part plus an offer to continue (5/5).
 
 ### Exam prompts (new, 2026-10-12)
 

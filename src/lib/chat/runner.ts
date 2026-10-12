@@ -35,6 +35,8 @@ export interface TurnInput {
   persistUser?: boolean;
   /** a screenshot or photo sent along with `userText` (needs a vision-capable model) */
   image?: ImageInput;
+  /** spoken conversation: short answers written to be read aloud */
+  voice?: boolean;
   /** keep the exchange in memory only; nothing is written to the thread */
   ephemeral?: boolean;
   /** the assistant row as soon as retrieval is done and streaming starts */
@@ -165,6 +167,7 @@ export async function runTurn(input: TurnInput): Promise<Message> {
   const system = buildSystemPrompt({
     memory: memory.map((m) => m.text),
     extraInstructions: input.systemExtra,
+    voice: input.voice,
     space,
     tutorStyle: input.tutorStyle,
     passages: passagesFrom(hits),

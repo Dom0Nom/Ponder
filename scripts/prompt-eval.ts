@@ -183,6 +183,7 @@ async function tutorTurn(input: {
   focus?: ReturnType<typeof focusState> | null;
   history?: { role: "user" | "assistant"; content: string }[];
   memory?: string[];
+  voice?: boolean;
 }) {
   const { buildSystemPrompt } = await lib("chat/context.ts");
   const system: string = buildSystemPrompt({
@@ -193,6 +194,7 @@ async function tutorTurn(input: {
     now: Date.UTC(2026, 9, 12, 14, 0),
     sourceCount: input.sourceCount ?? input.passages.length,
     memory: input.memory,
+    voice: input.voice,
   });
   const r = await generateText({
     model: gen.model,
@@ -315,6 +317,62 @@ const tutor: Task = {
     },
   ],
 };
+
+function voiceChecks(text: string, o: { lang: "de" | "en"; maxCite: number }) {
+  const body = text.replace(/\{\{[^}]*\}\}/g, "");
+  return [
+    ...tutorChecks(text, { lang: o.lang, maxCite: o.maxCite }),
+    check("≤80 words", words(body) <= 80, String(words(body))),
+    check("≤4 sentences", sentenceCount(body) <= 4, String(sentenceCount(body))),
+    check("≤1 question", questionMarks(body) <= 1, String(questionMarks(body))),
+    check("spoken text: no Markdown or LaTeX", !/[*#`|$\\^]|^\s*([-•]|\d+[.)])\s/m.test(body)),
+    check("no follow-up markers", !text.includes("{{followup")),
+  ];
+}
+
+const voiceTutor: Task = {
+  id: "tutor-voice",
+  purpose: "Main study-tutor reply in a spoken conversation: the learner talks, a speech engine reads the reply aloud. It must sound like a tutor talking, stay short, and still be grounded in the numbered passages.",
+  dims: ["grounding", "guidance", "calibration", "tone", "format"],
+  cases: [
+    {
+      name: "voice EN grounded",
+      run: async () => {
+        const t = await tutorTurn({ style: "direct", q: "Where does the Calvin cycle happen and what does it need?", passages: passages.photosynthesis, voice: true });
+        return { output: t, expect: "Short spoken answer: stroma, ATP and NADPH, cites [2] with the bracket after the sentence. Reads naturally aloud.", checks: [...voiceChecks(t, { lang: "en", maxCite: 2 }), check("cites [2]", t.includes("[2]"))] };
+      },
+    },
+    {
+      name: "voice DE grounded",
+      run: async () => {
+        const t = await tutorTurn({ style: "direct", q: "Was macht der Bundesrat eigentlich?", passages: passages.verfassung, voice: true });
+        return { output: t, expect: "Short spoken German answer: Bundesrat vertritt die Länder, cites [1].", checks: voiceChecks(t, { lang: "de", maxCite: 1 }) };
+      },
+    },
+    {
+      name: "voice math in words",
+      run: async () => {
+        const t = await tutorTurn({ style: "direct", q: "How do I get the slope of a line from two points?", passages: passages.gedMath, voice: true });
+        return { output: t, expect: "Spoken explanation of the slope formula with no symbols or LaTeX: says 'change in y over change in x' in words.", checks: voiceChecks(t, { lang: "en", maxCite: 1 }) };
+      },
+    },
+    {
+      name: "voice long request",
+      run: async () => {
+        const t = await tutorTurn({ style: "direct", q: "Explain the whole of photosynthesis to me step by step, every reaction.", passages: passages.photosynthesis, voice: true });
+        return { output: t, expect: "Does not read out a long lecture: gives the first part within the limits and asks whether to go on.", checks: [...voiceChecks(t, { lang: "en", maxCite: 2 }), check("offers to continue", /\?\s*$/.test(body(t)))] };
+      },
+    },
+    {
+      name: "voice socratic",
+      run: async () => {
+        const t = await tutorTurn({ style: "socratic", q: "What's the slope of the line through two, three and six, eleven?", passages: passages.gedMath, voice: true });
+        return { output: t, expect: "Socratic and spoken: one guiding question, does not state that the slope is 2.", checks: [...voiceChecks(t, { lang: "en", maxCite: 1 }), check("answer withheld", !/\b(slope|m)\s*(is|=|equals)\s*(2|two)\b/i.test(t))] };
+      },
+    },
+  ],
+};
+const body = (t: string) => t.replace(/\{\{[^}]*\}\}/g, "").trim();
 
 const buddyCtx = (o: Record<string, unknown> = {}) => ({ state: focusState(), previous: null, parking: [], needAppPauses: 0, ...o });
 
@@ -1044,7 +1102,7 @@ const studioOutputs: Task = {
   })),
 };
 
-const TASKS: Task[] = [tutor, buddy, micro, quiz, practice, grade, classify, cards, selfcheck, stepcheck, researchQuery, researchPlan, researchRank, summary, curriculum, examTask, essayTaskEval, essayGradeEval, studioOutputs];
+const TASKS: Task[] = [tutor, voiceTutor, buddy, micro, quiz, practice, grade, classify, cards, selfcheck, stepcheck, researchQuery, researchPlan, researchRank, summary, curriculum, examTask, essayTaskEval, essayGradeEval, studioOutputs];
 
 // ---------- judge ----------
 async function judge(task: Task, caseName: string, r: CaseResult, prompt: string): Promise<Record<string, number> & { rationale?: unknown }> {
@@ -1108,7 +1166,7 @@ for (const task of tasks) {
           const rec: Call[] = [];
           const r = await store.run(rec, () => c.run());
           if (task.id === "buddy-instruction") r.checks.push(check("no follow-up markers", !r.output.includes("{{followup")));
-          if (task.id === "buddy-instruction" || task.id === "tutor-system") r.checks.push(check("no emoji", !/\p{Extended_Pictographic}/u.test(r.output)));
+          if (task.id === "buddy-instruction" || task.id === "tutor-system" || task.id === "tutor-voice") r.checks.push(check("no emoji", !/\p{Extended_Pictographic}/u.test(r.output)));
           const prompt = rec[0]?.prompt ?? "";
           const j = await judge(task, c.name, r, prompt).catch(() => ({}) as Record<string, number>);
           const { rationale, ...scores } = j as Record<string, number> & { rationale?: unknown };

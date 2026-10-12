@@ -8,6 +8,7 @@ import { Reveal } from "../../components/motion/Reveal";
 import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { StudioSubpanel } from "../space/StudioSubpanel";
 import { DictateButton } from "../speech/DictateButton";
+import { ListenButton } from "../speech/ListenButton";
 import { api } from "../../lib/ipc";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
 import { generateNoThinking } from "../../lib/steps/check";
@@ -18,6 +19,7 @@ import type { Space } from "../../lib/types";
 import { cn } from "../../lib/utils";
 
 const LABEL = "text-label font-semibold text-muted";
+const ICON_BTN = "inline-flex size-7 items-center justify-center rounded-item text-muted hover:bg-fill hover:text-fg";
 
 function Section({ title, items, testId, tone }: { title: string; items: string[]; testId: string; tone?: "danger" }) {
   if (!items.length) return null;
@@ -166,7 +168,7 @@ export function FeynmanPanel({ space, onBack }: { space: Space; onBack: () => vo
           <div className="flex items-center justify-between">
             <span className={LABEL}>{s.feynman.explanation}</span>
             <DictateButton
-              className="inline-flex size-7 items-center justify-center rounded-item text-muted hover:bg-fill hover:text-fg"
+              className={ICON_BTN}
               onText={(t) => setText((cur) => [cur.trim(), t].filter(Boolean).join(" "))}
             />
           </div>
@@ -210,9 +212,15 @@ export function FeynmanPanel({ space, onBack }: { space: Space; onBack: () => vo
           <Section title={s.feynman.jargon} items={last.feedback.jargon} testId="feynman-jargon" />
           {last.feedback.question && (
             <div className="flex flex-col gap-1.5 border-t border-divider pt-3.5" data-testid="feynman-question">
-              <h4 className={cn(LABEL, "flex items-center gap-1.5")}>
-                <MessageCircleQuestion size={13} /> {s.feynman.newcomerAsks}
-              </h4>
+              <div className="flex items-center justify-between">
+                <h4 className={cn(LABEL, "flex items-center gap-1.5")}>
+                  <MessageCircleQuestion size={13} /> {s.feynman.newcomerAsks}
+                </h4>
+                <div className="flex items-center">
+                  <ListenButton id="feynman-question" text={last.feedback.question} className={ICON_BTN} />
+                  <DictateButton className={ICON_BTN} onText={(t) => setAnswer((cur) => [cur.trim(), t].filter(Boolean).join(" "))} />
+                </div>
+              </div>
               <p className="text-body text-fg">{last.feedback.question}</p>
               <Textarea value={answer} onChange={(e) => setAnswer(e.target.value)} rows={3} placeholder={s.feynman.answerPlaceholder} aria-label={s.feynman.answer} data-testid="feynman-answer" />
               <Button variant="secondary" size="sm" className="self-end" disabled={!answer.trim() || busy} onClick={() => check(answer)} data-testid="feynman-answer-send">

@@ -326,6 +326,11 @@ const defaultScript: Script = ({ messages, body }) => {
       content: `The screenshot shows a labelled plant cell with a chloroplast next to the cell wall.${hasSources ? " Photosynthesis happens in the chloroplasts [1]." : ""}`,
     };
   }
+  if (sysText.includes("Voice conversation:")) {
+    return {
+      content: `${hasSources ? "Chloroplasts capture light energy and turn it into sugar [1]. " : "Chloroplasts capture light energy. "}{{general}}Plants release oxygen too.{{/general}} **Where** in the leaf do you think that happens?`,
+    };
+  }
   return {
     reasoning: body.reasoning_effort === "none" ? undefined : "Looking at the passages first.",
     content: hasSources

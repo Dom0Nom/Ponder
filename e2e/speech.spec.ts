@@ -76,7 +76,7 @@ test("audio overview: two voices, line navigation, a question, transcript export
   await app.getByRole("button", { name: "Create" }).click();
   await app.getByRole("button", { name: "Add source" }).click();
   await app.getByRole("tab", { name: "Paste text" }).click();
-  await app.getByLabel("Title").fill("Photosynthesis notes");
+  await app.locator("#paste-title").fill("Photosynthesis notes");
   await app.getByRole("textbox", { name: "Text", exact: true }).fill("Photosynthesis happens in the chloroplasts. The Calvin cycle uses ATP and NADPH to fix carbon dioxide into sugar in the stroma.");
   await app.getByRole("button", { name: "Import" }).click();
   await expect(app.locator('[data-testid="source-row"][data-status="ready"]')).toHaveCount(1);
@@ -114,7 +114,7 @@ test("daily briefing on Home: written from today's facts and read aloud", async 
   await app.getByRole("button", { name: "Create" }).click();
   await app.getByRole("button", { name: "Add source" }).click();
   await app.getByRole("tab", { name: "Paste text" }).click();
-  await app.getByLabel("Title").fill("Leaf notes");
+  await app.locator("#paste-title").fill("Leaf notes");
   await app.getByRole("textbox", { name: "Text", exact: true }).fill("Photosynthesis happens in the chloroplasts.");
   await app.getByRole("button", { name: "Import" }).click();
   await expect(app.locator('[data-testid="source-row"][data-status="ready"]')).toHaveCount(1);
