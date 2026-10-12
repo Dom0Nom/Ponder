@@ -2,8 +2,8 @@ import {
   type Ed,
   type El,
   VARS,
+  clearFrom,
   clone,
-  clearTemplate,
   del,
   end,
   fromMarkup,
@@ -17,13 +17,15 @@ import {
   newEd,
   prevEl,
   right,
+  takeIndex,
   takeOperand,
   tok,
   tpl,
   vertical,
+  wrapPower,
 } from "./editor";
 import { type Angle, type Ctx, type StatVals, run } from "./expr";
-import { type Fmt, type Notation, findExactFor, formatDecimal, formatFit, formatSig10, formatPlain, formatQ, formatResult, fullDecimal } from "./format";
+import { type Fmt, type Notation, formatFit, formatSig10, formatPlain, formatResult, fullDecimal, isDecimalText, toggled } from "./format";
 import { type MenuAction, type MenuId, type MenuItem, type MenuTab, STATIC_MENUS, STAT_ITEMS_1, STAT_ITEMS_2 } from "./menus";
 import * as N from "./num";
 import { CalcError, type ErrCode, type Val, int, ZERO } from "./num";
@@ -204,22 +206,28 @@ function editKey(s: State, ed: Ed, k: string, implicitAns: boolean): boolean {
       else put("e^(");
       return true;
     case "pow":
-      if (mp) insert(ed, [tpl("pow", [])], { at: 0, slot: 0 });
-      else put("^");
+      if (mp) {
+        wrapPower(ed);
+        insert(ed, [tpl("pow", [])], { at: 0, slot: 0 });
+      } else put("^");
       return true;
     case "2nd+pow":
       if (mp) {
-        const idx = takeOperand(ed);
+        const idx = isEmpty(ed) ? [tok("ans")] : takeIndex(ed);
         insert(ed, [tpl("root", idx, [])], { at: 0, slot: idx.length ? 1 : 0 });
       } else put("ˣ√");
       return true;
     case "square":
-      if (mp) insert(ed, [tpl("pow", [tok("2")])]);
-      else put("²");
+      if (mp) {
+        wrapPower(ed);
+        insert(ed, [tpl("pow", [tok("2")])]);
+      } else put("²");
       return true;
     case "recip":
-      if (mp) insert(ed, [tpl("pow", [tok("⁻"), tok("1")])]);
-      else put("⁻¹");
+      if (mp) {
+        wrapPower(ed);
+        insert(ed, [tpl("pow", [tok("⁻"), tok("1")])]);
+      } else put("⁻¹");
       return true;
     case "2nd+square":
       if (mp) insert(ed, [tpl("sqrt", [])], { at: 0, slot: 0 });
@@ -274,8 +282,6 @@ function editKey(s: State, ed: Ed, k: string, implicitAns: boolean): boolean {
   return false;
 }
 
-const isDecimalText = (m: string) => !/\\f|√|π|⁄|␣/.test(m);
-
 function pushHist(s: State, els: El[], val: Val, rm: string) {
   s.history.push({ entry: clone(els), em: markup(els, s.modes.mathprint), rm, val, exact: !isDecimalText(rm) });
   if (s.history.length > 60) {
@@ -313,6 +319,7 @@ function homeEnter(s: State) {
       s.history.push({ entry: clone(els), em: markup(els, s.modes.mathprint), rm: "", val: s.ans, exact: false });
       s.start = s.history.length;
       s.ed = newEd(clone(els));
+      s.ed.pos = Math.min(e.pos ?? els.length, els.length);
     }
     fail(s, e, { t: "home" });
   }
@@ -321,17 +328,8 @@ function homeEnter(s: State) {
 function toggle(s: State) {
   const last = s.history[s.history.length - 1];
   if (!last || !last.rm || !isEmpty(s.ed)) return;
-  const fmt = fmtOf(s);
-  let em: string;
-  let rm: string;
-  if (last.exact) {
-    em = last.rm;
-    rm = formatDecimal(last.val.d, fmt);
-  } else {
-    em = fullDecimal(last.val.d);
-    const q = findExactFor(last.val);
-    rm = (q && formatQ(q, fmt.mathprint)) || formatDecimal(last.val.d, fmt);
-  }
+  const em = last.exact ? last.rm : fullDecimal(last.val.d);
+  const rm = toggled(last.val, last.rm, fmtOf(s));
   s.history.push({ entry: [...fromMarkup(em), tok("◂▸")], em: em + "◂▸", rm, val: last.val, exact: !isDecimalText(rm) });
   s.done = true;
 }
@@ -368,9 +366,8 @@ function homeKey(s: State, k: string) {
       return homeEnter(s);
     case "clear":
       s.done = false;
-      if (clearTemplate(s.ed)) return;
-      if (!isEmpty(s.ed)) s.ed = newEd();
-      else s.start = s.history.length;
+      if (isEmpty(s.ed)) s.start = s.history.length;
+      else if (!clearFrom(s.ed)) s.ed = newEd();
       s.pasted = false;
       return;
     case "toggle":

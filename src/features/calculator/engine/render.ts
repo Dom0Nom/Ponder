@@ -27,7 +27,7 @@ export interface Model {
   cut?: number;
 }
 
-const stripMarks = (s: string) => s.replace(/[\uE000-\uE005]/g, "");
+const stripMarks = (s: string) => s.replace(/[\uE000-\uE006]/g, "");
 const width = (m: string) => measure(m).w;
 const rowBox = (r: Row) => {
   const a = measure(r.l || " ");
@@ -127,6 +127,8 @@ function endCost(ns: MNode[]): number {
     case "cur":
       return 1;
     case "sup": {
+      // an empty slot holding the cursor is one cell, already counted
+      if (last.a.length && isEmptySlot(last.a)) return 1;
       const c = endCost(last.a);
       return c && c + 1;
     }
@@ -158,7 +160,7 @@ function scrollEntry(m: string): string {
   }
   const items: { n: MNode | null; w: number }[] = nodes.map((n, i) => ({
     n,
-    w: n.t === "cur" ? (nodes[i + 1]?.t === "frac" && nodes[i - 1]?.t === "g" ? 1 : 0) : n.t === "frac" && isEmptySlot(n.a) && isEmptySlot(n.b) ? 2 : cells([n]),
+    w: n.t === "cur" ? (nodes[i + 1]?.t === "frac" && nodes[i - 1]?.t === "g" ? 1 : 0) : cells([n]),
   }));
   items[items.length - 1].w += endCost(nodes);
   const total = hidden + items.reduce((a, it) => a + it.w, 0);

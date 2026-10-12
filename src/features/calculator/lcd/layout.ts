@@ -8,6 +8,8 @@ export const BLINK_OFF = "";
 export const OVER_ON = "\uE004";
 export const OVER_OFF = "\uE005";
 export const CUR_INS = "";
+/** Empty whole-number slot of a mixed number (a normal-size placeholder). */
+export const HOLE = "\uE006";
 const SEQ = ["▸n/d◂▸Un/d", "▸F◂▸d"];
 
 export type MNode =
@@ -62,6 +64,9 @@ export function parseItems(s: string): Item[] {
       } else if (c === BLINK_ON) {
         i++;
         node = { t: "blink", a: seq(BLINK_OFF).map((x) => x.node) };
+      } else if (c === HOLE) {
+        i++;
+        node = { t: "base" };
       } else if (c === CUR || c === CUR_INS) {
         i++;
         node = { t: "cur", under: c === CUR_INS };
@@ -103,13 +108,61 @@ export interface Box {
 
 const shift = (ops: Op[], dx: number, dy: number): Op[] => ops.map((o) => ({ ...o, x: o.x + dx, y: o.y + dy }));
 
-export function layoutSeq(nodes: MNode[], font: FontId = "n"): Box {
+const PAREN_ROWS = { open: [2, 1, 0], close: [0, 1, 2] };
+
+/** A parenthesis 9 dots tall around a superscript, 13 around or before a stacked fraction (BEHAVIOR §3.1). */
+function tallParen(key: string, h: 9 | 13): Op[] {
+  const edge = key === "(" ? PAREN_ROWS.open : PAREN_ROWS.close;
+  const top = h === 13 ? -10 : -9;
+  const ops: Op[] = [];
+  for (let r = 0; r < h; r++) {
+    const k = Math.min(r, h - 1 - r);
+    ops.push({ k: "rect", x: 1 + (k < 2 ? edge[k] : edge[2]), y: top + r, w: 1, h: 1 });
+  }
+  return ops;
+}
+
+function parenHeights(nodes: MNode[]): (9 | 13 | undefined)[] {
+  const isP = (n: MNode, k: string) => n.t === "g" && n.key === k;
+  const group = (from: number, to: number) => {
+    const g = nodes.slice(from, to);
+    return g.some((n) => n.t === "frac") ? 13 : g.some((n) => n.t === "sup") ? 9 : undefined;
+  };
+  return nodes.map((n, i) => {
+    if (isP(n, "(")) {
+      let depth = 0;
+      let j = i;
+      for (; j < nodes.length; j++) {
+        if (isP(nodes[j], "(")) depth++;
+        else if (isP(nodes[j], ")") && --depth === 0) break;
+      }
+      return group(i + 1, j);
+    }
+    if (isP(n, ")")) {
+      let depth = 0;
+      let j = i;
+      for (; j >= 0; j--) {
+        if (isP(nodes[j], ")")) depth++;
+        else if (isP(nodes[j], "(") && --depth === 0) break;
+      }
+      return group(j + 1, i);
+    }
+    return undefined;
+  });
+}
+
+export function layoutSeq(nodes: MNode[], font: FontId = "n", inSup = false): Box {
   const ops: Op[] = [];
   let x = 0;
   let asc = GLYPH_H[font];
   let desc = DESC[font];
+  const tall = font === "n" ? parenHeights(nodes) : [];
   nodes.forEach((n, i) => {
-    const b = layoutNode(n, font);
+    let b = layoutNode(n, font, inSup);
+    const t = tall[i];
+    if (t && n.t === "g") b = { ...b, asc: t === 13 ? 10 : 9, desc: t === 13 ? 3 : b.desc, ops: tallParen(n.key, t) };
+    // the cursor on an empty whole-number slot fills its placeholder
+    if (n.t === "cur" && nodes[i + 1]?.t === "base") b = { ...b, ops: [{ k: "solid", x: 0, y: -GLYPH_H[font], w: 5, h: GLYPH_H[font] }] };
     ops.push(...shift(b.ops, x, 0));
     // the cursor in front of a stacked fraction (after a mixed number's whole part) takes a cell of its own
     x += b.w + (n.t === "cur" && nodes[i + 1]?.t === "frac" && nodes[i - 1]?.t === "g" ? PITCH[font] : 0);
@@ -137,15 +190,15 @@ function placeholder(font: FontId): Op[] {
 }
 
 /** An empty template slot is a placeholder box; a cursor in it fills the box while the cursor is on. */
-function layoutSlot(nodes: MNode[], font: FontId): Box {
-  if (!isEmptySlot(nodes)) return layoutSeq(baseless(nodes) ? [{ t: "base" }, ...nodes] : nodes, font);
+function layoutSlot(nodes: MNode[], font: FontId, inSup = false): Box {
+  if (!isEmptySlot(nodes)) return layoutSeq(baseless(nodes) ? [{ t: "base" }, ...nodes] : nodes, font, inSup);
   const h = GLYPH_H[font];
   const ops = placeholder(font);
   if (nodes.length) ops.push({ k: "solid", x: 0, y: -h, w: font === "m" ? 4 : 5, h });
   return { w: PITCH[font], asc: h, desc: DESC[font], ops };
 }
 
-function layoutNode(n: MNode, font: FontId): Box {
+function layoutNode(n: MNode, font: FontId, inSup = false): Box {
   const h = GLYPH_H[font];
   const p = PITCH[font];
   const sub: FontId = font === "m" ? "m" : "s";
@@ -157,24 +210,26 @@ function layoutNode(n: MNode, font: FontId): Box {
     case "cur":
       return { w: 0, asc: h, desc: 0, ops: [{ k: "cur", x: 0, y: n.under ? 0 : -h, w: p - 1, h: n.under ? 1 : h }] };
     case "sup": {
-      const e = layoutSlot(n.a, sub);
+      const e = layoutSlot(n.a, sub, true);
       const dy = font === "n" ? -4 : -2;
       return { w: e.w, asc: e.asc - dy, desc: Math.max(0, e.desc + dy), ops: shift(e.ops, 0, dy) };
     }
     case "frac": {
+      // wider part + 1 cells; parts start half a cell in (BEHAVIOR §3.1). In a superscript it keeps the normal size.
       const a = layoutSlot(n.a, sub);
       const b = layoutSlot(n.b, sub);
-      const w = Math.max(a.w, b.w, p);
-      const bar = font === "n" ? -4 : -3;
-      const gap = font === "n" ? 1 : 0;
+      const inner = Math.max(a.w, b.w, p);
+      const half = p / 2;
+      const bar = font === "n" ? -4 : inSup ? -7 : -3;
+      const gap = font === "n" || inSup ? 1 : 0;
       const numDy = bar - gap - a.desc;
       const denDy = bar + 1 + gap + b.asc;
       const ops: Op[] = [
-        ...shift(a.ops, Math.floor((w - a.w) / 2), numDy),
-        { k: "rect", x: -1, y: bar, w: w + 1, h: 1 },
-        ...shift(b.ops, Math.floor((w - b.w) / 2), denDy),
+        ...shift(a.ops, half + Math.floor((inner - a.w) / 2), numDy),
+        { k: "rect", x: 1, y: bar, w: inner + half, h: 1 },
+        ...shift(b.ops, half + Math.floor((inner - b.w) / 2), denDy),
       ];
-      return { w, asc: a.asc - numDy, desc: denDy + b.desc, ops };
+      return { w: inner + p, asc: a.asc - numDy, desc: Math.max(DESC[font], denDy + b.desc), ops };
     }
     case "sqrt":
     case "root": {
@@ -234,7 +289,10 @@ export function cells(nodes: MNode[]): number {
         c += cells(n.a);
         break;
       case "frac":
-        c += Math.max(slot(n.a), slot(n.b));
+        c += Math.max(slot(n.a), slot(n.b)) + 1;
+        break;
+      case "base":
+        c += 1;
         break;
       case "sqrt":
         c += 1 + slot(n.a);
@@ -270,6 +328,8 @@ export function serialize(nodes: MNode[]): string {
           return OVER_ON + serialize(n.a) + OVER_OFF;
         case "blink":
           return BLINK_ON + serialize(n.a) + BLINK_OFF;
+        case "base":
+          return HOLE;
       }
     })
     .join("");

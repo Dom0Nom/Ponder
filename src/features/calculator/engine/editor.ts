@@ -1,3 +1,5 @@
+import { HOLE } from "../lcd/layout";
+
 export type TplKind = "frac" | "mixed" | "sqrt" | "root" | "pow";
 export type El = { k: "t"; v: string } | { k: TplKind; s: El[][] };
 
@@ -67,6 +69,51 @@ export function takeOperand(ed: Ed): El[] {
   const taken = l.splice(i, ed.pos - i);
   ed.pos = i;
   return taken;
+}
+
+const POSTFIX = /^(%|²|⁻¹|!|°|'|"|ʳ|ᵍ)$/;
+
+/** Start of the whole operand that ends at `pos`: numbers, constants, templates, postfix marks and (…) groups. */
+export function operandStart(l: El[], pos: number): number {
+  let i = pos;
+  while (i > 0) {
+    const e = l[i - 1];
+    if (e.k !== "t" || OPERAND.test(e.v) || POSTFIX.test(e.v)) {
+      i--;
+      continue;
+    }
+    if (e.v !== ")") break;
+    let depth = 0;
+    let j = i - 1;
+    for (; j >= 0; j--) {
+      const t = l[j];
+      if (t.k !== "t") continue;
+      if (t.v === ")") depth++;
+      else if (t.v.endsWith("(") && --depth === 0) break;
+    }
+    if (j < 0) break;
+    i = j;
+  }
+  return i;
+}
+
+/** Remove and return the whole operand before the cursor (the x-root index, BEHAVIOR §9). */
+export function takeIndex(ed: Ed): El[] {
+  const l = listAt(ed);
+  const i = operandStart(l, ed.pos);
+  const taken = l.splice(i, ed.pos - i);
+  ed.pos = i;
+  return taken;
+}
+
+/** `x²`, `x⁻¹` or `^` right after a power wrap the operand in real parentheses: `(8^{2})^{5}`. */
+export function wrapPower(ed: Ed) {
+  const l = listAt(ed);
+  if (l[ed.pos - 1]?.k !== "pow") return;
+  const i = operandStart(l, ed.pos);
+  l.splice(ed.pos, 0, tok(")"));
+  l.splice(i, 0, tok("("));
+  ed.pos += 2;
 }
 
 export function prevEl(ed: Ed): El | undefined {
@@ -140,26 +187,28 @@ export function vertical(ed: Ed, dir: 1 | -1): boolean {
   return false;
 }
 
+/** Remove the template holding the cursor; the content of its other slots stays inline. `e^{}` goes with its `e`. */
+function unwrap(ed: Ed) {
+  const p = parentTpl(ed)!;
+  ed.path.pop();
+  const before = p.el.s.slice(0, p.s).flat();
+  const after = p.el.s.slice(p.s + 1).flat();
+  const at = p.el.k === "pow" && isTok(p.list[p.i - 1], "e") ? p.i - 1 : p.i;
+  p.list.splice(at, p.i + 1 - at, ...before, ...after);
+  ed.pos = at + before.length;
+}
+
+/** `delete` (BEHAVIOR §5): emptying a power, √ or x-root slot removes the template; in an empty slot it always does. */
 export function del(ed: Ed) {
   const l = listAt(ed);
-  if (ed.pos < l.length || ed.pos > 0) {
-    if (ed.pos < l.length) l.splice(ed.pos, 1);
-    else l.splice(--ed.pos, 1);
-    const p = parentTpl(ed);
-    // emptying a superscript removes it; typing continues on the baseline
-    if (p && p.el.k === "pow" && l.length === 0) {
-      ed.path.pop();
-      p.list.splice(p.i, 1);
-      ed.pos = p.i;
-    }
+  const p = parentTpl(ed);
+  if (!l.length) {
+    if (p) unwrap(ed);
     return;
   }
-  const p = parentTpl(ed);
-  if (p && p.el.s.every((x) => x.length === 0)) {
-    ed.path.pop();
-    p.list.splice(p.i, 1);
-    ed.pos = p.i;
-  }
+  if (ed.pos < l.length) l.splice(ed.pos, 1);
+  else l.splice(--ed.pos, 1);
+  if (p && !l.length && p.el.k !== "frac" && p.el.k !== "mixed") unwrap(ed);
 }
 
 /** Depth of template nesting at the cursor. */
@@ -176,15 +225,7 @@ export function markup(els: El[], mathprint = true, cursor?: Ed): string {
   const walk = (list: El[], path: { i: number; s: number }[], here: boolean): string => {
     let out = "";
     const curPos = here && cursor && path.length === cursor.path.length ? cursor.pos : -1;
-    const starts: number[] = [];
     list.forEach((e, i) => {
-      starts.push(out.length);
-      if (e.k === "pow" && list[i - 1]?.k === "pow") {
-        // repeated powers show automatic parentheses: (3^{2})^{2}
-        let b = i - 1;
-        while (b > 0 && isTok(list[b - 1]) && OPERAND.test((list[b - 1] as { v: string }).v)) b--;
-        out = out.slice(0, starts[b]) + "(" + out.slice(starts[b]) + ")";
-      }
       if (i === curPos) out += cursor!.ins ? CURSOR_INS : CURSOR;
       const sub = (s: number) => {
         const next = cursor && here && cursor.path[path.length];
@@ -199,7 +240,7 @@ export function markup(els: El[], mathprint = true, cursor?: Ed): string {
           out += `\\f{${sub(0)}}{${sub(1)}}`;
           break;
         case "mixed":
-          out += `${sub(0)}\\f{${sub(1)}}{${sub(2)}}`;
+          out += `${sub(0)}${e.s[0].length ? "" : HOLE}\\f{${sub(1)}}{${sub(2)}}`;
           break;
         case "sqrt":
           out += `√{${sub(0)}}`;
@@ -218,7 +259,7 @@ export function markup(els: El[], mathprint = true, cursor?: Ed): string {
   return walk(els, [], true);
 }
 
-export const stripCursor = (s: string) => s.replaceAll(CURSOR, "").replaceAll(CURSOR_INS, "");
+export const stripCursor = (s: string) => s.replaceAll(CURSOR, "").replaceAll(CURSOR_INS, "").replaceAll(HOLE, "");
 
 /** Parse display text of a value (e.g. "⁻\f{3}{4}", "2√{2}", "1.5*10^{⁻7}") back into elements. */
 export function fromMarkup(s: string): El[] {
@@ -256,20 +297,20 @@ export function fromMarkup(s: string): El[] {
   return group();
 }
 
-/** `clear` with the cursor in (or on) a template removes that template only. Returns false when there is none. */
-export function clearTemplate(ed: Ed): boolean {
+/** `clear` deletes from the cursor to the end; inside a template it starts at that template (BEHAVIOR §5).
+ * Returns false when the whole line goes (cursor at the start, or at the end of the entry). */
+export function clearFrom(ed: Ed): boolean {
   const p = parentTpl(ed);
   if (p) {
+    const pos = ed.pos;
     ed.path.pop();
-    p.list.splice(p.i, 1);
-    ed.pos = p.i;
-    ed.path = ed.path.slice(0, ed.path.length);
+    // the whole-number part of a mixed number is on the baseline
+    const keep = p.el.k === "mixed" && p.s === 0 ? p.el.s[0].slice(0, pos) : [];
+    p.list.splice(p.i, p.list.length - p.i, ...keep);
+    ed.pos = p.i + keep.length;
     return true;
   }
-  const l = listAt(ed);
-  if (ed.pos < l.length && l[ed.pos].k !== "t") {
-    l.splice(ed.pos, 1);
-    return true;
-  }
-  return false;
+  if (ed.pos === 0 || ed.pos >= ed.els.length) return false;
+  ed.els.splice(ed.pos);
+  return true;
 }

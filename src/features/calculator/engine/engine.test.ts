@@ -97,7 +97,7 @@ describe("editor", () => {
 describe("display rules", () => {
   test("row placement counts cells", () => {
     expect(cells(parse("e^{.5}")) + cells(parse("1.648721271"))).toBe(14);
-    expect(cells(parse("\\f{3}{4}+1\\f{7}{12}"))).toBe(5);
+    expect(cells(parse("\\f{3}{4}+1\\f{7}{12}"))).toBe(7);
   });
 
   test("long entries scroll with overflow marks", () => {

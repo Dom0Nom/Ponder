@@ -134,3 +134,38 @@ describe("radical scrolled partly off screen", () => {
     expect(lines(keys)).toEqual(["◂ns◂▸3+373tan(27"]);
   });
 });
+
+describe("fraction layout", () => {
+  const bar = (m: string) => layout(m).ops.find((o) => o.k === "rect" && o.h === 1 && o.w > 1)!;
+  const g = (m: string, key: string) => layout(m).ops.find((o) => o.k === "g" && o.key === key)!;
+
+  test("a fraction takes its wider part + 1 cells, parts half a cell in", () => {
+    expect(layout("\\f{}{}").w).toBe(12);
+    expect(bar("\\f{}{}")).toMatchObject({ x: 1, w: 9 });
+    expect(bar("\\f{1}{1000}π")).toMatchObject({ x: 1, w: 27 });
+    expect(g("\\f{1}{1000}π", "π").x).toBe(30);
+    expect(g("\\f{π}{2}", "2").x).toBe(3);
+  });
+
+  test("a fraction in a superscript keeps the normal size and drops the base", () => {
+    const m = "2^{\\f{1}{3}}";
+    expect(bar(m).y).toBe(-11);
+    expect(g(m, "1").y).toBe(-17);
+    expect(g(m, "3").y).toBe(-9);
+    expect(g(m, "2").y).toBe(-7);
+  });
+
+  test("parentheses are tall next to a fraction or around a superscript", () => {
+    const rows = (m: string) => layout(m).ops.filter((o) => o.k === "rect" && o.x < 6).map((o) => o.y);
+    expect(rows("(\\f{1}{2}")).toHaveLength(13);
+    expect(Math.min(...rows("(\\f{1}{2}"))).toBe(-10);
+    expect(rows("(2^{3})")).toHaveLength(9);
+    expect(layout("(2)").ops.filter((o) => o.k === "g" && o.key === "(")).toHaveLength(1);
+  });
+
+  test("2nd frac on an empty line shows a whole-number placeholder", () => {
+    const c = run("2nd frac");
+    expect(c.text().lines).toEqual(["\\f{}{}"]);
+    expect(layout(model(c.state).rows[0].l).w).toBe(18);
+  });
+});
