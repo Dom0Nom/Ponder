@@ -51,7 +51,7 @@ export async function generateQuiz(
   const topicList = opts.topics.map((t) => `- id "${t.id}": ${t.title} (${t.description})`).join("\n");
   const prompt = [
     `Write a multiple-choice quiz for a learner. Purpose: ${opts.purpose}`,
-    `Topics (write ${opts.perTopic} question${opts.perTopic > 1 ? "s" : ""} per topic, from easy to medium):`,
+    `Topics (write exactly ${opts.perTopic} question${opts.perTopic > 1 ? "s" : ""} per topic, ${opts.perTopic * opts.topics.length} in total, from easy to medium):`,
     topicList,
     opts.context ? `Base the questions on this material:\n"""\n${opts.context.slice(0, 9000)}\n"""` : "",
     "Each question has exactly 4 options, one correct answer (0-based index), and a one-sentence explanation. Questions must be answerable without seeing a picture. Avoid 'all of the above'.",
@@ -61,8 +61,18 @@ export async function generateQuiz(
     .filter(Boolean)
     .join("\n\n");
   const r = await generateText({ model: llm.model, prompt, abortSignal: opts.signal, ...llm.options({ thinking: false }) });
-  const quiz = parseQuiz(r.text, opts.topics.map((t) => t.id));
+  const quiz = capPerTopic(parseQuiz(r.text, opts.topics.map((t) => t.id)), opts.perTopic);
   return quiz.map((q) => shuffleOptions(q));
+}
+
+/** Models sometimes write more questions than asked; keep the first `per` for each topic. */
+export function capPerTopic<T extends { topicId: string | null }>(qs: T[], per: number): T[] {
+  const seen = new Map<string | null, number>();
+  return qs.filter((q) => {
+    const n = seen.get(q.topicId) ?? 0;
+    seen.set(q.topicId, n + 1);
+    return n < per;
+  });
 }
 
 /** Models tend to put the right answer first; shuffle so position isn't a tell. */

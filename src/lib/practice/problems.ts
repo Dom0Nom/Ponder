@@ -161,7 +161,8 @@ export async function gradeResponse(llm: ResolvedModel, item: PracticeItem, resp
       `Question: ${item.question}`,
       `Model answer: ${item.answer}`,
       `Learner's answer: ${response}`,
-      'Return JSON only: {"correct": true|false, "feedback": "one or two sentences to the learner"}',
+      "Feedback: at most two plain sentences to the learner, in the language of the question. If wrong, say what is missing or wrong; no praise phrases.",
+      'Return JSON only: {"correct": true|false, "feedback": "…"}',
     ].join("\n"),
     signal,
   );

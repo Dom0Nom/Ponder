@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coverageLevel, detectChapters, gradeQuiz, levelFor, parseQuiz, pickPlacementTopics, shuffleOptions } from "./logic";
+import { capPerTopic, coverageLevel, detectChapters, gradeQuiz, levelFor, parseQuiz, pickPlacementTopics, shuffleOptions } from "./logic";
 import { CURRICULA } from "./curricula";
 
 describe("placement logic", () => {
@@ -69,5 +69,12 @@ describe("placement logic", () => {
     const pdf = `Intro text\nCHAPTER 1 Cells\n${body}\nChapter 2: Energy\n${body}`;
     expect(detectChapters(pdf).map((c) => c.title)).toEqual(["CHAPTER 1 Cells", "Chapter 2: Energy"]);
     expect(detectChapters("no chapters here")).toEqual([]);
+  });
+});
+
+describe("capPerTopic", () => {
+  it("keeps the first n questions of each topic", () => {
+    const qs = ["a", "a", "b", "a", "b", "b"].map((topicId, i) => ({ topicId, i }));
+    expect(capPerTopic(qs, 2).map((q) => q.i)).toEqual([0, 1, 2, 4]);
   });
 });

@@ -13,9 +13,9 @@ const TUTOR: Record<TutorStyle, string> = {
   direct:
     "Tutor style: direct. Explain clearly and give the answer, with the reasoning a learner needs to follow it.",
   socratic:
-    "Tutor style: Socratic. Don't hand over final answers. Ask one guiding question at a time, give hints, and let the learner do the thinking. Confirm or correct their attempts.",
+    "Tutor style: Socratic. Let the learner do the thinking: ask one guiding question per reply and give hints, but don't state the final answer while they are still working on it. Confirm correct steps plainly and point at the exact spot of a mistake. If they have tried and are stuck, or ask for the answer outright, take them one step further (show the next step) instead of repeating the question; after two failed tries, explain the answer with its reasoning.",
   mixed:
-    "Tutor style: mixed. Start with a guiding question or hint; if the learner is stuck or asks directly, explain fully.",
+    "Tutor style: mixed. Start with one guiding question or hint; if the learner is stuck or asks directly, explain fully.",
 };
 
 export interface ContextInput {
@@ -44,8 +44,11 @@ export function describeFocus(f: FocusState | null, now: number): string | null 
       lines.push(
         `The learner is in focus block ${f.block} (${f.technique}), ${minutes(mins(f.elapsedMs))} in. Time left until the break: ${minutes(left)} (the break starts at ${breakAt} clock time).${goal}`,
       );
+      const budget = Math.max(60, Math.min(250, left * 30));
       lines.push(
-        "Fit your answer into the time left. If a full explanation won't fit before the break, say so up front and give the short version or a first part.",
+        left <= 8
+          ? `Fit your answer into the time left: keep the whole reply under ${budget} words. If a full explanation won't fit before the break, say so in one short line and give the short version or a first part.`
+          : "Fit your answer into the time left. If a full explanation won't fit before the break, say so up front and give the short version or a first part.",
       );
     } else {
       lines.push(`The learner is in an open-ended flowtime block, ${minutes(mins(f.elapsedMs))} in.${goal}`);
@@ -57,7 +60,7 @@ export function describeFocus(f: FocusState | null, now: number): string | null 
   if (f.needAppCount > 0) lines.push(`They have interrupted ${f.needAppCount} break(s) this session with "I need the app".`);
   if (f.energy === "low") {
     lines.push(
-      "This is a LOW-ENERGY review session: the learner has little energy today. Help them review and consolidate what they already studied (due flashcards, past mistakes, light re-reading). Do not introduce new material or start new topics. Keep answers short and gentle, and offer a single small next step. Today's energy level is not a lasting preference, so don't save it to memory.",
+      "This is a LOW-ENERGY review session: the learner has little energy today. Help them review and consolidate what they already studied (due flashcards, past mistakes, light re-reading). Do not introduce new material or start new topics. Keep answers under 100 words and gentle, and offer a single small next step. Today's energy level is not a lasting preference, so don't save it to memory.",
     );
   }
   lines.push(`Focus so far: ${mins(f.totalFocusMs)} min, pauses: ${f.pauseCount}.`);
@@ -68,7 +71,7 @@ export function buildSystemPrompt(input: ContextInput): string {
   const { space, passages } = input;
   const parts: string[] = [];
   parts.push(
-    `You are a patient, encouraging study tutor inside a learning app. The learner is studying in the space "${space.name}". Reply in the language the learner writes in. Use Markdown; use LaTeX ($...$, $$...$$) for math.`,
+    `You are a patient, encouraging study tutor inside a learning app. The learner is studying in the space "${space.name}". Reply in the language the learner writes in. Use Markdown; use LaTeX ($...$, $$...$$) for math. Respond to the content directly: no opening praise like "Great question", no emoji, no filler.`,
   );
   parts.push(TUTOR[input.tutorStyle]);
   if (input.memory?.length) {

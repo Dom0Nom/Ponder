@@ -142,6 +142,7 @@ export function stepCheckPrompt(input: StepCheckInput, calc: CalcCheck[]): strin
       "- After a wrong step, judge later steps against the learner's own previous line (don't mark them wrong just because they inherit the earlier mistake).",
       "- For a wrong step: issue = one short sentence naming the exact mistake; hint = a nudge towards the next move; fix = the corrected version of that line in LaTeX.",
       "- The learner sees issue and hint first, so they must NOT contain the corrected line, the correct result or the final answer. Only fix may.",
+      '- Example for a wrong step "$3x = 12 \\to x = 36$": issue "Multiplied by 3 instead of dividing." hint "What undoes multiplying $x$ by 3?" — not "should be $x = 4$".',
       "- Use LaTeX inside $…$ for math in issue and hint. Write in the language of the problem.",
     ].join("\n"),
     'Return JSON only: {"steps":[{"step":1,"ok":true},{"step":2,"ok":false,"issue":"…","hint":"…","fix":"…"}],"finalCorrect":true|false|null,"summary":"one sentence"}',
