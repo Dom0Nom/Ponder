@@ -26,6 +26,7 @@ mod mcp_client;
 mod mcp_oauth;
 pub mod paths;
 mod icons;
+mod inbox;
 mod openrouter;
 mod placement;
 mod plans;
@@ -84,6 +85,7 @@ pub fn run() {
             ask::init(app.handle(), &db);
             backup::start(app.handle(), db.clone(), data_dir.clone());
             deeplink::init(app.handle());
+            inbox::start(app.handle(), db.clone());
             app.manage(AppState { db, data_dir });
             Ok(())
         })
@@ -97,6 +99,8 @@ pub fn run() {
             backup::backup_cancel_restore,
             backup::restart_app,
             deeplink::deeplink_take,
+            inbox::inbox_pending,
+            inbox::inbox_finish,
             cli::integrations_info,
             pack::pack_export,
             pack::pack_import,

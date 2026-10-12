@@ -70,6 +70,7 @@ export interface DB {
   glossaries?: Row<T.Glossary>;
   rewrites?: T.PassageRewrite[];
   annotations?: T.Annotation[];
+  inbox?: T.InboxItem[];
   exports?: { name: string; extension: string; size: number }[];
   mcpCalls?: { server: string; tool: string; arguments: unknown }[];
   mcpAuth?: Record<string, boolean>;
@@ -1431,6 +1432,16 @@ const handlers: Record<string, (a: Args) => unknown> = {
     return backupStatus();
   },
   deeplink_take: () => deepLinkQueue.splice(0),
+  inbox_pending: () => structuredClone((db.inbox ?? []).filter((x) => x.status === "pending")),
+  inbox_finish: (a) => {
+    const item = db.inbox?.find((x) => x.id === a.id);
+    if (!item) err("not_found", "inbox item not found");
+    item.status = a.error ? "error" : "done";
+    item.resultId = (a.resultId as string | null) ?? null;
+    item.error = (a.error as string | null) ?? null;
+    item.body = "";
+    save();
+  },
   integrations_info: () => ({ exePath: "/Applications/Ponder.app/Contents/MacOS/ponder", dbPath: "/Users/me/Library/Application Support/dev.ponder.app/app.db" }),
   restart_app: () => {
     db.backup.restoreStaged = false;

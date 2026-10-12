@@ -38,6 +38,18 @@ pub fn open_readonly(path: &Path) -> AppResult<Connection> {
     Ok(conn)
 }
 
+/// Read-write for the MCP server's write tools. Never creates or migrates: the app owns the schema.
+pub fn open_for_inbox(path: &Path) -> AppResult<Connection> {
+    let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX)?;
+    conn.busy_timeout(std::time::Duration::from_secs(10))?;
+    conn.pragma_update(None, "foreign_keys", "ON")?;
+    let has_inbox: bool = conn.query_row("SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'inbox')", [], |r| r.get(0))?;
+    if !has_inbox {
+        return Err(invalid("This Ponder database is too old for --write. Open the updated app once, then try again."));
+    }
+    Ok(conn)
+}
+
 pub struct SpaceRow {
     pub id: String,
     pub name: String,

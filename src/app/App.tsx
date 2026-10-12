@@ -24,6 +24,7 @@ import { QuizLayer } from "../features/placement/QuizDialog";
 import { QuickCaptureDialog } from "../features/capture/QuickCaptureDialog";
 import { useGlobalShortcuts } from "./useGlobalShortcuts";
 import { useBackgroundSync } from "./useBackgroundSync";
+import { useInbox } from "./useInbox";
 import { useDeepLinks } from "./useDeepLinks";
 import { useStudyBuddy } from "../features/chat/useStudyBuddy";
 
@@ -101,6 +102,7 @@ function Shell() {
   useGlobalShortcuts();
   useBackgroundSync();
   useDeepLinks();
+  useInbox();
   useStudyBuddy();
   return (
     <div className="flex h-full bg-chrome text-fg">

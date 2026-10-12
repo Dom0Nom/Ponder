@@ -94,6 +94,8 @@ export const api = {
   packImport: () => call<T.PackImport | null>("pack_import"),
   restartApp: () => call<void>("restart_app"),
   deeplinkTake: () => call<string[]>("deeplink_take"),
+  inboxPending: () => call<T.InboxItem[]>("inbox_pending"),
+  inboxFinish: (id: string, resultId: string | null, error: string | null) => call<void>("inbox_finish", { id, resultId, error }),
   integrationsInfo: () => call<T.IntegrationsInfo>("integrations_info"),
 
   // focus music
@@ -321,6 +323,7 @@ export const events = {
   askNavigate: (cb: (r: T.AskOpenRequest) => void) => listen<T.AskOpenRequest>("ask://navigate", (e) => cb(e.payload)),
   backupUpdated: (cb: () => void) => listen("backup://updated", () => cb()),
   deeplinkPending: (cb: () => void) => listen("deeplink://pending", () => cb()),
+  inboxChanged: (cb: () => void) => listen("inbox://changed", () => cb()),
 };
 
 export type { UnlistenFn };

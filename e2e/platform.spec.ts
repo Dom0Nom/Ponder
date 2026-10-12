@@ -46,9 +46,34 @@ test("integrations: shows link examples and the CLI alias with the binary path",
   await expect(section.getByTestId("cli-alias")).toHaveText("alias ponder='/Applications/Ponder.app/Contents/MacOS/ponder'");
   const exe = "/Applications/Ponder.app/Contents/MacOS/ponder";
   const db = "/Users/me/Library/Application Support/dev.ponder.app/app.db";
-  await expect(section.getByTestId("mcp-claude-code")).toHaveText(`claude mcp add ponder -- ${exe} mcp --db '${db}'`);
+  await expect(section.getByTestId("mcp-claude-code")).toHaveText(`claude mcp add ponder -- ${exe} mcp --db '${db}' --write`);
   const cfg = JSON.parse((await section.getByTestId("mcp-claude-desktop").textContent()) ?? "");
-  expect(cfg).toEqual({ mcpServers: { ponder: { command: exe, args: ["mcp", "--db", db] } } });
+  expect(cfg).toEqual({ mcpServers: { ponder: { command: exe, args: ["mcp", "--db", db, "--write"] } } });
+  await section.getByRole("switch", { name: "Let them add sources and notes" }).click();
+  await expect(section.getByTestId("mcp-claude-code")).toHaveText(`claude mcp add ponder -- ${exe} mcp --db '${db}'`);
+});
+
+test("inbox: items queued by the MCP server are imported, failures are recorded", async ({ app }) => {
+  const bio = await createSpace(app, "Biology");
+  await app.evaluate((spaceId) => {
+    const m = (window as any).__mock;
+    const base = { spaceId, target: null, useAsSource: false, status: "pending", error: null, resultId: null, createdAt: 1 };
+    m.db().inbox = [
+      { ...base, id: "i1", kind: "text", title: "Krebs cycle", body: "Citrate is formed from acetyl-CoA and oxaloacetate." },
+      { ...base, id: "i2", kind: "note", title: "From Claude", body: "Remember the ATP yield.", useAsSource: false },
+      { ...base, id: "i3", kind: "text", title: "Gone", body: "x", spaceId: "missing" },
+    ];
+    m.emit("inbox://changed", null);
+  }, bio);
+  await expect
+    .poll(() => app.evaluate(() => (window as any).__mock.db().inbox.map((x: { status: string }) => x.status)))
+    .toEqual(["done", "done", "error"]);
+  await expect(app.getByText("Couldn't add an item from another app")).toBeVisible();
+  await expect(app.getByRole("button", { name: "1 source" })).toBeVisible();
+  const sources = await app.evaluate(() => Object.values((window as any).__mock.db().sources).map((x: any) => x.title));
+  expect(sources).toEqual(["Krebs cycle"]);
+  const notes = await app.evaluate(() => Object.values((window as any).__mock.db().notes ?? {}).map((n: any) => n.title));
+  expect(notes).toContain("From Claude");
 });
 
 const TEXT = "Cells divide by mitosis. Mitochondria make energy for the cell.";

@@ -877,6 +877,20 @@ export interface DatedPlanTask extends PlanTask {
   spaceIcon: string;
 }
 
+export interface InboxItem {
+  id: string;
+  spaceId: string;
+  kind: "text" | "url" | "file" | "note";
+  title: string;
+  body: string;
+  target: string | null;
+  useAsSource: boolean;
+  status: "pending" | "done" | "error";
+  error: string | null;
+  resultId: string | null;
+  createdAt: number;
+}
+
 export interface Note {
   id: string;
   spaceId: string;

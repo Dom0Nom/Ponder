@@ -3,7 +3,7 @@ import { Check, Copy } from "lucide-react";
 import { useIntegrationsInfo } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import { Button } from "../../components/ui/button";
-import { ErrorState, Skeleton } from "../../components/ui/misc";
+import { ErrorState, Skeleton, Switch } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
 import { SettingsGroup, SettingsRow } from "./layout";
 import { McpClientSection } from "./McpClientSection";
@@ -45,9 +45,10 @@ export const shellQuote = (p: string) => `'${p.replace(/'/g, `'\\''`)}'`;
 
 export function IntegrationsSection() {
   const { data, isLoading, error, refetch } = useIntegrationsInfo();
+  const [write, setWrite] = useState(true);
   if (isLoading) return <Skeleton className="h-40" />;
   if (error || !data) return <ErrorState title={s.integrations.loadError} error={error} onRetry={() => refetch()} />;
-  const mcpArgs = ["mcp", "--db", data.dbPath];
+  const mcpArgs = ["mcp", "--db", data.dbPath, ...(write ? ["--write"] : [])];
   const claudeCodeCommand = `claude mcp add ponder -- ${[data.exePath, ...mcpArgs].map((a) => (/^[\w./:@%+=-]+$/.test(a) ? a : shellQuote(a))).join(" ")}`;
   const desktopConfig = JSON.stringify({ mcpServers: { ponder: { command: data.exePath, args: mcpArgs } } }, null, 2);
   return (
@@ -79,6 +80,11 @@ export function IntegrationsSection() {
         <h3 className="text-input font-semibold">{s.integrations.mcpTitle}</h3>
         <p className="text-body text-muted">{s.integrations.mcpBody}</p>
         <p className="text-caption text-muted">{s.integrations.mcpTools}</p>
+        <SettingsGroup>
+          <SettingsRow title={s.integrations.mcpWrite} description={s.integrations.mcpWriteBody}>
+            <Switch checked={write} onCheckedChange={setWrite} label={s.integrations.mcpWrite} />
+          </SettingsRow>
+        </SettingsGroup>
         <p className="text-caption font-medium">{s.integrations.mcpClaudeCode}</p>
         <CodeBlock testId="mcp-claude-code" label={`${s.integrations.copy}: ${s.integrations.mcpClaudeCode}`} text={claudeCodeCommand} />
         <p className="text-caption font-medium">{s.integrations.mcpClaudeDesktop}</p>
