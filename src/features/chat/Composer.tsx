@@ -17,6 +17,9 @@ import { PhotoDialog } from "../steps/PhotoDialog";
 import { Menu, MenuContent, MenuItem, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../../components/ui/menu";
 import { Tooltip } from "../../components/ui/misc";
 import { DictateButton } from "../speech/DictateButton";
+import { VoiceBar } from "../voice/VoiceBar";
+import { VoiceButton } from "../voice/VoiceButton";
+import { useVoice } from "../../stores/voice";
 import { toast, toastError } from "../../components/ui/toast";
 import { ModelMenu } from "./ModelMenu";
 
@@ -52,6 +55,7 @@ export function Composer({
   const registerSend = useComposer((st) => st.register);
   const update = useUpdateSpace();
   const low = useLowEnergy(space.id);
+  const voiceOn = useVoice((st) => st.phase !== "off" && st.spaceId === space.id);
 
   const send = async (override?: string) => {
     const msg = (override ?? text).trim();
@@ -120,6 +124,7 @@ export function Composer({
 
   return (
     <div className={cn("mx-auto rounded-pane border border-control bg-surface transition-colors focus-within:border-fg/40", studioOpen ? "max-w-[654px]" : "max-w-[652px]")}>
+      {voiceOn && <VoiceBar />}
       <textarea
         ref={ref}
         rows={1}
@@ -138,9 +143,9 @@ export function Composer({
             send();
           }
         }}
-        className="block max-h-[220px] w-full resize-none bg-transparent px-3.5 pb-1.5 pt-3 text-input leading-[1.45] outline-none placeholder:text-faint focus-visible:outline-none"
+        className={cn("block max-h-[220px] w-full resize-none bg-transparent px-3.5 pb-1.5 pt-3 text-input leading-[1.45] outline-none placeholder:text-faint focus-visible:outline-none", voiceOn && "hidden")}
       />
-      <div className="flex items-center gap-1 px-2 pb-2 pt-1.5">
+      <div className={cn("flex items-center gap-1 px-2 pb-2 pt-1.5", voiceOn && "hidden")}>
         <Menu>
           <Tooltip content={s.chat.attach} side="top">
             <MenuTrigger asChild>
@@ -200,6 +205,7 @@ export function Composer({
               ref.current?.focus();
             }}
           />
+          <VoiceButton className={iconBtn} disabled={disabled} deps={{ space, thread, ensureThread }} />
           <button
             aria-label={running ? s.chat.stop : s.chat.send}
             disabled={!running && (disabled || !text.trim())}

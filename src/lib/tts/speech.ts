@@ -237,6 +237,9 @@ export async function openRouterAudioModels(kind: "speech" | "transcription", pr
 
 export const AUDIO_FORMATS = ["wav", "mp3", "flac", "m4a", "ogg", "webm", "aac"] as const;
 
+export const audioFormatOf = (mime: string): (typeof AUDIO_FORMATS)[number] =>
+  mime.includes("mp4") || mime.includes("aac") ? "m4a" : mime.includes("ogg") ? "ogg" : "webm";
+
 /** Speech to text through OpenRouter (`/v1/audio/transcriptions`, base64 JSON). */
 export async function transcribe(cfg: SpeechSettings, audio: Uint8Array, format: (typeof AUDIO_FORMATS)[number], language?: string, providers?: Provider[]): Promise<string> {
   const t = speechTarget("openrouter", providers ?? (await api.listProviders()));

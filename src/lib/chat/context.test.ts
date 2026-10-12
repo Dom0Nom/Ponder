@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSystemPrompt, describeFocus, historyMessages, threadTitleFrom } from "./context";
+import { buildSystemPrompt, describeFocus, historyMessages, threadTitleFrom, VOICE_INSTRUCTION } from "./context";
 import type { FocusState, Message } from "../types";
 
 const focus: FocusState = {
@@ -38,6 +38,14 @@ describe("context assembly", () => {
     expect(p).toContain("Socratic");
     expect(p).toContain("{{general}}");
     expect(p).not.toContain("Focus session:");
+  });
+
+  it("adds the spoken-style rules last, only in voice mode", () => {
+    const base = { space: { name: "B", strictGrounding: false }, tutorStyle: "direct" as const, passages: [], focus: null, now: 0, sourceCount: 0 };
+    expect(buildSystemPrompt(base)).not.toContain("Voice conversation:");
+    const p = buildSystemPrompt({ ...base, voice: true, extraInstructions: "Extra." });
+    expect(p.endsWith(VOICE_INSTRUCTION)).toBe(true);
+    expect(p).toContain("at most 4 short sentences");
   });
 
   it("strict mode forbids general knowledge", () => {
