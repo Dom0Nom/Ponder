@@ -4,6 +4,7 @@ import {
   captureTitle,
   formatShortcut,
   parseShortcut,
+  sameShortcut,
   shortcutFromEvent,
   validateShortcut,
 } from "./shortcut";
@@ -62,5 +63,13 @@ describe("captureTitle", () => {
   });
   it("falls back to a dated title for long first lines", () => {
     expect(captureTitle("x".repeat(200), day)).toMatch(/^Quick note · .*2026/);
+  });
+});
+
+describe("sameShortcut", () => {
+  it("compares key combinations, not spelling", () => {
+    expect(sameShortcut("Alt+CommandOrControl+A", "option+cmd+a")).toBe(true);
+    expect(sameShortcut("Alt+CommandOrControl+A", "Alt+CommandOrControl+S")).toBe(false);
+    expect(sameShortcut("nonsense", "nonsense")).toBe(false);
   });
 });

@@ -25,6 +25,15 @@ export function useBackgroundSync() {
       }),
       events.captureOpen(() => useUi.getState().setCaptureOpen(true)),
       events.captureStatus((st) => qc.setQueryData(qk.capture, st)),
+      events.askStatus((st) => qc.setQueryData(qk.ask, st)),
+      events.askNavigate((r) => {
+        const ui = useUi.getState();
+        qc.invalidateQueries({ queryKey: qk.threads(r.spaceId) });
+        qc.invalidateQueries({ queryKey: qk.messages(r.threadId) });
+        ui.setActiveThread(r.spaceId, r.threadId);
+        ui.navigate({ name: "space", spaceId: r.spaceId });
+        if (r.sourceId) ui.openViewer({ sourceId: r.sourceId, start: r.start ?? undefined, end: r.end ?? undefined });
+      }),
     ];
     return () => {
       unsubs.forEach((p) => p.then((f) => f()).catch(() => {}));

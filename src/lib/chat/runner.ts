@@ -2,7 +2,8 @@ import { streamText, type ModelMessage } from "ai";
 import { api } from "../ipc";
 import { s } from "../strings";
 import { queryClient, qk } from "../queries";
-import type { Citation, FocusState, Message, MessageMeta, SearchHit, Space, TutorStyle } from "../types";
+import type { Citation, FocusState, Message, MessageMeta, NewMessage, MessagePatch, SearchHit, Space, TutorStyle } from "../types";
+import type { ImageInput } from "../steps/vision";
 import { useChatStream } from "../../stores/chatStream";
 import { hitsToCitations } from "./citations";
 import { extractFollowUps } from "./followUps";
@@ -32,6 +33,63 @@ export interface TurnInput {
   systemExtra?: string;
   /** false when retrying: the user message is already saved */
   persistUser?: boolean;
+  /** a screenshot or photo sent along with `userText` (needs a vision-capable model) */
+  image?: ImageInput;
+  /** keep the exchange in memory only; nothing is written to the thread */
+  ephemeral?: boolean;
+  /** the assistant row as soon as retrieval is done and streaming starts */
+  onStart?: (assistant: Message) => void;
+}
+
+interface MessageStore {
+  listMessages: (threadId: string) => Promise<Message[]>;
+  addMessage: (m: NewMessage) => Promise<Message>;
+  updateMessage: (id: string, patch: MessagePatch) => Promise<Message>;
+}
+
+const persistentStore: MessageStore = {
+  listMessages: (t) => api.listMessages(t),
+  addMessage: (m) => api.addMessage(m),
+  updateMessage: (id, p) => api.updateMessage(id, p),
+};
+
+/** Messages that live only in this window; used by the ask-anything overlay until "Open in Ponder". */
+export function memoryStore(): MessageStore {
+  const rows = new Map<string, Message>();
+  return {
+    listMessages: async () => [],
+    addMessage: async (m) => {
+      const row: Message = {
+        id: crypto.randomUUID(),
+        threadId: m.threadId,
+        role: m.role,
+        content: m.content ?? "",
+        reasoning: m.reasoning ?? null,
+        citations: m.citations ?? null,
+        meta: m.meta ?? null,
+        status: m.status ?? "complete",
+        error: null,
+        createdAt: Date.now(),
+      };
+      rows.set(row.id, row);
+      return row;
+    },
+    updateMessage: async (id, p) => {
+      const row = rows.get(id);
+      if (!row) throw new Error("message not found");
+      const next = { ...row, ...Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined)) } as Message;
+      rows.set(id, next);
+      return next;
+    },
+  };
+}
+
+export function userContent(text: string, image?: ImageInput): ModelMessage["content"] {
+  if (!image) return text;
+  return [
+    { type: "text", text },
+    { type: "file", data: image.data, mediaType: image.mediaType },
+  ];
 }
 
 const PERSIST_EVERY_MS = 1500;
@@ -52,15 +110,18 @@ export function passagesFrom(hits: SearchHit[]): Passage[] {
 export async function runTurn(input: TurnInput): Promise<Message> {
   const { space, threadId } = input;
   const llm = input.llm ?? (await resolveChatModel(space));
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: qk.messages(threadId) });
+  const store = input.ephemeral ? memoryStore() : persistentStore;
+  const invalidate = () => {
+    if (!input.ephemeral) queryClient.invalidateQueries({ queryKey: qk.messages(threadId) });
+  };
 
-  let prior = await api.listMessages(threadId);
+  let prior = await store.listMessages(threadId);
   if (input.persistUser === false) {
     const last = prior[prior.length - 1];
     if (last?.role === "user") prior = prior.slice(0, -1);
   } else if (input.userText) {
-    await api.addMessage({ threadId, role: "user", content: input.userText });
-    if (!prior.some((m) => m.role === "user")) {
+    await store.addMessage({ threadId, role: "user", content: input.userText });
+    if (!input.ephemeral && !prior.some((m) => m.role === "user")) {
       await api.renameThread(threadId, threadTitleFrom(input.userText)).catch(() => {});
       queryClient.invalidateQueries({ queryKey: qk.threads(space.id) });
     }
@@ -80,7 +141,7 @@ export async function runTurn(input: TurnInput): Promise<Message> {
   const citations: Citation[] = hitsToCitations(hits);
   const sources = queryClient.getQueryData<{ status: string }[]>(qk.sources(space.id)) ?? [];
 
-  const assistant = await api.addMessage({
+  const assistant = await store.addMessage({
     threadId,
     role: "assistant",
     content: "",
@@ -98,6 +159,7 @@ export async function runTurn(input: TurnInput): Promise<Message> {
   const controller = new AbortController();
   const stream = useChatStream.getState();
   stream.start(threadId, assistant.id, controller);
+  input.onStart?.(assistant);
 
   const memory = await api.listMemory().catch(() => []);
   const system = buildSystemPrompt({
@@ -112,7 +174,7 @@ export async function runTurn(input: TurnInput): Promise<Message> {
   });
   const history = historyMessages(prior) as ModelMessage[];
   const messages: ModelMessage[] = [...history];
-  if (input.userText) messages.push({ role: "user", content: input.userText });
+  if (input.userText) messages.push({ role: "user", content: userContent(input.userText, input.image) } as ModelMessage);
   else
     messages.push({
       role: "user",
@@ -147,7 +209,7 @@ export async function runTurn(input: TurnInput): Promise<Message> {
       paint.schedule(content, reasoning);
       if (Date.now() - lastPersist > PERSIST_EVERY_MS) {
         lastPersist = Date.now();
-        api.updateMessage(assistant.id, { content, reasoning }).catch(() => {});
+        store.updateMessage(assistant.id, { content, reasoning }).catch(() => {});
       }
     }
   } catch (e) {
@@ -177,7 +239,7 @@ export async function runTurn(input: TurnInput): Promise<Message> {
     }
     if (remembered.length) queryClient.invalidateQueries({ queryKey: qk.memory });
   }
-  const final = await api.updateMessage(assistant.id, {
+  const final = await store.updateMessage(assistant.id, {
     content,
     reasoning,
     status: error ? "error" : "complete",
@@ -195,7 +257,7 @@ export async function runTurn(input: TurnInput): Promise<Message> {
   queryClient.setQueryData<Message[]>(qk.messages(threadId), (msgs) => msgs?.map((m) => (m.id === final.id ? final : m)));
   useChatStream.getState().finish(threadId, assistant.id);
   invalidate();
-  queryClient.invalidateQueries({ queryKey: qk.threads(space.id) });
+  if (!input.ephemeral) queryClient.invalidateQueries({ queryKey: qk.threads(space.id) });
   return final;
 }
 

@@ -11,6 +11,14 @@ async function isCalculatorWindow(mock: boolean): Promise<boolean> {
   return getCurrentWebviewWindow().label === "calculator";
 }
 
+/** The ask-anything overlay renders only the question box (`?window=ask` or the Tauri window label). */
+async function isAskWindow(mock: boolean): Promise<boolean> {
+  if (new URLSearchParams(window.location.search).get("window") === "ask") return true;
+  if (mock) return false;
+  const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+  return getCurrentWebviewWindow().label === "ask";
+}
+
 async function boot() {
   // Outside Tauri (plain browser / Playwright) the backend is replaced by an in-memory mock.
   const mock = !("__TAURI_INTERNALS__" in window) || import.meta.env.VITE_MOCK_IPC === "1";
@@ -24,6 +32,15 @@ async function boot() {
     root.render(
       <React.StrictMode>
         <CalculatorWindow />
+      </React.StrictMode>,
+    );
+    return;
+  }
+  if (await isAskWindow(mock)) {
+    const { AskWindow } = await import("./features/ask/AskWindow");
+    root.render(
+      <React.StrictMode>
+        <AskWindow />
       </React.StrictMode>,
     );
     return;

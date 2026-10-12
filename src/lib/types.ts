@@ -543,6 +543,31 @@ export interface CaptureStatus {
   error: string | null;
 }
 
+export interface AskStatus {
+  enabled: boolean;
+  shortcut: string;
+  registered: boolean;
+  error: string | null;
+  snipEnabled: boolean;
+  snipShortcut: string;
+  snipRegistered: boolean;
+  snipError: string | null;
+}
+
+export interface SnipImage {
+  mediaType: string;
+  /** base64, no data: prefix */
+  data: string;
+}
+
+export interface AskOpenRequest {
+  spaceId: string;
+  threadId: string;
+  sourceId?: string | null;
+  start?: number | null;
+  end?: number | null;
+}
+
 // ---------- flashcards ----------
 
 export type CardKind = "basic" | "cloze" | "occlusion" | "mcq";

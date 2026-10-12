@@ -145,3 +145,10 @@ export function captureTitle(text: string, now = new Date()): string {
   if (first && first.length <= 80) return first;
   return `Quick note · ${now.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
 }
+
+/** True when both accelerators parse to the same key combination. */
+export function sameShortcut(a: string, b: string): boolean {
+  const x = parseShortcut(a);
+  const y = parseShortcut(b);
+  return !!x && !!y && x.key === y.key && x.mods.join() === y.mods.join();
+}

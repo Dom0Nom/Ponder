@@ -67,11 +67,14 @@ export function AnswerBody({
   citations,
   streaming,
   spaceId,
+  onOpenCitation,
 }: {
   content: string;
   citations: Citation[];
   streaming: boolean;
   spaceId?: string;
+  /** replaces the default "open in the source viewer" (the ask overlay has no viewer) */
+  onOpenCitation?: (c: Citation) => void;
 }) {
   const byN = new Map(citations.map((c) => [c.n, c]));
   const shown = useMemo(
@@ -84,7 +87,7 @@ export function AnswerBody({
   const segments = splitSegments(shown, { hadSources: citations.length > 0, known: citations.length });
   const renderCite = (ns: number[], inferred: boolean) => {
     const cs = ns.map((n) => byN.get(n)).filter((c): c is Citation => !!c);
-    return cs.length ? <CiteChip citations={cs} inferred={inferred} spaceId={spaceId} /> : null;
+    return cs.length ? <CiteChip citations={cs} inferred={inferred} spaceId={spaceId} onOpen={onOpenCitation} /> : null;
   };
   return (
     <div className="flex flex-col gap-2.5">
@@ -193,7 +196,7 @@ function Thinking({ text, active, ms }: { text: string; active: boolean; ms?: nu
   );
 }
 
-function CiteChip({ citations, inferred, spaceId }: { citations: Citation[]; inferred: boolean; spaceId?: string }) {
+function CiteChip({ citations, inferred, spaceId, onOpen }: { citations: Citation[]; inferred: boolean; spaceId?: string; onOpen?: (c: Citation) => void }) {
   const openViewer = useUi((st) => st.openViewer);
   const sources = useSources(spaceId ?? "");
   const first = citations[0];
@@ -224,7 +227,7 @@ function CiteChip({ citations, inferred, spaceId }: { citations: Citation[]; inf
         data-testid="cite-chip"
         data-inferred={inferred || undefined}
         aria-label={s.chat.citation(titles.join(", "))}
-        onClick={() => openViewer({ sourceId: first.sourceId, start: first.start, end: first.end })}
+        onClick={() => (onOpen ? onOpen(first) : openViewer({ sourceId: first.sourceId, start: first.start, end: first.end }))}
         className={cn(
           "ml-1 inline-flex h-5 max-w-[220px] items-center transition-colors duration-(--motion-quick) gap-[5px] whitespace-nowrap rounded-full pl-[3px] pr-2 align-[1px] text-label font-medium leading-none text-fg",
           inferred ? "border border-dashed border-control-off" : "bg-chip hover:bg-fill-active",

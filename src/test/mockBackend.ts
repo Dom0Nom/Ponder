@@ -8,7 +8,7 @@ import { notesReply } from "./notesFixtures";
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { emit } from "@tauri-apps/api/event";
 import type * as T from "../lib/types";
-import { DEFAULT_SHORTCUT, validateShortcut } from "../lib/capture/shortcut";
+import { DEFAULT_SHORTCUT, sameShortcut, validateShortcut } from "../lib/capture/shortcut";
 import { parsePlaylistUri } from "../lib/music";
 import { importKind, originFor } from "../lib/importers/cloud";
 import { openRouterFixture } from "./openrouterFixture";
@@ -246,6 +246,9 @@ const defaultScript: Script = ({ messages, body }) => {
     );
     return { content: JSON.stringify(qs) };
   }
+  if (/Describe this screenshot as study material/i.test(lastText)) {
+    return { content: "Plant cell diagram\n\nA labelled plant cell. The chloroplast sits next to the cell wall and carries out photosynthesis." };
+  }
   if (/Transcribe the handwritten math work/i.test(lastText)) {
     return { content: JSON.stringify({ problem: "Solve -2(x-3)+4=10", steps: ["-2x-6+4=10", "-2x-2=10", "-2x=12", "x=-6"] }) };
   }
@@ -301,6 +304,11 @@ const defaultScript: Script = ({ messages, body }) => {
     return { content: "A short overview of the source's main ideas." };
   }
   const hasSources = /\[1\]/.test(sysText);
+  if (/image_url/.test(lastText)) {
+    return {
+      content: `The screenshot shows a labelled plant cell with a chloroplast next to the cell wall.${hasSources ? " Photosynthesis happens in the chloroplasts [1]." : ""}`,
+    };
+  }
   return {
     reasoning: body.reasoning_effort === "none" ? undefined : "Looking at the passages first.",
     content: hasSources
@@ -533,6 +541,24 @@ function captureStatus(): T.CaptureStatus {
     error: null,
   };
 }
+
+function askStatus(): T.AskStatus {
+  const enabled = (db.settings.askEnabled as boolean | undefined) ?? true;
+  const snipEnabled = (db.settings.askSnipEnabled as boolean | undefined) ?? false;
+  return {
+    enabled,
+    shortcut: (db.settings.askShortcut as string | undefined) ?? "Alt+CommandOrControl+A",
+    registered: enabled,
+    error: null,
+    snipEnabled,
+    snipShortcut: (db.settings.askSnipShortcut as string | undefined) ?? "Alt+CommandOrControl+S",
+    snipRegistered: snipEnabled,
+    snipError: null,
+  };
+}
+
+/** 1x1 PNG standing in for a screen region. */
+const SNIP_PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
 function newSource(spaceId: string, title: string, kind: T.SourceKind, origin: string | null): T.Source {
   if (!db.spaces[spaceId]) err("not_found", "space not found");
@@ -1255,6 +1281,38 @@ const handlers: Record<string, (a: Args) => unknown> = {
     db.settings.quickCaptureShortcut = shortcut;
     save();
     return captureStatus();
+  },
+
+  ask_status: () => askStatus(),
+  ask_configure: (a) => {
+    const shortcut = String(a.shortcut ?? "").trim();
+    const snipShortcut = String(a.snipShortcut ?? "").trim();
+    for (const sc of [shortcut, snipShortcut]) {
+      const invalid = validateShortcut(sc);
+      if (invalid) err("invalid", invalid);
+    }
+    if (a.enabled && a.snipEnabled && sameShortcut(shortcut, snipShortcut)) err("invalid", "The ask and snip shortcuts must be different.");
+    const capture = captureStatus().shortcut;
+    if ((a.enabled && sameShortcut(shortcut, capture)) || (a.snipEnabled && sameShortcut(snipShortcut, capture)))
+      err("invalid", "That shortcut is already used by quick capture. Choose a different one.");
+    db.settings.askEnabled = !!a.enabled;
+    db.settings.askShortcut = shortcut;
+    db.settings.askSnipEnabled = !!a.snipEnabled;
+    db.settings.askSnipShortcut = snipShortcut;
+    save();
+    return askStatus();
+  },
+  ask_take_pending: () => new URLSearchParams(location.search).has("snip"),
+  ask_close: () => null,
+  ask_set_height: () => null,
+  ask_open_in_main: (a) => {
+    ((window as unknown as { __askOpened?: unknown[] }).__askOpened ??= []).push(a.request);
+    return null;
+  },
+  snip_screen: () => {
+    const w = window as unknown as { __snipCancel?: boolean };
+    if (w.__snipCancel) return null;
+    return { mediaType: "image/png", data: SNIP_PNG };
   },
 
   list_threads: (a) =>
