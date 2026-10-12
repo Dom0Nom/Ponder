@@ -112,7 +112,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas({ it
     }
     if (best) return best;
     const wx = worldX(eff, w, hover.px);
-    items.forEach((it, i) => {
+    items.forEach((it) => {
       if (!it.visible || it.curve.kind !== "y") return;
       const y = it.curve.f(wx);
       if (!Number.isFinite(y)) return;
