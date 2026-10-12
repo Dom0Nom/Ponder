@@ -46,6 +46,9 @@ export function IntegrationsSection() {
   const { data, isLoading, error, refetch } = useIntegrationsInfo();
   if (isLoading) return <Skeleton className="h-40" />;
   if (error || !data) return <ErrorState title={s.integrations.loadError} error={error} onRetry={() => refetch()} />;
+  const mcpArgs = ["mcp", "--db", data.dbPath];
+  const claudeCodeCommand = `claude mcp add ponder -- ${[data.exePath, ...mcpArgs].map((a) => (/^[\w./:@%+=-]+$/.test(a) ? a : shellQuote(a))).join(" ")}`;
+  const desktopConfig = JSON.stringify({ mcpServers: { ponder: { command: data.exePath, args: mcpArgs } } }, null, 2);
   return (
     <div className="flex flex-col gap-5" data-testid="integrations">
       <div className="flex flex-col gap-2">
@@ -70,6 +73,15 @@ export function IntegrationsSection() {
             </SettingsRow>
           ))}
         </SettingsGroup>
+      </div>
+      <div className="flex flex-col gap-2">
+        <h3 className="text-input font-semibold">{s.integrations.mcpTitle}</h3>
+        <p className="text-body text-muted">{s.integrations.mcpBody}</p>
+        <p className="text-caption text-muted">{s.integrations.mcpTools}</p>
+        <p className="text-caption font-medium">{s.integrations.mcpClaudeCode}</p>
+        <CodeBlock testId="mcp-claude-code" label={`${s.integrations.copy}: ${s.integrations.mcpClaudeCode}`} text={claudeCodeCommand} />
+        <p className="text-caption font-medium">{s.integrations.mcpClaudeDesktop}</p>
+        <CodeBlock testId="mcp-claude-desktop" label={`${s.integrations.copy}: ${s.integrations.mcpClaudeDesktop}`} text={desktopConfig} />
       </div>
     </div>
   );

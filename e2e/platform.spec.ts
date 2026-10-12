@@ -44,6 +44,11 @@ test("integrations: shows link examples and the CLI alias with the binary path",
   const section = app.getByTestId("integrations");
   await expect(section).toContainText("ponder://space/<space id>");
   await expect(section.getByTestId("cli-alias")).toHaveText("alias ponder='/Applications/Ponder.app/Contents/MacOS/ponder'");
+  const exe = "/Applications/Ponder.app/Contents/MacOS/ponder";
+  const db = "/Users/me/Library/Application Support/dev.ponder.app/app.db";
+  await expect(section.getByTestId("mcp-claude-code")).toHaveText(`claude mcp add ponder -- ${exe} mcp --db '${db}'`);
+  const cfg = JSON.parse((await section.getByTestId("mcp-claude-desktop").textContent()) ?? "");
+  expect(cfg).toEqual({ mcpServers: { ponder: { command: exe, args: ["mcp", "--db", db] } } });
 });
 
 test("backups: choose folder, back up, prune, restore needs a restart", async ({ app }) => {

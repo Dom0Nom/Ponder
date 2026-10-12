@@ -18,6 +18,7 @@ mod lan;
 mod music;
 mod micro_steps;
 mod oauth;
+pub mod mcp;
 pub mod paths;
 mod icons;
 mod openrouter;
