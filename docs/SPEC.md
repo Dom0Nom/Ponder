@@ -95,7 +95,7 @@ Cut: calendar sync, essay coach (separate from exam-simulator essay grading, whi
 ### Status (2026-10-12)
 
 Every roadmap item above is built except the parts listed here (details in `docs/HANDOFF.md` → Known gaps):
-- Spoken voice tutor: works, but replies are spoken after they finish streaming and there is no voice barge-in.
+- Spoken voice tutor: replies are spoken sentence by sentence while they stream; there is no barge-in by voice (the mic button interrupts).
 - Free local TTS voice (Kokoro on CPU): not built; speech uses a cloud service (Kokoro via OpenRouter by default).
 - PDF annotation: highlights and margin notes work on a PDF's extracted text, not on the rendered page.
 - MCP client: local stdio servers only, no remote HTTP servers.
