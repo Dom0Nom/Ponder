@@ -886,6 +886,8 @@ for (const task of tasks) {
         try {
           const rec: Call[] = [];
           const r = await store.run(rec, () => c.run());
+          if (task.id === "buddy-instruction") r.checks.push(check("no follow-up markers", !r.output.includes("{{followup")));
+          if (task.id === "buddy-instruction" || task.id === "tutor-system") r.checks.push(check("no emoji", !/\p{Extended_Pictographic}/u.test(r.output)));
           const prompt = rec[0]?.prompt ?? "";
           const j = await judge(task, c.name, r, prompt).catch(() => ({}) as Record<string, number>);
           const { rationale, ...scores } = j as Record<string, number> & { rationale?: unknown };
