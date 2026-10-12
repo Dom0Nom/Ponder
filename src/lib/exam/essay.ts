@@ -60,11 +60,13 @@ export const TRAITS: { trait: 1 | 2 | 3; name: string; levels: [string, string, 
   },
 ];
 
-export function essayTaskPrompt(avoid: string[] = []): string {
+export const ESSAY_AREAS = ["public health", "technology and privacy", "the environment", "education", "work and wages", "transport", "city and housing", "consumer protection", "food and farming", "sports and recreation"];
+
+export function essayTaskPrompt(avoid: string[] = [], area = ESSAY_AREAS[0]): string {
   return [
     "Write the reading material for a GED-style extended response (argumentative essay) task.",
-    "Pick a debatable public-policy or social issue suitable for adults. Write two passages of 250–350 words each that take opposing positions. Each passage uses a mix of strong and weak evidence (statistics, expert quotes, anecdotes, appeals) so a careful reader can judge which argument is better supported. Invent plausible but clearly fictional names for any experts or organisations.",
-    avoid.length ? `Choose a different issue from these: ${avoid.join("; ")}.` : "",
+    `Pick a debatable public-policy or social issue in the area of ${area}, suitable for adults. Write two passages of 250–350 words each that take opposing positions. Each passage uses a mix of strong and weak evidence (statistics, expert quotes, anecdotes, appeals) so a careful reader can judge which argument is better supported. Invent plausible but clearly fictional names for any experts or organisations.`,
+    avoid.length ? `The learner has already written about these issues, so the issue must be clearly different from all of them: ${avoid.join("; ")}.` : "",
     'The prompt follows the GED pattern: "In your response, analyze both positions presented in the article(s) to determine which one is best supported. Use relevant and specific evidence from the article(s) to support your response."',
     'Return JSON only: {"issue": "short name of the issue", "prompt": "…", "passages": [{"title": "…", "text": "…"}, {"title": "…", "text": "…"}]}',
   ]
@@ -82,12 +84,21 @@ export function parseEssayTask(text: string): EssayTask | null {
   return { issue: o.issue.trim(), prompt: o.prompt.trim(), passages: passages.map((p) => ({ title: p.title.trim(), text: p.text.trim() })) };
 }
 
+const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+export const repeatsIssue = (issue: string, avoid: string[]) => avoid.some((a) => norm(a) && (norm(issue).includes(norm(a)) || norm(a).includes(norm(issue))));
+
 export async function generateEssayTask(llm: ResolvedModel, avoid: string[] = [], signal?: AbortSignal): Promise<EssayTask> {
-  for (let i = 0; i < 2; i++) {
-    const r = await generateText({ model: llm.model, prompt: essayTaskPrompt(avoid), abortSignal: signal, ...llm.options({ thinking: false }) });
+  const recent = [...new Set(avoid)].slice(-12);
+  let fallback: EssayTask | null = null;
+  for (let i = 0; i < 3; i++) {
+    const area = ESSAY_AREAS[Math.floor(Math.random() * ESSAY_AREAS.length)];
+    const r = await generateText({ model: llm.model, prompt: essayTaskPrompt(recent, area), abortSignal: signal, ...llm.options({ thinking: false }) });
     const task = parseEssayTask(r.text);
-    if (task) return task;
+    if (task && !repeatsIssue(task.issue, recent)) return task;
+    fallback ??= task;
   }
+  if (fallback) return fallback;
   throw new Error("The model didn't return a usable essay task. Try again or pick another model.");
 }
 

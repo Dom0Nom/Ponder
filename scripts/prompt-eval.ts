@@ -823,7 +823,132 @@ const curriculum: Task = {
   })),
 };
 
-const TASKS: Task[] = [tutor, buddy, micro, quiz, practice, grade, classify, cards, selfcheck, stepcheck, researchQuery, researchPlan, researchRank, summary, curriculum];
+const examTask: Task = {
+  id: "exam-questions",
+  purpose: "Timed practice-exam multiple-choice questions matching the real test's style and difficulty (GED/SAT), exact per-topic counts, 4 options, one-sentence explanation. JSON output.",
+  dims: ["calibration", "format"],
+  cases: [
+    { exam: "ged", section: "math", topics: gedTopics, n: 6 },
+    { exam: "ged", section: "rla", topics: [{ id: "ged.rla.reading", title: "Reading for meaning", description: "main idea, inference, word meaning in context", group: "Reasoning Through Language Arts" }], n: 4 },
+    { exam: "sat", section: "rw", topics: [{ id: "sat.rw.conventions", title: "Standard English Conventions", description: "sentence boundaries, punctuation, agreement", group: "Reading and Writing" }], n: 4 },
+  ].map((c) => ({
+    name: `${c.exam} ${c.section}`,
+    run: async () => {
+      const f = await lib("exam/formats.ts");
+      const g = await lib("exam/generate.ts");
+      const format = f.examById(c.exam);
+      const section = format.sections.find((x: { id: string }) => x.id === c.section);
+      let qs: { question: string; options: string[]; topicId: string | null }[] = [];
+      let err = "";
+      try {
+        qs = await g.generateExamQuestions(gen, format, section, c.topics, c.n);
+      } catch (e) {
+        err = String(e);
+      }
+      const all = qs.map((q) => q.question + " " + q.options.join(" ")).join(" ");
+      return {
+        output: cur().map((x) => x.output).join("\n---\n") || err,
+        expect: `${c.n} ${format.title} ${section.title} questions in the real test's style (passages or scenarios where the real test has them), mostly medium, 4 plausible options.`,
+        checks: [
+          check("count", qs.length === c.n, `${qs.length}/${c.n}`),
+          check("4 options", qs.every((q) => q.options.length === 4)),
+          check("no 'all of the above'", !/all of the above/i.test(all)),
+          check("no picture needed", !/\b(see|shown in) the (figure|diagram|picture|image)\b/i.test(all)),
+          check("language", lang(all) === "en", lang(all)),
+        ],
+      };
+    },
+  })),
+};
+
+const essayTaskEval: Task = {
+  id: "essay-task",
+  purpose: "GED extended-response reading material: a debatable issue, two opposing 250–350 word passages with a mix of strong and weak evidence, and the standard GED prompt. JSON output.",
+  dims: ["calibration", "format"],
+  cases: [[], ["school uniforms", "daylight saving time"]].map((avoid, i) => ({
+    name: `task #${i}`,
+    run: async () => {
+      const m = await lib("exam/essay.ts");
+      let t: { issue: string; passages: { text: string }[] } | null = null;
+      let err = "";
+      try {
+        t = await m.generateEssayTask(gen, avoid);
+      } catch (e) {
+        err = String(e);
+      }
+      const lens = t?.passages.map((p) => words(p.text)) ?? [];
+      return {
+        output: cur().at(-1)?.output ?? err,
+        expect: "Two opposing passages of 250–350 words on an adult public-policy issue; one is clearly better supported; fictional experts; GED prompt wording.",
+        checks: [
+          check("parsed", !!t, err),
+          check("250–350 words each", lens.length === 2 && lens.every((n) => n >= 220 && n <= 380), lens.join("/")),
+          check("avoids issues", !!t && !m.repeatsIssue(t.issue, avoid), t?.issue),
+        ],
+      };
+    },
+  })),
+};
+
+const essayFixture = {
+  issue: "Four-day school week",
+  prompt: "In your response, analyze both positions presented in the articles to determine which one is best supported. Use relevant and specific evidence from the articles to support your response.",
+  passages: [
+    {
+      title: "A Shorter Week Works",
+      text: "Districts that switched to a four-day week report real savings. The Pine Valley district cut transportation and heating costs by 7 percent in its first year, according to its budget office. Teachers say the change helps recruitment: in a survey of 410 teachers by the fictional Rural Education Council, 78 percent said a four-day schedule would make them more likely to accept a job. Students also benefit from longer school days, which allow for full science labs and uninterrupted reading blocks. Superintendent Dana Ruiz notes that attendance rose after the switch because families schedule doctor visits on Fridays instead of pulling children out of class. Critics worry about learning loss, but test scores in Pine Valley held steady. A shorter week is a practical way for small districts to stretch thin budgets and keep good teachers.",
+    },
+    {
+      title: "Keep Five Days",
+      text: "A four-day week sounds appealing, but the evidence should give us pause. A study of 12 districts by the fictional Center for School Research found that students in four-day districts gained about 20 percent less in math over three years than similar students on five-day schedules. Savings are small, too: most districts save between 0.4 and 2.5 percent of their budgets, because teacher salaries, the largest cost, do not change. Working parents must find and pay for care on the fifth day, a burden that falls hardest on low-income families. Some districts report that children are left unsupervised. My neighbor says her son is bored every Friday. Before we change the school calendar, we should be sure it helps students learn, not just adults save money.",
+    },
+  ],
+};
+
+const strongEssay = `The article "Keep Five Days" presents the better-supported position. Its central claim, that a four-day week can hurt learning, rests on a study of 12 districts that found students gained about 20 percent less in math over three years. That is a direct measure of what schools exist to do. By contrast, "A Shorter Week Works" says test scores in Pine Valley "held steady," but that is one district, with no comparison group and no numbers.
+
+The pro article's strongest evidence is financial, yet even here the opposing article answers it. Pine Valley saved 7 percent, but "Keep Five Days" explains that most districts save only 0.4 to 2.5 percent because salaries do not change. A single favorable example does not outweigh a range drawn from many districts.
+
+Both articles use some weak support. The teacher survey in the first article measures willingness to take a job, not student results, and the superintendent's claim about attendance is not backed by data. The second article's anecdote about a bored neighbor adds nothing. However, once the weaker points are set aside, the five-day article still offers broader and more relevant evidence: a multi-district study, a cost range, and a concrete burden on working families.
+
+For these reasons, the argument to keep a five-day week is better supported. It focuses on learning outcomes and backs its claims with evidence from more than one district, while the four-day article relies mostly on one district's experience and on opinions.`;
+
+const weakEssay = `I think four day weeks are good because kids get tired and need rest. When I was in school I was always tired on fridays. Teachers also need a break they work really hard. Saving money is good for the school to. So the first article is better because it says they saved money and teachers like it. Also kids can go to the doctor on friday.`;
+
+const essayGradeEval: Task = {
+  id: "essay-grade",
+  purpose: "Score a GED extended response against the three-trait GED rubric (0–2 each) with short, concrete reasons that quote the essay. JSON output.",
+  dims: ["calibration", "diagnosis", "tone", "format"],
+  cases: [
+    { name: "strong", essay: strongEssay, range: [5, 6] },
+    { name: "weak", essay: weakEssay, range: [0, 2] },
+    { name: "off-topic", essay: "My favorite season is summer because we go to the lake. ".repeat(6), range: [0, 0] },
+  ].map((c) => ({
+    name: c.name,
+    run: async () => {
+      const m = await lib("exam/essay.ts");
+      let g: { total: number; traits: { reason: string }[] } | null = null;
+      let err = "";
+      try {
+        g = await m.gradeEssay(gen, essayFixture, c.essay);
+      } catch (e) {
+        err = String(e);
+      }
+      const reasons = g?.traits.map((t) => t.reason).join(" ") ?? "";
+      return {
+        output: `ESSAY:\n${c.essay}\n\nSCORE:\n${cur().at(-1)?.output ?? err}`,
+        expect: `Total ${c.range[0]}–${c.range[1]} of 6. Reasons quote the essay and say what would raise the score.`,
+        checks: [
+          check("parsed", !!g, err),
+          check("total in range", !!g && g.total >= c.range[0] && g.total <= c.range[1], String(g?.total)),
+          check("no praise", !PRAISE.test(reasons)),
+        ],
+      };
+    },
+  })),
+};
+
+const TASKS: Task[] = [tutor, buddy, micro, quiz, practice, grade, classify, cards, selfcheck, stepcheck, researchQuery, researchPlan, researchRank, summary, curriculum, examTask, essayTaskEval, essayGradeEval];
 
 // ---------- judge ----------
 async function judge(task: Task, caseName: string, r: CaseResult, prompt: string): Promise<Record<string, number> & { rationale?: unknown }> {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { TopicRef } from "../types";
 import { GED, batches, distribute, scaledScore, sectionTopics } from "./formats";
 import { capByQuota, examQuestionPrompt } from "./generate";
-import { parseEssayGrade, parseEssayTask, tooShort } from "./essay";
+import { parseEssayGrade, parseEssayTask, repeatsIssue, tooShort } from "./essay";
 import { clockText, examResult, weakTopics } from "./attempt";
 
 const t = (id: string, group = "Math", title = id): TopicRef => ({ id, title, description: "", group }) as TopicRef;
@@ -70,6 +70,12 @@ describe("essay", () => {
     expect(g?.total).toBe(4);
     expect(parseEssayGrade('{"traits":[{"trait":1,"score":2},{"trait":2,"score":3},{"trait":3,"score":1}]}')).toBeNull();
     expect(parseEssayGrade('{"traits":[{"trait":1,"score":2}]}')).toBeNull();
+  });
+
+  it("spots a repeated essay issue", () => {
+    expect(repeatsIssue("Daylight Saving Time", ["daylight saving time", "uniforms"])).toBe(true);
+    expect(repeatsIssue("School uniforms in public schools", ["School uniforms"])).toBe(true);
+    expect(repeatsIssue("Four-day school week", ["daylight saving time"])).toBe(false);
   });
 
   it("treats very short responses as unscorable", () => {
