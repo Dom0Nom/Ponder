@@ -274,6 +274,14 @@ export const s = {
     noProvider: (name: string) => `Add a ${name} provider in Settings to use this voice.`,
     noAudio: "The speech service sent no audio.",
     noTranscript: "The transcription service sent no text.",
+    briefing: {
+      play: "Today's briefing",
+      desc: "Hear what's on today: plan, reviews and open mistakes",
+      writing: "Writing briefing…",
+      stop: "Stop briefing",
+      failed: "Couldn't make today's briefing",
+      nothing: "Nothing is scheduled today, no cards are due and there are no open mistakes. A good day to add a source or start a plan.",
+    },
   },
   research: {
     placeholder: "What do you want to learn about?",

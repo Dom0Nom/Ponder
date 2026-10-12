@@ -105,3 +105,22 @@ test("audio overview: two voices, line navigation, a question, transcript export
   await app.getByRole("menuitem", { name: "Markdown (.md)" }).click();
   await expect(app.getByText("Saved to /Users/me/Downloads/How leaves make sugar.md")).toBeVisible();
 });
+
+test("daily briefing on Home: written from today's facts and read aloud", async ({ app }) => {
+  await app.getByRole("button", { name: "New space" }).first().click();
+  await app.getByLabel("Name").fill("Biology");
+  await app.getByRole("button", { name: "Create" }).click();
+  await app.getByRole("button", { name: "Add source" }).click();
+  await app.getByRole("tab", { name: "Paste text" }).click();
+  await app.getByLabel("Title").fill("Leaf notes");
+  await app.getByRole("textbox", { name: "Text", exact: true }).fill("Photosynthesis happens in the chloroplasts.");
+  await app.getByRole("button", { name: "Import" }).click();
+  await expect(app.locator('[data-testid="source-row"][data-status="ready"]')).toHaveCount(1);
+
+  await app.evaluate(() => (window as unknown as { __ui: { getState: () => { navigate: (r: unknown) => void } } }).__ui.getState().navigate({ name: "home" }));
+  const briefing = app.getByTestId("briefing");
+  await expect(briefing).toHaveText("Today's briefing");
+  await briefing.click();
+  await expect.poll(async () => (await speech(app)).map((c) => String(c.body?.input ?? "")).join(" ")).toContain("Calvin cycle");
+  await expect(briefing).toHaveAttribute("data-state", "idle", { timeout: 10_000 });
+});

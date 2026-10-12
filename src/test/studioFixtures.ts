@@ -121,6 +121,12 @@ const OUTPUTS: [RegExp, object][] = [
     /^A listener interrupts an audio overview/,
     { lines: [{ host: "A", text: "Good question. The Calvin cycle happens in the stroma, the fluid around the thylakoids." }] },
   ],
+  [
+    /^Write a short spoken study briefing/,
+    {
+      text: "Good morning. The one thing that matters today is your Biology review: twenty minutes on the Calvin cycle. After that, clear the flashcards that are due, and take a second look at the question you missed about chloroplasts. Start with the review now, while you're fresh.",
+    },
+  ],
 ];
 
 export function studioReply(prompt: string): string | null {

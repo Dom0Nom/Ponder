@@ -15,6 +15,7 @@ import { ConfirmDialog } from "../../components/ui/dialog";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../../components/ui/menu";
 import { toastError } from "../../components/ui/toast";
 import { TodaySection } from "../plan/TodaySection";
+import { BriefingButton } from "../speech/BriefingButton";
 import { SpaceDialog } from "./SpaceDialog";
 
 export function HomeScreen() {
@@ -56,6 +57,7 @@ export function HomeScreen() {
       <div className="mx-auto flex max-w-[1040px] flex-col gap-6 px-10 pb-12 pt-11">
         <div className="flex items-center gap-4">
           <h1 className="flex-1 text-page font-semibold">{s.home.title}</h1>
+          <BriefingButton />
           <Button variant="primary" size="lg" onClick={() => setSpaceDialogOpen(true)}>
             <Plus size={16} />
             {s.home.newSpace}
