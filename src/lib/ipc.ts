@@ -143,6 +143,14 @@ export const api = {
   outputsList: (spaceId: string) => call<T.StudioOutput[]>("outputs_list", { spaceId }),
   outputGet: (id: string) => call<T.StudioOutput | null>("output_get", { id }),
   outputDelete: (id: string) => call<void>("output_delete", { id }),
+  notesList: (spaceId: string) => call<T.Note[]>("notes_list", { spaceId }),
+  noteGet: (id: string) => call<T.Note | null>("note_get", { id }),
+  noteSave: (note: Omit<T.Note, "id" | "sourceId" | "createdAt" | "updatedAt"> & Partial<T.Note>) => call<T.Note>("note_save", { note }),
+  noteDelete: (id: string) => call<void>("note_delete", { id }),
+  glossaryGet: (subjectId: string) => call<T.Glossary | null>("glossary_get", { subjectId }),
+  glossarySave: (glossary: Omit<T.Glossary, "createdAt">) => call<T.Glossary>("glossary_save", { glossary }),
+  rewritesList: (sourceId: string, kind: string) => call<T.PassageRewrite[]>("rewrites_list", { sourceId, kind }),
+  rewriteSave: (rewrite: T.PassageRewrite) => call<void>("rewrite_save", { rewrite }),
   /** Native save dialog; null when cancelled. Returns the saved path. */
   exportFile: (name: string, extension: string, bytes: Uint8Array) =>
     call<string | null>("export_file", { name, extension, bytes: Array.from(bytes) }),

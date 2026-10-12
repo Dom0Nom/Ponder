@@ -12,7 +12,8 @@ export type Route =
   | { name: "practice"; spaceId: string; topicKey?: string; topicTitle?: string }
   | { name: "insights"; spaceId?: string }
   | { name: "exam"; spaceId?: string; attemptId?: string }
-  | { name: "output"; spaceId: string; outputId: string };
+  | { name: "output"; spaceId: string; outputId: string }
+  | { name: "notes"; spaceId: string; noteId?: string };
 export type SettingsPage =
   | { kind: "addProvider"; type?: ProviderType }
   | { kind: "lanScan" }

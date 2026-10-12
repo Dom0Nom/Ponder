@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAddCard } from "../cards/FlashcardsCard";
 import { clozeFromSelection } from "../../lib/srs/cloze";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Bold, BookOpenCheck, ExternalLink, Layers, ScanLine } from "lucide-react";
+import { ArrowLeft, Bold, BookOpenCheck, ExternalLink, Layers, NotebookPen, ScanLine, SlidersHorizontal } from "lucide-react";
 import { useFocusPrefs, useSetFocusPref } from "../../lib/focusPrefs";
 import { api } from "../../lib/ipc";
 import { qk } from "../../lib/queries";
@@ -20,13 +20,23 @@ import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { BionicText } from "./BionicText";
 import { useSummarizing } from "./useAutoSummaries";
 import { ReadingRuler } from "./ReadingRuler";
+import { PassageList, ReadingControls } from "./ReadingTools";
+import { GlossaryPanel } from "../notes/GlossaryPanel";
+import { useSpace } from "../../lib/queries";
+import type { ReadingLevel } from "../../lib/notes/passages";
 
 export function SourceViewer({ target }: { target: { sourceId: string; start?: number; end?: number } }) {
   const openViewer = useUi((st) => st.openViewer);
+  const navigate = useUi((st) => st.navigate);
   const source = useQuery({ queryKey: ["source", target.sourceId], queryFn: () => api.getSource(target.sourceId) });
   const text = useQuery({ queryKey: qk.sourceText(target.sourceId), queryFn: () => api.getSourceText(target.sourceId) });
   const summarizing = useSummarizing((st) => !!st.ids[target.sourceId]);
   const markRef = useRef<HTMLElement>(null);
+  const space = useSpace(source.data?.spaceId ?? "");
+  const [level, setLevel] = useState<ReadingLevel>("original");
+  const [lang, setLang] = useState<string | null>(null);
+  const [tools, setTools] = useState(false);
+  const rewritten = level !== "original" || !!lang;
 
   const pieces = useMemo(() => (text.data ? buildPieces(text.data, target.start, target.end) : []), [text.data, target.start, target.end]);
 
@@ -43,7 +53,7 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
 
   return (
     <div
-      className="flex h-full flex-col"
+      className="group/viewer relative flex h-full flex-col"
       data-testid="source-viewer"
       onKeyDown={(e) => {
         if (e.key === "Escape" && !e.defaultPrevented && !document.querySelector('[role="dialog"]')) openViewer(null);
@@ -75,6 +85,14 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
             </button>
           ))}
         </div>
+        {source.data?.origin?.startsWith("note:") && (
+          <button
+            onClick={() => navigate({ name: "notes", spaceId: source.data!.spaceId, noteId: source.data!.origin!.slice(5) })}
+            className="flex h-7.5 items-center gap-1.5 rounded-btn px-[9px] font-medium hover:bg-fill"
+          >
+            <NotebookPen size={14} /> {s.notes.openNote}
+          </button>
+        )}
         {source.data && text.data && <MakeCourseButton source={source.data} text={text.data.text} />}
         {source.data?.origin && /^https?:/.test(source.data.origin) && (
           <Tooltip content={s.sources.openOriginal}>
@@ -90,6 +108,17 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
           </Tooltip>
         )}
       </div>
+      <button
+        aria-expanded={tools}
+        onClick={() => setTools((t) => !t)}
+        data-testid="reading-tools-toggle"
+        className={cn(
+          "absolute right-4 top-14 z-10 flex h-7.5 items-center gap-1.5 rounded-btn border border-border bg-surface px-2.5 font-medium shadow-float transition-opacity hover:bg-fill focus-visible:opacity-100 group-hover/viewer:opacity-100",
+          !tools && "opacity-0",
+        )}
+      >
+        <SlidersHorizontal size={14} /> {s.readingTools.toggle}
+      </button>
       <ReadingRuler enabled={reading.ruler}>
       <div className="h-full overflow-y-auto">
         {(source.isLoading || text.isLoading) && (
@@ -111,7 +140,7 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
           />
         )}
         {source.data && text.data && (
-          <div className="mx-auto flex max-w-[760px] flex-col gap-4 px-10 py-9 text-base leading-[1.75]">
+          <div className={cn("mx-auto flex flex-col gap-4 px-10 py-9 text-base leading-[1.75]", lang ? "max-w-[1100px]" : "max-w-[760px]")}>
             <div className="flex flex-col gap-1 rounded-card border border-border px-3.5 py-3">
               <p className="text-label font-semibold leading-[1.75] text-muted">{s.sources.summary}</p>
               {!source.data.summary && summarizing ? (
@@ -120,7 +149,16 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
                 <p className="text-[0.84375rem] leading-[1.55] text-fg-secondary">{source.data.summary ?? s.sources.noSummary}</p>
               )}
             </div>
+            {tools && (
+              <div className="flex flex-col gap-4 leading-normal" data-testid="reading-tools-panel">
+                <ReadingControls level={level} lang={lang} onLevel={setLevel} onLang={setLang} />
+                <GlossaryPanel subjectId={source.data.id} text={text.data.text} space={space.data} />
+              </div>
+            )}
             <SelectionToCard source={source.data} text={text.data.text} />
+            {rewritten ? (
+              <PassageList sourceId={source.data.id} text={text.data.text} space={space.data} level={level} lang={lang} />
+            ) : (
             <div className="whitespace-pre-wrap break-words" data-testid="source-text">
               {pieces.map((p, i) => (
                 <span key={i}>
@@ -150,6 +188,7 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
                 </span>
               ))}
             </div>
+            )}
           </div>
         )}
       </div>

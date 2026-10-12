@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Command } from "cmdk";
 import * as D from "@radix-ui/react-dialog";
-import { BarChart3, Brain, FilePlus2, FolderSync, Gauge, GraduationCap, House, Layers, Notebook, PencilLine, Plus, Search, Settings, Shapes, Sparkles, SquarePen, SunMoon, Timer, Zap } from "lucide-react";
+import { BarChart3, Brain, FilePlus2, FolderSync, Gauge, GraduationCap, House, Layers, Notebook, NotebookPen, PencilLine, Plus, Search, Settings, Shapes, Sparkles, SquarePen, SunMoon, Timer, Zap } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces, qk, useCaptureStatus } from "../../lib/queries";
 import { splitShortcut } from "../../lib/capture/shortcut";
@@ -209,6 +209,16 @@ export function CommandPalette() {
                   <GraduationCap size={15} />
                   <span className="flex-1">{s.palette.exam}</span>
                 </Command.Item>
+                {spaceId && (
+                  <Command.Item
+                    className={item}
+                    onSelect={() => run(() => ui.navigate({ name: "notes", spaceId }))}
+                    keywords={["notes", "write", "backlinks", "markdown", "glossary"]}
+                  >
+                    <NotebookPen size={15} />
+                    <span className="flex-1">{s.palette.notes}</span>
+                  </Command.Item>
+                )}
               </Command.Group>
             </Command.List>
           </Command>

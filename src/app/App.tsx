@@ -17,6 +17,7 @@ import { PracticeScreen } from "../features/practice/PracticeScreen";
 import { InsightsScreen } from "../features/insights/InsightsScreen";
 import { ExamScreen } from "../features/exam/ExamScreen";
 import { OutputScreen } from "../features/outputs/OutputScreen";
+import { NotesScreen } from "../features/notes/NotesScreen";
 import { CommandPalette } from "../features/palette/CommandPalette";
 import { FocusLayer } from "../features/focus/FocusLayer";
 import { QuizLayer } from "../features/placement/QuizDialog";
@@ -58,6 +59,12 @@ function RouteScreen({ route }: { route: Route }) {
     return (
       <ContentCard scroll={false}>
         <OutputScreen key={route.outputId} spaceId={route.spaceId} outputId={route.outputId} />
+      </ContentCard>
+    );
+  if (route.name === "notes")
+    return (
+      <ContentCard scroll={false}>
+        <NotesScreen key={route.spaceId} spaceId={route.spaceId} noteId={route.noteId} />
       </ContentCard>
     );
   if (route.name === "practice")

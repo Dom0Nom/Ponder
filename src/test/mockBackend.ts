@@ -4,6 +4,7 @@
  * real app. `window.__mock` exposes test hooks (clock control, LLM script, reset).
  */
 import { studioReply } from "./studioFixtures";
+import { notesReply } from "./notesFixtures";
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { emit } from "@tauri-apps/api/event";
 import type * as T from "../lib/types";
@@ -53,6 +54,9 @@ export interface DB {
   reviews?: T.ReviewRow[];
   exams?: Row<T.ExamAttempt>;
   outputs?: Row<T.StudioOutput>;
+  notes?: Row<T.Note>;
+  glossaries?: Row<T.Glossary>;
+  rewrites?: T.PassageRewrite[];
   exports?: { name: string; extension: string; size: number }[];
   prints?: number;
   images: Record<string, string>;
@@ -178,6 +182,8 @@ const defaultScript: Script = ({ messages, body }) => {
   const sysText = typeof sys?.content === "string" ? sys.content : JSON.stringify(sys?.content ?? "");
   const last = messages[messages.length - 1];
   const lastText = typeof last?.content === "string" ? last.content : JSON.stringify(last?.content ?? "");
+  const notes = notesReply(lastText);
+  if (notes) return { content: notes };
   if (/^Solve this problem carefully/.test(lastText)) {
     const n = Number(lastText.match(/10% of (\d+)/)?.[1] ?? 0);
     return { content: `$0.1 \\cdot ${n} = ${n / 10}$\n{"answer": ${n / 10}}` };
@@ -1808,6 +1814,71 @@ const handlers: Record<string, (a: Args) => unknown> = {
   output_get: (a) => db.outputs?.[a.id as string] ?? null,
   output_delete: (a) => {
     delete db.outputs?.[a.id as string];
+  },
+  notes_list: (a) =>
+    Object.values(db.notes ?? {})
+      .filter((x) => x.spaceId === a.spaceId)
+      .sort((x, y) => y.updatedAt - x.updatedAt),
+  note_get: (a) => db.notes?.[a.id as string] ?? null,
+  note_save: (a) => {
+    const input = structuredClone(a.note as T.Note);
+    if (!db.spaces[input.spaceId]) err("not_found", "space not found");
+    const cur = input.id ? db.notes?.[input.id] : undefined;
+    const t = now();
+    const n: T.Note = {
+      id: cur?.id ?? (input.id || id()),
+      spaceId: input.spaceId,
+      title: input.title.trim() || "Untitled",
+      body: input.body ?? "",
+      useAsSource: !!input.useAsSource,
+      sourceId: cur?.sourceId ?? null,
+      createdAt: cur?.createdAt ?? t,
+      updatedAt: Math.max(t, (cur?.updatedAt ?? 0) + 1),
+    };
+    const want = n.useAsSource && !!n.body.trim();
+    const existing = n.sourceId ? db.sources[n.sourceId] : undefined;
+    if (want && existing) {
+      existing.title = n.title;
+      existing.summary = null;
+      existing.status = "processing";
+      db.chunks = db.chunks.filter((c) => c.sourceId !== existing.id);
+      const body = n.body;
+      setTimeout(() => ingest(existing, body), 300);
+    } else if (want) {
+      const src = newSource(n.spaceId, n.title, "markdown", `note:${n.id}`);
+      n.sourceId = src.id;
+      const body = n.body;
+      setTimeout(() => ingest(src, body), 300);
+    } else if (n.sourceId) {
+      handlers.delete_source({ id: n.sourceId });
+      n.sourceId = null;
+    }
+    (db.notes ??= {})[n.id] = n;
+    save();
+    return n;
+  },
+  note_delete: (a) => {
+    const n = db.notes?.[a.id as string];
+    if (n?.sourceId) handlers.delete_source({ id: n.sourceId });
+    delete db.notes?.[a.id as string];
+    delete db.glossaries?.[a.id as string];
+    save();
+    return null;
+  },
+  glossary_get: (a) => db.glossaries?.[a.subjectId as string] ?? null,
+  glossary_save: (a) => {
+    const g = { ...(a.glossary as T.Glossary), createdAt: now() };
+    (db.glossaries ??= {})[g.subjectId] = g;
+    save();
+    return g;
+  },
+  rewrites_list: (a) => (db.rewrites ?? []).filter((r) => r.sourceId === a.sourceId && r.kind === a.kind),
+  rewrite_save: (a) => {
+    const w = a.rewrite as T.PassageRewrite;
+    db.rewrites = (db.rewrites ?? []).filter((r) => !(r.sourceId === w.sourceId && r.kind === w.kind && r.start === w.start && r.end === w.end));
+    db.rewrites.push(w);
+    save();
+    return null;
   },
   export_file: (a) => {
     const bytes = a.bytes as number[];
