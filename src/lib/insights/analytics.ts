@@ -160,7 +160,11 @@ export const clock = (min: number) => `${String(Math.floor(min / 60)).padStart(2
 export function dailyMinutes(a: InsightsActivity, now: number, days = 14): { day: number; minutes: number }[] {
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
-  const out = Array.from({ length: days }, (_, i) => ({ day: start.getTime() - (days - 1 - i) * DAY, minutes: 0 }));
+  const out = Array.from({ length: days }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(d.getDate() - (days - 1 - i));
+    return { day: d.getTime(), minutes: 0 };
+  });
   for (const f of a.focus) {
     const d = new Date(f.startedAt);
     d.setHours(0, 0, 0, 0);

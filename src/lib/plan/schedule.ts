@@ -78,6 +78,17 @@ export function topicNeed(t: PlanTopic): { learn: number; practice: number } {
   return { learn, practice: total - learn };
 }
 
+/** Topics with the minutes already finished subtracted, so editing a plan doesn't schedule that work again. */
+export function withRemainingNeed(topics: PlanTopic[], done: DoneTask[]): PlanTopic[] {
+  return topics.map((t) => {
+    const mine = done.filter((d) => d.topicId === t.id && (d.kind === "learn" || d.kind === "practice"));
+    if (mine.length === 0) return t;
+    const need = topicNeed(t);
+    const spent = (kind: "learn" | "practice") => mine.filter((d) => d.kind === kind).reduce((n, d) => n + d.minutes, 0);
+    return { ...t, need: { learn: Math.max(0, need.learn - spent("learn")), practice: Math.max(0, need.practice - spent("practice")) } };
+  });
+}
+
 /** Topics in prerequisite order; among those ready at the same time, weak/unknown come first. */
 export function orderTopics(topics: PlanTopic[]): PlanTopic[] {
   const ids = new Set(topics.map((t) => t.id));

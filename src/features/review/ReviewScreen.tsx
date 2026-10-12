@@ -84,20 +84,21 @@ function FinishedTitle({ n }: { n: number }) {
 }
 
 function ReviewSession({ spaceId, onCard }: { spaceId?: string; onCard: (has: boolean) => void }) {
-  const due = useQuery({ queryKey: qk.due(spaceId ?? null), queryFn: () => api.cardsDue(spaceId), staleTime: Infinity });
+  const due = useQuery({ queryKey: qk.due(spaceId ?? null), queryFn: () => api.cardsDue(spaceId), staleTime: Infinity, refetchOnMount: "always" });
   const counts = useDueCounts();
   const [queue, setQueue] = useState<Card[] | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [done, setDone] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [seq, setSeq] = useState(0);
   const shownAt = useRef(Date.now());
   const navigate = useUi((st) => st.navigate);
   const openViewer = useUi((st) => st.openViewer);
   const locked = useFocusStore((st) => st.breakLocked);
 
   useEffect(() => {
-    if (due.data && queue == null) setQueue(due.data);
-  }, [due.data, queue]);
+    if (due.data && !due.isFetching && queue == null) setQueue(due.data);
+  }, [due.data, due.isFetching, queue]);
 
   const card = queue?.[0];
   const previews = useMemo(() => (card ? previewIntervals(card) : {}), [card]);
@@ -110,7 +111,7 @@ function ReviewSession({ spaceId, onCard }: { spaceId?: string; onCard: (has: bo
   useEffect(() => {
     shownAt.current = Date.now();
     setRevealed(false);
-  }, [card?.id]);
+  }, [card?.id, seq]);
 
   const rate = useCallback(
     async (rating: number) => {
@@ -120,6 +121,7 @@ function ReviewSession({ spaceId, onCard }: { spaceId?: string; onCard: (has: bo
         const next = schedule(card, rating as 1 | 2 | 3 | 4);
         await api.cardReview(card.id, rating, next.fsrs, next.due, next.state, Date.now() - shownAt.current, next.log);
         setDone((d) => d + 1);
+        setSeq((n) => n + 1);
         // cards still due within this session (learning steps) go to the back of the queue
         setQueue((q) => {
           const rest = (q ?? []).slice(1);
@@ -150,8 +152,8 @@ function ReviewSession({ spaceId, onCard }: { spaceId?: string; onCard: (has: bo
     return () => window.removeEventListener("keydown", onKey);
   }, [revealed, rate, locked]);
 
+  if (due.error && !due.data) return <ErrorState title={s.review.loadFailed} error={due.error} onRetry={() => due.refetch()} />;
   if (due.isLoading || queue == null) return <Skeleton className="h-[264px] rounded-[14px]" />;
-  if (due.error) return <ErrorState title={s.review.loadFailed} error={due.error} onRetry={() => due.refetch()} />;
 
   if (!card) {
     const totals = (counts.data ?? []).filter((c) => !spaceId || c.spaceId === spaceId);

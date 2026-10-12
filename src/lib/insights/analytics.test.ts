@@ -95,6 +95,15 @@ describe("study times", () => {
   });
 });
 
+describe("dailyMinutes across DST", () => {
+  it("starts every day at local midnight", () => {
+    for (const month of [2, 9, 10]) {
+      const d = dailyMinutes({ ...empty, focus: [] }, at(2026, month, 28, 12), 40);
+      for (const x of d) expect(new Date(x.day).getHours()).toBe(0);
+    }
+  });
+});
+
 describe("mastery and readiness", () => {
   it("prefers practice ability over placement levels", () => {
     const m = topicMastery(

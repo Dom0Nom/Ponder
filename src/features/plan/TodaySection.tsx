@@ -32,7 +32,7 @@ export function TodaySection() {
       replanSpaceOnce(id)
         .then((n) => n > 0 && toast(s.plan.schedule.replanned(n)))
         .catch((e) => toastError(s.plan.schedule.saveFailed, e));
-  }, [spaceKey]);
+  }, [spaceKey, today]);
 
   const groups = useMemo(() => {
     const by = new Map<string, DatedPlanTask[]>();

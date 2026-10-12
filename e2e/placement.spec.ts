@@ -67,3 +67,24 @@ test("a book becomes a course with chapters", async ({ app }) => {
   await answerQuiz(app, 3);
   await expect(course).toContainText("1 of 3 chapters done");
 });
+
+test("changing the curriculum clears the old topic levels", async ({ app }) => {
+  test.setTimeout(90_000);
+  await app.getByRole("button", { name: "New space" }).first().click();
+  await app.getByLabel("Name").fill("GED prep");
+  await app.getByLabel("Exam or course (optional)").selectOption("ged");
+  await app.getByRole("button", { name: "Create" }).click();
+  await app.getByRole("button", { name: /^Learning plan/ }).click();
+  const plan = app.getByTestId("plan-card");
+  await plan.getByRole("button", { name: "Take the placement check" }).click();
+  await answerQuiz(app, 10);
+  await expect(plan.getByText("Strong").first()).toBeVisible();
+
+  await plan.getByRole("button", { name: "Plan options" }).click();
+  await app.getByRole("menuitem", { name: "Change exam or course" }).click();
+  await app.getByRole("dialog").getByRole("button", { name: /SAT/ }).click();
+  await expect(plan).toContainText("SAT");
+  await expect(plan.getByText("Strong")).toHaveCount(0);
+  const levels = await app.evaluate(() => Object.keys((window as any).__mock.db().levels).length);
+  expect(levels).toBe(0);
+});

@@ -1506,6 +1506,12 @@ const handlers: Record<string, (a: Args) => unknown> = {
     const topics = a.topics as T.TopicRef[];
     if (!topics?.length) err("invalid", "A curriculum needs at least one topic");
     const c: T.SpaceCurriculum = { spaceId: a.spaceId as string, curriculumId: a.curriculumId as string, title: a.title as string, topics, updatedAt: now() };
+    const old = db.curricula[c.spaceId];
+    if (old && (old.curriculumId !== c.curriculumId || JSON.stringify(old.topics) !== JSON.stringify(c.topics))) {
+      delete db.levels[c.spaceId];
+      for (const k of Object.keys(db.abilities[c.spaceId] ?? {})) if (!k.startsWith("free:")) delete db.abilities[c.spaceId][k];
+      for (const x of Object.values(db.planTasks)) if (x.spaceId === c.spaceId && x.topicId && !x.doneAt) delete db.planTasks[x.id];
+    }
     db.curricula[c.spaceId] = c;
     save();
     return c;

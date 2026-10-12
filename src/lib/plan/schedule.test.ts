@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, buildSchedule, daysBetween, orderTopics, replanIfMissed, weekdayOf, weekInfo, type PlanTopic, type ScheduleInput } from "./schedule";
+import { addDays, buildSchedule, daysBetween, orderTopics, replanIfMissed, weekdayOf, withRemainingNeed, weekInfo, type PlanTopic, type ScheduleInput } from "./schedule";
 import type { PlanTask } from "../types";
 
 const TODAY = "2026-10-12"; // Monday
@@ -181,6 +181,26 @@ function stored(tasks: { date: string; kind?: PlanTask["kind"]; topicId?: string
     doneAt: t.done ? 1 : null,
   }));
 }
+
+describe("withRemainingNeed", () => {
+  it("subtracts finished minutes per kind and leaves untouched topics alone", () => {
+    const a = topic("a");
+    const b = topic("b");
+    const [ra, rb] = withRemainingNeed([a, b], [
+      { date: TODAY, kind: "learn", minutes: 30, topicId: "a" },
+      { date: TODAY, kind: "practice", minutes: 100, topicId: "a" },
+    ]);
+    expect(ra.need).toEqual({ learn: 54 - 30, practice: 0 });
+    expect(rb).toBe(b);
+  });
+
+  it("schedules only the remaining minutes when editing a partly done plan", () => {
+    const done = [{ date: TODAY, kind: "learn" as const, minutes: 54, topicId: "a" }];
+    const r = ok(input({ topics: withRemainingNeed([topic("a")], done), done, examDate: addDays(TODAY, 29) }));
+    expect(r.tasks.filter((t) => t.topicId === "a" && t.kind === "learn")).toHaveLength(0);
+    expect(r.tasks.filter((t) => t.topicId === "a" && t.kind === "practice").reduce((n, t) => n + t.minutes, 0)).toBe(36);
+  });
+});
 
 describe("replanIfMissed", () => {
   const plan = { goal: "g", examDate: addDays(TODAY, 29), weeklyMinutes: 420, studyDays: ALL_DAYS };

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { generateText } from "ai";
 import { IconSwap } from "../../components/motion/IconSwap";
 import { TextSwap } from "../../components/motion/TextSwap";
@@ -46,6 +46,12 @@ export function PlanPanel({ space, onBack }: { space: Space; onBack: () => void 
   );
 }
 
+function invalidateCurriculum(qc: QueryClient, spaceId: string) {
+  for (const key of [qk.curriculum(spaceId), qk.levels(spaceId), qk.coverage(spaceId), qk.studyPlan(spaceId), qk.planTasks, ["abilities", spaceId]]) {
+    qc.invalidateQueries({ queryKey: key });
+  }
+}
+
 export function CurriculumPicker({ space, onDone }: { space: Space; onDone?: () => void }) {
   const qc = useQueryClient();
   const [custom, setCustom] = useState(false);
@@ -56,7 +62,7 @@ export function CurriculumPicker({ space, onDone }: { space: Space; onDone?: () 
     if (!c) return;
     try {
       await api.curriculumSet(space.id, c.id, c.title, c.topics);
-      qc.invalidateQueries({ queryKey: qk.curriculum(space.id) });
+      invalidateCurriculum(qc, space.id);
       onDone?.();
     } catch (e) {
       toastError(s.errors.generic, e);
@@ -85,7 +91,7 @@ export function CurriculumPicker({ space, onDone }: { space: Space; onDone?: () 
         busy={busy}
         setBusy={setBusy}
         onDone={() => {
-          qc.invalidateQueries({ queryKey: qk.curriculum(space.id) });
+          invalidateCurriculum(qc, space.id);
           onDone?.();
         }}
       />
