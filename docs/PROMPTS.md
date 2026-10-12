@@ -94,3 +94,21 @@ bun scripts/prompt-eval.ts --compare .native-bin/old.json .native-bin/new.json
 Not covered: vision-transcribe (needs photos of handwriting), tutor-history and second-opinion (same prompt as the tutor), practice-variation and solve-check (exercised inside practice-problem).
 
 A rewrite is kept only when its judge mean is higher and its deterministic pass rate is not lower than the old prompt's on the same cases.
+
+## Results (2026-10-12)
+
+Baseline = the prompts before this pass; new = rewrites. 2 samples per case (practice-problem and classify-error re-run with 4 samples on both sides because the first run was close). deepseek-v4.1-flash generates, claude-haiku-4.5 judges.
+
+| prompt | checks old → new | judge old → new | kept |
+|---|---|---|---|
+| tutor-system | 96% → 98% | 4.69 → 4.75 | yes: no opening praise or emoji; Socratic release valve (show the next step when stuck, explain after two failed tries); focus replies fit the minutes left (≤8 min: word budget of 30/min, 60–250); low energy under 100 words |
+| buddy-instruction | 75% → 100% | 4.07 → 4.90 | yes: no praise, emoji or follow-up markers in buddy notes; word limits for session start (110) and post-break (90) |
+| mcq-quiz | 90% → 100% | 4.25 → 4.79 | yes: "exactly N per topic, M in total", plus `capPerTopic` in code |
+| step-check | 90% → 95% | 4.72 → 4.81 | yes: a worked example of an issue/hint that names the mistake without the corrected value |
+| grade-short | 98% → 100% | 4.48 → 4.56 | yes: at most two plain sentences in the question's language |
+| practice-problem | 97% → 96% (99% → 92% in the first run) | 4.40 → 4.61 | no: hint wording and "work it out first" lowered the check rate (more regenerations); reverted |
+| classify-error | 94% → 93% | 4.60 → 4.77 | no: sharper type definitions didn't fix the 15%-of-80 case and added "units" answers; reverted |
+
+Unchanged prompts moved by up to ±0.36 between runs (micro-steps 4.47 → 4.83, custom-curriculum 5.00 → 4.78, research-query 3.08 → 2.83), so judge differences under ~0.3 are noise; the check rate decides close calls.
+
+Open findings for later passes: classify-error labels "15% of 80 = 1200" inconsistently (concept/procedure/units); practice-problem hints sometimes name an intermediate number; research-query scores low because the judge wants more specific queries than a ≤30-word suggestion allows.

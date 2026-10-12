@@ -537,7 +537,7 @@ const classify: Task = {
     ["Solve: -3x = 12", "-4", "4", ["sign"], "en"],
     ["A 2 km walk takes how many meters?", "2000", "200", ["units"], "en"],
     ["What is the slope through (1,2) and (3,8)?", "3", "1/3", ["procedure", "concept"], "en"],
-    ["How many apples are left if Ana has 12 and gives away 5 to each of 2 friends?", "2", "7", ["misread"], "en"],
+    ["How many apples are left if Ana has 12 and gives away 5 to each of 2 friends?", "2", "7", ["misread", "procedure"], "en"],
     ["Löse: 2(x + 3) = 10", "2", "3.5", ["procedure"], "de"],
   ].map(([q, a, r, ok, l]) => ({
     name: `${l} ${String(q).slice(0, 26)}`,
@@ -547,7 +547,7 @@ const classify: Task = {
       return {
         output: cur().at(-1)?.output ?? "",
         expect: `Most plausible: ${(ok as string[]).join(" or ")}. Note in ${l === "de" ? "German" : "English"}.`,
-        checks: [check("type", (ok as string[]).includes(res.errorType), res.errorType), check("note", !!res.note)],
+        checks: [check("type", (ok as string[]).includes(res.errorType), res.errorType), check("note", !!res.note), check("note language", !!res.note && (lang(res.note) === l || lang(res.note) === "?"), res.note ? lang(res.note) : "")],
       };
     },
   })),
@@ -816,7 +816,7 @@ const curriculum: Task = {
       const all = (r?.topics ?? []).map((t) => t.title).join(". ");
       return {
         output: cur().at(-1)?.output ?? err,
-        expect: `5–25 topics in learning order, grouped, ${l === "de" ? "German" : "English"}, nothing invented beyond the syllabus.`,
+        expect: `5–25 topics in learning order, grouped, ${l === "de" ? "German" : "English"}. Topics come from the syllabus; descriptions may add the standard keywords a topic covers (they are used to match sources).`,
         checks: [check("parsed", !!r, err), check("5–25 topics", !!r && r.topics.length >= 5 && r.topics.length <= 25, String(r?.topics.length)), check("groups", !!r && new Set(r.topics.map((t) => t.group)).size >= 2), check("language", l === "en" || lang(all + " und die der") === "de")],
       };
     },
@@ -833,7 +833,7 @@ async function judge(task: Task, caseName: string, r: CaseResult, prompt: string
     await generateText({
       model: jm.model,
       ...jm.options({ thinking: false }),
-      system: "You grade outputs of prompts used in a study app for adult learners (many preparing for the GED, some with ADHD). Be strict and consistent. Use the anchored scale; 5 is rare.",
+      system: "You grade outputs of prompts used in a study app for adult learners (many preparing for the GED, some with ADHD). Be strict and consistent. Use the anchored scale; 5 is rare. Word, sentence and item counts are checked by code, so don't count them yourself; judge length only when it is clearly far off. `{{general}}…{{/general}}`, `{{followup: …}}` and `{{remember: …}}` are app markers the app strips or renders; treat them as valid syntax. Emoji and opening praise (\"Great question\", \"Gute Frage\") count against tone.",
       prompt: `<purpose>${task.purpose}</purpose>\n<case>${caseName}</case>\n<expected>${r.expect}</expected>\n<prompt_sent>\n${prompt.slice(0, 7000)}\n</prompt_sent>\n<model_output>\n${r.output.slice(0, 5000)}\n</model_output>\n\nScore each dimension 1–5:\n${rubric}\n\nReturn JSON only: {"rationale": "one or two sentences", ${task.dims.map((d) => `"${d}": 1-5`).join(", ")}}`,
     })
   ).text;
@@ -886,6 +886,8 @@ for (const task of tasks) {
         try {
           const rec: Call[] = [];
           const r = await store.run(rec, () => c.run());
+          if (task.id === "buddy-instruction") r.checks.push(check("no follow-up markers", !r.output.includes("{{followup")));
+          if (task.id === "buddy-instruction" || task.id === "tutor-system") r.checks.push(check("no emoji", !/\p{Extended_Pictographic}/u.test(r.output)));
           const prompt = rec[0]?.prompt ?? "";
           const j = await judge(task, c.name, r, prompt).catch(() => ({}) as Record<string, number>);
           const { rationale, ...scores } = j as Record<string, number> & { rationale?: unknown };

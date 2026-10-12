@@ -32,7 +32,12 @@ export function buddyNote(kind: BuddyEventKind, s: FocusState | null, prev: Focu
 }
 
 /** Instruction for the AI turn that follows a buddy note. */
-export function buddyInstruction(
+export function buddyInstruction(kind: BuddyEventKind, ctx: Parameters<typeof eventInstruction>[1]): string {
+  const text = eventInstruction(kind, ctx);
+  return text && `${text} Plain, warm tone: no opening praise, no emoji, no {{followup}} suggestions.`;
+}
+
+function eventInstruction(
   kind: BuddyEventKind,
   ctx: {
     state: FocusState | null;
@@ -60,7 +65,7 @@ export function buddyInstruction(
         "A focus session just started.",
         s?.goal ? `The learner's goal: "${s.goal}".` : "The learner didn't set a goal.",
         s?.remainingMs != null ? `This block is ${mins(s.phaseDurationMs)} min.` : "This is an open-ended block.",
-        "Do a 3-question check-in in one short message: energy level (1–5), how much time they have today, and what exactly they want to finish in this block. Then propose a concrete plan for this block in 2–4 bullet points sized to the time. Keep it under 120 words.",
+        "Do a 3-question check-in in one short message: energy level (1–5), how much time they have today, and what exactly they want to finish in this block. Then propose a concrete plan for this block in 2–4 short bullet points sized to the time. Keep it under 110 words: the three questions as a numbered list, then the plan.",
       ].join(" ");
     case "check-in":
       if (low) {
@@ -99,7 +104,7 @@ export function buddyInstruction(
         ctx.needAppPauses > 0
           ? `They interrupted the break ${ctx.needAppPauses} time(s) with "I need the app"; mention gently that real breaks help memory, without guilt.`
           : "",
-        "Give a 3-bullet recap of where they left off and the next concrete step for this block.",
+        "Give a 3-bullet recap of where they left off and the next concrete step for this block. Under 90 words.",
       ].join(" ");
     case "session-summary":
       return [

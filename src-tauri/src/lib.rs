@@ -7,6 +7,7 @@ mod db;
 mod error;
 mod focus;
 mod ingest;
+mod insights;
 mod lan;
 mod music;
 mod micro_steps;
@@ -93,6 +94,7 @@ pub fn run() {
             cards::card_review,
             cards::mistakes_add,
             cards::mistakes_list,
+            insights::insights_activity,
             cards::mistake_set_resolved,
             cards::mistake_delete,
             cards::image_store,
