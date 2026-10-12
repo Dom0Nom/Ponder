@@ -92,6 +92,15 @@ Must work end-to-end and be verified:
 
 Cut: calendar sync, essay coach (separate from exam-simulator essay grading, which stays), debate mode, role reversal.
 
+### Status (2026-10-12)
+
+Every roadmap item above is built except the parts listed here (details in `docs/HANDOFF.md` → Known gaps):
+- Spoken voice tutor: works, but replies are spoken after they finish streaming and there is no voice barge-in.
+- Free local TTS voice (Kokoro on CPU): not built; speech uses a cloud service (Kokoro via OpenRouter by default).
+- PDF annotation: highlights and margin notes work on a PDF's extracted text, not on the rendered page.
+- MCP client: local stdio servers only, no remote HTTP servers.
+- Windows and Linux: the Rust code compiles for Windows (GNU target) and CI builds bundles for all three, but no Windows or Linux bundle was built or run here. No web build.
+
 ## Architecture
 
 - **Frontend** (`src/`): React + TS, Tailwind + Radix primitives (shadcn-style, restyled to the app's neutral design system (`src/index.css` tokens)), Zustand for UI state, TanStack Query for backend calls. AI calls through the Vercel AI SDK (`ai` + provider packages) with `@tauri-apps/plugin-http` fetch so there's no CORS issue and keys stay out of web requests made by the page.

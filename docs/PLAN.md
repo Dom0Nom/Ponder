@@ -8,6 +8,10 @@ Source of truth for scope is `docs/SPEC.md`. This file records how it is built a
 - **sqlite-vec pinned to 0.1.6.** 0.1.10-alpha fails to compile (missing `sqlite-vec-diskann.c`).
 - **AI HTTP goes through our own Rust proxy instead of `@tauri-apps/plugin-http`.** The AI SDK gets a custom `fetch` that calls the `http_stream` command; Rust injects the provider's API key / OAuth token from the keychain, only for that provider's own base URL. Keys never enter the webview. Also removes CORS issues.
 - **keyring 3** (stable API) instead of 4.
+- **No free local TTS voice.** Kokoro on CPU needs an ONNX runtime (`ort`, no prebuilt for `x86_64-apple-darwin`, same as fastembed) plus a phonemizer; speech defaults to Kokoro through OpenRouter instead.
+- **Video overview is recorded in the webview, not rendered with ffmpeg.** Slides are drawn on a canvas, narration mixed in via WebAudio, captured with MediaRecorder in real time (MP4 in WKWebView, WebM elsewhere). No bundled ffmpeg; a deck takes as long to export as it plays.
+- **YouTube watch-along talks to the embed over postMessage** instead of loading Google's IFrame API script; pauses come from transcript timestamps.
+- **MCP client: stdio servers only.** Ponder starts each server itself (PATH from the login shell, env from the keychain) and hands its tools to the AI SDK; remote HTTP/SSE servers and per-call approval aren't built.
 
 ## Redesign (Ponder look)
 
