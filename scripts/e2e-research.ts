@@ -5,7 +5,9 @@
 import { JSDOM } from "jsdom";
 import { extractReadable } from "../src/lib/importers/web";
 import { fetchTranscript, type HttpFn } from "../src/lib/importers/youtube";
-import { deepResearch } from "../src/lib/research/deepResearch";
+import { deepResearch, writeReport } from "../src/lib/research/deepResearch";
+import { createModelSearch } from "../src/lib/research/webSearch";
+import { DEFAULT_SEARCH, engines } from "../src/lib/research/search";
 import { DEFAULT_RESEARCH_SYSTEM_PROMPT, generateResearchQuery } from "../src/lib/research/prompts";
 import { liveModel } from "./lib/liveModel";
 
@@ -32,20 +34,61 @@ const suggested = await generateResearchQuery(
 );
 console.log(`suggested question for "Biology": ${suggested}`);
 
+const fetchPage = async (url: string) => {
+  const r = await fetch(url, { headers: { "User-Agent": UA } });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const page = extractReadable(await r.text(), r.url);
+  if (!page) throw new Error("no article");
+  return { ...page, url: r.url };
+};
+
+for (const id of ["duckduckgo", "wikipedia", "arxiv", "openalex", "openstax"] as const) {
+  try {
+    const r = await engines[id](http, "mitosis phases of cell division");
+    console.log(`engine ${id}: ${r.length} results${r[0] ? `, first: ${r[0].url}` : ""}`);
+  } catch (e) {
+    console.log(`engine ${id}: FAILED ${(e as Error).message}`);
+  }
+}
+
 const question = process.argv[2] ?? suggested;
 const t1 = Date.now();
+const rounds = new Set<number>();
 const found = await deepResearch(question, {
   llm,
   systemPrompt,
   http,
-  fetchPage: async (url) => {
-    const r = await fetch(url, { headers: { "User-Agent": UA } });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const page = extractReadable(await r.text(), r.url);
-    if (!page) throw new Error("no article");
-    return { ...page, url: r.url };
+  fetchPage,
+  search: DEFAULT_SEARCH,
+  onStage: (st, d, round) => {
+    if (round) rounds.add(round);
+    console.log(`  [${((Date.now() - t1) / 1000).toFixed(1)}s] r${round ?? "-"} ${st}${d ? `: ${d}` : ""}`);
   },
-  onStage: (st, d) => console.log(`  [${((Date.now() - t1) / 1000).toFixed(1)}s] ${st}${d ? `: ${d}` : ""}`),
 });
-console.log(`research: ${found.length} sources in ${((Date.now() - t1) / 1000).toFixed(1)} s`);
-for (const f of found.slice(0, 8)) console.log(`  ${f.credibility}/${f.relevance}  ${f.title}  ${f.url}\n      ${f.summary.slice(0, 140)}`);
+console.log(`research: ${found.length} sources in ${((Date.now() - t1) / 1000).toFixed(1)} s over ${rounds.size} round(s)`);
+for (const f of found.slice(0, 8)) console.log(`  ${f.credibility}/${f.relevance}  [${f.engine}] ${f.title}  ${f.url}\n      ${f.summary.slice(0, 140)}`);
+console.log(`openstax sources kept: ${found.filter((f) => f.engine === "openstax").length}`);
+
+if (found.length) {
+  const report = await writeReport(question, found.slice(0, 5), { llm, systemPrompt });
+  console.log(`report: ${report.markdown.length} chars, cited ${JSON.stringify(report.cited)}`);
+  console.log(report.markdown.slice(0, 900));
+}
+
+const key = process.env.OPENROUTER_API_KEY;
+if (key) {
+  const provider = { id: "live-openrouter", type: "openrouter", kind: "apiKey", name: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", config: {}, createdAt: 0 } as const;
+  const keyed: typeof fetch = (input, init) => {
+    const headers = new Headers(init?.headers);
+    headers.set("Authorization", `Bearer ${key}`);
+    return fetch(input, { ...init, headers });
+  };
+  const search = createModelSearch(provider, "deepseek/deepseek-v4.1-flash", { fetch: keyed });
+  try {
+    const r = await search!(question);
+    console.log(`model search (:online): ${r.length} results`);
+    for (const x of r.slice(0, 5)) console.log(`  ${x.title}  ${x.url}`);
+  } catch (e) {
+    console.log(`model search (:online) FAILED: ${(e as Error).message.slice(0, 300)}`);
+  }
+}

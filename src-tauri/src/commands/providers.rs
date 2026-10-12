@@ -311,7 +311,10 @@ pub async fn http_stream(
     };
     let prepared = async {
         let provider = match request.provider_id.as_deref().filter(|s| !s.is_empty()) {
-            Some(pid) => Some(m::get_provider(&state.db.conn()?, pid)?),
+            Some(pid) => match proxy::search_provider(pid) {
+                Some(p) => Some(p),
+                None => Some(m::get_provider(&state.db.conn()?, pid)?),
+            },
             None => None,
         };
         proxy::prepare(&request, provider.as_ref(), svc.secrets.as_ref(), &svc.oauth).await

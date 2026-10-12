@@ -27,6 +27,9 @@ All calls go through `generateText`/`streamText` from the `ai` SDK; there is no 
 | research-query | `research/prompts.ts` `buildQueryPrompt` | suggest what to search for in this space | research | text ≤30 words → `cleanQuery` |
 | research-plan | `research/deepResearch.ts` `planQueries` | 3–5 queries + ISO language | research | JSON `{language, queries}` |
 | research-rank | `research/deepResearch.ts` `rankPrompt` | relevance/credibility per page, batches of 4 | research | JSON → `applyRatings`, `filterAndSort` |
+| research-gaps | `research/reportPrompts.ts` `gapPrompt` | what the kept sources miss, 0–3 new queries; rounds 2 and 3 | research | JSON `{gaps, queries}` → `parseGaps` (drops repeats, caps at 3) |
+| research-report | `research/reportPrompts.ts` `reportPrompt` | cited Markdown report from the ticked sources | research | Markdown → `finishReport` (invented `[n]` removed, source list appended in code) |
+| research-model-search | `research/reportPrompts.ts` `modelSearchPrompt` | ask the model's own web search for pages on the question | research (OpenRouter `:online`, OpenAI, Anthropic, Gemini, xAI tools) | URLs taken from provider citations only → `parseOpenRouterCitations`, `sourcesToResults` |
 | step-check | `steps/check.ts` `stepCheckPrompt` | grade worked math steps; mathjs overrides | chat | JSON `{steps[], finalCorrect, summary}` → `parseModelVerdicts`, `mergeVerdicts` |
 | vision-transcribe | `steps/vision.ts` `TRANSCRIBE_PROMPT` | read handwritten math from a photo | vision model | JSON `{problem, steps[]}` → `parseTranscription` |
 | source-summary | `sources/summary.ts` | 2–3 sentence summary per source | chat | text |

@@ -4,9 +4,13 @@ import type { ResolvedModel } from "../chat/llm";
 import { fetchReadable } from "../importers/web";
 import type { HttpFn } from "../importers/youtube";
 import { DEFAULT_RESEARCH_SYSTEM_PROMPT } from "./prompts";
-import { engines, normalizeForDedupe, wikipediaIn, type SearchResult } from "./search";
+import { finishReport, gapPrompt, parseGaps, reportPrompt, type FinishedReport, type Gaps } from "./reportPrompts";
+import { buildEngines, DEFAULT_SEARCH, normalizeForDedupe, type SearchConfig, type SearchResult } from "./search";
 
-export type ResearchStage = "planning" | "searching" | "fetching" | "ranking" | "done";
+export type ResearchStage = "planning" | "searching" | "fetching" | "ranking" | "gaps" | "done";
+
+export const MAX_ROUNDS = 3;
+const MAX_RESULTS_PER_ROUND = 16;
 
 export interface FoundSource {
   id: string;
@@ -24,11 +28,18 @@ export interface ResearchDeps {
   systemPrompt?: string;
   http: HttpFn;
   fetchPage?: typeof fetchReadable;
-  onStage?: (stage: ResearchStage, detail?: string) => void;
+  /** `round` is 1-based; from round 2 on `detail` of the searching stage is what the earlier rounds missed */
+  onStage?: (stage: ResearchStage, detail?: string, round?: number) => void;
   signal?: AbortSignal;
+  search?: SearchConfig;
+  /** URLs already in the space; results matching them (after normalizing) are dropped */
+  skipUrls?: Iterable<string>;
+  maxRounds?: number;
 }
 
-async function ask(deps: ResearchDeps, prompt: string, signal?: AbortSignal): Promise<string> {
+type AskDeps = Pick<ResearchDeps, "llm" | "systemPrompt">;
+
+async function ask(deps: AskDeps, prompt: string, signal?: AbortSignal): Promise<string> {
   const { llm } = deps;
   const r = await generateText({
     model: llm.model,
@@ -60,15 +71,24 @@ export async function planQueries(question: string, deps: ResearchDeps): Promise
   return { queries: queries.length ? queries : [question], language };
 }
 
-export async function searchAll(queries: string[], deps: ResearchDeps, language = "en"): Promise<SearchResult[]> {
+export async function searchAll(
+  queries: string[],
+  deps: ResearchDeps,
+  language = "en",
+  skip: ReadonlySet<string> = new Set(),
+): Promise<SearchResult[]> {
   const jobs: Promise<SearchResult[]>[] = [];
-  for (const q of queries) jobs.push(engines.duckduckgo(deps.http, q));
-  jobs.push(engines.wikipedia(deps.http, queries[0]), engines.arxiv(deps.http, queries[0]), engines.openalex(deps.http, queries[0]));
-  if (language !== "en") jobs.push(wikipediaIn(language)(deps.http, queries[0]));
+  for (const e of buildEngines(deps.search ?? DEFAULT_SEARCH, deps.http, language)) {
+    // a throwing engine only loses its own results
+    const run = (q: string) => Promise.resolve().then(() => e.run(q));
+    for (const q of e.perQuery ? queries : queries.slice(0, 1)) jobs.push(run(q));
+  }
+  if (!jobs.length) throw new Error("No search engine is turned on. Turn one on in Settings.");
   const settled = await Promise.allSettled(jobs);
   const ok = settled.filter((s): s is PromiseFulfilledResult<SearchResult[]> => s.status === "fulfilled");
+  for (const s of settled) if (s.status === "rejected") console.warn("search engine failed", s.reason);
   if (!ok.length) throw new Error("Every search engine failed. Check your internet connection.");
-  const seen = new Set<string>();
+  const seen = new Set<string>(skip);
   const out: SearchResult[] = [];
   // interleave engines so one engine can't crowd out the rest
   const lists = ok.map((s) => s.value);
@@ -82,7 +102,7 @@ export async function searchAll(queries: string[], deps: ResearchDeps, language 
       out.push(r);
     }
   }
-  return out.slice(0, 14);
+  return out.slice(0, MAX_RESULTS_PER_ROUND);
 }
 
 interface Rating {
@@ -143,7 +163,8 @@ export async function rank(question: string, pages: Page[], deps: ResearchDeps):
   for (let b = 0; b < pages.length; b += 4) {
     const batch = pages.slice(b, b + 4);
     const text = await ask(deps, rankPrompt(question, batch), deps.signal);
-    found.push(...applyRatings(batch, extractJson<Rating[]>(text) ?? []));
+    const ratings = extractJson<Rating[]>(text);
+    found.push(...applyRatings(batch, Array.isArray(ratings) ? ratings : []));
   }
   return filterAndSort(found);
 }
@@ -151,14 +172,13 @@ export async function rank(question: string, pages: Page[], deps: ResearchDeps):
 const clamp = (n: unknown, fallback: number) =>
   typeof n === "number" && Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : fallback;
 
-export async function deepResearch(question: string, deps: ResearchDeps): Promise<FoundSource[]> {
+const throwIfAborted = (signal?: AbortSignal) => {
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+};
+
+async function readPages(results: SearchResult[], deps: ResearchDeps): Promise<Page[]> {
   const fetchPage = deps.fetchPage ?? fetchReadable;
-  deps.onStage?.("planning");
-  const { queries, language } = await planQueries(question, deps);
-  deps.onStage?.("searching", queries.join(" · "));
-  const results = await searchAll(queries, deps, language);
-  deps.onStage?.("fetching", `${results.length}`);
-  const pages: (SearchResult & { markdown: string; title: string })[] = [];
+  const pages: Page[] = [];
   let next = 0;
   await Promise.all(
     Array.from({ length: 4 }, async () => {
@@ -174,10 +194,78 @@ export async function deepResearch(question: string, deps: ResearchDeps): Promis
       }
     }),
   );
-  if (deps.signal?.aborted) throw new DOMException("Aborted", "AbortError");
-  if (!pages.length) return [];
-  deps.onStage?.("ranking", `${pages.length}`);
-  const ranked = await rank(question, pages, deps);
+  throwIfAborted(deps.signal);
+  return pages;
+}
+
+/** What the kept sources don't cover yet, as 0 to 3 new queries. Empty queries mean "covered". */
+export async function findGaps(question: string, kept: FoundSource[], searched: string[], deps: ResearchDeps): Promise<Gaps> {
+  const text = await ask(deps, gapPrompt(question, kept, searched), deps.signal);
+  return parseGaps(extractJson(text), searched);
+}
+
+export async function deepResearch(question: string, deps: ResearchDeps): Promise<FoundSource[]> {
+  const maxRounds = deps.maxRounds ?? MAX_ROUNDS;
+  const seen = new Set([...(deps.skipUrls ?? [])].map(normalizeForDedupe));
+  deps.onStage?.("planning", undefined, 1);
+  const plan = await planQueries(question, deps);
+  const searched = [...plan.queries];
+  let queries = plan.queries;
+  let missing = "";
+  let kept: FoundSource[] = [];
+
+  for (let round = 1; round <= maxRounds; round++) {
+    deps.onStage?.("searching", round === 1 ? queries.join(" · ") : missing, round);
+    let results: SearchResult[];
+    try {
+      results = await searchAll(queries, deps, plan.language, seen);
+    } catch (e) {
+      if (round === 1 || deps.signal?.aborted) throw e;
+      break;
+    }
+    throwIfAborted(deps.signal);
+    for (const r of results) seen.add(normalizeForDedupe(r.url));
+    if (!results.length) break;
+
+    deps.onStage?.("fetching", `${results.length}`, round);
+    const pages = await readPages(results, deps);
+    for (const p of pages) seen.add(normalizeForDedupe(p.url));
+    if (!pages.length) {
+      if (round === 1) return [];
+      break;
+    }
+
+    deps.onStage?.("ranking", `${pages.length}`, round);
+    kept = filterAndSort([...kept, ...(await rank(question, pages, deps))]);
+    throwIfAborted(deps.signal);
+    if (round === maxRounds) break;
+
+    deps.onStage?.("gaps", undefined, round);
+    let gaps: Gaps;
+    try {
+      gaps = await findGaps(question, kept, searched, deps);
+    } catch (e) {
+      if (deps.signal?.aborted) throw e;
+      console.warn("gap finding failed", e);
+      break;
+    }
+    if (!gaps.queries.length) break;
+    queries = gaps.queries;
+    searched.push(...queries);
+    missing = gaps.gaps.length ? gaps.gaps.join("; ") : queries.join(" · ");
+  }
   deps.onStage?.("done");
-  return ranked;
+  return kept;
+}
+
+/** A cited Markdown report from the chosen sources; `[n]` points at the numbered list at the end. */
+export async function writeReport(
+  question: string,
+  sources: FoundSource[],
+  deps: AskDeps & Pick<ResearchDeps, "signal">,
+): Promise<FinishedReport> {
+  if (!sources.length) throw new Error("Pick at least one source for the report.");
+  const text = await ask(deps, reportPrompt(question, sources), deps.signal);
+  if (!text.trim()) throw new Error("The model returned an empty report. Try again.");
+  return finishReport(text, sources);
 }

@@ -55,7 +55,28 @@ pub struct Prepared {
 
 // ---------- auth injection rules ----------
 
-const AUTH_HEADERS: &[&str] = &["authorization", "x-api-key", "x-goog-api-key"];
+const AUTH_HEADERS: &[&str] = &["authorization", "x-api-key", "x-goog-api-key", "x-subscription-token"];
+
+/// Web search APIs whose keys live in the secret store under `search:<engine>`.
+pub const SEARCH_ENGINES: &[(&str, &str)] = &[
+    ("search:brave", "Brave Search"),
+    ("search:tavily", "Tavily"),
+    ("search:exa", "Exa"),
+];
+
+/// A stand-in provider for a search engine, so its key is injected like a provider's.
+pub fn search_provider(id: &str) -> Option<Provider> {
+    let (_, name) = SEARCH_ENGINES.iter().find(|(i, _)| *i == id)?;
+    Some(Provider {
+        id: id.into(),
+        provider_type: id.into(),
+        kind: "apiKey".into(),
+        name: (*name).into(),
+        base_url: None,
+        config: serde_json::json!({}),
+        created_at: 0,
+    })
+}
 
 /// The official API base for provider types that have one.
 pub fn official_base(provider_type: &str) -> Option<&'static str> {
@@ -70,6 +91,9 @@ pub fn official_base(provider_type: &str) -> Option<&'static str> {
         "deepseek" => "https://api.deepseek.com",
         "chatgpt-oauth" => "https://api.openai.com/v1",
         "xai-oauth" => "https://api.x.ai/v1",
+        "search:brave" => "https://api.search.brave.com",
+        "search:tavily" => "https://api.tavily.com",
+        "search:exa" => "https://api.exa.ai",
         _ => return None,
     })
 }
@@ -114,6 +138,8 @@ pub fn auth_header(provider_type: &str, secret: &str) -> (String, String) {
     match provider_type {
         "anthropic" => ("x-api-key".into(), secret.into()),
         "google" => ("x-goog-api-key".into(), secret.into()),
+        "search:brave" => ("X-Subscription-Token".into(), secret.into()),
+        "search:exa" => ("x-api-key".into(), secret.into()),
         _ => ("Authorization".into(), format!("Bearer {secret}")),
     }
 }
@@ -499,6 +525,60 @@ mod tests {
         assert_eq!(auth_header("anthropic", "k"), ("x-api-key".into(), "k".into()));
         assert_eq!(auth_header("google", "k"), ("x-goog-api-key".into(), "k".into()));
         assert_eq!(auth_header("groq", "k"), ("Authorization".into(), "Bearer k".into()));
+        assert_eq!(auth_header("search:brave", "k"), ("X-Subscription-Token".into(), "k".into()));
+        assert_eq!(auth_header("search:exa", "k"), ("x-api-key".into(), "k".into()));
+        assert_eq!(auth_header("search:tavily", "k"), ("Authorization".into(), "Bearer k".into()));
+    }
+
+    #[test]
+    fn search_injection_scope() {
+        assert!(may_inject("search:brave", None, "https://api.search.brave.com/res/v1/web/search?q=a"));
+        assert!(!may_inject("search:brave", None, "https://api.tavily.com/search"));
+        assert!(!may_inject("search:brave", None, "https://api.search.brave.com.evil.com/res/v1"));
+        assert!(!may_inject("search:brave", None, "http://api.search.brave.com/res/v1"));
+        assert!(may_inject("search:tavily", None, "https://api.tavily.com/search"));
+        assert!(!may_inject("search:tavily", None, "https://example.com/search"));
+        assert!(may_inject("search:exa", None, "https://api.exa.ai/search"));
+        assert!(!may_inject("search:exa", None, "https://api.exa.ai.evil.com/search"));
+        assert!(search_provider("search:exa").is_some());
+        assert!(search_provider("search:other").is_none());
+        assert!(search_provider("p1").is_none());
+    }
+
+    #[tokio::test]
+    async fn search_keys_are_injected_in_rust_only() {
+        let store = MemoryStore::default();
+        store.set("search:brave", "BSA-real").unwrap();
+        store.set("search:tavily", "tvly-real").unwrap();
+        let oauth = OAuth::new(Arc::new(MemoryStore::default()));
+        let brave = search_provider("search:brave").unwrap();
+        let mut r = req("https://api.search.brave.com/res/v1/web/search?q=cells", &[("X-Subscription-Token", "dummy"), ("authorization", "Bearer dummy"), ("accept", "application/json")]);
+        r.provider_id = Some("search:brave".into());
+        let out = prepare(&r, Some(&brave), &store, &oauth).await.unwrap();
+        assert_eq!(find(&out.headers, "x-subscription-token"), Some("BSA-real"));
+        assert_eq!(find(&out.headers, "authorization"), None);
+        assert_eq!(find(&out.headers, "accept"), Some("application/json"));
+        assert_eq!(out.headers.iter().filter(|(k, _)| k.eq_ignore_ascii_case("x-subscription-token")).count(), 1);
+
+        // other host: JS-supplied headers stripped, nothing injected
+        let r = req("https://evil.example/res/v1/web/search", &[("X-Subscription-Token", "dummy"), ("Authorization", "Bearer dummy")]);
+        let out = prepare(&r, Some(&brave), &store, &oauth).await.unwrap();
+        assert!(out.headers.is_empty());
+
+        // another engine's host does not get Brave's key
+        let r = req("https://api.tavily.com/search", &[]);
+        let out = prepare(&r, Some(&brave), &store, &oauth).await.unwrap();
+        assert!(out.headers.is_empty());
+
+        let tavily = search_provider("search:tavily").unwrap();
+        let r = req("https://api.tavily.com/search", &[("Authorization", "Bearer dummy")]);
+        let out = prepare(&r, Some(&tavily), &store, &oauth).await.unwrap();
+        assert_eq!(find(&out.headers, "authorization"), Some("Bearer tvly-real"));
+
+        // no key saved: clear error
+        let exa = search_provider("search:exa").unwrap();
+        let e = prepare(&req("https://api.exa.ai/search", &[]), Some(&exa), &store, &oauth).await.unwrap_err();
+        assert!(e.to_string().contains("No API key saved for Exa"));
     }
 
     #[tokio::test]
