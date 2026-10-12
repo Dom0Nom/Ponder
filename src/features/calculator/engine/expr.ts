@@ -1,4 +1,4 @@
-import { type El, isTok, VARS } from "./editor";
+import { type El, type TplKind, isTok, tok, VARS } from "./editor";
 import type { Hint } from "./format";
 import * as N from "./num";
 import { CalcError, type Val, err, int, dec, PI, E13, PI13, isRational } from "./num";
@@ -11,11 +11,13 @@ type Node = (
   | { t: "bin"; op: string; a: Node; b: Node }
   | { t: "neg"; a: Node }
   | { t: "post"; op: string; a: Node }
-  | { t: "pow"; a: Node; b: Node }
+  | { t: "pow"; a: Node; b: Node; tpl?: boolean }
   | { t: "root"; i: Node; a: Node }
   | { t: "fn"; name: string; args: Node[] }
   | { t: "frac"; a: Node; b: Node }
   | { t: "mixed"; w: Node; a: Node; b: Node }
+  | { t: "err" }
+  | { t: "then"; a: Node }
 ) & { end?: number };
 
 type Flagged = Node & { dms?: boolean };
@@ -61,7 +63,14 @@ export interface Parsed {
 class Parser {
   i = 0;
   usedFrac = false;
-  constructor(private els: El[]) {}
+  stopped = false;
+  constructor(public els: El[]) {}
+
+  /** Nothing after an unmatched slot end is ever evaluated. */
+  stop() {
+    this.stopped = true;
+    this.els = this.els.slice(0, this.i);
+  }
 
   peek(): El | undefined {
     return this.els[this.i];
@@ -82,14 +91,15 @@ class Parser {
     return n;
   }
 
-  /** A template slot. Errors inside it point just after the template. */
+  /** A template slot. Errors inside it point just after the template. An empty slot fails only when evaluated. */
   sub(list: El[]): Node {
+    if (!list.length || this.stopped) return { t: "err", end: this.i };
     try {
-      if (!list.length) this.fail();
       const p = new Parser(list);
       const n = p.add();
-      if (p.i < list.length) this.fail();
+      if (p.i < p.els.length) this.fail();
       if (p.usedFrac) this.usedFrac = true;
+      if (p.stopped) this.stop();
       const mark = (x: Node) => {
         x.end = this.i;
         for (const v of Object.values(x)) if (v && typeof v === "object" && "t" in v) mark(v as Node);
@@ -98,6 +108,8 @@ class Parser {
       mark(n);
       return n;
     } catch (e) {
+      // a slot is evaluated in order: its syntax error is met only when evaluation reaches it
+      if (e instanceof CalcError && e.code === "SYNTAX") return { t: "err", end: this.i };
       if (e instanceof CalcError) e.pos = this.i;
       throw e;
     }
@@ -129,6 +141,11 @@ class Parser {
       const op = this.tv()!;
       this.i++;
       a = this.at({ t: "bin", op, a, b: this.mul() });
+    }
+    if (this.isT(SLOT_END)) {
+      const end = this.i++;
+      this.stop();
+      return { t: "then", a, end };
     }
     return a;
   }
@@ -195,7 +212,7 @@ class Parser {
       const e = this.peek();
       if (e && e.k === "pow") {
         this.i++;
-        a = this.at({ t: "pow", a, b: this.sub(e.s[0]) });
+        a = this.at({ t: "pow", a, b: this.sub(e.s[0]), tpl: true });
       } else if (e && e.k === "t" && POSTFIX.has(e.v)) {
         this.i++;
         const dms = e.v === "°" || e.v === "'" || e.v === '"';
@@ -309,9 +326,52 @@ class Parser {
   }
 }
 
-export function parse(els: El[]): Parsed {
-  return new Parser(els).top();
+/** Marks the end of a template slot that a typed `)` closed early (BEHAVIOR §21). */
+const SLOT_END = "\uE007";
+const LAST_SLOT: Record<TplKind, number> = { frac: 1, mixed: 2, sqrt: 0, root: 1, pow: 0 };
+
+function earlyClose(slot: El[]): number {
+  let depth = 0;
+  for (let j = 0; j < slot.length; j++) {
+    const e = slot[j];
+    if (e.k !== "t") continue;
+    if (e.v.endsWith("(")) depth++;
+    else if (e.v === ")" && depth-- === 0) return j;
+  }
+  return -1;
 }
+
+/** Slots are parenthesised groups: a `)` typed in one closes it. In the last slot the template's
+ * operation runs there and the rest of the slot continues outside it; the slot's own end is then
+ * an unmatched `)`. `map` gets the original index of each output element. */
+function splitSlots(list: El[], map?: number[]): El[] {
+  const out: El[] = [];
+  const queue = list.map((el, idx) => ({ el, idx }));
+  while (queue.length) {
+    const { el, idx } = queue.shift()!;
+    map?.push(idx);
+    if (el.k === "t") {
+      out.push(el);
+      continue;
+    }
+    let tail: El[] = [];
+    const s = el.s.map((slot, k) => {
+      const j = earlyClose(slot);
+      if (j < 0) return splitSlots(slot);
+      const group = splitSlots(slot.slice(0, j));
+      if (k !== LAST_SLOT[el.k]) return [...group, tok(SLOT_END)];
+      tail = [...slot.slice(j + 1), tok(SLOT_END)];
+      return group;
+    });
+    out.push({ k: el.k, s });
+    queue.unshift(...tail.map((e) => ({ el: e, idx: idx + 1 })));
+  }
+  return out;
+}
+
+const parseSplit = (els: El[]): Parsed => new Parser(els).top();
+
+export const parse = (els: El[]): Parsed => parseSplit(splitSlots(els));
 
 export interface StatVals {
   [k: string]: number | "Error";
@@ -430,7 +490,10 @@ export function evaluate(node: Node, ctx: Ctx): Val {
   try {
     return evalNode(node, ctx);
   } catch (e) {
-    if (e instanceof CalcError && e.pos === undefined) e.pos = node.end;
+    if (e instanceof CalcError && e.pos === undefined) {
+      e.pos = node.end;
+      e.inSlot = node.t === "pow" && node.tpl;
+    }
     throw e;
   }
 }
@@ -508,6 +571,11 @@ function evalNode(node: Node, ctx: Ctx): Val {
     }
     case "fn":
       return evalFn(node.name, node.args.map(ev), ctx);
+    case "err":
+      return err("SYNTAX");
+    case "then":
+      ev(node.a);
+      return err("SYNTAX");
   }
 }
 
@@ -595,7 +663,7 @@ const openParens = (els: El[]) =>
 
 function parseOrPrefixError(els: El[], ctx: Ctx): Parsed {
   try {
-    return parse(els);
+    return parseSplit(els);
   } catch (e) {
     if (!(e instanceof CalcError) || e.code !== "SYNTAX") throw e;
     for (let k = els.length - 1; k > 0; k--) {
@@ -603,7 +671,7 @@ function parseOrPrefixError(els: El[], ctx: Ctx): Parsed {
       if (openParens(els.slice(0, k)) > 0) continue;
       let prefix: Parsed;
       try {
-        prefix = parse(els.slice(0, k));
+        prefix = parseSplit(els.slice(0, k));
       } catch {
         continue;
       }
@@ -619,9 +687,16 @@ function parseOrPrefixError(els: El[], ctx: Ctx): Parsed {
 }
 
 export function run(els: El[], ctx: Ctx): EvalResult {
-  const p = parseOrPrefixError(els, ctx);
-  const val = evaluate(p.node, ctx);
-  return { val, hint: p.hint, store: p.store, usedFrac: p.usedFrac };
+  const map: number[] = [];
+  const split = splitSlots(els, map);
+  try {
+    const p = parseOrPrefixError(split, ctx);
+    const val = evaluate(p.node, ctx);
+    return { val, hint: p.hint, store: p.store, usedFrac: p.usedFrac };
+  } catch (e) {
+    if (e instanceof CalcError && e.pos !== undefined) e.pos = e.pos < map.length ? map[e.pos] : els.length;
+    throw e;
+  }
 }
 
 export { PI13 };

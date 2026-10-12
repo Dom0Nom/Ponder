@@ -320,6 +320,11 @@ function homeEnter(s: State) {
       s.start = s.history.length;
       s.ed = newEd(clone(els));
       s.ed.pos = Math.min(e.pos ?? els.length, els.length);
+      const power = s.ed.els[s.ed.pos - 1];
+      if (e.inSlot && power?.k === "pow") {
+        s.ed.path = [{ i: s.ed.pos - 1, s: 0 }];
+        s.ed.pos = power.s[0].length;
+      }
     }
     fail(s, e, { t: "home" });
   }

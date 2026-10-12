@@ -1,4 +1,4 @@
-import { BLINK_OFF, BLINK_ON, OVER_OFF, OVER_ON, type MNode, cells, isEmptySlot, measure, parse, serialize } from "../lcd/layout";
+import { BLINK_OFF, BLINK_ON, OVER_OFF, OVER_ON, type MNode, baseless, cells, isEmptySlot, measure, parse, serialize } from "../lcd/layout";
 import { type State, MODE_ROWS, fmtOf, menuTabs, modeSelected, tableRows } from "./calc";
 import { isEmpty, markup } from "./editor";
 import { formatFit, formatPlain } from "./format";
@@ -14,6 +14,9 @@ const CELLS = 16;
 export interface Row {
   l: string;
   r?: string;
+  /** A horizontally scrolled entry: `l` is its text, `m` the whole line drawn `shift` dots to the left under `◂`. */
+  m?: string;
+  shift?: number;
 }
 
 export interface Model {
@@ -30,7 +33,7 @@ export interface Model {
 const stripMarks = (s: string) => s.replace(/[\uE000-\uE006]/g, "");
 const width = (m: string) => measure(m).w;
 const rowBox = (r: Row) => {
-  const a = measure(r.l || " ");
+  const a = measure(r.m ?? (r.l || " "));
   const b = r.r !== undefined ? measure(r.r) : a;
   const asc = Math.max(a.h - 1, b.h - 1);
   return { h: Math.max(a.h, b.h), asc };
@@ -142,8 +145,8 @@ function endCost(ns: MNode[]): number {
   }
 }
 
-/** Horizontal scroll of the entry being typed: the cursor keeps a cell of its own (BEHAVIOR §3.2). */
-function scrollEntry(m: string): string {
+/** Scroll window when the cursor has moved left of it: whole tokens are kept from the left edge (BEHAVIOR §3.2). */
+function scrollLeft(m: string): string {
   let nodes = parse(m);
   if (cells(nodes) <= CELLS - 2) return m;
   // a template wider than the screen scrolls by its content: descend to the slot that holds the cursor
@@ -185,6 +188,135 @@ function scrollEntry(m: string): string {
   const rest = items.slice(stop).some((it) => it.w > 0);
   // a radical scrolled partly off screen keeps its overline over the visible content
   return (start > 0 ? "◂" : "") + over(serialize(items.slice(start, stop).map((it) => it.n!))) + (rest ? "▸" : "");
+}
+
+const PITCH = 6;
+const subNodes = (n: MNode): MNode[][] =>
+  n.t === "frac" ? [n.a, n.b] : n.t === "root" ? [n.i, n.a] : "a" in n ? [n.a] : [];
+
+const endsWithFrac = (ns: MNode[]): boolean => {
+  const last = ns.filter((n) => n.t !== "cur").pop();
+  if (!last) return false;
+  if (last.t === "frac") return true;
+  return (last.t === "sqrt" || last.t === "root" || last.t === "sup") && endsWithFrac(last.a);
+};
+
+/** Dot positions of every node of an entry line; a cursor at the end of a slot or in an empty slot takes a cell there. */
+function place(nodes: MNode[]) {
+  const pos = new Map<MNode, { x: number; w: number }>();
+  let cur: { node: MNode; slot: boolean } | undefined;
+  const shiftAll = (ns: MNode[], dx: number) => {
+    for (const n of ns) {
+      pos.get(n)!.x += dx;
+      subNodes(n).forEach((c) => shiftAll(c, dx));
+    }
+  };
+  const seq = (ns: MNode[], x0: number, slot: boolean): number => {
+    let x = x0;
+    ns.forEach((n, i) => {
+      const w = one(n, x, slot, ns[i - 1], ns[i + 1]);
+      pos.set(n, { x, w });
+      x += w;
+    });
+    return x - x0;
+  };
+  const slotW = (ns: MNode[], x0: number): number => {
+    if (isEmptySlot(ns)) {
+      seq(ns, x0, true);
+      return PITCH;
+    }
+    const base = baseless(ns) ? PITCH : 0;
+    return base + seq(ns, x0 + base, true) + (ns[ns.length - 1].t === "cur" ? PITCH : 0);
+  };
+  const one = (n: MNode, x: number, slot: boolean, prev?: MNode, next?: MNode): number => {
+    switch (n.t) {
+      case "g":
+      case "base":
+        return PITCH;
+      case "cur":
+        // in front of a stacked fraction the cursor is in a mixed number's whole-part slot
+        cur = { node: n, slot: slot || next?.t === "frac" };
+        return next?.t === "frac" && prev?.t === "g" ? PITCH : 0;
+      case "sup":
+        return slotW(n.a, x);
+      case "frac": {
+        const wa = slotW(n.a, x + PITCH / 2);
+        const wb = slotW(n.b, x + PITCH / 2);
+        const inner = Math.max(wa, wb, PITCH);
+        shiftAll(n.a, Math.floor((inner - wa) / 2));
+        shiftAll(n.b, Math.floor((inner - wb) / 2));
+        return inner + PITCH;
+      }
+      case "sqrt":
+        return PITCH + slotW(n.a, x + PITCH);
+      case "root": {
+        const wi = slotW(n.i, x);
+        return wi + PITCH + slotW(n.a, x + wi + PITCH);
+      }
+      default:
+        return seq(n.a, x, slot);
+    }
+  };
+  const w = seq(nodes, 1, false);
+  return { pos, w, cur: cur && { x: pos.get(cur.node)!.x, slot: cur.slot } };
+}
+
+/** Horizontal scroll of the entry being typed (BEHAVIOR §3.2): the shift in dots is recomputed after every key
+ * from the line width and the cursor position. */
+function scrollEntry(m: string): Row {
+  const nodes = parse(m);
+  const { pos, w, cur } = place(nodes);
+  // an empty fraction at the end that does not hold the cursor gives way to ▸
+  const last = nodes[nodes.length - 1];
+  const dropLast = last?.t === "frac" && !last.a.length && !last.b.length;
+  const width = dropLast ? pos.get(last)!.x - 1 : w;
+  const content = width + (!dropLast && endsWithFrac(nodes) ? 0 : PITCH) - LCD_W;
+  const limit = cur?.slot ? 88 : 91;
+  const back = cur?.slot ? 85 : 91;
+  const shift = Math.max(content, cur && cur.x > limit ? cur.x - back : 0, 0);
+  if (!shift) return { l: m };
+  const first = shift + 1 + PITCH;
+  if (cur && cur.x < first) return { l: scrollLeft(m) };
+  const fits = (n: MNode) => pos.get(n)!.x + pos.get(n)!.w - shift <= LCD_W + 1;
+  const seen = (n: MNode) => {
+    const p = pos.get(n)!;
+    if (!fits(n)) return false;
+    return n.t === "g" ? p.x >= first : n.t !== "cur" && n.t !== "base" && p.x + p.w > first;
+  };
+  // glyphs under ◂ (cell 0) are not written; a template cut on the left keeps its wrapper
+  const enc = (ns: MNode[]): string =>
+    ns
+      .filter(seen)
+      .map((n) => {
+        switch (n.t) {
+          case "g":
+            return n.key;
+          case "sup":
+            return `^{${enc(n.a)}}`;
+          case "frac":
+            return `\\f{${enc(n.a)}}{${enc(n.b)}}`;
+          case "sqrt":
+            return `√{${enc(n.a)}}`;
+          case "root":
+            return `\\r{${enc(n.i)}}{${enc(n.a)}}`;
+          case "inv":
+            return `«${enc(n.a)}»`;
+          default:
+            return "a" in n ? enc(n.a) : "";
+        }
+      })
+      .join("");
+  // a row whose visible glyphs are all in one superscript is written flat
+  const owners = new Set<MNode | null>();
+  const own = (ns: MNode[], sup: MNode | null) =>
+    ns.filter(seen).forEach((n) => {
+      if (n.t === "g") owners.add(sup);
+      else subNodes(n).forEach((c) => own(c, sup ?? (n.t === "sup" ? n : null)));
+    });
+  own(nodes, null);
+  const [sole] = owners;
+  const text = owners.size === 1 && sole?.t === "sup" ? enc(sole.a) : enc(nodes);
+  return { l: "◂" + text + (nodes.every(fits) ? "" : "▸"), m, shift };
 }
 
 const contains = (ns: MNode[], t: MNode["t"]): boolean =>
@@ -233,7 +365,7 @@ function homeModel(s: State): Model {
       rows.push({ l: "", r: rm });
     }
   }
-  if (!isEmpty(s.ed)) rows.push({ l: scrollEntry(markup(s.ed.els, s.modes.mathprint, s.ed)) });
+  if (!isEmpty(s.ed)) rows.push(scrollEntry(markup(s.ed.els, s.modes.mathprint, s.ed)));
 
   const boxes = rows.map(rowBox);
   const tops: number[] = [];

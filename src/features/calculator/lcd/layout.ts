@@ -173,7 +173,7 @@ export function layoutSeq(nodes: MNode[], font: FontId = "n", inSup = false): Bo
 }
 
 /** A slot that starts with an exponent has no base: the base shows as a placeholder box. */
-const baseless = (nodes: MNode[]) => nodes.find((n) => n.t !== "cur")?.t === "sup";
+export const baseless = (nodes: MNode[]) => nodes.find((n) => n.t !== "cur")?.t === "sup";
 
 export const isEmptySlot = (nodes: MNode[]) => nodes.every((n) => n.t === "cur");
 

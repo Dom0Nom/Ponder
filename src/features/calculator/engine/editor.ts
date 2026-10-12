@@ -100,7 +100,10 @@ export function operandStart(l: El[], pos: number): number {
 /** Remove and return the whole operand before the cursor (the x-root index, BEHAVIOR §9). */
 export function takeIndex(ed: Ed): El[] {
   const l = listAt(ed);
-  const i = operandStart(l, ed.pos);
+  let run = ed.pos;
+  while (run > 0 && isTok(l[run - 1]) && OPERAND.test((l[run - 1] as { v: string }).v)) run--;
+  // after a power, a number typed next is the index on its own
+  const i = run < ed.pos && l[run - 1]?.k === "pow" ? run : operandStart(l, ed.pos);
   const taken = l.splice(i, ed.pos - i);
   ed.pos = i;
   return taken;

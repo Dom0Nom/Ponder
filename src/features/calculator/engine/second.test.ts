@@ -3,7 +3,7 @@ import data from "../../../../docs/redesign/calculator/vectors.json";
 import { Calculator } from "./index";
 import { model } from "./render";
 import { rasterize } from "../lcd/draw";
-import { OVER_OFF, OVER_ON, layout } from "../lcd/layout";
+import { layout } from "../lcd/layout";
 import { glyph } from "../lcd/font";
 
 function run(keys: string) {
@@ -69,9 +69,7 @@ describe("third check", () => {
 
   test("a deep superscript with the cursor in it still shows its content", () => {
     const l = lines("2nd lparen square ln . . pow 8 2nd tan 0 2nd neg 2nd log lparen");
-    expect(l).toHaveLength(1);
-    expect(l[0].startsWith("◂^{")).toBe(true);
-    expect(l[0]).toContain("8tan⁻¹(0ans10^{(}");
+    expect(l).toEqual(["◂8tan⁻¹(0ans10^{(}"]);
   });
 });
 
@@ -107,6 +105,10 @@ describe("errors and history", () => {
     expect(lines("2 pow enter")).toEqual(["", "SYNTAX", "Error"]);
   });
 
+  test("after a failing power, clear puts the cursor at the end of its exponent", () => {
+    expect(lines("square recip 4 0 4 2nd pow enter clear 5")).toEqual(["(ans^{2})^{⁻15}\\r{404}{}"]);
+  });
+
   test("a history row cut keeps the crossing token whole", () => {
     expect(lines("left square pow 3 add 2 5 2 mul tan 9 div 5 left enter")).toEqual(["(ans^{2})^{3+252*tan(}▸", "\t0"]);
   });
@@ -123,15 +125,14 @@ describe("glyphs", () => {
 describe("radical scrolled partly off screen", () => {
   test("the overline stays over every visible cell of the content", () => {
     const keys = "8 2nd square pow 2nd neg toggle 3 add 3 7 3 tan 2 7";
-    const row = model(run(keys).state).rows[0].l;
-    expect(row.startsWith("◂" + OVER_ON)).toBe(true);
-    expect(row.endsWith(OVER_OFF)).toBe(true);
-    const inner = row.slice(1 + OVER_ON.length, -OVER_OFF.length);
-    const l = layout(row.slice(1));
+    const row = model(run(keys).state).rows[0];
+    const shift = row.shift!;
+    expect(shift).toBeGreaterThan(0);
+    const l = layout(row.m!);
     const bar = l.ops.find((o): o is Extract<typeof o, { k: "rect" }> => o.k === "rect" && o.h === 1 && o.w > 1)!;
-    expect(bar.w).toBe(layout(inner).w);
-    expect(bar.y).toBe(-l.asc);
-    expect(lines(keys)).toEqual(["◂ns◂▸3+373tan(27"]);
+    expect(1 + bar.x - shift).toBeLessThan(7);
+    expect(1 + bar.x + bar.w - shift).toBeGreaterThanOrEqual(84);
+    expect(lines(keys)).toEqual(["◂s◂▸3+373tan(27"]);
   });
 });
 
