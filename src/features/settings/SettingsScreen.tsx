@@ -14,6 +14,7 @@ import { SearchModelSection } from "./SearchModelSection";
 import { FocusPackSection } from "./FocusPackSection";
 import { VoiceSection } from "./VoiceSection";
 import { BackupSection } from "./BackupSection";
+import { IntegrationsSection } from "./IntegrationsSection";
 import { SettingsGroup, SettingsRow, SettingsSection } from "./layout";
 import { AddProviderPage } from "./AddProviderPage";
 import { LanScanPage } from "./LanScanPage";
@@ -149,6 +150,9 @@ export function SettingsScreen() {
         </SettingsSection>
         <SettingsSection id="settings-backups" title={s.backup.title} body={s.backup.body}>
           <BackupSection />
+        </SettingsSection>
+        <SettingsSection id="settings-integrations" title={s.integrations.title} body={s.integrations.body}>
+          <IntegrationsSection />
         </SettingsSection>
         <About />
       </div>

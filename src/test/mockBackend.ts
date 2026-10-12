@@ -528,6 +528,8 @@ function ingest(src: T.Source, text: string) {
   setTimeout(() => emit("source://updated", done), 50);
 }
 
+const deepLinkQueue: string[] = [];
+
 function backupStatus(): T.BackupStatus {
   const { folder, enabled, frequency, keep, restoreStaged, lastError } = db.backup;
   return {
@@ -1310,6 +1312,8 @@ const handlers: Record<string, (a: Args) => unknown> = {
     save();
     return backupStatus();
   },
+  deeplink_take: () => deepLinkQueue.splice(0),
+  integrations_info: () => ({ exePath: "/Applications/Ponder.app/Contents/MacOS/ponder", dbPath: "/Users/me/Library/Application Support/dev.ponder.app/app.db" }),
   restart_app: () => {
     db.backup.restoreStaged = false;
     save();
@@ -2159,6 +2163,8 @@ export interface MockControls {
   setStreamDelay: (ms: number) => void;
   seedProvider: () => T.Provider;
   db: () => DB;
+  /** queue a ponder:// link as if the OS delivered it */
+  deepLink: (url: string) => void;
 }
 
 export function installMockBackend() {
@@ -2251,6 +2257,10 @@ export function installMockBackend() {
     },
     seedProvider,
     db: () => db,
+    deepLink: (url) => {
+      deepLinkQueue.push(url);
+      void emit("deeplink://pending");
+    },
   };
   (window as unknown as { __mock: MockControls }).__mock = controls;
   if (new URLSearchParams(location.search).has("seed")) seedProvider();

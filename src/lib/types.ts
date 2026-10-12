@@ -557,6 +557,11 @@ export interface BackupStatus {
   restoreStaged: boolean;
 }
 
+export interface IntegrationsInfo {
+  exePath: string;
+  dbPath: string;
+}
+
 export interface CaptureStatus {
   enabled: boolean;
   /** Tauri accelerator, e.g. Alt+CommandOrControl+N */

@@ -81,6 +81,21 @@ export function Composer({
     }
   };
 
+  const draft = useComposer((st) => (st.draft?.spaceId === space.id ? st.draft : null));
+  const setDraft = useComposer((st) => st.setDraft);
+  useEffect(() => {
+    if (!draft) return;
+    setText(draft.text);
+    setDraft(null);
+    requestAnimationFrame(() => {
+      const el = ref.current;
+      if (!el) return;
+      el.focus();
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
+    });
+  }, [draft, setDraft]);
+
   const sendRef = useRef(send);
   sendRef.current = send;
   useEffect(() => {

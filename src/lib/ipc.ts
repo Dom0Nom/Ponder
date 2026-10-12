@@ -77,6 +77,8 @@ export const api = {
   backupRestore: (name: string) => call<T.BackupStatus>("backup_restore", { name }),
   backupCancelRestore: () => call<T.BackupStatus>("backup_cancel_restore"),
   restartApp: () => call<void>("restart_app"),
+  deeplinkTake: () => call<string[]>("deeplink_take"),
+  integrationsInfo: () => call<T.IntegrationsInfo>("integrations_info"),
 
   // focus music
   musicStatus: () => call<T.MusicStatus>("music_status"),
@@ -280,6 +282,7 @@ export const events = {
   captureStatus: (cb: (s: T.CaptureStatus) => void) =>
     listen<T.CaptureStatus>("capture://status", (e) => cb(e.payload)),
   backupUpdated: (cb: () => void) => listen("backup://updated", () => cb()),
+  deeplinkPending: (cb: () => void) => listen("deeplink://pending", () => cb()),
 };
 
 export type { UnlistenFn };
