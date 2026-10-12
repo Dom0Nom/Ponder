@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Brain, CheckCircle2, CircleAlert, CircleHelp, CircleX, Columns2, Scale, ShieldCheck } from "lucide-react";
+import { Brain, CheckCircle2, CircleAlert, CircleHelp, CircleX, Columns2, Scale, ShieldCheck, Wrench } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { queryClient, qk, useProviders, useSettings } from "../../lib/queries";
 import { s } from "../../lib/strings";
@@ -273,3 +273,32 @@ export function RememberedChips({ message }: { message: Message }) {
   );
 }
 
+
+export function ToolChips({ message }: { message: Message }) {
+  const calls = message.meta?.toolCalls ?? [];
+  const errors = message.meta?.toolErrors ?? [];
+  if (!calls.length && !errors.length) return null;
+  const seen = new Set<string>();
+  const unique = calls.filter((c) => {
+    const k = `${c.server}\u0000${c.tool}\u0000${c.ok}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  return (
+    <div className="flex flex-wrap gap-1.5" data-testid="tool-chips">
+      {unique.map((c) => (
+        <span key={`${c.server}-${c.tool}-${c.ok}`} className={cn("inline-flex max-w-full items-center gap-1.5 rounded-full bg-fill px-2.5 py-1 text-xs", c.ok ? "text-muted" : "text-warn")}>
+          <Wrench size={12} className="shrink-0" />
+          <span className="truncate">{c.ok ? s.toolUse.used(c.tool, c.server) : s.toolUse.failed(c.tool, c.server)}</span>
+        </span>
+      ))}
+      {errors.map((e) => (
+        <span key={e} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-fill px-2.5 py-1 text-xs text-warn">
+          <CircleAlert size={12} className="shrink-0" />
+          <span className="truncate">{s.toolUse.unavailable(e)}</span>
+        </span>
+      ))}
+    </div>
+  );
+}

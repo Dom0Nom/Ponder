@@ -222,6 +222,13 @@ export const api = {
   deleteSecret: (providerId: string) => call<void>("secret_delete", { providerId }),
   lanScan: () => call<T.LanServer[]>("lan_scan"),
 
+  // mcp client
+  mcpTools: (server: Pick<T.McpServer, "id" | "command" | "args">) =>
+    call<T.McpTool[]>("mcp_client_tools", { server: { id: server.id, command: server.command, args: server.args } }),
+  mcpCall: (server: Pick<T.McpServer, "id" | "command" | "args">, tool: string, args: unknown) =>
+    call<T.McpCallResult>("mcp_client_call", { server: { id: server.id, command: server.command, args: server.args }, tool, arguments: args }),
+  mcpStop: (id: string) => call<void>("mcp_client_stop", { id }),
+
   // oauth
   oauthChatgptStart: (providerId: string) => call<{ authUrl: string }>("oauth_chatgpt_start", { providerId }),
   oauthXaiDeviceStart: (providerId: string) => call<T.DeviceCodeStart>("oauth_xai_device_start", { providerId }),

@@ -1,8 +1,8 @@
-import { streamText, type ModelMessage } from "ai";
+import { stepCountIs, streamText, type ModelMessage } from "ai";
 import { api } from "../ipc";
 import { s } from "../strings";
 import { queryClient, qk } from "../queries";
-import type { Citation, FocusState, Message, MessageMeta, NewMessage, MessagePatch, SearchHit, Space, TutorStyle } from "../types";
+import type { Citation, FocusState, Message, MessageMeta, NewMessage, MessagePatch, SearchHit, Space, ToolCallMeta, TutorStyle } from "../types";
 import type { ImageInput } from "../steps/vision";
 import { isDiscarded, useChatStream } from "../../stores/chatStream";
 import { hitsToCitations } from "./citations";
@@ -12,6 +12,7 @@ import type { ModelControls } from "../providers/controls";
 import { extractMemories, isKnownFact } from "./memory";
 import { buildSystemPrompt, historyMessages, threadTitleFrom, type Passage } from "./context";
 import { resolveChatModel, type ResolvedModel } from "./llm";
+import { mcpServers, mcpToolSet, type McpToolSet } from "../mcp/client";
 
 export interface TurnInput {
   space: Space;
@@ -217,6 +218,9 @@ async function runTurnInner(input: TurnInput): Promise<Message> {
     let persisting: Promise<unknown> = Promise.resolve();
     let error: string | null = null;
 
+    const toolCalls: ToolCallMeta[] = [];
+    const mcp = input.meta?.buddyKind ? null : await loadTools(toolCalls);
+    const useTools = !!mcp && Object.keys(mcp.tools).length > 0;
     const paint = new FramePainter((c, r) => useChatStream.getState().update(assistant.id, { content: c, reasoning: r }));
     try {
       const result = streamText({
@@ -224,6 +228,7 @@ async function runTurnInner(input: TurnInput): Promise<Message> {
         system,
         messages,
         abortSignal: controller.signal,
+        ...(useTools ? { tools: mcp.tools, stopWhen: stepCountIs(6) } : {}),
         ...llm.options({ ...(input.thinking != null ? { thinking: input.thinking } : {}), ...input.controls }),
       });
       for await (const part of result.stream) {
@@ -285,6 +290,8 @@ async function runTurnInner(input: TurnInput): Promise<Message> {
         ...(remembered.length ? { remembered } : {}),
         ...(timer.thinkingMs ? { thinkingMs: timer.thinkingMs } : {}),
         ...(followUps.length ? { followUps } : {}),
+        ...(toolCalls.length ? { toolCalls } : {}),
+        ...(mcp?.failed.length ? { toolErrors: mcp.failed.map((f) => `${f.name}: ${f.error}`) } : {}),
       },
     };
     try {
@@ -301,6 +308,13 @@ async function runTurnInner(input: TurnInput): Promise<Message> {
     invalidate();
     if (!input.ephemeral) queryClient.invalidateQueries({ queryKey: qk.threads(space.id) });
   }
+}
+
+async function loadTools(calls: ToolCallMeta[]): Promise<McpToolSet | null> {
+  const settings = await api.getSettings().catch(() => undefined);
+  const servers = mcpServers(settings).filter((x) => x.enabled);
+  if (!servers.length) return null;
+  return mcpToolSet(servers, (c) => calls.push(c));
 }
 
 /**

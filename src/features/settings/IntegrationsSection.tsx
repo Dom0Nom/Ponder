@@ -6,6 +6,7 @@ import { Button } from "../../components/ui/button";
 import { ErrorState, Skeleton } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
 import { SettingsGroup, SettingsRow } from "./layout";
+import { McpClientSection } from "./McpClientSection";
 
 export function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
@@ -83,6 +84,7 @@ export function IntegrationsSection() {
         <p className="text-caption font-medium">{s.integrations.mcpClaudeDesktop}</p>
         <CodeBlock testId="mcp-claude-desktop" label={`${s.integrations.copy}: ${s.integrations.mcpClaudeDesktop}`} text={desktopConfig} />
       </div>
+      <McpClientSection />
     </div>
   );
 }

@@ -106,6 +106,10 @@ export interface MessageMeta {
   retrievalError?: string;
   /** facts the tutor saved to learner memory during this reply */
   remembered?: string[];
+  /** MCP tools the tutor called while answering */
+  toolCalls?: ToolCallMeta[];
+  /** MCP servers whose tools couldn't be loaded for this reply */
+  toolErrors?: string[];
   /** this message is a second opinion on another assistant message */
   secondOpinionOf?: string;
   check?: SelfCheck;
@@ -929,4 +933,29 @@ export interface DistractionNudge {
   remainingMs: number | null;
   count: number;
   at: number;
+}
+
+export interface ToolCallMeta {
+  server: string;
+  tool: string;
+  ok: boolean;
+}
+
+export interface McpServer {
+  id: string;
+  name: string;
+  command: string;
+  args: string[];
+  enabled: boolean;
+}
+
+export interface McpTool {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+}
+
+export interface McpCallResult {
+  text: string;
+  isError: boolean;
 }

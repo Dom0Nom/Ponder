@@ -70,6 +70,7 @@ export interface DB {
   rewrites?: T.PassageRewrite[];
   annotations?: T.Annotation[];
   exports?: { name: string; extension: string; size: number }[];
+  mcpCalls?: { server: string; tool: string; arguments: unknown }[];
   prints?: number;
   images: Record<string, string>;
   curricula: Row<T.SpaceCurriculum>;
@@ -208,6 +209,7 @@ function microList(spaceId: string | null): T.MicroStep[] {
 type Script = (req: { messages: { role: string; content: unknown }[]; body: Record<string, unknown> }) => {
   reasoning?: string;
   content: string;
+  toolCall?: { name: string; arguments: string };
 };
 
 const defaultScript: Script = ({ messages, body }) => {
@@ -217,6 +219,12 @@ const defaultScript: Script = ({ messages, body }) => {
   const lastText = typeof last?.content === "string" ? last.content : JSON.stringify(last?.content ?? "");
   const notes = notesReply(lastText);
   if (notes) return { content: notes };
+  const tools = (body.tools as { function: { name: string } }[] | undefined) ?? [];
+  const lookup = tools.find((t) => t.function.name.endsWith("__lookup"))?.function.name;
+  if (last?.role === "tool") return { content: `From your glossary: ${lastText.replace(/^"|"$/g, "")}` };
+  if (lookup && last?.role === "user" && /glossary/i.test(lastText)) {
+    return { content: "", toolCall: { name: lookup, arguments: JSON.stringify({ term: "osmosis" }) } };
+  }
   if (/^Solve this problem carefully/.test(lastText)) {
     const n = Number(lastText.match(/10% of (\d+)/)?.[1] ?? 0);
     return { content: `$0.1 \\cdot ${n} = ${n / 10}$\n{"answer": ${n / 10}}` };
@@ -520,8 +528,11 @@ async function httpStream(request: T.ProxyRequest, channel: { id: number }) {
     `data: ${JSON.stringify({ id: "c", object: "chat.completion.chunk", created: 0, model: body.model, choices: [{ index: 0, delta, finish_reason: finish }] })}\n\n`;
   const pieces: string[] = [];
   if (reply.reasoning) for (const w of reply.reasoning.split(/(?<= )/)) pieces.push(chunk({ reasoning_content: w }));
-  for (const w of reply.content.split(/(?<= )/)) pieces.push(chunk({ content: w }));
-  pieces.push(chunk({}, "stop"));
+  if (reply.content) for (const w of reply.content.split(/(?<= )/)) pieces.push(chunk({ content: w }));
+  if (reply.toolCall) {
+    pieces.push(chunk({ tool_calls: [{ index: 0, id: "call_1", type: "function", function: { name: reply.toolCall.name, arguments: reply.toolCall.arguments } }] }));
+    pieces.push(chunk({}, "tool_calls"));
+  } else pieces.push(chunk({}, "stop"));
   pieces.push(`data: ${JSON.stringify({ id: "c", object: "chat.completion.chunk", created: 0, model: body.model, choices: [], usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 } })}\n\n`);
   pieces.push("data: [DONE]\n\n");
   for (const p of pieces) {
@@ -1842,6 +1853,25 @@ const handlers: Record<string, (a: Args) => unknown> = {
     save();
     return null;
   },
+  mcp_client_tools: (a) => {
+    const srv = a.server as { id: string; command: string };
+    if (srv.command === "missing-server") err("other", "Couldn't start missing-server: No such file or directory");
+    return [
+      {
+        name: "lookup",
+        description: "Look up a term in the learner's glossary",
+        inputSchema: { type: "object", properties: { term: { type: "string" } }, required: ["term"] },
+      },
+    ];
+  },
+  mcp_client_call: (a) => {
+    const srv = a.server as { id: string };
+    (db.mcpCalls ??= []).push({ server: srv.id, tool: a.tool as string, arguments: a.arguments });
+    save();
+    const term = (a.arguments as { term?: string } | null)?.term ?? "";
+    return { text: `${term}: water moving across a membrane`, isError: false };
+  },
+  mcp_client_stop: () => null,
   lan_scan: async () => {
     await new Promise((r) => setTimeout(r, 400));
     return [{ kind: "lmstudio", baseUrl: "http://192.168.1.50:1234/v1", models: ["mock-model"] }];

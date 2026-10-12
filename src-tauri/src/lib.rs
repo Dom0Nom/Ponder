@@ -22,6 +22,7 @@ mod music;
 mod micro_steps;
 mod oauth;
 pub mod mcp;
+mod mcp_client;
 pub mod paths;
 mod icons;
 mod openrouter;
@@ -62,6 +63,7 @@ pub fn run() {
         .manage(music::MusicService::new(music::default_backend()))
         .manage(backup::BackupService::default())
         .manage(deeplink::DeepLinks::default())
+        .manage(mcp_client::McpClients::default())
         .manage(commands::providers::ProviderServices::new())
         .manage(std::sync::Arc::new(cloud::CloudServices::new(secrets::default_store())))
         .setup(|app| {
@@ -149,6 +151,9 @@ pub fn run() {
             annotations::annotation_add,
             annotations::annotation_update,
             annotations::annotation_delete,
+            mcp_client::mcp_client_tools,
+            mcp_client::mcp_client_call,
+            mcp_client::mcp_client_stop,
             notes::notes_list,
             notes::note_get,
             notes::note_save,

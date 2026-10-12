@@ -14,7 +14,7 @@ import { Reveal } from "../../components/motion/Reveal";
 import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { PonderMark } from "../../components/brand/PonderMark";
 import { KIND_ICON } from "../sources/kinds";
-import { CheckResults, RememberedChips, SecondOpinions } from "./AnswerTools";
+import { CheckResults, RememberedChips, SecondOpinions, ToolChips } from "./AnswerTools";
 import { AnswerActions } from "./AnswerActions";
 import { FollowUps } from "./FollowUps";
 import { InlinePractice } from "./InlinePractice";
@@ -158,6 +158,7 @@ function AssistantMessage({
       {!streaming && content && <AnswerActions message={message} space={space} content={content} />}
       {!streaming && latest && followUps?.length && sendText ? <FollowUps items={followUps} onAsk={sendText} /> : null}
       <CheckResults message={message} />
+      <ToolChips message={message} />
       <RememberedChips message={message} />
       <SecondOpinions
         original={message}
