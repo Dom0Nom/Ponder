@@ -1,6 +1,7 @@
 import { extractJson } from "../chat/json";
+import { parseExplainerReply } from "./explainer";
 
-export const OUTPUT_KINDS = ["report", "cheatsheet", "worksheet", "timeline", "table", "mindmap", "diagram", "slides", "infographic", "audio"] as const;
+export const OUTPUT_KINDS = ["report", "cheatsheet", "worksheet", "timeline", "table", "mindmap", "diagram", "slides", "infographic", "audio", "explainer"] as const;
 export type OutputKind = (typeof OUTPUT_KINDS)[number];
 
 export interface ReportData {
@@ -70,6 +71,10 @@ export interface AudioData {
   lines: AudioLine[];
 }
 
+export interface ExplainerData {
+  html: string;
+}
+
 export interface OutputDataMap {
   report: ReportData;
   cheatsheet: CheatsheetData;
@@ -81,6 +86,7 @@ export interface OutputDataMap {
   slides: SlidesData;
   infographic: InfographicData;
   audio: AudioData;
+  explainer: ExplainerData;
 }
 export type OutputData = OutputDataMap[OutputKind];
 
@@ -137,6 +143,10 @@ const STEP_DATE = /^(step|stage|phase|schritt|stufe|etappe|étape|paso|fase)\b/i
 
 /** Validates a model reply for one output kind; null when it is unusable. */
 export function parseOutput<K extends OutputKind>(kind: K, text: string): Parsed<K> | null {
+  if (kind === "explainer") {
+    const e = parseExplainerReply(text);
+    return e ? ({ title: e.title, data: { html: e.html } } as Parsed<K>) : null;
+  }
   const o = extractJson<Record<string, unknown>>(text);
   if (!o || Array.isArray(o)) return null;
   const title = str(o.title);

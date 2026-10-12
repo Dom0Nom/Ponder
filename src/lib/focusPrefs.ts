@@ -1,4 +1,6 @@
 import { useSettings, useSetSetting } from "./queries";
+import { AMBIENT_KEY, readAmbient } from "./ambient";
+import type { AppInfo } from "./types";
 
 /** Per-user ADHD focus pack preferences, stored as one settings key each. */
 export interface HyperfocusPrefs {
@@ -23,12 +25,21 @@ export interface MusicPrefs {
   playlist: string;
 }
 
+export interface DistractionPrefs {
+  enabled: boolean;
+  apps: AppInfo[];
+  /** seconds a listed app may stay in front before the nudge */
+  graceSec: number;
+}
+
 export const PREF_KEYS = {
   hyperfocus: "focus.hyperfocus",
   breakMenu: "focus.breakMenu",
   reading: "reading.aids",
   music: "focus.music",
   checkIns: "focus.checkIns",
+  distraction: "focus.distraction",
+  ambient: AMBIENT_KEY,
 } as const;
 
 export const DEFAULT_HYPERFOCUS: HyperfocusPrefs = { enabled: true, minutes: 90 };
@@ -41,6 +52,15 @@ export const DEFAULT_BREAK_MENU: string[] = [
 export const DEFAULT_CHECKINS: CheckInPrefs = { minutes: 15 };
 export const DEFAULT_READING: ReadingPrefs = { bionic: false, ruler: false };
 export const DEFAULT_MUSIC: MusicPrefs = { enabled: false, playlist: "" };
+export const DEFAULT_DISTRACTION: DistractionPrefs = { enabled: false, apps: [], graceSec: 15 };
+
+function readDistraction(v: unknown): DistractionPrefs {
+  const o = obj(v, DEFAULT_DISTRACTION);
+  const apps = Array.isArray(o.apps)
+    ? o.apps.filter((a): a is AppInfo => !!a && typeof a.id === "string" && typeof a.name === "string")
+    : [];
+  return { enabled: o.enabled === true, apps, graceSec: Number.isFinite(o.graceSec) && o.graceSec > 0 ? o.graceSec : 15 };
+}
 
 const obj = <T extends object>(v: unknown, fallback: T): T =>
   v && typeof v === "object" && !Array.isArray(v) ? { ...fallback, ...(v as Partial<T>) } : fallback;
@@ -53,6 +73,8 @@ export function readPrefs(settings: Record<string, unknown> | undefined) {
     reading: obj(settings?.[PREF_KEYS.reading], DEFAULT_READING),
     music: obj(settings?.[PREF_KEYS.music], DEFAULT_MUSIC),
     checkIns: obj(settings?.[PREF_KEYS.checkIns], DEFAULT_CHECKINS),
+    distraction: readDistraction(settings?.[PREF_KEYS.distraction]),
+    ambient: readAmbient(settings?.[PREF_KEYS.ambient]),
   };
 }
 

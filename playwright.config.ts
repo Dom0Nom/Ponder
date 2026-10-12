@@ -16,7 +16,12 @@ export default defineConfig({
     viewport: { width: 1360, height: 860 },
     reducedMotion: "reduce",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1360, height: 860 }, reducedMotion: "reduce" } }],
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1360, height: 860 }, reducedMotion: "reduce", launchOptions: { args: ["--mute-audio", "--autoplay-policy=no-user-gesture-required"] } },
+    },
+  ],
   webServer: {
     command: port === 1420 ? "bun run dev" : `bunx vite --port ${port} --strictPort`,
     url: baseURL,

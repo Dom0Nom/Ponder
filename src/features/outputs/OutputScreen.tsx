@@ -28,6 +28,7 @@ import type { StudioOutput } from "../../lib/types";
 import { qkOutput, qkOutputs, useOutputJobs } from "../../stores/outputJobs";
 import { useUi } from "../../stores/ui";
 import { AudioView } from "./AudioView";
+import { currentExplainerDoc, ExplainerView } from "./ExplainerView";
 import { KIND_ICON } from "./kindIcons";
 import { CheatsheetView, DiagramView, InfographicView, MindmapView, ReportView, SlidesView, TableView, TimelineView, WorksheetView } from "./Renderers";
 
@@ -44,6 +45,7 @@ const FORMATS: Record<StudioOutput["kind"], Format[]> = {
   slides: ["pptx", "md"],
   infographic: ["png", "svg"],
   audio: ["mp3", "md"],
+  explainer: ["html"],
 };
 
 const svgSize = (svg: string) => {
@@ -135,6 +137,8 @@ export function OutputScreen({ spaceId, outputId }: { spaceId: string; outputId:
         const { w, h } = svgSize(svg);
         return svgToPng(svg, w, h);
       }
+      case "html":
+        return utf8(currentExplainerDoc((d as OutputDataMap["explainer"]).html, out.title));
       case "mp3": {
         const lines = (d as OutputDataMap["audio"]).lines;
         const t = toast.loading(s.outputs.audio.recording(0, lines.length));
@@ -211,6 +215,8 @@ export function OutputScreen({ spaceId, outputId }: { spaceId: string; outputId:
         return <SlidesView data={out.data as OutputDataMap["slides"]} />;
       case "infographic":
         return <InfographicView ref={svgRef} title={out.title} data={out.data as OutputDataMap["infographic"]} />;
+      case "explainer":
+        return <ExplainerView data={out.data as OutputDataMap["explainer"]} />;
       case "audio":
         return <AudioView id={out.id} title={out.title} data={out.data as OutputDataMap["audio"]} space={space.data} />;
     }

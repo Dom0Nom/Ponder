@@ -371,8 +371,18 @@ const speechModels = {
 };
 const transcriptionModels = { data: [{ id: "openai/whisper-large-v3-turbo", name: "Whisper Large v3 Turbo", pricing: { prompt: "0.0000001" } }] };
 
+const PODCAST_FEED = `<?xml version="1.0"?><rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0"><channel><title>Plant Talk</title>
+<item><title>The Calvin cycle</title><guid>pt-2</guid><pubDate>Mon, 05 Oct 2026 07:00:00 GMT</pubDate><enclosure url="https://cdn.example.com/pt-2.mp3" length="402" type="audio/mpeg"/><itunes:duration>12:00</itunes:duration><podcast:transcript url="https://cdn.example.com/pt-2.vtt" type="text/vtt"/></item>
+<item><title>Light reactions</title><guid>pt-1</guid><pubDate>Mon, 28 Sep 2026 07:00:00 GMT</pubDate><enclosure url="https://cdn.example.com/pt-1.mp3" length="402" type="audio/mpeg"/><itunes:duration>9:30</itunes:duration></item>
+</channel></rss>`;
+
 function httpBytes(request: T.ProxyRequest): ArrayBuffer {
   const pid = request.providerId ?? "";
+  if (!pid && /\.mp3(\?|$)/.test(request.url)) {
+    db.speech.push({ url: request.url, body: null });
+    save();
+    return new Uint8Array([0xff, 0xfb, 0x90, 0x00, ...new Array(400).fill(0)]).buffer as ArrayBuffer;
+  }
   const provider = db.providers[pid];
   if (pid.startsWith("tts:") ? !db.secrets[pid] : !provider || (provider.kind === "apiKey" && !db.secrets[pid]))
     err("auth", `No API key saved for ${provider?.name ?? pid.slice(4)}. Add one in Settings.`);
@@ -1734,6 +1744,9 @@ const handlers: Record<string, (a: Args) => unknown> = {
   },
   http_get_text: (a) => {
     const url = a.url as string;
+    if (url.includes("/feed")) return { status: 200, url, contentType: "application/rss+xml", body: PODCAST_FEED };
+    if (url.endsWith(".vtt"))
+      return { status: 200, url, contentType: "text/vtt", body: "WEBVTT\n\n00:00:01.000 --> 00:00:05.000\nToday: how the Calvin cycle fixes carbon dioxide into sugar.\n\n00:01:30.000 --> 00:01:34.000\nRubisco is the enzyme that does it." };
     return {
       status: 200,
       url,
@@ -1851,6 +1864,11 @@ const handlers: Record<string, (a: Args) => unknown> = {
       .sort((x, y) => y.startedAt - x.startedAt)
       .slice(0, 500),
   focus_events: (a) => db.focusEvents.filter((e) => e.sessionId === a.sessionId),
+  running_apps: (): T.AppInfo[] => [
+    { id: "com.apple.Safari", name: "Safari" },
+    { id: "com.hnc.Discord", name: "Discord" },
+    { id: "com.apple.Music", name: "Music" },
+  ],
   exam_save: (a) => {
     const x = structuredClone(a.attempt as T.ExamAttempt);
     if (!x.id) x.id = id();
@@ -2100,6 +2118,8 @@ export interface MockControls {
   setStreamDelay: (ms: number) => void;
   seedProvider: () => T.Provider;
   db: () => DB;
+  /** emit a backend event, e.g. a distraction nudge */
+  emit: (event: string, payload: unknown) => void;
 }
 
 export function installMockBackend() {
@@ -2175,6 +2195,7 @@ export function installMockBackend() {
   };
 
   const controls: MockControls = {
+    emit: (event, payload) => emit(event, payload),
     reset: () => {
       db = emptyDb();
       save();

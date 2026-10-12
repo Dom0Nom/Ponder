@@ -18,9 +18,10 @@ const NOUN: Record<OutputKind, string> = {
   slides: "slide deck",
   infographic: "one-page infographic",
   audio: "two-host audio overview script",
+  explainer: "small interactive explainer",
 };
 
-const TASK: Record<OutputKind, string[]> = {
+const TASK: Record<Exclude<OutputKind, "explainer">, string[]> = {
   report: [
     "Write a structured report in Markdown, 400–700 words, or shorter when the material is short (never repeat a fact or pad to reach a length): a one-paragraph overview, then 3–5 `##` sections, then `## Key takeaways` with 3–5 bullets.",
     "Cite the material with [n] markers right after the sentence they support, where n is a source number from SOURCES. Every section has at least one citation. Only use numbers that exist in SOURCES.",
@@ -69,6 +70,14 @@ const TASK: Record<OutputKind, string[]> = {
   ],
 };
 
+const EXPLAINER_TASK = [
+  "Build one small interactive simulation or visual that lets the learner change the material's central idea and see what happens: sliders that redraw a graph, a step-through of a process, a toggle that compares two cases. Pick the idea from the material that gains most from interaction.",
+  "Above the controls, explain in 2–4 sentences what to try and what to notice. Label every control with what it changes and show its current value. Results update immediately; no submit buttons.",
+  "One self-contained HTML fragment: an optional <style>, the markup, and one <script> at the end. No external files, libraries, fonts, images or network requests; draw with inline SVG or <canvas>. Plain JavaScript, no frameworks, at most about 200 lines in total. It must not throw errors and must work at widths from 360 to 900 px. Don't repeat the title as a heading; the app shows it above.",
+  "Draw <canvas> at devicePixelRatio scale with text of at least 12 px, and label axes with units.",
+  "Colours only through these CSS variables (defined for light and dark): var(--bg), var(--surface), var(--fg), var(--fg-secondary), var(--muted), var(--border), var(--primary), var(--fill), var(--danger). In canvas code read them with getComputedStyle(document.documentElement).getPropertyValue('--fg').",
+];
+
 const AUDIO_STYLE: Record<AudioStyle, string> = {
   deepDive: "Format: deep dive. 16–26 lines, 900–1400 words in total, or shorter when the material is short (never pad or repeat to reach a length). Work through the main ideas in a sensible order and connect them.",
   brief: "Format: brief. 6–10 lines, at most 350 words in total. Only the core ideas, like a two-minute recap before an exam.",
@@ -87,6 +96,7 @@ const SHAPE: Record<OutputKind, string> = {
   slides: '{"title": "…", "slides": [{"title": "…", "bullets": ["…"], "notes": "…"}]}',
   infographic: '{"title": "…", "subtitle": "…", "stats": [{"value": "…", "label": "…"}], "sections": [{"heading": "…", "points": ["…"]}], "takeaway": "…"}',
   audio: '{"title": "…", "lines": [{"host": "A", "text": "…"}, {"host": "B", "text": "…"}]}',
+  explainer: "TITLE: …\n```html\n…\n```",
 };
 
 /** First line is stable per kind: the mock backend and the eval harness match it. */
@@ -100,11 +110,11 @@ export function outputPrompt(kind: OutputKind, m: Material, focus?: string, styl
     summaries ? `SUMMARIES\n"""\n${summaries}\n"""` : "",
     `PASSAGES (each starts with its source number)\n"""\n${passages}\n"""`,
     focus?.trim() ? `Focus on: ${focus.trim()}. Leave out material that doesn't relate to it.` : "Cover the material's most important ideas.",
-    ...TASK[kind],
+    ...(kind === "explainer" ? EXPLAINER_TASK : TASK[kind]),
     kind === "audio" ? AUDIO_STYLE[style] : "",
     "Use only facts from the material above. Write in the same language as the material, including the title; keep technical terms as the material spells them.",
     "title is at most 8 words.",
-    `Return JSON only:\n${SHAPE[kind]}`,
+    kind === "explainer" ? `Return exactly this and nothing else:\n${SHAPE[kind]}` : `Return JSON only:\n${SHAPE[kind]}`,
   ]
     .filter(Boolean)
     .join("\n\n");

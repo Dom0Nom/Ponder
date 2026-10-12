@@ -10,6 +10,7 @@ import { events } from "../../lib/ipc";
 import { s } from "../../lib/strings";
 import { useUi } from "../../stores/ui";
 import { BreakOverlay } from "./BreakOverlay";
+import { FocusAmbient } from "./FocusAmbient";
 import { ParkingInput } from "./controls";
 import { FocusStartDialog } from "./FocusStartDialog";
 import { emitFocusTransition, loadFocusState, useFocusStore } from "./focusStore";
@@ -106,6 +107,7 @@ export function FocusLayer() {
       <FocusStartDialog />
       <ParkingCapture />
       <BreakOverlay />
+      <FocusAmbient />
     </>
   );
 }

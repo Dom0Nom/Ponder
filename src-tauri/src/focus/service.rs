@@ -361,6 +361,10 @@ impl FocusService {
         Ok(item)
     }
 
+    pub fn log_distraction(&self, session_id: &str, app_name: &str, at: i64) -> AppResult<()> {
+        log_event(&self.db.conn()?, session_id, "distraction", at, Some(json!({ "app": app_name })))
+    }
+
     pub fn parking_list(&self, session_id: Option<&str>) -> AppResult<Vec<ParkingItem>> {
         let c = self.db.conn()?;
         let mut st = c.prepare(
@@ -394,6 +398,7 @@ pub fn apply(app: &AppHandle, out: &Outcome) {
     sync_window(app, out.state.as_ref());
     super::tray::update(app, out.state.as_ref());
     crate::music::sync(app, out.state.as_ref());
+    super::distraction::sync(app, out.state.as_ref());
 }
 
 fn locked(state: Option<&FocusState>) -> bool {

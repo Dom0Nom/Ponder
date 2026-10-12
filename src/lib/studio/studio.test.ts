@@ -18,7 +18,7 @@ describe("studio prompts", () => {
       expect(p.startsWith(outputPromptStart(k))).toBe(true);
       expect(p).toContain("[1] Biology ch. 8");
       expect(p).toContain("Focus on: light reactions.");
-      expect(p.trim().split("\n").at(-1)!.startsWith("{")).toBe(true);
+      expect(p.trim().split("\n").at(-1)!).toMatch(k === "explainer" ? /^```$/ : /^\{/);
       expect(studioReply(p)).not.toBeNull();
     }
   });

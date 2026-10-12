@@ -1,5 +1,29 @@
 /** Canned model replies for Studio outputs, keyed by the prompt's first line. */
-const OUTPUTS: [RegExp, object][] = [
+const OUTPUTS: [RegExp, object | string][] = [
+  [
+    /^A learner explains[\s\S]*THEIR ANSWER TO YOUR LAST QUESTION/,
+    {
+      clarity: 4,
+      verdict: "Much clearer: you now say where the carbon comes from.",
+      strengths: ["Carbon from carbon dioxide in the air"],
+      gaps: ["The Calvin cycle uses ATP and NADPH to build the sugar."],
+      mistakes: [],
+      jargon: [],
+      question: "What do ATP and NADPH do in the Calvin cycle?",
+    },
+  ],
+  [
+    /^A learner explains/,
+    {
+      clarity: 2,
+      verdict: "You have the main idea that plants make sugar from light, but the place and the raw materials need fixing.",
+      strengths: ["Plants turn light energy into sugar"],
+      gaps: ["The Calvin cycle fixes carbon dioxide into sugar.", "Chlorophyll in the chloroplasts absorbs the light."],
+      mistakes: [{ said: "in their mitochondria", correct: "Photosynthesis happens in the chloroplasts, not the mitochondria." }],
+      jargon: [],
+      question: "If the sugar isn't made of light, where does its carbon come from?",
+    },
+  ],
   [
     /^Create a study report/,
     {
@@ -118,6 +142,23 @@ const OUTPUTS: [RegExp, object][] = [
     },
   ],
   [
+    /^Create a small interactive explainer/,
+    [
+      "TITLE: Light and the rate of photosynthesis",
+      "```html",
+      "<p>Move the slider to change how much light reaches the leaf. Watch how the rate of photosynthesis rises and then levels off once something else becomes the limit.</p>",
+      '<label>Light intensity: <input id="light" type="range" min="0" max="100" value="40"> <output id="lv">40</output>%</label>',
+      '<p>Rate of photosynthesis: <strong id="rate">0</strong> units</p>',
+      '<svg viewBox="0 0 200 20" width="100%" height="20"><rect id="bar" x="0" y="0" height="20" width="0" fill="var(--primary)"></rect></svg>',
+      "<script>",
+      "const light = document.getElementById('light');",
+      "const draw = () => { const v = Number(light.value); const r = Math.round(100 * (1 - Math.exp(-v / 30))); document.getElementById('lv').textContent = v; document.getElementById('rate').textContent = r; document.getElementById('bar').setAttribute('width', r * 2); };",
+      "light.addEventListener('input', draw); draw();",
+      "</script>",
+      "```",
+    ].join("\n"),
+  ],
+  [
     /^A listener interrupts an audio overview/,
     { lines: [{ host: "A", text: "Good question. The Calvin cycle happens in the stroma, the fluid around the thylakoids." }] },
   ],
@@ -131,5 +172,5 @@ const OUTPUTS: [RegExp, object][] = [
 
 export function studioReply(prompt: string): string | null {
   const hit = OUTPUTS.find(([re]) => re.test(prompt));
-  return hit ? JSON.stringify(hit[1]) : null;
+  return hit ? (typeof hit[1] === "string" ? hit[1] : JSON.stringify(hit[1])) : null;
 }

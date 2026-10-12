@@ -29,7 +29,7 @@ const test = base.extend<{ app: Page }>({
   },
 });
 
-test.use({ launchOptions: { args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] }, permissions: ["microphone"] });
+test.use({ launchOptions: { args: ["--mute-audio", "--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] }, permissions: ["microphone"] });
 
 const speech = (app: Page) => app.evaluate(() => (window as unknown as W).__mock.db().speech);
 

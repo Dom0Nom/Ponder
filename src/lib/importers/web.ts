@@ -1,4 +1,5 @@
 import { Readability } from "@mozilla/readability";
+import { isFeed, parseFeed, type Feed } from "./podcast";
 import TurndownService from "turndown";
 import { api } from "../ipc";
 import type { FetchedPage, Source } from "../types";
@@ -95,6 +96,13 @@ export function extractReadable(html: string, url: string): ExtractedPage | null
   };
 }
 
+/** Thrown when a pasted link is a podcast feed rather than a page. */
+export class FeedFound extends Error {
+  constructor(public feed: Feed) {
+    super("feed");
+  }
+}
+
 export async function fetchReadable(url: string): Promise<ExtractedPage & { url: string }> {
   let page: FetchedPage;
   try {
@@ -104,6 +112,7 @@ export async function fetchReadable(url: string): Promise<ExtractedPage & { url:
   }
   if (page.status >= 400) throw new Error(`The page returned HTTP ${page.status}.`);
   const type = page.contentType ?? "";
+  if (isFeed(page.body)) throw new FeedFound(parseFeed(page.body));
   if (type.includes("text/plain") || type.includes("markdown")) {
     return { url: page.url, title: page.url, markdown: page.body, excerpt: null, byline: null, siteName: null };
   }

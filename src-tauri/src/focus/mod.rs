@@ -1,5 +1,6 @@
 //! Focus timer: pure state machine (machine.rs) + service (tick thread, persistence, tray, window).
 pub mod commands;
+pub mod distraction;
 pub mod machine;
 pub mod service;
 pub mod tray;
@@ -13,6 +14,7 @@ pub fn start(app: &AppHandle, db: Db) {
     let restored = svc.restore(now_ms());
     app.manage(svc);
     app.manage(UiSync::default());
+    app.manage(distraction::DistractionService::default());
     if let Err(e) = tray::setup(app) {
         log::error!("tray setup failed: {e}");
     }

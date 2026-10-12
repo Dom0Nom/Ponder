@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Command } from "cmdk";
 import * as D from "@radix-ui/react-dialog";
-import { BarChart3, Brain, CalendarCheck, FilePlus2, FolderSync, Gauge, GraduationCap, House, Layers, Notebook, NotebookPen, PencilLine, Plus, Search, Settings, Shapes, Sparkles, SquarePen, SunMoon, Timer, Zap } from "lucide-react";
+import { BarChart3, Brain, CalendarCheck, FilePlus2, FolderSync, Gauge, GraduationCap, House, Layers, MessageSquareText, Notebook, NotebookPen, PencilLine, Plus, Search, Settings, Shapes, Sparkles, SquarePen, SunMoon, Timer, Zap } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces, qk, useCaptureStatus } from "../../lib/queries";
 import { splitShortcut } from "../../lib/capture/shortcut";
@@ -129,6 +129,19 @@ export function CommandPalette() {
                     >
                       <Shapes size={15} />
                       <span className="flex-1">{s.palette.create}</span>
+                    </Command.Item>
+                    <Command.Item
+                      className={item}
+                      onSelect={() =>
+                        run(() => {
+                          if (!ui.studioOpen) ui.toggleStudio();
+                          ui.setStudioView("feynman");
+                        })
+                      }
+                      keywords={["feynman", "explain", "teach", "own words", "check understanding"]}
+                    >
+                      <MessageSquareText size={15} />
+                      <span className="flex-1">{s.palette.feynman}</span>
                     </Command.Item>
                   </>
                 )}

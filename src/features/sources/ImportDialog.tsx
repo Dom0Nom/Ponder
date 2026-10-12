@@ -13,11 +13,14 @@ import { Input, Label, Textarea } from "../../components/ui/input";
 import { Spinner } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { fileImporter, pasteImporter, pickFiles } from "../../lib/importers/files";
-import { normalizeUrl, webImporter } from "../../lib/importers/web";
+import { FeedFound, normalizeUrl, webImporter } from "../../lib/importers/web";
+import type { Feed } from "../../lib/importers/podcast";
+import { PodcastPicker } from "./PodcastPicker";
 import { isYouTubeUrl, youtubeImporter } from "../../lib/importers/youtube";
 import { proxyHttp } from "../../lib/importers/http";
 import { ResearchPanel } from "./ResearchPanel";
 import { CloudTab } from "./CloudTab";
+import { LectureTab, useLectureAvailable } from "./LectureTab";
 
 export interface ImportFooter {
   label: string;
@@ -42,7 +45,7 @@ export function useImportFooter(f: ImportFooter | null) {
   }, [key, set]);
 }
 
-const WIDTH: Record<string, number> = { file: 522, paste: 522, url: 522, youtube: 522, research: 602, gdrive: 682, dropbox: 682 };
+const WIDTH: Record<string, number> = { lecture: 522, file: 522, paste: 522, url: 522, youtube: 522, research: 602, gdrive: 682, dropbox: 682 };
 
 const TABS = [
   { id: "file", label: s.sources.tabs.file },
@@ -52,6 +55,7 @@ const TABS = [
   { id: "gdrive", label: s.sources.tabs.gdrive },
   { id: "dropbox", label: s.sources.tabs.dropbox },
   { id: "research", label: s.sources.tabs.research },
+  { id: "lecture", label: s.lecture.tab },
 ] as const;
 
 export function ImportDialog({
@@ -67,6 +71,7 @@ export function ImportDialog({
 }) {
   const [tab, setTab] = useState(initialTab ?? "file");
   const [footer, setFooter] = useState<ImportFooter | null>(null);
+  const lecture = useLectureAvailable();
   const query = useUi((st) => st.importDialog.query);
   const found = useUi((st) => st.importDialog.found);
   const setSourcesOpen = useUi((st) => st.setSourcesOpen);
@@ -104,7 +109,7 @@ export function ImportDialog({
       <FooterCtx.Provider value={setFooter}>
         <Tabs.Root value={tab} onValueChange={setTab} className="flex flex-col gap-3.5">
           <Tabs.List aria-label={s.sources.importTitle} className="flex flex-wrap gap-1">
-            {TABS.map((t) => (
+            {TABS.filter((t) => t.id !== "lecture" || lecture).map((t) => (
               <Tabs.Trigger
                 key={t.id}
                 value={t.id}
@@ -132,6 +137,11 @@ export function ImportDialog({
           <Tabs.Content value="dropbox" className="t-panel-slide" data-open="true">
             <CloudTab service="dropbox" space={space} done={done} />
           </Tabs.Content>
+          {lecture && (
+            <Tabs.Content value="lecture" className="t-panel-slide" data-open="true">
+              <LectureTab space={space} done={done} />
+            </Tabs.Content>
+          )}
           <Tabs.Content value="research" className="t-panel-slide" data-open="true">
             <ResearchPanel key={query ?? ""} space={space} initialQuery={query} initialFound={found} done={done} />
           </Tabs.Content>
@@ -242,6 +252,7 @@ function UrlTab({ space, kind, done }: { space: Space; kind: "url" | "youtube"; 
   const qc = useQueryClient();
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
+  const [feed, setFeed] = useState<Feed | null>(null);
   const valid = kind === "youtube" ? isYouTubeUrl(url) : !!normalizeUrl(url);
   const submit = async () => {
     setBusy(true);
@@ -253,11 +264,31 @@ function UrlTab({ space, kind, done }: { space: Space; kind: "url" | "youtube"; 
       setUrl("");
       done();
     } catch (e) {
-      toastError(s.sources.importFailed, e, submit);
+      if (e instanceof FeedFound) setFeed(e.feed);
+      else toastError(s.sources.importFailed, e, submit);
     } finally {
       setBusy(false);
     }
   };
+  if (feed) return <PodcastPicker space={space} feed={feed} done={done} />;
+  return <UrlForm kind={kind} url={url} setUrl={setUrl} valid={valid} busy={busy} submit={submit} />;
+}
+
+function UrlForm({
+  kind,
+  url,
+  setUrl,
+  valid,
+  busy,
+  submit,
+}: {
+  kind: "url" | "youtube";
+  url: string;
+  setUrl: (v: string) => void;
+  valid: boolean;
+  busy: boolean;
+  submit: () => void;
+}) {
   useImportFooter({ label: s.sources.import, disabled: !valid, busy, run: submit });
   return (
     <form

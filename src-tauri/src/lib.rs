@@ -44,6 +44,7 @@ pub fn run() {
         )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(capture::plugin())
         .on_window_event(focus::on_window_event)
         .manage(music::MusicService::new(music::default_backend()))
@@ -86,6 +87,7 @@ pub fn run() {
             commands::core::add_journal,
             commands::core::get_settings,
             commands::core::set_setting,
+            focus::distraction::running_apps,
             music::music_status,
             music::music_test,
             music::music_pause,

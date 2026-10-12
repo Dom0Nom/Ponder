@@ -831,3 +831,17 @@ export interface PassageRewrite {
   textHash: string;
   text: string;
 }
+
+export interface AppInfo {
+  /** bundle id on macOS */
+  id: string;
+  name: string;
+}
+
+export interface DistractionNudge {
+  app: AppInfo;
+  sessionId: string;
+  remainingMs: number | null;
+  count: number;
+  at: number;
+}

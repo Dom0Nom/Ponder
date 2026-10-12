@@ -241,6 +241,7 @@ export const api = {
   focusHistory: (spaceId?: string | null) =>
     call<T.FocusSessionSummary[]>("focus_history", { spaceId: spaceId ?? null }),
   focusEvents: (sessionId: string) => call<T.FocusEvent[]>("focus_events", { sessionId }),
+  runningApps: () => call<T.AppInfo[]>("running_apps"),
   parkingAdd: (text: string) => call<T.ParkingItem>("parking_add", { text }),
   parkingList: (sessionId?: string | null) =>
     call<T.ParkingItem[]>("parking_list", { sessionId: sessionId ?? null }),
@@ -259,6 +260,8 @@ export const events = {
     listen<T.OAuthStatus>("oauth://status", (e) => cb(e.payload)),
   cloudStatus: (cb: (s: T.CloudStatus) => void) =>
     listen<T.CloudStatus>("cloud://status", (e) => cb(e.payload)),
+  focusDistraction: (cb: (n: T.DistractionNudge) => void) =>
+    listen<T.DistractionNudge>("focus://distraction", (e) => cb(e.payload)),
   /** tray menu "Start focus session" */
   focusRequest: (cb: () => void) => listen("focus://request-start", () => cb()),
   watchUpdated: (cb: (e: { id: string; spaceId: string }) => void) =>

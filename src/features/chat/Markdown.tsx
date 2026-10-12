@@ -8,6 +8,18 @@ import { rehypeStreamWords } from "./rehypeStreamWords";
 import { remarkCitations } from "./remarkCitations";
 import { remarkHtmlBreaks } from "./remarkHtmlBreaks";
 import { remarkPlainMath } from "./remarkPlainMath";
+import { CodeCell } from "./CodeCell";
+import { cellLang } from "../../lib/codecell/lang";
+
+interface HastNode {
+  type: string;
+  tagName?: string;
+  value?: string;
+  properties?: { className?: string[] | string };
+  children?: HastNode[];
+}
+
+const hastText = (n: HastNode): string => (n.type === "text" ? (n.value ?? "") : (n.children ?? []).map(hastText).join(""));
 
 export const Markdown = memo(function Markdown({
   text,
@@ -28,6 +40,17 @@ export const Markdown = memo(function Markdown({
         {children}
       </a>
     ),
+    pre: ({ node, children }: { node?: HastNode; children?: ReactNode }) => {
+      const code = node?.children?.find((c) => c.tagName === "code");
+      const cls = code?.properties?.className;
+      const lang = !streaming && code ? cellLang(Array.isArray(cls) ? cls.join(" ") : cls) : null;
+      if (!lang || !code) return <pre>{children}</pre>;
+      return (
+        <CodeCell lang={lang} code={hastText(code).replace(/\n$/, "")}>
+          <pre>{children}</pre>
+        </CodeCell>
+      );
+    },
     "cite-ref": (props: { "data-ns"?: string; "data-inferred"?: string }) =>
       renderCite?.(String(props["data-ns"] ?? "").split(",").map(Number), props["data-inferred"] === "1") ?? null,
   } as unknown as Components;

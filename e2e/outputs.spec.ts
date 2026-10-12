@@ -120,3 +120,23 @@ test("studio outputs: a space without ready sources explains why", async ({ app 
   await app.getByTestId("create-panel").locator('[data-kind="report"]').click();
   await expect(app.getByTestId("create-panel")).toContainText("Add a source that has finished processing first");
 });
+
+test("studio outputs: interactive explainer runs sandboxed and exports as HTML", async ({ app }) => {
+  await spaceWithSource(app);
+  await app.getByTestId("create-row").click();
+  await app.getByTestId("create-panel").locator('[data-kind="explainer"]').click();
+  const screen = app.getByTestId("output-screen");
+  await expect(screen.getByRole("heading", { level: 1 })).toHaveText("Light and the rate of photosynthesis");
+  const frame = screen.getByTestId("explainer-frame");
+  await expect(frame).toHaveAttribute("sandbox", "allow-scripts");
+  const inner = app.frameLocator('[data-testid="explainer-frame"]');
+  await expect(inner.locator("#rate")).toHaveText("74");
+  await inner.locator("#light").fill("90");
+  await expect(inner.locator("#rate")).toHaveText("95");
+  expect(await inner.locator("body").evaluate(() => { try { return String(parent.document); } catch { return "blocked"; } })).toBe("blocked");
+  await expect(screen.getByTestId("explainer-error")).toHaveCount(0);
+
+  await screen.getByTestId("output-export").click();
+  await app.getByRole("menuitem", { name: "Web page (.html)" }).click();
+  await expect(app.getByText("Saved to /Users/me/Downloads/Light and the rate of photosynthesis.html")).toBeVisible();
+});

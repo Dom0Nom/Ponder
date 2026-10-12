@@ -1,3 +1,4 @@
+import { FeynmanPanel } from "../feynman/FeynmanPanel";
 import { useQuery } from "@tanstack/react-query";
 import {
   FileText,
@@ -270,6 +271,8 @@ function SubView({ space, view }: { space: Space; view: StudioView }) {
       return <CoursePanel space={space} onBack={back} />;
     case "create":
       return <CreatePanel space={space} onBack={back} />;
+    case "feynman":
+      return <FeynmanPanel space={space} onBack={back} />;
     case "calculator":
       return (
         <div className="flex h-full min-h-0 flex-col">
