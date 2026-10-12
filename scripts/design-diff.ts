@@ -204,6 +204,7 @@ const USER_DEVIATIONS: (Mask & { screens?: number[] })[] = [
   { x: 686, y: 457, w: 132, h: 39, screens: [38], reason: "prominent deep research entry in the empty space state, requested by the user 2026-10-07" },
   { x: 931, y: 468, w: 341, h: 324, screens: [20], reason: "study schedule section (spec: study plans, requested in the overnight brief 2026-10-11)" },
   { x: 968, y: 696, w: 300, h: 56, screens: [2], reason: "Studio Create row (spec: Text Studio outputs, requested in the overnight brief 2026-10-11)" },
+  { x: 900, y: 56, w: 326, h: 38, screens: [6], reason: "Pages toggle for PDF sources in the source viewer header (original PDF view, approved by the user 2026-10-12)" },
 ];
 const deviationsFor = (n: number) => USER_DEVIATIONS.filter((m) => !m.screens || m.screens.includes(n));
 
