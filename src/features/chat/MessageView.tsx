@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { AlertCircle, Brain, ChevronRight, FileText, Globe2, Timer } from "lucide-react";
 import { splitSegments, inferCitations } from "../../lib/chat/citations";
-import { hideFollowUpMarkers } from "../../lib/chat/followUps";
-import { hideMemoryMarkers } from "../../lib/chat/memory";
+import { stripMarkers } from "../../lib/chat/followUps";
 import { thoughtSeconds } from "../../lib/chat/thinking";
 import { useSources } from "../../lib/queries";
 import { s } from "../../lib/strings";
@@ -80,8 +79,8 @@ export function AnswerBody({
   const shown = useMemo(
     () =>
       streaming
-        ? hideFollowUpMarkers(hideMemoryMarkers(content))
-        : inferCitations(content, citations.map((c) => ({ n: c.n, text: c.text ?? c.snippet }))),
+        ? stripMarkers(content)
+        : inferCitations(stripMarkers(content), citations.map((c) => ({ n: c.n, text: c.text ?? c.snippet }))),
     [streaming, content, citations],
   );
   const segments = splitSegments(shown, { hadSources: citations.length > 0, known: citations.length });

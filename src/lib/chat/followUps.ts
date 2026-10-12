@@ -1,3 +1,5 @@
+import { hideMemoryMarkers } from "./memory";
+
 const MARKER = /\{\{followup:\s*([^}]*?)\s*\}\}/gi;
 
 const MAX_FOLLOW_UPS = 3;
@@ -24,6 +26,11 @@ export function hideFollowUpMarkers(text: string): string {
     .replace(/\{\{f(?:o(?:l(?:l(?:o(?:w(?:u(?:p(?::[^}]*)?)?)?)?)?)?)?)?$/i, "")
     .replace(/\{\{?$/, "")
     .trimEnd();
+}
+
+/** Removes complete and half-written follow-up and memory markers from a finished reply. */
+export function stripMarkers(text: string): string {
+  return hideFollowUpMarkers(hideMemoryMarkers(text));
 }
 
 export const FOLLOWUP_INSTRUCTION =

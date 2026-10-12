@@ -5,6 +5,7 @@ import { initialBuddyState, stepBuddy, type BuddyEvent, type BuddyOptions } from
 import { buddyInstruction, buddyNote, hyperfocusNote } from "../../lib/buddy/prompts";
 import { readPrefs, type FocusPrefs } from "../../lib/focusPrefs";
 import { s as strings } from "../../lib/strings";
+import { pickActiveThread } from "../../lib/chat/activeThread";
 import { runTurn } from "../../lib/chat/runner";
 import { currentStepText } from "../../lib/focus/microSteps";
 import { NoModelError } from "../../lib/chat/llm";
@@ -20,7 +21,7 @@ let chain: Promise<void> = Promise.resolve();
 async function threadFor(spaceId: string): Promise<string> {
   const ui = useUi.getState();
   const threads = await api.listThreads(spaceId);
-  const active = threads.find((t) => t.id === ui.activeThread[spaceId]) ?? threads[0];
+  const active = pickActiveThread(threads, ui.activeThread[spaceId]);
   if (active) return active.id;
   const t = await api.createThread(spaceId, "Focus session");
   ui.setActiveThread(spaceId, t.id);
@@ -29,7 +30,11 @@ async function threadFor(spaceId: string): Promise<string> {
 }
 
 async function waitIdle(threadId: string) {
-  for (let i = 0; i < 240 && useChatStream.getState().running[threadId]; i++) {
+  const busy = () => {
+    const st = useChatStream.getState();
+    return st.running[threadId] || st.pending[threadId];
+  };
+  for (let i = 0; i < 240 && busy(); i++) {
     await new Promise((r) => setTimeout(r, 500));
   }
 }

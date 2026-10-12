@@ -4,9 +4,9 @@ import { s } from "../strings";
 import { queryClient, qk } from "../queries";
 import type { Citation, FocusState, Message, MessageMeta, NewMessage, MessagePatch, SearchHit, Space, TutorStyle } from "../types";
 import type { ImageInput } from "../steps/vision";
-import { useChatStream } from "../../stores/chatStream";
+import { isDiscarded, useChatStream } from "../../stores/chatStream";
 import { hitsToCitations } from "./citations";
-import { extractFollowUps } from "./followUps";
+import { extractFollowUps, stripMarkers } from "./followUps";
 import { ThinkingTimer } from "./thinking";
 import type { ModelControls } from "../providers/controls";
 import { extractMemories, isKnownFact } from "./memory";
@@ -39,6 +39,16 @@ export interface TurnInput {
   ephemeral?: boolean;
   /** the assistant row as soon as retrieval is done and streaming starts */
   onStart?: (assistant: Message) => void;
+  /** called once the user message is saved */
+  onUserSaved?: () => void;
+  /** messages left out of the model's history (the answer being regenerated) */
+  exclude?: string[];
+}
+
+export class TurnBusyError extends Error {
+  constructor() {
+    super(s.chat.turnBusy);
+  }
 }
 
 interface MessageStore {
@@ -108,6 +118,19 @@ export function passagesFrom(hits: SearchHit[]): Passage[] {
  * the chat stream store and persists it. Returns the final assistant message.
  */
 export async function runTurn(input: TurnInput): Promise<Message> {
+  const { threadId } = input;
+  if (input.ephemeral) return runTurnInner(input);
+  const st = useChatStream.getState();
+  if (st.running[threadId] || st.pending[threadId]) throw new TurnBusyError();
+  st.setPending(threadId, true);
+  try {
+    return await runTurnInner(input);
+  } finally {
+    useChatStream.getState().setPending(threadId, false);
+  }
+}
+
+async function runTurnInner(input: TurnInput): Promise<Message> {
   const { space, threadId } = input;
   const llm = input.llm ?? (await resolveChatModel(space));
   const store = input.ephemeral ? memoryStore() : persistentStore;
@@ -116,6 +139,7 @@ export async function runTurn(input: TurnInput): Promise<Message> {
   };
 
   let prior = await store.listMessages(threadId);
+  if (input.exclude?.length) prior = prior.filter((m) => !input.exclude!.includes(m.id));
   if (input.persistUser === false) {
     const last = prior[prior.length - 1];
     if (last?.role === "user") prior = prior.slice(0, -1);
@@ -125,6 +149,7 @@ export async function runTurn(input: TurnInput): Promise<Message> {
       await api.renameThread(threadId, threadTitleFrom(input.userText)).catch(() => {});
       queryClient.invalidateQueries({ queryKey: qk.threads(space.id) });
     }
+    input.onUserSaved?.();
     invalidate();
   }
 
@@ -156,109 +181,123 @@ export async function runTurn(input: TurnInput): Promise<Message> {
   });
   invalidate();
 
-  const controller = new AbortController();
-  const stream = useChatStream.getState();
-  stream.start(threadId, assistant.id, controller);
-  input.onStart?.(assistant);
-
-  const memory = await api.listMemory().catch(() => []);
-  const system = buildSystemPrompt({
-    memory: memory.map((m) => m.text),
-    extraInstructions: input.systemExtra,
-    space,
-    tutorStyle: input.tutorStyle,
-    passages: passagesFrom(hits),
-    focus: input.focus,
-    now: Date.now(),
-    sourceCount: sources.filter((s) => s.status === "ready").length || space.sourceCount,
-  });
-  const history = historyMessages(prior) as ModelMessage[];
-  const messages: ModelMessage[] = [...history];
-  if (input.userText) messages.push({ role: "user", content: userContent(input.userText, input.image) } as ModelMessage);
-  else
-    messages.push({
-      role: "user",
-      content: `[Study buddy event, not typed by the learner] ${input.instruction ?? ""}`.trim(),
-    });
-
-  let content = "";
-  let reasoning = "";
-  const timer = new ThinkingTimer();
-  let lastPersist = Date.now();
-  let error: string | null = null;
-
-  const paint = new FramePainter((c, r) => useChatStream.getState().update(assistant.id, { content: c, reasoning: r }));
   try {
-    const result = streamText({
-      model: llm.model,
-      system,
-      messages,
-      abortSignal: controller.signal,
-      ...llm.options({ ...(input.thinking != null ? { thinking: input.thinking } : {}), ...input.controls }),
-    });
-    for await (const part of result.stream) {
-      if (part.type === "text-delta") {
-        timer.text();
-        content += part.text;
-      } else if (part.type === "reasoning-delta") {
-        timer.reasoning();
-        reasoning += part.text;
-      }
-      else if (part.type === "error") throw part.error;
-      else continue;
-      paint.schedule(content, reasoning);
-      if (Date.now() - lastPersist > PERSIST_EVERY_MS) {
-        lastPersist = Date.now();
-        store.updateMessage(assistant.id, { content, reasoning }).catch(() => {});
-      }
-    }
-  } catch (e) {
-    if (!controller.signal.aborted) error = describeError(e);
-  }
-  paint.flush();
+    const controller = new AbortController();
+    const stream = useChatStream.getState();
+    stream.start(threadId, assistant.id, controller);
+    input.onStart?.(assistant);
 
-  timer.finish();
-  const stopped = controller.signal.aborted;
-  const remembered: string[] = [];
-  let followUps: string[] = [];
-  if (!error && content) {
-    const fu = extractFollowUps(content);
-    content = fu.clean;
-    if (!input.meta?.buddyKind) followUps = fu.followUps;
-    const ex = extractMemories(content);
-    content = ex.clean;
-    const known = memory.map((m) => m.text);
-    for (const fact of ex.memories) {
-      if (isKnownFact(fact, known)) continue;
-      try {
-        await api.addMemory(fact, "tutor", space.id);
-        remembered.push(fact);
-      } catch {
-        // a rejected memory (too long, empty) just isn't saved
+    const memory = await api.listMemory().catch(() => []);
+    const system = buildSystemPrompt({
+      memory: memory.map((m) => m.text),
+      extraInstructions: input.systemExtra,
+      space,
+      tutorStyle: input.tutorStyle,
+      passages: passagesFrom(hits),
+      focus: input.focus,
+      now: Date.now(),
+      sourceCount: sources.filter((s) => s.status === "ready").length || space.sourceCount,
+    });
+    const history = historyMessages(prior) as ModelMessage[];
+    const messages: ModelMessage[] = [...history];
+    if (input.userText) messages.push({ role: "user", content: userContent(input.userText, input.image) } as ModelMessage);
+    else
+      messages.push({
+        role: "user",
+        content: `[Study buddy event, not typed by the learner] ${input.instruction ?? ""}`.trim(),
+      });
+
+    let content = "";
+    let reasoning = "";
+    const timer = new ThinkingTimer();
+    let lastPersist = Date.now();
+    let persisting: Promise<unknown> = Promise.resolve();
+    let error: string | null = null;
+
+    const paint = new FramePainter((c, r) => useChatStream.getState().update(assistant.id, { content: c, reasoning: r }));
+    try {
+      const result = streamText({
+        model: llm.model,
+        system,
+        messages,
+        abortSignal: controller.signal,
+        ...llm.options({ ...(input.thinking != null ? { thinking: input.thinking } : {}), ...input.controls }),
+      });
+      for await (const part of result.stream) {
+        if (part.type === "text-delta") {
+          timer.text();
+          content += part.text;
+        } else if (part.type === "reasoning-delta") {
+          timer.reasoning();
+          reasoning += part.text;
+        }
+        else if (part.type === "error") throw part.error;
+        else continue;
+        paint.schedule(content, reasoning);
+        if (Date.now() - lastPersist > PERSIST_EVERY_MS) {
+          lastPersist = Date.now();
+          const snapshot = { content, reasoning };
+          persisting = persisting.then(() => store.updateMessage(assistant.id, snapshot)).catch(() => {});
+        }
       }
+    } catch (e) {
+      if (!controller.signal.aborted) error = describeError(e);
     }
-    if (remembered.length) queryClient.invalidateQueries({ queryKey: qk.memory });
+    paint.flush();
+    await persisting;
+
+    timer.finish();
+    const stopped = controller.signal.aborted;
+    const remembered: string[] = [];
+    let followUps: string[] = [];
+    if (!error && content) {
+      const fu = extractFollowUps(content);
+      content = fu.clean;
+      if (!input.meta?.buddyKind) followUps = fu.followUps;
+      const ex = extractMemories(content);
+      content = ex.clean;
+      const known = memory.map((m) => m.text);
+      for (const fact of ex.memories) {
+        if (isKnownFact(fact, known)) continue;
+        try {
+          await api.addMemory(fact, "tutor", space.id);
+          remembered.push(fact);
+        } catch {
+          // a rejected memory (too long, empty) just isn't saved
+        }
+      }
+      if (remembered.length) queryClient.invalidateQueries({ queryKey: qk.memory });
+    }
+    content = stripMarkers(content);
+    let final: Message;
+    const finalPatch: MessagePatch = {
+      content,
+      reasoning,
+      status: error ? "error" : "complete",
+      error: error ?? undefined,
+      meta: {
+        ...assistant.meta,
+        ...(stopped ? { stopped: true } : {}),
+        ...(retrievalError ? { retrievalError } : {}),
+        ...(remembered.length ? { remembered } : {}),
+        ...(timer.thinkingMs ? { thinkingMs: timer.thinkingMs } : {}),
+        ...(followUps.length ? { followUps } : {}),
+      },
+    };
+    try {
+      final = await store.updateMessage(assistant.id, finalPatch);
+    } catch (e) {
+      if (!isDiscarded(threadId)) throw e;
+      final = { ...assistant, content, reasoning, status: error ? "error" : "complete", error } as Message;
+    }
+    // swap in the final row before dropping live state, or the stale "streaming" row flashes as interrupted
+    queryClient.setQueryData<Message[]>(qk.messages(threadId), (msgs) => msgs?.map((m) => (m.id === final.id ? final : m)));
+    return final;
+  } finally {
+    useChatStream.getState().finish(threadId, assistant.id);
+    invalidate();
+    if (!input.ephemeral) queryClient.invalidateQueries({ queryKey: qk.threads(space.id) });
   }
-  const final = await store.updateMessage(assistant.id, {
-    content,
-    reasoning,
-    status: error ? "error" : "complete",
-    error: error ?? undefined,
-    meta: {
-      ...assistant.meta,
-      ...(stopped ? { stopped: true } : {}),
-      ...(retrievalError ? { retrievalError } : {}),
-      ...(remembered.length ? { remembered } : {}),
-      ...(timer.thinkingMs ? { thinkingMs: timer.thinkingMs } : {}),
-      ...(followUps.length ? { followUps } : {}),
-    },
-  });
-  // swap in the final row before dropping live state, or the stale "streaming" row flashes as interrupted
-  queryClient.setQueryData<Message[]>(qk.messages(threadId), (msgs) => msgs?.map((m) => (m.id === final.id ? final : m)));
-  useChatStream.getState().finish(threadId, assistant.id);
-  invalidate();
-  if (!input.ephemeral) queryClient.invalidateQueries({ queryKey: qk.threads(space.id) });
-  return final;
 }
 
 /**
