@@ -50,11 +50,11 @@ Partly answered by the third random check (BEHAVIOR §3.2):
 
 ### Q14. Not covered by vectors; the build's choice
 
-- Error screen: only `clear` (back to the entry) and `2nd`, `mode` act. An errored entry goes into history without a result, and the screen above the entry is cleared (`err-historyAfterError`).
+- Error screen: only `clear` (back to the entry) and `2nd`, `mode` act. Confirmed by the seed 4 check for digits, operators, `left`, `right` and `enter`, which are all ignored (BEHAVIOR §21); `2nd`, `mode` was not probed. An errored entry goes into history without a result, and the screen above the entry is cleared (`err-historyAfterError`).
 - Function table: `left`/`right` switch the selected column, and the edit line shows `y=` for the y column. In Auto mode, `up` above Start continues to smaller x values.
 - ~~Tall parentheses are drawn at normal height.~~ Answered by the third random check: the reference draws them tall, 13 dots, next to or around a stacked fraction (BEHAVIOR §3.1).
 
-### Q16. Scroll offset with fractions and radicals (open)
+### Q16. Scroll offset with fractions and radicals (answered by the seed 4 check)
 
 With a stacked fraction or a radical on the line, the reference's scrolled window does not follow the cell rule in §3.2, and its left edge can fall at a half-cell offset. Observed:
 - `1 2 3 tan 5 2 frac 2nd sin 5 7` fits without scrolling. With `1 2 3 4` in front, the reference scrolls (the left edge cuts into `3`, then `4tan(`). Ponder doesn't scroll there.
@@ -64,7 +64,21 @@ With a stacked fraction or a radical on the line, the reference's scrolled windo
 
 Probes need the PNGs, since the LCD reader cannot decode half-cell offsets.
 
+Answer (BEHAVIOR §3.2, window offset): the shift is in dots, and a cursor inside a slot (numerator, denominator, radicand, exponent) must start at dot 88 or earlier, otherwise the line shifts so it starts at cell 14 (dot 85). A line ending in a stacked fraction reserves no end cell. This gives all four observations:
+- `123tan(\f{52}{sin⁻¹(57}`: denominator cursor at dot 88, fits. With `1234` in front it is at dot 94 → shift 9 dots: `3` is cut behind `◂`, `4` is the first whole glyph.
+- random-2-126: denominator cursor at dot 106 → shift 21 dots → `6` starts at dot 10.
+- random-1-138: the cursor is in a slot, so it stops at cell 14 and cell 15 stays empty.
+
 ### Q17. Fraction in a superscript, nested placeholders (build check)
 
 Observed and written down (BEHAVIOR §3.1), but there is no text vector for the geometry: `2 pow 1 frac 3` draws the fraction at normal fraction size inside the exponent, with the base dropped. To compare when building, run a vector file with that key sequence through `scripts/calc-diff.ts` (`--random 0 --clicks 0`) and look at the PNG it writes.
 
+### Q18. Scroll window and error rules from the seed 4 check (partly open)
+
+Written into BEHAVIOR §2.2, §3.2, §9 and §21 with 110 `*-seed4-*` vectors. Still open:
+- **No end cell after a trailing fraction.** `frac #12345678901234` (n = 15, 16 cells) does not scroll, while `√{…}` and `^{…}` lines ending the same way keep the end cell. Not probed: a top-level cursor right after a trailing fraction near the edge, and a fraction that is not the last element.
+- **Slot-cursor limit.** Dot 88 (fraction slot, half-cell offset) is allowed, dot 91 is not. Nothing between was observed; the build may use "starts before dot 91".
+- **x-root index after a power and a number.** `(ans^{2})^{⁻1}404` + `2nd pow` takes only `404` as the index, while §9 says an implied product such as `3x` is taken whole. Which implied products count as one operand is not clear.
+- **`right` from a numerator** moves to the denominator (`frac #12345678901234 right`); not probed with a filled denominator.
+- **Encoding conventions** chosen here, not observed: cell 0 under `◂` is never written; a row whose visible glyphs are all in one superscript is written flat (`◂(9067tan⁻¹(8.5`); a cut template keeps its wrapper. Vectors that depend on them are `confidence: medium`.
+- **LCD reader limits:** `reader.py` drops or misreads several of these screens (raised content under `◂`, `tan⁻¹(` at a superscript size, x-root indices, half-cell shifts): `edit-seed4-o021`, `-o031`, `-o177`, `-a3`, `-m7`, `-h5`, `-h7`, `-h23`, `-o026`, `-b1`…`-b10`, `-e2`, `-e12`, `-k5`. `calc-diff` reports on these can be false mismatches; the vector text was read from the pixels.
