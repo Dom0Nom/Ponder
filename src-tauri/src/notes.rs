@@ -127,7 +127,11 @@ pub fn save_with(c: &Connection, ingest: &Ingest, n: &Note, sync: bool) -> AppRe
     }
     let saved = save_row(c, n)?;
     if sync {
-        sync_source(c, ingest, &saved)?;
+        // two syncing saves of a new note must not both create a source
+        static SYNC: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        let _guard = SYNC.lock().unwrap_or_else(|e| e.into_inner());
+        let fresh = get(c, &saved.id)?.unwrap_or(saved.clone());
+        sync_source(c, ingest, &fresh)?;
     }
     Ok(get(c, &saved.id)?.expect("saved"))
 }

@@ -143,11 +143,13 @@ pub async fn music_status(svc: State<'_, MusicService>) -> AppResult<MusicStatus
 #[tauri::command]
 pub async fn music_test(app: AppHandle, svc: State<'_, MusicService>, playlist: String) -> AppResult<()> {
     let uri = uri::parse_playlist(&playlist)?;
-    if !svc.backend.available() {
-        return Err(invalid("Spotify isn't installed"));
-    }
     let backend = svc.backend.clone();
-    let res = tauri::async_runtime::spawn_blocking(move || backend.play_playlist(&uri))
+    let res = tauri::async_runtime::spawn_blocking(move || {
+        if !backend.available() {
+            return Err(invalid("Spotify isn't installed"));
+        }
+        backend.play_playlist(&uri)
+    })
         .await
         .map_err(|e| AppError::Other(e.to_string()))?;
     match &res {
