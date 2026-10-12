@@ -68,6 +68,8 @@ export interface DB {
   planTasks: Row<T.PlanTask>;
   watched: Row<T.WatchedFolder>;
   speech: { url: string; body: unknown }[];
+  backups: T.BackupInfo[];
+  backup: { folder: string | null; enabled: boolean; frequency: "daily" | "weekly"; keep: number; restoreStaged: boolean; lastError: string | null };
   nextId: number;
   clockOffset: number;
 }
@@ -135,6 +137,8 @@ function emptyDb(): DB {
     planTasks: {},
     watched: {},
     speech: [],
+    backups: [],
+    backup: { folder: null, enabled: false, frequency: "daily", keep: 7, restoreStaged: false, lastError: null },
     nextId: 1,
     clockOffset: 0,
   };
@@ -522,6 +526,17 @@ function ingest(src: T.Source, text: string) {
   db.sources[src.id] = done;
   save();
   setTimeout(() => emit("source://updated", done), 50);
+}
+
+function backupStatus(): T.BackupStatus {
+  const { folder, enabled, frequency, keep, restoreStaged, lastError } = db.backup;
+  return {
+    config: { folder, enabled, frequency, keep },
+    backups: folder ? [...db.backups].sort((x, y) => y.createdAt - x.createdAt) : [],
+    running: false,
+    lastError,
+    restoreStaged,
+  };
 }
 
 function captureStatus(): T.CaptureStatus {
@@ -1255,6 +1270,50 @@ const handlers: Record<string, (a: Args) => unknown> = {
     db.settings.quickCaptureShortcut = shortcut;
     save();
     return captureStatus();
+  },
+
+  backup_status: () => backupStatus(),
+  backup_configure: (a) => {
+    if (a.enabled && !db.backup.folder) err("invalid", "Choose a backup folder first.");
+    db.backup.enabled = !!a.enabled;
+    db.backup.frequency = a.frequency === "weekly" ? "weekly" : "daily";
+    db.backup.keep = Math.min(100, Math.max(1, Number(a.keep) || 7));
+    save();
+    return backupStatus();
+  },
+  backup_choose_folder: () => {
+    db.backup.folder = "/Users/me/Backups/Ponder";
+    save();
+    return backupStatus();
+  },
+  backup_now: () => {
+    if (!db.backup.folder) err("invalid", "Choose a backup folder first.");
+    const t = now();
+    const info: T.BackupInfo = { name: `ponder-backup-${new Date(t).toISOString().slice(0, 19).replace("T", "-").replace(/:/g, "")}.zip`, size: 2_400_000 + db.backups.length * 1000, createdAt: t };
+    db.backups = [info, ...db.backups.filter((b) => b.name !== info.name)].slice(0, db.backup.keep);
+    save();
+    return info;
+  },
+  backup_delete: (a) => {
+    db.backups = db.backups.filter((b) => b.name !== a.name);
+    save();
+    return backupStatus();
+  },
+  backup_restore: (a) => {
+    if (!db.backups.some((b) => b.name === a.name)) err("not_found", "backup not found");
+    db.backup.restoreStaged = true;
+    save();
+    return backupStatus();
+  },
+  backup_cancel_restore: () => {
+    db.backup.restoreStaged = false;
+    save();
+    return backupStatus();
+  },
+  restart_app: () => {
+    db.backup.restoreStaged = false;
+    save();
+    return null;
   },
 
   list_threads: (a) =>

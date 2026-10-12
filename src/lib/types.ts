@@ -535,6 +535,28 @@ export interface WatchedFolder {
   error: string | null;
 }
 
+export interface BackupConfig {
+  enabled: boolean;
+  folder: string | null;
+  frequency: "daily" | "weekly";
+  keep: number;
+}
+
+export interface BackupInfo {
+  name: string;
+  size: number;
+  createdAt: number;
+}
+
+export interface BackupStatus {
+  config: BackupConfig;
+  backups: BackupInfo[];
+  running: boolean;
+  lastError: string | null;
+  /** a restore is validated and waiting for the next start */
+  restoreStaged: boolean;
+}
+
 export interface CaptureStatus {
   enabled: boolean;
   /** Tauri accelerator, e.g. Alt+CommandOrControl+N */

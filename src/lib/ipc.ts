@@ -67,6 +67,17 @@ export const api = {
   captureConfigure: (enabled: boolean, shortcut: string) =>
     call<T.CaptureStatus>("capture_configure", { enabled, shortcut }),
 
+  // backups
+  backupStatus: () => call<T.BackupStatus>("backup_status"),
+  backupConfigure: (enabled: boolean, frequency: T.BackupConfig["frequency"], keep: number) =>
+    call<T.BackupStatus>("backup_configure", { enabled, frequency, keep }),
+  backupChooseFolder: () => call<T.BackupStatus>("backup_choose_folder"),
+  backupNow: () => call<T.BackupInfo>("backup_now"),
+  backupDelete: (name: string) => call<T.BackupStatus>("backup_delete", { name }),
+  backupRestore: (name: string) => call<T.BackupStatus>("backup_restore", { name }),
+  backupCancelRestore: () => call<T.BackupStatus>("backup_cancel_restore"),
+  restartApp: () => call<void>("restart_app"),
+
   // focus music
   musicStatus: () => call<T.MusicStatus>("music_status"),
   musicTest: (playlist: string) => call<void>("music_test", { playlist }),
@@ -268,6 +279,7 @@ export const events = {
   captureOpen: (cb: () => void) => listen("capture://open", () => cb()),
   captureStatus: (cb: (s: T.CaptureStatus) => void) =>
     listen<T.CaptureStatus>("capture://status", (e) => cb(e.payload)),
+  backupUpdated: (cb: () => void) => listen("backup://updated", () => cb()),
 };
 
 export type { UnlistenFn };

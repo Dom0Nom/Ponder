@@ -1,3 +1,4 @@
+mod backup;
 mod calculator;
 mod capture;
 mod cards;
@@ -47,21 +48,36 @@ pub fn run() {
         .plugin(capture::plugin())
         .on_window_event(focus::on_window_event)
         .manage(music::MusicService::new(music::default_backend()))
+        .manage(backup::BackupService::default())
         .manage(commands::providers::ProviderServices::new())
         .manage(std::sync::Arc::new(cloud::CloudServices::new(secrets::default_store())))
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
             secrets::init(&data_dir);
+            match backup::apply_pending_restore(&data_dir) {
+                Ok(true) => log::info!("restored the database from a backup"),
+                Ok(false) => {}
+                Err(e) => log::error!("restoring the backup failed: {e}"),
+            }
             let db = Db::open(data_dir.join("app.db"))?;
             ingest::start(app.handle(), db.clone(), data_dir.clone());
             focus::start(app.handle(), db.clone());
             watch::start(app.handle(), db.clone());
             capture::init(app.handle(), &db);
+            backup::start(app.handle(), db.clone(), data_dir.clone());
             app.manage(AppState { db, data_dir });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            backup::backup_status,
+            backup::backup_configure,
+            backup::backup_choose_folder,
+            backup::backup_now,
+            backup::backup_delete,
+            backup::backup_restore,
+            backup::backup_cancel_restore,
+            backup::restart_app,
             commands::core::list_spaces,
             commands::core::get_space,
             commands::core::create_space,
