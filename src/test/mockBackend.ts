@@ -49,6 +49,7 @@ export interface DB {
   abilities: Record<string, Row<T.Ability>>;
   practiceItems: Row<T.PracticeItem & { spaceId: string }>;
   attempts: (T.NewAttempt & { spaceId: string; at: number })[];
+  reviews?: T.ReviewRow[];
   images: Record<string, string>;
   curricula: Row<T.SpaceCurriculum>;
   levels: Record<string, Row<T.TopicLevel>>;
@@ -1356,6 +1357,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
     Object.assign(c, { fsrs: a.fsrs, due: a.due, state: a.cardState });
     const logs = ((db as unknown as { reviewLogs?: Record<string, number[]> }).reviewLogs ??= {});
     (logs[c.id] ??= []).push(rating);
+    (db.reviews ??= []).push({ cardId: c.id, spaceId: c.spaceId, sourceId: c.sourceId, rating, reviewedAt: now() });
     const last = logs[c.id].slice(-2);
     if (last.length === 2 && last.every((r) => r >= 3)) for (const m of Object.values(db.mistakes)) if (m.cardId === c.id) m.resolved = true;
     save();
@@ -1707,6 +1709,20 @@ const handlers: Record<string, (a: Args) => unknown> = {
       .sort((x, y) => y.startedAt - x.startedAt)
       .slice(0, 500),
   focus_events: (a) => db.focusEvents.filter((e) => e.sessionId === a.sessionId),
+  insights_activity: (a) => {
+    const since = a.since as number;
+    const inSpace = (id: string | null) => !a.spaceId || id === a.spaceId;
+    return {
+      reviews: (db.reviews ?? []).filter((r) => inSpace(r.spaceId) && r.reviewedAt >= since),
+      focus: Object.values(db.sessions)
+        .filter((x) => inSpace(x.spaceId) && x.startedAt >= since && x.focusMs > 0)
+        .sort((x, y) => x.startedAt - y.startedAt)
+        .map((x) => ({ spaceId: x.spaceId, startedAt: x.startedAt, focusMs: x.focusMs })),
+      attempts: db.attempts
+        .filter((x) => inSpace(x.spaceId) && x.at >= since)
+        .map((x) => ({ spaceId: x.spaceId, topicKey: x.topicKey, correct: x.correct, createdAt: x.at })),
+    } satisfies T.InsightsActivity;
+  },
   parking_add: (a) => {
     const text = String(a.text ?? "").trim();
     if (!text) err("invalid", "Nothing to park");

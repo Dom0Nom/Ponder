@@ -704,3 +704,30 @@ export interface OpenRouterCatalog {
   fetchedAt: number;
   models: OpenRouterModel[];
 }
+
+export interface ReviewRow {
+  cardId: string;
+  spaceId: string;
+  sourceId: string | null;
+  rating: number;
+  reviewedAt: number;
+}
+
+export interface FocusRow {
+  spaceId: string | null;
+  startedAt: number;
+  focusMs: number;
+}
+
+export interface AttemptRow {
+  spaceId: string;
+  topicKey: string;
+  correct: boolean;
+  createdAt: number;
+}
+
+export interface InsightsActivity {
+  reviews: ReviewRow[];
+  focus: FocusRow[];
+  attempts: AttemptRow[];
+}
