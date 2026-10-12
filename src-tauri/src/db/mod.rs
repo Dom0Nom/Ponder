@@ -1,7 +1,7 @@
 pub mod models;
 
 use crate::error::{AppError, AppResult};
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 use std::path::{Path, PathBuf};
 use std::sync::Once;
 
@@ -71,15 +71,34 @@ impl Db {
     }
 }
 
+/// Migrations 010–015 were merged in more than one order during development, so a database's
+/// user_version doesn't say which of them ran; each is detected by what it creates.
+const DETECTED: &[(usize, &str)] = &[
+    (9, "SELECT 1 FROM pragma_table_info('sources') WHERE name = 'local_path'"),
+    (10, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'study_plans'"),
+    (11, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'exam_attempts'"),
+    (12, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'studio_outputs'"),
+    (13, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'notes'"),
+    (14, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'annotations'"),
+];
+
 fn migrate(conn: &Connection) -> AppResult<()> {
-    let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+    let mut version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
     if version as usize > MIGRATIONS.len() {
         return Err(AppError::Other("This data was written by a newer version of Ponder. Update the app to open it.".into()));
     }
-    for (i, sql) in MIGRATIONS.iter().enumerate().skip(version as usize) {
+    for (i, sql) in MIGRATIONS.iter().enumerate() {
+        let applied = match DETECTED.iter().find(|(n, _)| *n == i) {
+            Some((_, probe)) => conn.query_row(probe, [], |_| Ok(())).optional()?.is_some(),
+            _ => (i as i64) < version,
+        };
+        if applied {
+            continue;
+        }
         let tx = conn.unchecked_transaction()?;
         tx.execute_batch(sql)?;
-        tx.pragma_update(None, "user_version", (i + 1) as i64)?;
+        version = version.max(i as i64 + 1);
+        tx.pragma_update(None, "user_version", version)?;
         tx.commit()?;
     }
     Ok(())
@@ -124,5 +143,27 @@ mod tests {
         let (db, _dir) = test_db();
         db.conn().unwrap().pragma_update(None, "user_version", MIGRATIONS.len() as i64 + 1).unwrap();
         assert!(Db::open(db.path()).is_err());
+    }
+
+    #[test]
+    fn repairs_a_database_migrated_in_another_order() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("old.db");
+        register_sqlite_vec();
+        let conn = Connection::open(&path).unwrap();
+        for sql in MIGRATIONS[..10].iter().chain([MIGRATIONS[11], MIGRATIONS[12]].iter()) {
+            conn.execute_batch(sql).unwrap();
+        }
+        conn.pragma_update(None, "user_version", 12).unwrap();
+        drop(conn);
+
+        let db = Db::open(&path).unwrap();
+        let c = db.conn().unwrap();
+        let uv: i64 = c.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+        assert_eq!(uv as usize, MIGRATIONS.len());
+        for table in ["study_plans", "plan_tasks", "exam_attempts", "studio_outputs", "notes", "annotations"] {
+            let n: i64 = c.query_row("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?1", [table], |r| r.get(0)).unwrap();
+            assert_eq!(n, 1, "{table}");
+        }
     }
 }
