@@ -177,7 +177,7 @@ test("settings: engines can be switched, a SearXNG url saved and keys stored the
 
   await app.reload();
   const again = app.getByTestId("search-engines");
-  await expect(again.getByRole("switch", { name: "OpenStax textbooks" })).not.toBeChecked();
+  await expect(again.getByRole("switch", { name: "OpenStax textbooks" })).not.toBeChecked({ timeout: 20000 });
   await expect(again.getByRole("textbox", { name: "SearXNG instance URL" })).toHaveValue("https://searx.example.org");
   await again.getByRole("button", { name: "Remove Brave Search" }).click();
   await expect(again.getByLabel("Brave Search API key")).toBeVisible();

@@ -243,9 +243,17 @@ export function ResearchPanel({
       {found && found.length === 0 && <EmptyState title={s.research.noResults} />}
       {found && found.length > 0 && (
         <>
-          <div className="flex flex-col gap-1">
-            <p className="font-semibold">{s.research.reviewTitle}</p>
-            <p className="text-body leading-[1.5] text-muted">{s.research.reviewBody}</p>
+          <div className="flex items-start gap-3">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <p className="font-semibold">{s.research.reviewTitle}</p>
+              <p className="text-body leading-[1.5] text-muted">{s.research.reviewBody}</p>
+            </div>
+            {!report && (
+              <Button size="sm" variant="secondary" className="shrink-0" disabled={writing || !selected.size} onClick={makeReport}>
+                {writing && <Spinner size={14} />}
+                {writing ? s.research.writingReport : s.research.writeReport}
+              </Button>
+            )}
           </div>
           <ul className="rounded-card border border-border px-3.5" data-testid="research-results">
             {found.map((f, i) => {
@@ -292,14 +300,7 @@ export function ResearchPanel({
                 </Button>
               </div>
             </div>
-          ) : (
-            <div>
-              <Button size="sm" variant="secondary" disabled={writing || !selected.size} onClick={makeReport}>
-                {writing && <Spinner size={14} />}
-                {writing ? s.research.writingReport : s.research.writeReport}
-              </Button>
-            </div>
-          )}
+          ) : null}
         </>
       )}
     </div>
