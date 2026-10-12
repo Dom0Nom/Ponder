@@ -16,3 +16,4 @@ src-tauri/gen/schemas/
 .claude/worktrees/
 .shots/
 design/compare/
+.overnight/
