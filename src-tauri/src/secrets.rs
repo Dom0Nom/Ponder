@@ -54,11 +54,10 @@ pub fn init(data_dir: &std::path::Path) {
 /// Debug builds keep secrets in a 0600 JSON file in the app data dir: every rebuild changes the
 /// binary's signature, so macOS would ask for keychain access again on each read.
 pub fn default_store() -> std::sync::Arc<dyn SecretStore> {
-    if cfg!(debug_assertions) {
-        std::sync::Arc::new(FileStore::default())
-    } else {
-        std::sync::Arc::new(Keychain)
-    }
+    static STORE: std::sync::OnceLock<std::sync::Arc<dyn SecretStore>> = std::sync::OnceLock::new();
+    STORE
+        .get_or_init(|| if cfg!(debug_assertions) { std::sync::Arc::new(FileStore::default()) } else { std::sync::Arc::new(Keychain) })
+        .clone()
 }
 
 #[derive(Default)]
@@ -82,10 +81,13 @@ impl FileStore {
 
     fn write(&self, map: &std::collections::BTreeMap<String, String>) -> AppResult<()> {
         use std::io::Write;
-        use std::os::unix::fs::OpenOptionsExt;
         let path = self.path()?;
         let tmp = path.with_extension("json.tmp");
-        let mut f = std::fs::OpenOptions::new().write(true).create(true).truncate(true).mode(0o600).open(&tmp).map_err(|e| AppError::Keychain(e.to_string()))?;
+        let mut opts = std::fs::OpenOptions::new();
+        opts.write(true).create(true).truncate(true);
+        #[cfg(unix)]
+        std::os::unix::fs::OpenOptionsExt::mode(&mut opts, 0o600);
+        let mut f = opts.open(&tmp).map_err(|e| AppError::Keychain(e.to_string()))?;
         f.write_all(serde_json::to_string_pretty(map).unwrap_or_default().as_bytes()).map_err(|e| AppError::Keychain(e.to_string()))?;
         std::fs::rename(&tmp, path).map_err(|e| AppError::Keychain(e.to_string()))
     }
@@ -174,6 +176,7 @@ mod tests {
         assert!(s.get("q").unwrap().is_some());
     }
 
+    #[cfg(unix)]
     #[test]
     fn file_store_roundtrip_is_private() {
         use std::os::unix::fs::PermissionsExt;

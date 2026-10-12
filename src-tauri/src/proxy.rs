@@ -231,7 +231,16 @@ impl Utf8Decoder {
 }
 
 pub fn stream_client() -> reqwest::Client {
+    let same_host = reqwest::redirect::Policy::custom(|a| {
+        let first = a.previous().first().and_then(|u| u.host_str().map(str::to_owned));
+        if a.previous().len() > 5 || first.as_deref() != a.url().host_str() {
+            a.stop()
+        } else {
+            a.follow()
+        }
+    });
     reqwest::Client::builder()
+        .redirect(same_host)
         .connect_timeout(Duration::from_secs(20))
         .build()
         .expect("http client")

@@ -19,7 +19,7 @@ use tauri_plugin_dialog::DialogExt;
 pub const EXTENSION: &str = "ponderpack";
 const FORMAT: i64 = 1;
 const MANIFEST: &str = "manifest.json";
-const MAX_JSON_BYTES: u64 = 512 * 1024 * 1024;
+const MAX_JSON_BYTES: u64 = 128 * 1024 * 1024;
 const MAX_FILE_BYTES: u64 = 200 * 1024 * 1024;
 const FILE_KINDS: [&str; 5] = ["pdf", "epub", "docx", "markdown", "text"];
 
@@ -102,6 +102,12 @@ fn safe_file_name(name: &str) -> String {
     } else {
         s.chars().take(120).collect()
     }
+}
+
+/// Retrying a source re-reads a local `origin`, so a pack must not bring its own paths.
+fn local_path_like(o: &str) -> bool {
+    let b = o.as_bytes();
+    o.starts_with('/') || o.starts_with('~') || o.starts_with('\\') || o.starts_with("file:") || (b.len() > 2 && b[1] == b':' && (b[2] == b'\\' || b[2] == b'/'))
 }
 
 fn plain_name(n: &str) -> bool {
@@ -343,6 +349,9 @@ pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResul
             set(&mut s, "space_id", new_space.clone());
             set(&mut s, "progress", 0.0);
             s.remove("local_path");
+            if str_of(&s, "origin").is_some_and(local_path_like) {
+                set(&mut s, "origin", Value::Null);
+            }
             if let Some(e) = &entry {
                 let file = e[prefix.len()..].to_string();
                 let dest = data_dir.join("imports").join(&new).join(&file);
@@ -514,6 +523,16 @@ pub async fn pack_import(window: WebviewWindow, state: State<'_, AppState>, inge
 mod tests {
     use super::*;
     use crate::db::test_db;
+
+    #[test]
+    fn local_origins_are_recognised() {
+        for o in ["/Users/x/.ssh/id_rsa", "~/notes.txt", "C:\\Users\\x\\a.pdf", "c:/a.pdf", "file:///etc/passwd", "\\\\server\\share"] {
+            assert!(local_path_like(o), "{o}");
+        }
+        for o in ["https://example.com/a", "note:abc", "screen-snip", "paste", ""] {
+            assert!(!local_path_like(o), "{o}");
+        }
+    }
 
     fn count(c: &Connection, sql: &str) -> i64 {
         c.query_row(sql, [], |r| r.get(0)).unwrap()

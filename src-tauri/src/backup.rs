@@ -316,7 +316,10 @@ pub fn stage_restore(data_dir: &Path, zip_path: &Path) -> AppResult<()> {
             if let Some(p) = target.parent() {
                 fs::create_dir_all(p)?;
             }
-            std::io::copy(&mut f, &mut File::create(&target)?)?;
+            let limit = 4 * 1024 * 1024 * 1024u64;
+            if std::io::copy(&mut (&mut f).take(limit + 1), &mut File::create(&target)?)? > limit {
+                return Err(invalid("A file in this backup is too large."));
+            }
         }
         if !staging.join(DB_ENTRY).exists() {
             return Err(invalid("This backup has no database."));
@@ -363,16 +366,36 @@ pub fn apply_pending_restore(data_dir: &Path) -> AppResult<bool> {
         return Ok(false);
     }
     let live = data_dir.join(DB_ENTRY);
-    set_aside(&live)?;
-    set_aside(&with_suffix(&live, "-wal"))?;
-    let _ = fs::remove_file(with_suffix(&live, "-shm"));
-    fs::rename(staging.join(DB_ENTRY), &live)?;
-    for d in OWNED_DIRS {
-        set_aside(&data_dir.join(d))?;
-        let staged = staging.join(d);
-        if staged.exists() {
-            fs::rename(staged, data_dir.join(d))?;
+    let wal = with_suffix(&live, "-wal");
+    let mut moved: Vec<PathBuf> = Vec::new();
+    let result = (|| -> AppResult<()> {
+        for p in [live.clone(), wal.clone()].into_iter().chain(OWNED_DIRS.iter().map(|d| data_dir.join(d))) {
+            if p.exists() {
+                set_aside(&p)?;
+                moved.push(p);
+            }
         }
+        let _ = fs::remove_file(with_suffix(&live, "-shm"));
+        fs::rename(staging.join(DB_ENTRY), &live)?;
+        for d in OWNED_DIRS {
+            let staged = staging.join(d);
+            if staged.exists() {
+                fs::rename(staged, data_dir.join(d))?;
+            }
+        }
+        Ok(())
+    })();
+    if let Err(e) = result {
+        for p in moved.iter().rev() {
+            if p.is_dir() {
+                let _ = fs::remove_dir_all(p);
+            } else {
+                let _ = fs::remove_file(p);
+            }
+            let _ = fs::rename(with_suffix(p, BEFORE), p);
+        }
+        let _ = fs::remove_file(marker_path(data_dir));
+        return Err(e);
     }
     fs::remove_file(marker_path(data_dir))?;
     let _ = fs::remove_dir_all(&staging);

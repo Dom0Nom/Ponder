@@ -142,6 +142,9 @@ pub async fn get_settings(state: State<'_, AppState>) -> AppResult<serde_json::M
 
 #[tauri::command]
 pub async fn set_setting(state: State<'_, AppState>, key: String, value: Value) -> AppResult<()> {
+    if key.starts_with("backup.") {
+        return Err(crate::error::invalid("Backup settings change through the Backups section."));
+    }
     m::set_setting(&state.db.conn()?, &key, &value)
 }
 

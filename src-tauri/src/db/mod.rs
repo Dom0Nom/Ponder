@@ -1,6 +1,6 @@
 pub mod models;
 
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use rusqlite::Connection;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
@@ -72,6 +72,9 @@ impl Db {
 
 fn migrate(conn: &Connection) -> AppResult<()> {
     let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+    if version as usize > MIGRATIONS.len() {
+        return Err(AppError::Other("This data was written by a newer version of Ponder. Update the app to open it.".into()));
+    }
     for (i, sql) in MIGRATIONS.iter().enumerate().skip(version as usize) {
         let tx = conn.unchecked_transaction()?;
         tx.execute_batch(sql)?;
@@ -113,5 +116,12 @@ mod tests {
         assert_eq!(uv as usize, MIGRATIONS.len());
         // reopening must not re-run migrations
         Db::open(db.path()).unwrap();
+    }
+
+    #[test]
+    fn refuses_a_database_from_a_newer_version() {
+        let (db, _dir) = test_db();
+        db.conn().unwrap().pragma_update(None, "user_version", MIGRATIONS.len() as i64 + 1).unwrap();
+        assert!(Db::open(db.path()).is_err());
     }
 }
