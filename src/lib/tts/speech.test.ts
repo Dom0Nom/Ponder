@@ -31,6 +31,9 @@ describe("speech settings", () => {
     const fish = speechSettings({ speech: { service: "fish" } });
     expect(speechReady(fish, [], false)).toBe(false);
     expect(speechReady(fish, [], true)).toBe(true);
+    const local = speechSettings({ speech: { service: "local", voice: "bf_emma" } });
+    expect(local).toMatchObject({ service: "local", model: "kokoro-82m", voice: "bf_emma" });
+    expect(speechReady(local, [], false)).toBe(true);
   });
 });
 

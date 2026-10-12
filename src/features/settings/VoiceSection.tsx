@@ -8,6 +8,7 @@ import { api } from "../../lib/ipc";
 import { useProviders, useSetSetting } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import { speak, stopSpeaking, usePlayer } from "../../lib/tts/player";
+import { KOKORO_VOICES } from "../../lib/tts/kokoro";
 import { DEFAULT_MODEL, KEYED_SPEECH, openRouterAudioModels, SPEECH_KEY, SPEECH_SERVICES, type SpeechModel, type SpeechService, type SpeechSettings } from "../../lib/tts/speech";
 import { useSpeechConfig } from "../speech/useSpeech";
 import { SettingsGroup, SettingsRow } from "./layout";
@@ -28,7 +29,10 @@ export function VoiceSection() {
 
   return (
     <SettingsGroup data-testid="voice-settings">
-      <SettingsRow title={s.speech.service} description={ready ? undefined : KEYED_SPEECH[cfg.service] ? undefined : s.speech.noProvider(s.speech.services[cfg.service])}>
+      <SettingsRow
+        title={s.speech.service}
+        description={cfg.service === "local" ? s.speech.localBody : ready || KEYED_SPEECH[cfg.service] ? undefined : s.speech.noProvider(s.speech.services[cfg.service])}
+      >
         <NativeSelect
           aria-label={s.speech.service}
           className="w-56"
@@ -46,7 +50,9 @@ export function VoiceSection() {
         </NativeSelect>
       </SettingsRow>
       {KEYED_SPEECH[cfg.service] && <SpeechKeyRow id={KEYED_SPEECH[cfg.service]!} name={s.speech.services[cfg.service]} />}
-      {cfg.service === "openrouter" && ready ? (
+      {cfg.service === "local" ? (
+        <VoicePickers voices={KOKORO_VOICES} cfg={cfg} save={save} />
+      ) : cfg.service === "openrouter" && ready ? (
         <OpenRouterVoice cfg={cfg} save={save} />
       ) : (
         <>
@@ -100,6 +106,14 @@ function OpenRouterVoice({ cfg, save }: { cfg: SpeechSettings; save: (p: Partial
           ))}
         </NativeSelect>
       </SettingsRow>
+      <VoicePickers voices={voices} cfg={cfg} save={save} />
+    </>
+  );
+}
+
+function VoicePickers({ voices, cfg, save }: { voices: readonly string[]; cfg: SpeechSettings; save: (p: Partial<SpeechSettings>) => void }) {
+  return (
+    <>
       <SettingsRow title={s.speech.voice}>
         <NativeSelect aria-label={s.speech.voice} className="w-56" value={cfg.voice} disabled={!voices.length} onChange={(e) => save({ voice: e.target.value })}>
           {!voices.length && <option value="">{s.speech.defaultVoice}</option>}

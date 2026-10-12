@@ -1,8 +1,9 @@
 import { api } from "../ipc";
+import { kokoroSpeak } from "./kokoro";
 import { s } from "../strings";
 import type { Provider, ProxyRequest } from "../types";
 
-export const SPEECH_SERVICES = ["openrouter", "openai", "gemini", "elevenlabs", "fish"] as const;
+export const SPEECH_SERVICES = ["openrouter", "openai", "gemini", "elevenlabs", "fish", "local"] as const;
 export type SpeechService = (typeof SPEECH_SERVICES)[number];
 
 export interface SpeechSettings {
@@ -23,12 +24,14 @@ export const DEFAULT_MODEL: Record<SpeechService, { model: string; voice: string
   gemini: { model: "gemini-2.5-flash-preview-tts", voice: "Kore", voice2: "Puck" },
   elevenlabs: { model: "eleven_multilingual_v2", voice: "21m00Tcm4TlvDq8ikWAM", voice2: "pNInz6obpgDQGcFmaJgB" },
   fish: { model: "s1", voice: "", voice2: "" },
+  local: { model: "kokoro-82m", voice: "af_heart", voice2: "am_michael" },
 };
 
 export const DEFAULT_SPEECH: SpeechSettings = { service: "openrouter", ...DEFAULT_MODEL.openrouter, speed: 1, sttModel: "openai/whisper-large-v3-turbo" };
 
 /** Whether the picked service can be called: a matching provider, or a saved key for keyed services. */
 export function speechReady(cfg: SpeechSettings, providers: Provider[], hasKey: boolean): boolean {
+  if (cfg.service === "local") return true;
   if (KEYED_SPEECH[cfg.service]) return hasKey;
   return providers.some((p) => p.type === PROVIDER_TYPE[cfg.service]);
 }
@@ -68,6 +71,7 @@ const OFFICIAL: Record<SpeechService, string> = {
   gemini: "https://generativelanguage.googleapis.com",
   elevenlabs: "https://api.elevenlabs.io",
   fish: "https://api.fish.audio",
+  local: "",
 };
 
 export function speechTarget(service: SpeechService, providers: Provider[]): SpeechTarget {
@@ -104,6 +108,8 @@ export function speechRequest(t: SpeechTarget, cfg: SpeechSettings, text: string
       return post(`${t.base}/v1/text-to-speech/${encodeURIComponent(cfg.voice || DEFAULT_MODEL.elevenlabs.voice)}?output_format=mp3_44100_128`, { text, model_id: cfg.model });
     case "fish":
       return post(`${t.base}/v1/tts`, { text, format: "mp3", ...(cfg.voice ? { reference_id: cfg.voice } : {}) }, { model: cfg.model });
+    case "local":
+      throw new SpeechSetupError(s.speech.localNoRequest);
   }
 }
 
@@ -210,6 +216,7 @@ function hardSplit(text: string, max: number): string[] {
 }
 
 export async function synthesize(cfg: SpeechSettings, text: string, providers?: Provider[]): Promise<Audio> {
+  if (cfg.service === "local") return kokoroSpeak(text, cfg.voice);
   const target = speechTarget(cfg.service, providers ?? (await api.listProviders()));
   const bytes = await api.httpBytes(speechRequest(target, cfg, text));
   return decodeSpeech(cfg.service, bytes);
