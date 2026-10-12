@@ -85,6 +85,12 @@
   --text-scale: 1;
   --mark-tint-light: #ffffff;
   --mark-tint-dark: #d9d9d9;
+  --plot-1: #c0392b;
+  --plot-2: #2563a8;
+  --plot-3: #2e7d4f;
+  --plot-4: #7a4bb0;
+  --plot-5: #c76a12;
+  --plot-6: #17808a;
   color-scheme: light;
 }
 
@@ -143,6 +149,12 @@
   --scrim: rgba(0, 0, 0, 0.6);
   --ring: #8e8e8e;
   --selection: #4a4a4a;
+  --plot-1: #f07a6d;
+  --plot-2: #6aa6e8;
+  --plot-3: #5cc489;
+  --plot-4: #b794e6;
+  --plot-5: #f0a45a;
+  --plot-6: #55c3cd;
   color-scheme: dark;
 }
 

@@ -28,7 +28,7 @@ import { usePageSlide } from "../../components/motion/usePageSlide";
 import { CoursePanel } from "../placement/CourseCard";
 import { PlanPanel } from "../placement/PlanCard";
 import { FlashcardsPanel } from "../cards/FlashcardsCard";
-import { Calculator } from "../calculator/Calculator";
+import { CalculatorPanel } from "../calculator/CalculatorPanel";
 import { FocusView } from "../focus/FocusView";
 import { LowEnergyView } from "../focus/LowEnergyView";
 import { MicroStepsView } from "../focus/MicroSteps";
@@ -275,7 +275,7 @@ function SubView({ space, view }: { space: Space; view: StudioView }) {
         <div className="flex h-full min-h-0 flex-col">
           <StudioTimer />
           <div className="min-h-0 flex-1 overflow-hidden">
-            <Calculator fit popOut />
+            <CalculatorPanel popOut />
           </div>
         </div>
       );
