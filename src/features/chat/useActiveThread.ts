@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/ipc";
+import { pickActiveThread } from "../../lib/chat/activeThread";
 import { qk, useThreads } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Thread } from "../../lib/types";
@@ -10,8 +11,7 @@ import { useUi } from "../../stores/ui";
 export function useActiveThread(spaceId: string): Thread | undefined {
   const threads = useThreads(spaceId);
   const activeId = useUi((st) => st.activeThread[spaceId]);
-  const list = threads.data;
-  return list?.find((t) => t.id === activeId) ?? list?.reduce<Thread | undefined>((a, t) => (!a || t.updatedAt > a.updatedAt ? t : a), undefined);
+  return pickActiveThread(threads.data, activeId);
 }
 
 export function useNewThread(spaceId: string) {

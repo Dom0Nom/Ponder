@@ -3,7 +3,7 @@ import { RefreshCw, RotateCcw } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { storedControls } from "../../lib/chat/controls";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
-import { runTurn } from "../../lib/chat/runner";
+import { runTurn, TurnBusyError } from "../../lib/chat/runner";
 import { queryClient, qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Message, Space } from "../../lib/types";
@@ -16,6 +16,7 @@ import { actionIconBtn } from "./actionButton";
 export function RetryButton({ message, space, subtle }: { message: Message; space: Space; subtle?: boolean }) {
   const [busy, setBusy] = useState(false);
   const navigate = useUi((st) => st.navigate);
+  if (message.meta?.buddyKind) return null;
   const retry = async () => {
     setBusy(true);
     try {
@@ -29,10 +30,14 @@ export function RetryButton({ message, space, subtle }: { message: Message; spac
         return;
       }
       const llm = await resolveChatModel(space);
-      for (const m of seconds) await api.deleteMessage(m.id);
-      await api.deleteMessage(message.id);
-      queryClient.invalidateQueries({ queryKey: qk.messages(message.threadId) });
+      const old = [message.id, ...seconds.map((m) => m.id)];
       await runTurn({
+        exclude: old,
+        onStart: () => {
+          Promise.all(old.map((id) => api.deleteMessage(id)))
+            .catch((e) => toastError(s.errors.generic, e))
+            .finally(() => queryClient.invalidateQueries({ queryKey: qk.messages(message.threadId) }));
+        },
         llm,
         space,
         threadId: message.threadId,
@@ -44,7 +49,8 @@ export function RetryButton({ message, space, subtle }: { message: Message; spac
         persistUser: false,
       });
     } catch (e) {
-      if (e instanceof NoModelError) {
+      if (e instanceof TurnBusyError) toast.info(e.message);
+      else if (e instanceof NoModelError) {
         toast.error(s.chat.noModel, { action: { label: s.chat.noModelAction, onClick: () => navigate({ name: "settings" }) } });
       } else toastError(s.chat.failed, e);
     } finally {

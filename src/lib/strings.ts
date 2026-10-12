@@ -523,6 +523,8 @@ export const s = {
     makeCard: "Make card",
     regenerate: "Regenerate",
     copyDesc: "Copy the answer as text",
+    copyFailed: "Couldn't copy the answer",
+    turnBusy: "Ponder is still answering in this chat.",
     regenerateDesc: (m: string) => (m ? `Written by ${m}. Write this answer again` : "Write this answer again"),
     sourcesCount: (n: number) => (n === 1 ? "1 source" : `${n} sources`),
     sourcesTip: "Choose sources (⌘⇧S)",

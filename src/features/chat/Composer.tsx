@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Camera, ChevronDown, FileUp, Library, Plus, Square } from "lucide-react";
 import { storedControls } from "../../lib/chat/controls";
-import { runTurn } from "../../lib/chat/runner";
+import { runTurn, TurnBusyError } from "../../lib/chat/runner";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
 import { useUpdateSpace } from "../../lib/queries";
 import { s } from "../../lib/strings";
@@ -10,6 +10,7 @@ import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
 import { useChatStream } from "../../stores/chatStream";
 import { useComposer } from "../../stores/composer";
+import { useDrafts } from "../../stores/drafts";
 import { useFocusStore } from "../focus/focusStore";
 import { useLowEnergy } from "../focus/useLowEnergy";
 import { PhotoDialog } from "../steps/PhotoDialog";
@@ -33,7 +34,10 @@ export function Composer({
   ensureThread: () => Promise<Thread>;
   sources: { ready: number; inChat: number };
 }) {
-  const [text, setText] = useState("");
+  const draftKey = thread?.id ?? `new:${space.id}`;
+  const text = useDrafts((st) => st.drafts[draftKey] ?? "");
+  const setDraftText = useDrafts((st) => st.setDraftText);
+  const setText = (v: string | ((cur: string) => string)) => setDraftText(draftKey, v);
   const [busy, setBusy] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -43,6 +47,7 @@ export function Composer({
   const studioOpen = useUi((st) => st.studioOpen);
   const setSourcesOpen = useUi((st) => st.setSourcesOpen);
   const running = useChatStream((st) => (thread ? st.running[thread.id] : undefined));
+  const pending = useChatStream((st) => (thread ? !!st.pending[thread.id] : false));
   const stop = useChatStream((st) => st.stop);
   const registerSend = useComposer((st) => st.register);
   const update = useUpdateSpace();
@@ -50,14 +55,18 @@ export function Composer({
 
   const send = async (override?: string) => {
     const msg = (override ?? text).trim();
-    if (!msg || busy || running) return;
+    if (!msg || busy || running || pending) return;
     setBusy(true);
+    let key = draftKey;
+    let saved = false;
     try {
       const llm = await resolveChatModel(space);
       const t = thread ?? (await ensureThread());
-      setText("");
+      if (override === undefined) setDraftText(draftKey, "");
+      key = t.id;
       if (ref.current) ref.current.style.height = "auto";
       await runTurn({
+        onUserSaved: () => (saved = true),
         llm,
         space,
         threadId: t.id,
@@ -67,8 +76,10 @@ export function Composer({
         userText: msg,
       });
     } catch (e) {
-      if (e instanceof NoModelError) {
-        setText(msg);
+      if (!saved && override === undefined) setDraftText(key, (cur) => cur || msg);
+      if (e instanceof TurnBusyError) {
+        toast.info(e.message);
+      } else if (e instanceof NoModelError) {
         toast.error(s.chat.noModel, {
           action: { label: s.chat.noModelAction, onClick: () => navigate({ name: "settings" }) },
         });
@@ -84,9 +95,10 @@ export function Composer({
   const draft = useComposer((st) => (st.draft?.spaceId === space.id ? st.draft : null));
   const setDraft = useComposer((st) => st.setDraft);
   useEffect(() => {
-    if (!draft) return;
-    setText(draft.text);
+    const d = useComposer.getState().draft;
+    if (!draft || !d) return;
     setDraft(null);
+    setText((cur) => (cur.trim() ? `${cur.trimEnd()}\n${d.text}` : d.text));
     requestAnimationFrame(() => {
       const el = ref.current;
       if (!el) return;
@@ -103,7 +115,7 @@ export function Composer({
     return () => registerSend(null);
   }, [registerSend]);
 
-  const disabled = busy || !!running;
+  const disabled = busy || !!running || pending;
   const off = sources.ready - sources.inChat;
 
   return (

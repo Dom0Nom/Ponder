@@ -7,6 +7,7 @@ import { s } from "../../lib/strings";
 import type { Thread } from "../../lib/types";
 import { cn, dayGroup } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
+import { discardThread, undiscardThread } from "../../stores/chatStream";
 import { ConfirmDialog } from "../../components/ui/dialog";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../../components/ui/menu";
 import { Skeleton, Tooltip } from "../../components/ui/misc";
@@ -209,10 +210,12 @@ export function ThreadList({ spaceId }: { spaceId: string }) {
         danger
         onConfirm={async () => {
           if (!deleting) return;
+          discardThread(deleting.id);
           try {
             await api.deleteThread(deleting.id);
             qc.invalidateQueries({ queryKey: qk.threads(spaceId) });
           } catch (e) {
+            undiscardThread(deleting.id);
             toastError(s.errors.generic, e);
           }
         }}

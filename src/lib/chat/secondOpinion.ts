@@ -6,6 +6,7 @@ import { useChatStream } from "../../stores/chatStream";
 import { buildSystemPrompt, historyMessages } from "./context";
 import { describeError, FramePainter } from "./runner";
 import { resolveChatModel } from "./llm";
+import { extractFollowUps, stripMarkers } from "./followUps";
 import { extractMemories } from "./memory";
 
 /**
@@ -63,13 +64,17 @@ export async function secondOpinion(space: Space, original: Message, model: Mode
     if (!controller.signal.aborted) error = describeError(e);
   }
   paint.flush();
-  const final = await api.updateMessage(msg.id, {
-    content: extractMemories(content).clean,
-    reasoning,
-    status: error ? "error" : "complete",
-    error: error ?? undefined,
-  });
-  useChatStream.getState().finish(`second:${msg.id}`, msg.id);
-  queryClient.invalidateQueries({ queryKey: qk.messages(original.threadId) });
+  let final: Message;
+  try {
+    final = await api.updateMessage(msg.id, {
+      content: stripMarkers(extractFollowUps(extractMemories(content).clean).clean),
+      reasoning,
+      status: error ? "error" : "complete",
+      error: error ?? undefined,
+    });
+  } finally {
+    useChatStream.getState().finish(`second:${msg.id}`, msg.id);
+    queryClient.invalidateQueries({ queryKey: qk.messages(original.threadId) });
+  }
   return final;
 }

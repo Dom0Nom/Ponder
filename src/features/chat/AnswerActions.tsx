@@ -119,9 +119,13 @@ export function AnswerActions({ message, space, content }: { message: Message; s
           data-tip-desc={s.chat.copyDesc}
           className={actionIconBtn}
           onClick={async () => {
-            await navigator.clipboard.writeText(plainAnswer(content));
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
+            try {
+              await navigator.clipboard.writeText(plainAnswer(content));
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            } catch (e) {
+              toastError(s.chat.copyFailed, e);
+            }
           }}
         >
           <span className="t-icon-swap" data-state={copied ? "b" : "a"}>
