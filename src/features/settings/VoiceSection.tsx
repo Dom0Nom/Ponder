@@ -52,6 +52,7 @@ export function VoiceSection() {
         <>
           <TextRow label={s.speech.model} value={cfg.model} onSave={(model) => save({ model: model || DEFAULT_MODEL[cfg.service].model })} />
           <TextRow label={cfg.service === "elevenlabs" || cfg.service === "fish" ? s.speech.voiceId : s.speech.voice} value={cfg.voice} onSave={(voice) => save({ voice })} />
+          <TextRow label={s.speech.voice2} description={s.speech.voice2Body} value={cfg.voice2} onSave={(voice2) => save({ voice2 })} />
         </>
       )}
       <SettingsRow title={s.speech.speed}>
@@ -88,7 +89,8 @@ function OpenRouterVoice({ cfg, save }: { cfg: SpeechSettings; save: (p: Partial
           disabled={models.isLoading}
           onChange={(e) => {
             const m = list.find((x) => x.id === e.target.value);
-            save({ model: e.target.value, voice: m?.voices.includes(cfg.voice) ? cfg.voice : (m?.voices[0] ?? "") });
+            const pick = (v: string, i: number) => (m?.voices.includes(v) ? v : (m?.voices[i] ?? ""));
+            save({ model: e.target.value, voice: pick(cfg.voice, 0), voice2: pick(cfg.voice2, 1) });
           }}
         >
           {options.map((m) => (
@@ -108,6 +110,17 @@ function OpenRouterVoice({ cfg, save }: { cfg: SpeechSettings; save: (p: Partial
           ))}
         </NativeSelect>
       </SettingsRow>
+      {voices.length > 1 && (
+        <SettingsRow title={s.speech.voice2} description={s.speech.voice2Body}>
+          <NativeSelect aria-label={s.speech.voice2} className="w-56" value={cfg.voice2} onChange={(e) => save({ voice2: e.target.value })}>
+            {voices.map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </NativeSelect>
+        </SettingsRow>
+      )}
     </>
   );
 }
@@ -129,11 +142,11 @@ function SttRow({ cfg, save }: { cfg: SpeechSettings; save: (p: Partial<SpeechSe
   );
 }
 
-function TextRow({ label, value, onSave }: { label: string; value: string; onSave: (v: string) => void }) {
+function TextRow({ label, description, value, onSave }: { label: string; description?: string; value: string; onSave: (v: string) => void }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
   return (
-    <SettingsRow title={label}>
+    <SettingsRow title={label} description={description}>
       <Input
         aria-label={label}
         className="w-56"

@@ -9,18 +9,20 @@ export interface SpeechSettings {
   service: SpeechService;
   model: string;
   voice: string;
+  /** Second host in audio overviews. */
+  voice2: string;
   speed: number;
   sttModel: string;
 }
 
 export const SPEECH_KEY = "speech";
 
-export const DEFAULT_MODEL: Record<SpeechService, { model: string; voice: string }> = {
-  openrouter: { model: "hexgrad/kokoro-82m", voice: "af_heart" },
-  openai: { model: "gpt-4o-mini-tts", voice: "alloy" },
-  gemini: { model: "gemini-2.5-flash-preview-tts", voice: "Kore" },
-  elevenlabs: { model: "eleven_multilingual_v2", voice: "21m00Tcm4TlvDq8ikWAM" },
-  fish: { model: "s1", voice: "" },
+export const DEFAULT_MODEL: Record<SpeechService, { model: string; voice: string; voice2: string }> = {
+  openrouter: { model: "hexgrad/kokoro-82m", voice: "af_heart", voice2: "am_adam" },
+  openai: { model: "gpt-4o-mini-tts", voice: "alloy", voice2: "echo" },
+  gemini: { model: "gemini-2.5-flash-preview-tts", voice: "Kore", voice2: "Puck" },
+  elevenlabs: { model: "eleven_multilingual_v2", voice: "21m00Tcm4TlvDq8ikWAM", voice2: "pNInz6obpgDQGcFmaJgB" },
+  fish: { model: "s1", voice: "", voice2: "" },
 };
 
 export const DEFAULT_SPEECH: SpeechSettings = { service: "openrouter", ...DEFAULT_MODEL.openrouter, speed: 1, sttModel: "openai/whisper-large-v3-turbo" };
@@ -41,6 +43,7 @@ export function speechSettings(settings: Record<string, unknown> | undefined): S
     service,
     model: sameService ? str(v.model, DEFAULT_MODEL[service].model) : DEFAULT_MODEL[service].model,
     voice: sameService ? (typeof v.voice === "string" ? v.voice : DEFAULT_MODEL[service].voice) : DEFAULT_MODEL[service].voice,
+    voice2: sameService ? (typeof v.voice2 === "string" ? v.voice2 : DEFAULT_MODEL[service].voice2) : DEFAULT_MODEL[service].voice2,
     speed,
     sttModel: str(v.sttModel, DEFAULT_SPEECH.sttModel),
   };

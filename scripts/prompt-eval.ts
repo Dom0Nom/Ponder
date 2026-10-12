@@ -986,16 +986,19 @@ const studioOutputs: Task = {
       ["diagram", "en"],
       ["slides", "en"],
       ["infographic", "en"],
-    ] as const
-  ).map(([kind, l]) => ({
-    name: `${kind} ${l}`,
+      ["audio", "en", "brief"],
+      ["audio", "de", "deepDive"],
+      ["audio", "en", "debate"],
+    ] as [string, "en" | "de", string?][]
+  ).map(([kind, l, style]) => ({
+    name: `${kind}${style ? ` ${style}` : ""} ${l}`,
     run: async () => {
       const g = await lib("studio/generate.ts");
       const m = studioMaterial[l];
       let r: { title: string; data: Record<string, any> } | null = null;
       let err = "";
       try {
-        r = await g.generateOutput(gen, kind, m);
+        r = await g.generateOutput(gen, kind, m, undefined, undefined, style);
       } catch (e) {
         err = String(e);
       }
@@ -1016,6 +1019,17 @@ const studioOutputs: Task = {
         kindChecks.push(check("stats from material", nums.every((n) => src.includes(n)), nums.join(",")));
       }
       if (kind === "diagram") kindChecks.push(check("no styling", !/\bstyle\b|classDef|<br|%%/.test(String(d.code))));
+      if (kind === "audio") {
+        const lines: { host: number; text: string }[] = d.lines ?? [];
+        const total = lines.reduce((n, x) => n + words(x.text), 0);
+        const [lo, hi] = style === "brief" ? [6, 10] : style === "deepDive" ? [10, 26] : [12, 20];
+        kindChecks.push(
+          check(`${lo}–${hi} lines`, lines.length >= lo && lines.length <= hi, String(lines.length)),
+          check("lines ≤60 words", lines.every((x) => words(x.text) <= 65), String(Math.max(0, ...lines.map((x) => words(x.text))))),
+          check("length", style === "brief" ? total <= 400 : style === "deepDive" ? total >= 300 && total <= 1600 : total >= 300, String(total)),
+          check("no host labels", !lines.some((x) => /\bhost [ab]\b/i.test(x.text))),
+        );
+      }
       return {
         output: cur().at(-1)?.output ?? err,
         expect: `A ${kind} in ${l === "de" ? "German" : "English"} built only from the material; title at most 8 words.`,

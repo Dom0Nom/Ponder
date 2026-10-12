@@ -67,3 +67,41 @@ test("voice settings: pick a model and voice, switch to a keyed service", async 
   await voice.getByRole("button", { name: "Listen" }).click();
   await expect.poll(async () => (await speech(app)).at(-1)?.url).toBe("https://api.fish.audio/v1/tts");
 });
+
+test("audio overview: two voices, line navigation, a question, transcript export", async ({ app }) => {
+  await app.getByRole("button", { name: "New space" }).first().click();
+  await app.getByLabel("Name").fill("Biology");
+  await app.getByRole("button", { name: "Create" }).click();
+  await app.getByRole("button", { name: "Add source" }).click();
+  await app.getByRole("tab", { name: "Paste text" }).click();
+  await app.getByLabel("Title").fill("Photosynthesis notes");
+  await app.getByRole("textbox", { name: "Text", exact: true }).fill("Photosynthesis happens in the chloroplasts. The Calvin cycle uses ATP and NADPH to fix carbon dioxide into sugar in the stroma.");
+  await app.getByRole("button", { name: "Import" }).click();
+  await expect(app.locator('[data-testid="source-row"][data-status="ready"]')).toHaveCount(1);
+
+  await app.getByTestId("create-row").click();
+  const panel = app.getByTestId("create-panel");
+  await panel.locator('[data-kind="audio"]').click();
+  await panel.getByTestId("audio-styles").locator('[data-style="brief"]').click();
+
+  const screen = app.getByTestId("output-screen");
+  await expect(screen.getByRole("heading", { level: 1 })).toHaveText("How leaves make sugar");
+  const transcript = screen.getByTestId("audio-transcript");
+  await expect(transcript.locator("> li")).toHaveCount(6);
+  await expect(transcript).toContainText("Host 2");
+
+  await screen.getByRole("button", { name: "Next line" }).click();
+  await expect(screen.getByTestId("audio-position")).toHaveText(/Line 2 of 6/);
+  await expect.poll(async () => (await speech(app)).filter((c) => c.url.endsWith("/audio/speech")).length).toBeGreaterThanOrEqual(5);
+  const voices = (await speech(app)).filter((c) => c.url.endsWith("/audio/speech")).map((c) => c.body!.voice);
+  expect(voices.slice(0, 2)).toEqual(["am_adam", "af_heart"]);
+  await expect(screen.getByTestId("audio-play")).toHaveText("Play", { timeout: 10_000 });
+
+  await screen.getByLabel("Ask the hosts").fill("Where does the Calvin cycle happen?");
+  await screen.getByRole("button", { name: "Ask", exact: true }).click();
+  await expect(screen.getByTestId("audio-aside")).toContainText("stroma");
+
+  await screen.getByTestId("output-export").click();
+  await app.getByRole("menuitem", { name: "Markdown (.md)" }).click();
+  await expect(app.getByText("Saved to /Users/me/Downloads/How leaves make sugar.md")).toBeVisible();
+});

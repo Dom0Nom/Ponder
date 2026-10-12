@@ -3,7 +3,7 @@ import { api } from "../ipc";
 import type { ResolvedModel } from "../chat/llm";
 import { s } from "../strings";
 import type { SearchHit, Source } from "../types";
-import { parseOutput, type OutputKind, type Parsed } from "./kinds";
+import { parseOutput, type AudioStyle, type OutputKind, type Parsed } from "./kinds";
 import { outputPrompt, type Material } from "./prompts";
 
 export class NoMaterialError extends Error {}
@@ -46,13 +46,15 @@ export async function generateOutput<K extends OutputKind>(
   material: Material,
   focus?: string,
   signal?: AbortSignal,
+  style?: AudioStyle,
 ): Promise<Parsed<K>> {
-  const prompt = outputPrompt(kind, material, focus);
+  const prompt = outputPrompt(kind, material, focus, style);
   for (let i = 0; i < 2; i++) {
     const r = await generateText({ model: llm.model, prompt, abortSignal: signal, ...llm.options({ thinking: false }) });
     const parsed = parseOutput(kind, r.text);
     if (parsed) {
       if (kind === "report") (parsed.data as { sources: string[] }).sources = material.sources;
+      if (kind === "audio" && style) (parsed.data as { style: AudioStyle }).style = style;
       return parsed;
     }
   }

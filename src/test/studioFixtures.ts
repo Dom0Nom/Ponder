@@ -103,6 +103,24 @@ const OUTPUTS: [RegExp, object][] = [
       takeaway: "Light energy ends up stored in glucose.",
     },
   ],
+  [
+    /^Create a two-host audio overview script/,
+    {
+      title: "How leaves make sugar",
+      lines: [
+        { host: "A", text: "Every breath you take comes from a leaf splitting water. That's where photosynthesis starts." },
+        { host: "B", text: "Wait, the oxygen comes from water, not from carbon dioxide?" },
+        { host: "A", text: "Right. In the light reactions, chlorophyll absorbs light and the energy splits water. Oxygen is what's left over." },
+        { host: "B", text: "And the energy doesn't just disappear." },
+        { host: "A", text: "It's stored in ATP and NADPH, which the Calvin cycle then uses to fix carbon dioxide into sugar." },
+        { host: "B", text: "So, to remember: light reactions make the energy carriers, the Calvin cycle spends them to build sugar." },
+      ],
+    },
+  ],
+  [
+    /^A listener interrupts an audio overview/,
+    { lines: [{ host: "A", text: "Good question. The Calvin cycle happens in the stroma, the fluid around the thylakoids." }] },
+  ],
 ];
 
 export function studioReply(prompt: string): string | null {

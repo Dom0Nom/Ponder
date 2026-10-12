@@ -1,4 +1,4 @@
-import type { OutputKind } from "./kinds";
+import type { AudioLine, AudioStyle, OutputKind } from "./kinds";
 
 export interface Material {
   /** Source titles; passages refer to them by 1-based number. */
@@ -17,6 +17,7 @@ const NOUN: Record<OutputKind, string> = {
   diagram: "Mermaid diagram",
   slides: "slide deck",
   infographic: "one-page infographic",
+  audio: "two-host audio overview script",
 };
 
 const TASK: Record<OutputKind, string[]> = {
@@ -61,6 +62,18 @@ const TASK: Record<OutputKind, string[]> = {
     "Plan a one-page infographic: subtitle is one sentence, 2–4 stats (a short value like \"70%\", \"1865\" or \"3 stages\" and a label of at most 6 words) taken from the material, 3–4 sections with a 1–4 word heading and 2–4 points of at most 12 words, and a one-sentence takeaway.",
     "Only use numbers that appear in the material; if it has fewer than 2 numbers, use counts of things it lists (\"4 phases\").",
   ],
+  audio: [
+    "Two hosts talk about the material. Host A leads and explains with examples from the material; host B asks what a listener would ask, pushes back when something is unclear, and sums up. Never invent names for them and never say \"host A\" or \"host B\" aloud.",
+    "Write for the ear: short spoken sentences, no Markdown, no lists, no [n] citations, no URLs. Spell out symbols and formulas the way a teacher would say them (\"CO2\" → \"carbon dioxide\", \"x²\" → \"x squared\").",
+    "Each line is at most 60 words. Open with a hook about why the topic matters, not a greeting. Close with a two- or three-sentence recap of what to remember.",
+  ],
+};
+
+const AUDIO_STYLE: Record<AudioStyle, string> = {
+  deepDive: "Format: deep dive. 16–26 lines, 900–1400 words in total, or shorter when the material is short (never pad or repeat to reach a length). Work through the main ideas in a sensible order and connect them.",
+  brief: "Format: brief. 6–10 lines, at most 350 words in total. Only the core ideas, like a two-minute recap before an exam.",
+  critique: "Format: critique. 12–20 lines. Review the material constructively: what it explains well, what is missing or unclear, which claims need more support, and what to study next. Stay grounded in what the material says.",
+  debate: "Format: debate. 12–20 lines. The hosts take opposing positions on the material's central question or trade-off and argue them with evidence from the material, then end on what both agree on.",
 };
 
 const SHAPE: Record<OutputKind, string> = {
@@ -73,10 +86,11 @@ const SHAPE: Record<OutputKind, string> = {
   diagram: '{"title": "…", "code": "flowchart TD\\n  A[\\"…\\"] --> B[\\"…\\"]"}',
   slides: '{"title": "…", "slides": [{"title": "…", "bullets": ["…"], "notes": "…"}]}',
   infographic: '{"title": "…", "subtitle": "…", "stats": [{"value": "…", "label": "…"}], "sections": [{"heading": "…", "points": ["…"]}], "takeaway": "…"}',
+  audio: '{"title": "…", "lines": [{"host": "A", "text": "…"}, {"host": "B", "text": "…"}]}',
 };
 
 /** First line is stable per kind: the mock backend and the eval harness match it. */
-export function outputPrompt(kind: OutputKind, m: Material, focus?: string): string {
+export function outputPrompt(kind: OutputKind, m: Material, focus?: string, style: AudioStyle = "deepDive"): string {
   const sources = m.sources.map((t, i) => `[${i + 1}] ${t}`).join("\n");
   const summaries = m.summaries.map((x) => `[${x.source}] ${x.summary}`).join("\n\n");
   const passages = m.passages.map((p) => `[${p.source}] ${p.text}`).join("\n\n");
@@ -87,6 +101,7 @@ export function outputPrompt(kind: OutputKind, m: Material, focus?: string): str
     `PASSAGES (each starts with its source number)\n"""\n${passages}\n"""`,
     focus?.trim() ? `Focus on: ${focus.trim()}. Leave out material that doesn't relate to it.` : "Cover the material's most important ideas.",
     ...TASK[kind],
+    kind === "audio" ? AUDIO_STYLE[style] : "",
     "Use only facts from the material above. Write in the same language as the material, including the title; keep technical terms as the material spells them.",
     "title is at most 8 words.",
     `Return JSON only:\n${SHAPE[kind]}`,
@@ -96,3 +111,18 @@ export function outputPrompt(kind: OutputKind, m: Material, focus?: string): str
 }
 
 export const outputPromptStart = (kind: OutputKind) => `Create a ${NOUN[kind]} for a learner`;
+
+/** First line is stable: the mock backend matches it. */
+export function audioAnswerPrompt(m: Material, title: string, recent: AudioLine[], question: string): string {
+  const passages = m.passages.map((p) => `[${p.source}] ${p.text}`).join("\n\n");
+  const said = recent.map((l) => `${l.host === 1 ? "B" : "A"}: ${l.text}`).join("\n");
+  return [
+    `A listener interrupts an audio overview called "${title}" with a question.`,
+    `LAST LINES BEFORE THE QUESTION\n"""\n${said}\n"""`,
+    `MATERIAL\n"""\n${passages}\n"""`,
+    `QUESTION\n"""\n${question.trim()}\n"""`,
+    "Answer as the hosts, in 1–3 short spoken lines (at most 70 words in total): host A answers from the material, host B may add a one-sentence link back to where the overview was. If the material doesn't cover the question, say so plainly instead of guessing.",
+    "Write for the ear: no Markdown, no citations, no lists. Use the language of the question.",
+    'Return JSON only:\n{"lines": [{"host": "A", "text": "…"}]}',
+  ].join("\n\n");
+}

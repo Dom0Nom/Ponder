@@ -33,6 +33,8 @@ All calls go through `generateText`/`streamText` from the `ai` SDK; there is no 
 | step-check | `steps/check.ts` `stepCheckPrompt` | grade worked math steps; mathjs overrides | chat | JSON `{steps[], finalCorrect, summary}` → `parseModelVerdicts`, `mergeVerdicts` |
 | vision-transcribe | `steps/vision.ts` `TRANSCRIBE_PROMPT` | read handwritten math from a photo | vision model | JSON `{problem, steps[]}` → `parseTranscription` |
 | source-summary | `sources/summary.ts` | 2–3 sentence summary per source | chat | text |
+| studio-outputs | `studio/prompts.ts` `outputPrompt` | reports, cheat sheets, worksheets, timelines, tables, mind maps, diagrams, slides, infographics, audio overview scripts | chat | JSON per kind → `parseOutput` |
+| audio-answer | `studio/prompts.ts` `audioAnswerPrompt` | hosts answer a listener's interruption | chat | JSON `{lines[]}` → `parseAudioAnswer` |
 
 Deterministic guards already in code: citation numbers are filtered to real passages (`citations.ts`, `remarkCitations.ts`, `parseCheck`); math is re-checked with mathjs (`steps/verify.ts`) and practice answers are re-solved; every JSON parser validates enums, counts and ranges.
 
@@ -127,5 +129,9 @@ Unchanged prompts moved by up to ±0.36 between runs (micro-steps 4.47 → 4.83,
 |---|---|---|---|
 | first | 100% | 4.73 | table mixed stages, people and the equation in one table; timeline mixed history with process steps; German report padded short material to 400 words by repeating facts |
 | after rewrite | 100% | 4.77 / 4.57 | report padding fixed ("or shorter when the material is short"); table usually one item type now but deepseek still mixes sometimes; timeline still mixes in the raw reply, so `parseOutput` keeps the larger group (steps vs dated events). The judge scores the raw reply, so it doesn't see that fix |
+
+### Audio overview prompts (new, 2026-10-12)
+
+Two-host script (`audio` kind, styles deep dive, brief, critique, debate) plus the "ask the hosts" interruption prompt. `prompt-eval --only studio-outputs` with deepseek-v4.1-flash, judged by claude-haiku-4.5: 13 cases, checks 98%, judge 4.74. Audio cases: brief en 5/3/5 (grounding/calibration/format; packs in two extra topics), deep dive de 5/5/5, debate en 5/5/5. The deep dive on the short German material came out at 431 words; the prompt now allows shorter deep dives for short material instead of padding, and the check accepts 300–1600 words.
 
 Open findings for later passes: classify-error labels "15% of 80 = 1200" inconsistently (concept/procedure/units); practice-problem hints sometimes name an intermediate number; research-query scores low because the judge wants more specific queries than a ≤30-word suggestion allows; studio table sometimes mixes item types with deepseek-v4.1-flash.

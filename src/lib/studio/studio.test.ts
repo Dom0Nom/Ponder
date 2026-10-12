@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { studioReply } from "../../test/studioFixtures";
 import { columnName, mindmapMarkdown, toCsv, toXlsx, worksheetMarkdown } from "./export";
 import { buildMaterial } from "./generate";
-import { cleanMermaid, OUTPUT_KINDS, parseOutput } from "./kinds";
+import { cleanMermaid, OUTPUT_KINDS, parseAudioAnswer, parseOutput } from "./kinds";
 import { layoutMindmap, wrapText } from "./mindmapLayout";
 import { outputPrompt, outputPromptStart } from "./prompts";
 
@@ -142,5 +142,26 @@ describe("timeline axis", () => {
     const mixed = (dates: string[]) => parseOutput("timeline", JSON.stringify({ title: "T", events: dates.map(ev) }))!.data.events.map((e) => e.date);
     expect(mixed(["Step 1", "Step 2", "Step 3", "Step 4", "1771", "1779"])).toEqual(["Step 1", "Step 2", "Step 3", "Step 4"]);
     expect(mixed(["Step 1", "1771", "1779", "1950s"])).toEqual(["1771", "1779", "1950s"]);
+  });
+});
+
+describe("audio overview", () => {
+  it("needs both hosts and strips citations and Markdown", () => {
+    const line = (host: string, text: string) => ({ host, text });
+    const a = parseOutput("audio", JSON.stringify({ title: "T", lines: [line("A", "Light **splits** water [1]."), line("B", "Why?"), line("a", "Energy."), line("B", "Got it.")] }))!;
+    expect(a.data.lines).toEqual([
+      { host: 0, text: "Light splits water." },
+      { host: 1, text: "Why?" },
+      { host: 0, text: "Energy." },
+      { host: 1, text: "Got it." },
+    ]);
+    expect(parseOutput("audio", JSON.stringify({ title: "T", lines: [line("A", "1"), line("A", "2"), line("A", "3"), line("A", "4")] }))).toBeNull();
+  });
+
+  it("adds the chosen format to the prompt and reads short answers", () => {
+    expect(outputPrompt("audio", material, undefined, "debate")).toContain("Format: debate.");
+    expect(outputPrompt("report", material)).not.toContain("Format:");
+    expect(parseAudioAnswer('{"lines":[{"host":"A","text":"a"},{"host":"B","text":"b"},{"host":"A","text":"c"},{"host":"B","text":"d"}]}')).toHaveLength(3);
+    expect(parseAudioAnswer('{"lines":[]}')).toBeNull();
   });
 });

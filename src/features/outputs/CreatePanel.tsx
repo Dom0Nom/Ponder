@@ -5,7 +5,7 @@ import { Input, fieldLabel } from "../../components/ui/input";
 import { ErrorState, Skeleton, Spinner } from "../../components/ui/misc";
 import { api } from "../../lib/ipc";
 import { s } from "../../lib/strings";
-import { OUTPUT_KINDS } from "../../lib/studio/kinds";
+import { AUDIO_STYLES, OUTPUT_KINDS, type AudioStyle } from "../../lib/studio/kinds";
 import type { Space } from "../../lib/types";
 import { dayLabel } from "../../lib/utils";
 import { qkOutputs, useOutputJobs } from "../../stores/outputJobs";
@@ -19,12 +19,14 @@ export function CreatePanel({ space, onBack }: { space: Space; onBack: () => voi
   const error = useOutputJobs((st) => st.errors[space.id]);
   const { start, cancel, clearError } = useOutputJobs.getState();
   const [focus, setFocus] = useState("");
-  const [last, setLast] = useState<(typeof OUTPUT_KINDS)[number] | null>(null);
+  const [last, setLast] = useState<{ kind: (typeof OUTPUT_KINDS)[number]; style?: AudioStyle } | null>(null);
+  const [audioOpen, setAudioOpen] = useState(false);
   const saved = useQuery({ queryKey: qkOutputs(space.id), queryFn: () => api.outputsList(space.id) });
 
-  const run = (kind: (typeof OUTPUT_KINDS)[number]) => {
-    setLast(kind);
-    void start(space, kind, focus);
+  const run = (kind: (typeof OUTPUT_KINDS)[number], style?: AudioStyle) => {
+    setLast({ kind, style });
+    setAudioOpen(false);
+    void start(space, kind, focus, undefined, style);
   };
 
   return (
@@ -54,7 +56,7 @@ export function CreatePanel({ space, onBack }: { space: Space; onBack: () => voi
             last
               ? () => {
                   clearError(space.id);
-                  run(last);
+                  run(last.kind, last.style);
                 }
               : undefined
           }
@@ -69,7 +71,8 @@ export function CreatePanel({ space, onBack }: { space: Space; onBack: () => voi
                 type="button"
                 disabled={!!job}
                 data-kind={k}
-                onClick={() => run(k)}
+                aria-expanded={k === "audio" ? audioOpen : undefined}
+                onClick={() => (k === "audio" ? setAudioOpen((o) => !o) : run(k))}
                 className="-mx-1 flex w-[calc(100%+8px)] items-center gap-3 px-1 py-2 text-left hover:bg-fill-subtle disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent"
               >
                 <Icon size={15} className="shrink-0" />
@@ -78,6 +81,23 @@ export function CreatePanel({ space, onBack }: { space: Space; onBack: () => voi
                   <span className="truncate text-label text-muted">{s.outputs.kinds[k].meta}</span>
                 </span>
               </button>
+              {k === "audio" && audioOpen && !job && (
+                <ul className="flex flex-col pb-1.5 pl-7" role="list" aria-label={s.outputs.audio.style} data-testid="audio-styles">
+                  {AUDIO_STYLES.map((st) => (
+                    <li key={st}>
+                      <button
+                        type="button"
+                        data-style={st}
+                        onClick={() => run("audio", st)}
+                        className="-mx-1 flex w-[calc(100%+8px)] items-baseline gap-2 rounded-item px-1 py-1.5 text-left hover:bg-fill-subtle"
+                      >
+                        <span className="font-medium">{s.outputs.audio.styles[st].name}</span>
+                        <span className="truncate text-label text-muted">{s.outputs.audio.styles[st].meta}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           );
         })}

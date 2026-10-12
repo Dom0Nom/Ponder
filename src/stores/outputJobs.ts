@@ -4,7 +4,7 @@ import { resolveChatModel } from "../lib/chat/llm";
 import { queryClient } from "../lib/queries";
 import { s } from "../lib/strings";
 import { gatherMaterial, generateOutput, NoMaterialError } from "../lib/studio/generate";
-import type { OutputKind } from "../lib/studio/kinds";
+import type { AudioStyle, OutputKind } from "../lib/studio/kinds";
 import type { Space, StudioOutput } from "../lib/types";
 import { toast } from "../components/ui/toast";
 import { useUi } from "./ui";
@@ -21,7 +21,7 @@ interface OutputJobs {
   /** One running job per space; generation keeps going when the panel closes. */
   jobs: Record<string, Job>;
   errors: Record<string, unknown>;
-  start: (space: Space, kind: OutputKind, focus: string, replaceId?: string) => Promise<StudioOutput | null>;
+  start: (space: Space, kind: OutputKind, focus: string, replaceId?: string, style?: AudioStyle) => Promise<StudioOutput | null>;
   cancel: (spaceId: string) => void;
   clearError: (spaceId: string) => void;
 }
@@ -29,7 +29,7 @@ interface OutputJobs {
 export const useOutputJobs = create<OutputJobs>((set, get) => ({
   jobs: {},
   errors: {},
-  start: async (space, kind, focus, replaceId) => {
+  start: async (space, kind, focus, replaceId, style) => {
     get().jobs[space.id]?.ctrl.abort();
     const ctrl = new AbortController();
     set((st) => ({ jobs: { ...st.jobs, [space.id]: { kind, ctrl } }, errors: { ...st.errors, [space.id]: undefined } }));
@@ -43,7 +43,7 @@ export const useOutputJobs = create<OutputJobs>((set, get) => ({
     try {
       const llm = await resolveChatModel(space);
       const material = await gatherMaterial(space.id, focus.trim() || space.name);
-      const out = await generateOutput(llm, kind, material, focus, ctrl.signal);
+      const out = await generateOutput(llm, kind, material, focus, ctrl.signal, style);
       if (ctrl.signal.aborted) return null;
       const prev = replaceId ? await api.outputGet(replaceId) : null;
       const saved = await api.outputSave({

@@ -1,5 +1,6 @@
 import JSZip from "jszip";
-import type { MindNode, Slide, TableData, TimelineData, WorksheetData } from "./kinds";
+import { s } from "../strings";
+import type { AudioData, MindNode, Slide, TableData, TimelineData, WorksheetData } from "./kinds";
 
 export function toCsv(columns: string[], rows: string[][]): string {
   const cell = (v: string) => (/[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
@@ -112,6 +113,10 @@ export function mindmapMarkdown(root: MindNode): string {
   };
   walk(root, 0);
   return lines.join("\n") + "\n";
+}
+
+export function audioMarkdown(title: string, a: AudioData): string {
+  return `# ${title}\n\n${a.lines.map((l) => `**${s.outputs.audio.hosts[l.host]}:** ${l.text}`).join("\n\n")}\n`;
 }
 
 export function slidesMarkdown(title: string, slides: Slide[]): string {

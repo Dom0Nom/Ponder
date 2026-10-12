@@ -7,9 +7,11 @@ import { Menu, MenuContent, MenuItem, MenuTrigger } from "../../components/ui/me
 import { ErrorState, Skeleton, Switch } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { api } from "../../lib/ipc";
+import { renderSegments } from "../../lib/tts/player";
 import { useSpace } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import {
+  audioMarkdown,
   mindmapMarkdown,
   slidesMarkdown,
   standaloneSvg,
@@ -25,6 +27,7 @@ import type { OutputDataMap } from "../../lib/studio/kinds";
 import type { StudioOutput } from "../../lib/types";
 import { qkOutput, qkOutputs, useOutputJobs } from "../../stores/outputJobs";
 import { useUi } from "../../stores/ui";
+import { AudioView } from "./AudioView";
 import { KIND_ICON } from "./kindIcons";
 import { CheatsheetView, DiagramView, InfographicView, MindmapView, ReportView, SlidesView, TableView, TimelineView, WorksheetView } from "./Renderers";
 
@@ -40,6 +43,7 @@ const FORMATS: Record<StudioOutput["kind"], Format[]> = {
   diagram: ["svg", "png", "mmd"],
   slides: ["pptx", "md"],
   infographic: ["png", "svg"],
+  audio: ["mp3", "md"],
 };
 
 const svgSize = (svg: string) => {
@@ -109,6 +113,7 @@ export function OutputScreen({ spaceId, outputId }: { spaceId: string; outputId:
         if (out.kind === "worksheet") return utf8(worksheetMarkdown(out.title, d as OutputDataMap["worksheet"], true));
         if (out.kind === "timeline") return utf8(timelineMarkdown(out.title, d as OutputDataMap["timeline"]));
         if (out.kind === "mindmap") return utf8(mindmapMarkdown((d as OutputDataMap["mindmap"]).root));
+        if (out.kind === "audio") return utf8(audioMarkdown(out.title, d as OutputDataMap["audio"]));
         return utf8(slidesMarkdown(out.title, (d as OutputDataMap["slides"]).slides));
       case "csv":
         if (out.kind === "timeline") {
@@ -129,6 +134,20 @@ export function OutputScreen({ spaceId, outputId }: { spaceId: string; outputId:
         if (f === "svg") return utf8(svg);
         const { w, h } = svgSize(svg);
         return svgToPng(svg, w, h);
+      }
+      case "mp3": {
+        const lines = (d as OutputDataMap["audio"]).lines;
+        const t = toast.loading(s.outputs.audio.recording(0, lines.length));
+        try {
+          return await renderSegments(
+            lines.map((l) => ({ text: l.text, voice: l.host })),
+            (done, total) => toast.loading(s.outputs.audio.recording(done, total), { id: t }),
+          );
+        } catch (e) {
+          throw e instanceof Error && e.message === "mp3" ? new Error(s.outputs.audio.mp3Unsupported) : e;
+        } finally {
+          toast.dismiss(t);
+        }
       }
     }
   };
@@ -151,7 +170,7 @@ export function OutputScreen({ spaceId, outputId }: { spaceId: string; outputId:
   };
 
   const remake = () => {
-    if (space.data) void useOutputJobs.getState().start(space.data, out.kind, out.focus ?? "", out.id);
+    if (space.data) void useOutputJobs.getState().start(space.data, out.kind, out.focus ?? "", out.id, out.kind === "audio" ? (out.data as OutputDataMap["audio"]).style : undefined);
   };
 
   const remove = async () => {
@@ -192,6 +211,8 @@ export function OutputScreen({ spaceId, outputId }: { spaceId: string; outputId:
         return <SlidesView data={out.data as OutputDataMap["slides"]} />;
       case "infographic":
         return <InfographicView ref={svgRef} title={out.title} data={out.data as OutputDataMap["infographic"]} />;
+      case "audio":
+        return <AudioView id={out.id} title={out.title} data={out.data as OutputDataMap["audio"]} space={space.data} />;
     }
   })();
 

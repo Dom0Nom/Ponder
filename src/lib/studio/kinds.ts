@@ -1,6 +1,6 @@
 import { extractJson } from "../chat/json";
 
-export const OUTPUT_KINDS = ["report", "cheatsheet", "worksheet", "timeline", "table", "mindmap", "diagram", "slides", "infographic"] as const;
+export const OUTPUT_KINDS = ["report", "cheatsheet", "worksheet", "timeline", "table", "mindmap", "diagram", "slides", "infographic", "audio"] as const;
 export type OutputKind = (typeof OUTPUT_KINDS)[number];
 
 export interface ReportData {
@@ -58,6 +58,18 @@ export interface InfographicData {
   takeaway: string;
 }
 
+export const AUDIO_STYLES = ["deepDive", "brief", "critique", "debate"] as const;
+export type AudioStyle = (typeof AUDIO_STYLES)[number];
+export interface AudioLine {
+  /** 0 leads and explains, 1 asks and sums up. */
+  host: 0 | 1;
+  text: string;
+}
+export interface AudioData {
+  style: AudioStyle;
+  lines: AudioLine[];
+}
+
 export interface OutputDataMap {
   report: ReportData;
   cheatsheet: CheatsheetData;
@@ -68,6 +80,7 @@ export interface OutputDataMap {
   diagram: DiagramData;
   slides: SlidesData;
   infographic: InfographicData;
+  audio: AudioData;
 }
 export type OutputData = OutputDataMap[OutputKind];
 
@@ -100,10 +113,29 @@ export function cleanMermaid(code: string): string | null {
   return /^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(-v2)?|erDiagram|timeline|mindmap|journey|pie)\b/.test(c) ? c : null;
 }
 
-/** Validates a model reply for one output kind; null when it is unusable. */
+function audioLines(v: unknown): AudioLine[] {
+  return (Array.isArray(v) ? v : [])
+    .map((x) => {
+      const l = x as Record<string, unknown>;
+      return {
+        host: (str(l.host).toUpperCase() === "B" ? 1 : 0) as 0 | 1,
+        text: str(l.text).replace(/\s*\[\d+(?:[-–,]\s*\d+)*\]/g, "").replace(/[*_#`]/g, "").trim(),
+      };
+    })
+    .filter((l) => l.text);
+}
+
+/** The hosts' reply to a listener's question: 1–3 lines. */
+export function parseAudioAnswer(text: string): AudioLine[] | null {
+  const o = extractJson<Record<string, unknown>>(text);
+  const lines = o && !Array.isArray(o) ? audioLines(o.lines).slice(0, 3) : [];
+  return lines.length ? lines : null;
+}
+
 /** Process timelines date their events "Step 1", "Phase 2"…; a reply that mixes them with history keeps the larger group. */
 const STEP_DATE = /^(step|stage|phase|schritt|stufe|etappe|étape|paso|fase)\b/i;
 
+/** Validates a model reply for one output kind; null when it is unusable. */
 export function parseOutput<K extends OutputKind>(kind: K, text: string): Parsed<K> | null {
   const o = extractJson<Record<string, unknown>>(text);
   if (!o || Array.isArray(o)) return null;
@@ -184,6 +216,11 @@ export function parseOutput<K extends OutputKind>(kind: K, text: string): Parsed
         .filter((se) => se.heading && se.points.length)
         .slice(0, 4);
       return sections.length >= 2 ? done({ subtitle: str(o.subtitle), stats, sections, takeaway: str(o.takeaway) }) : null;
+    }
+    case "audio": {
+      const lines = audioLines(o.lines);
+      const style = AUDIO_STYLES.includes(o.style as AudioStyle) ? (o.style as AudioStyle) : "deepDive";
+      return lines.length >= 4 && new Set(lines.map((l) => l.host)).size === 2 ? done({ style, lines }) : null;
     }
   }
   return null;
