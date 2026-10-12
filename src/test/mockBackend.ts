@@ -68,6 +68,7 @@ export interface DB {
   notes?: Row<T.Note>;
   glossaries?: Row<T.Glossary>;
   rewrites?: T.PassageRewrite[];
+  annotations?: T.Annotation[];
   exports?: { name: string; extension: string; size: number }[];
   prints?: number;
   images: Record<string, string>;
@@ -1206,6 +1207,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
   },
   delete_source: (a) => {
     delete db.sources[a.id as string];
+    db.annotations = (db.annotations ?? []).filter((y) => y.sourceId !== a.id);
     db.chunks = db.chunks.filter((c) => c.sourceId !== a.id);
     save();
     return null;
@@ -2100,6 +2102,32 @@ const handlers: Record<string, (a: Args) => unknown> = {
     (db.glossaries ??= {})[g.subjectId] = g;
     save();
     return g;
+  },
+  annotations_list: (a) => (db.annotations ?? []).filter((x) => x.sourceId === a.sourceId).sort((x, y) => x.start - y.start || x.createdAt - y.createdAt),
+  annotation_add: (a) => {
+    const start = a.start as number;
+    const end = a.end as number;
+    const quote = a.quote as string;
+    if (start < 0 || end <= start) return err("invalid", "Select some text to highlight.");
+    if (!quote.trim() || quote.length > 20_000) return err("invalid", "Highlights can be up to 20,000 characters.");
+    if (!db.sources[a.sourceId as string]) return err("not_found", "source not found");
+    const now = Date.now();
+    const x: T.Annotation = { id: crypto.randomUUID(), sourceId: a.sourceId as string, start, end, quote, note: (a.note as string) ?? "", createdAt: now, updatedAt: now };
+    (db.annotations ??= []).push(x);
+    save();
+    return x;
+  },
+  annotation_update: (a) => {
+    const x = (db.annotations ?? []).find((y) => y.id === a.id);
+    if (!x) return err("not_found", "This highlight no longer exists.");
+    Object.assign(x, { start: a.start as number, end: a.end as number, note: a.note as string, updatedAt: Date.now() });
+    save();
+    return x;
+  },
+  annotation_delete: (a) => {
+    db.annotations = (db.annotations ?? []).filter((y) => y.id !== a.id);
+    save();
+    return null;
   },
   rewrites_list: (a) => (db.rewrites ?? []).filter((r) => r.sourceId === a.sourceId && r.kind === a.kind),
   rewrite_save: (a) => {

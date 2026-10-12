@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAddCard } from "../cards/FlashcardsCard";
 import { clozeFromSelection } from "../../lib/srs/cloze";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Bold, BookOpenCheck, ExternalLink, Layers, NotebookPen, ScanLine, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Bold, BookOpenCheck, ExternalLink, Highlighter, Layers, MonitorPlay, NotebookPen, ScanLine, SlidersHorizontal } from "lucide-react";
 import { useFocusPrefs, useSetFocusPref } from "../../lib/focusPrefs";
 import { api } from "../../lib/ipc";
 import { qk } from "../../lib/queries";
@@ -22,6 +22,8 @@ import { BionicText } from "./BionicText";
 import { useSummarizing } from "./useAutoSummaries";
 import { ReadingRuler } from "./ReadingRuler";
 import { PassageList, ReadingControls } from "./ReadingTools";
+import { WatchAlong } from "./WatchAlong";
+import { HighlightList, HighlightMark, selectionOffsets, useAddHighlight, useAnnotations, type Anchored } from "./Highlights";
 import { GlossaryPanel } from "../notes/GlossaryPanel";
 import { useSpace } from "../../lib/queries";
 import type { ReadingLevel } from "../../lib/notes/passages";
@@ -37,9 +39,16 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
   const [level, setLevel] = useState<ReadingLevel>("original");
   const [lang, setLang] = useState<string | null>(null);
   const [tools, setTools] = useState(false);
+  const [watching, setWatching] = useState(false);
   const rewritten = level !== "original" || !!lang;
 
-  const pieces = useMemo(() => (text.data ? buildPieces(text.data, target.start, target.end) : []), [text.data, target.start, target.end]);
+  const annots = useAnnotations(target.sourceId, text.data?.text);
+  const placed = useMemo(() => annots.anchored.filter((a) => !a.detached), [annots.anchored]);
+  const byId = useMemo(() => new Map<string, Anchored>(placed.map((a) => [a.id, a])), [placed]);
+  const pieces = useMemo(
+    () => (text.data ? buildPieces(text.data, target.start, target.end, placed) : []),
+    [text.data, target.start, target.end, placed],
+  );
 
   useEffect(() => {
     if (markRef.current) markRef.current.scrollIntoView({ block: "center", behavior: motionReduced() ? "auto" : "smooth" });
@@ -88,6 +97,15 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
         </div>
         {source.data && text.data && (
           <ListenButton id={`source-${source.data.id}`} text={text.data.text} className="flex size-7 items-center justify-center gap-1.5 rounded-btn text-fg hover:bg-fill" />
+        )}
+        {source.data?.kind === "youtube" && text.data && (
+          <button
+            aria-pressed={watching}
+            onClick={() => setWatching((w) => !w)}
+            className="flex h-7.5 items-center gap-1.5 rounded-btn px-[9px] font-medium hover:bg-fill aria-pressed:bg-fill-active aria-pressed:font-semibold"
+          >
+            <MonitorPlay size={14} /> {s.watchAlong.open}
+          </button>
         )}
         {source.data?.origin?.startsWith("note:") && (
           <button
@@ -153,18 +171,32 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
                 <p className="text-[0.84375rem] leading-[1.55] text-fg-secondary">{source.data.summary ?? s.sources.noSummary}</p>
               )}
             </div>
+            {watching && source.data.kind === "youtube" && (
+              <div className="leading-normal">
+                <WatchAlong source={source.data} text={text.data.text} space={space.data} />
+              </div>
+            )}
             {tools && (
               <div className="flex flex-col gap-4 leading-normal" data-testid="reading-tools-panel">
                 <ReadingControls level={level} lang={lang} onLevel={setLevel} onLang={setLang} />
+                <HighlightList anchored={annots.anchored} error={annots.q.error} onRetry={() => annots.q.refetch()} />
                 <GlossaryPanel subjectId={source.data.id} text={text.data.text} space={space.data} />
               </div>
             )}
-            <SelectionToCard source={source.data} text={text.data.text} />
+            {!rewritten && <SelectionActions source={source.data} text={text.data.text} />}
             {rewritten ? (
               <PassageList sourceId={source.data.id} text={text.data.text} space={space.data} level={level} lang={lang} />
             ) : (
             <div className="whitespace-pre-wrap break-words" data-testid="source-text">
-              {pieces.map((p, i) => (
+              {pieces.map((p, i) => {
+                const body = p.annot && byId.has(p.annot) ? (
+                  <HighlightMark annot={byId.get(p.annot)!}>
+                    <Paragraphs text={p.text} base={p.start} bionic={reading.bionic} />
+                  </HighlightMark>
+                ) : (
+                  <Paragraphs text={p.text} base={p.start} bionic={reading.bionic} />
+                );
+                return (
                 <span key={i}>
                   {p.page != null && (
                     <span className="mb-4 mt-4 block select-none text-label font-semibold leading-[1.75] text-muted [div>span:first-child>&]:mt-0">
@@ -184,13 +216,14 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
                         return isFirst ? markRef : undefined;
                       })()}
                     >
-                      <Paragraphs text={p.text} bionic={reading.bionic} />
+                      {body}
                     </mark>
                   ) : (
-                    <Paragraphs text={p.text} bionic={reading.bionic} />
+                    body
                   )}
                 </span>
-              ))}
+                );
+              })}
             </div>
             )}
           </div>
@@ -202,11 +235,18 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
 }
 
 /** Blank lines become a 16px gap, like separate paragraphs in the design. */
-function Paragraphs({ text, bionic }: { text: string; bionic: boolean }) {
+function Paragraphs({ text, base, bionic }: { text: string; base: number; bionic: boolean }) {
+  const segs: [string, number][] = [];
+  let last = 0;
+  for (const m of text.matchAll(/\n{2,}/g)) {
+    segs.push([text.slice(last, m.index), last]);
+    last = m.index + m[0].length;
+  }
+  segs.push([text.slice(last), last]);
   return (
     <>
-      {text.split(/\n{2,}/).map((seg, i) => (
-        <span key={i}>
+      {segs.map(([seg, off], i) => (
+        <span key={i} data-off={base + off}>
           {i > 0 && <span aria-hidden className="block h-4" />}
           {bionic ? <BionicText text={seg} /> : seg}
         </span>
@@ -242,51 +282,82 @@ function MakeCourseButton({ source, text }: { source: Source; text: string }) {
   );
 }
 
-/** Floating "Make card" button for text selected in the viewer. */
-function SelectionToCard({ source, text }: { source: Source; text: string }) {
-  const [sel, setSel] = useState<{ text: string; top: number; left: number } | null>(null);
+/** Floating "Make card" and "Highlight" buttons for text selected in the viewer. */
+function SelectionActions({ source, text }: { source: Source; text: string }) {
+  const [sel, setSel] = useState<{ start: number; end: number; top: number; left: number } | null>(null);
   const openAdd = useAddCard((st) => st.open);
+  const addHighlight = useAddHighlight(source.id);
+  const keyRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     const onUp = () => {
-      const s2 = window.getSelection();
-      const str = s2?.toString().trim() ?? "";
       const container = document.querySelector('[data-testid="source-text"]');
-      if (!s2 || !str || str.length < 2 || str.length > 300 || !container || !s2.anchorNode || !container.contains(s2.anchorNode)) {
+      const r = container ? selectionOffsets(container, text) : null;
+      if (!r || r.end - r.start < 2) {
         setSel(null);
         return;
       }
-      const rect = s2.getRangeAt(0).getBoundingClientRect();
-      setSel({ text: str, top: rect.top - 44, left: rect.left + rect.width / 2 });
+      const rect = window.getSelection()!.getRangeAt(0).getBoundingClientRect();
+      setSel({ ...r, top: rect.top - 44, left: rect.left + rect.width / 2 });
     };
     document.addEventListener("mouseup", onUp);
     return () => document.removeEventListener("mouseup", onUp);
-  }, []);
+  }, [text]);
+  useEffect(() => {
+    if (!sel) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "h" || e.metaKey || e.ctrlKey || e.altKey || (e.target as HTMLElement)?.closest?.("input, textarea, [contenteditable]")) return;
+      e.preventDefault();
+      keyRef.current?.();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [sel]);
   if (!sel) return null;
+  const done = () => {
+    window.getSelection()?.removeAllRanges();
+    setSel(null);
+  };
+  const len = sel.end - sel.start;
+  const highlight = () => {
+    if (len > 20_000) toastError(s.highlights.addFailed, new Error(s.highlights.tooLong));
+    else void addHighlight(text, sel.start, sel.end);
+    done();
+  };
+  keyRef.current = highlight;
+  const btn = "inline-flex h-7.5 items-center gap-1.5 rounded-control bg-primary px-2.5 text-[0.78125rem] font-semibold text-on-primary shadow-float";
+  const highlightBtn = (
+    <button className={len <= 300 ? cn(btn, "w-7.5 justify-center px-0") : btn} aria-label={s.highlights.add} title={s.highlights.addKey} onMouseDown={(e) => e.preventDefault()} onClick={highlight}>
+      <Highlighter size={13} /> {len > 300 && s.highlights.add}
+    </button>
+  );
   return (
     <div style={{ position: "fixed", top: Math.max(8, sel.top), left: sel.left, transform: "translateX(-50%)" }} className="z-40">
-    <Reveal
-      as="button"
-      y={4}
-      className="inline-flex h-7.5 items-center gap-1.5 rounded-control bg-primary px-2.5 text-[0.78125rem] font-semibold text-on-primary shadow-float"
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={() => {
-        const i = text.indexOf(sel.text);
-        const start = i === -1 ? 0 : i;
-        const end = i === -1 ? 0 : i + sel.text.length;
-        openAdd({
-          spaceId: source.spaceId,
-          kind: "cloze",
-          front: i === -1 ? `{{c1::${sel.text}}}` : clozeFromSelection(text, start, end),
-          sourceId: source.id,
-          chunkStart: i === -1 ? null : start,
-          chunkEnd: i === -1 ? null : end,
-        });
-        window.getSelection()?.removeAllRanges();
-        setSel(null);
-      }}
-    >
-      <Layers size={13} /> {s.cards.makeFromSelection}
-    </Reveal>
+      <Reveal y={4} className="group/sel relative">
+        {len <= 300 ? (
+          <>
+            <button
+              className={btn}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                openAdd({
+                  spaceId: source.spaceId,
+                  kind: "cloze",
+                  front: clozeFromSelection(text, sel.start, sel.end),
+                  sourceId: source.id,
+                  chunkStart: sel.start,
+                  chunkEnd: sel.end,
+                });
+                done();
+              }}
+            >
+              <Layers size={13} /> {s.cards.makeFromSelection}
+            </button>
+            <div className="absolute left-full top-0 pl-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/sel:opacity-100">{highlightBtn}</div>
+          </>
+        ) : (
+          highlightBtn
+        )}
+      </Reveal>
     </div>
   );
 }

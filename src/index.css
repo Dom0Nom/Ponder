@@ -403,6 +403,23 @@ mark.cite-highlight {
   -webkit-box-decoration-break: clone;
 }
 
+mark.user-highlight {
+  background: var(--highlight);
+  color: inherit;
+  border-radius: 2px;
+  cursor: pointer;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+mark.user-highlight[data-note] {
+  text-decoration: underline dotted var(--text-muted);
+  text-underline-offset: 3px;
+}
+mark.user-highlight:focus-visible {
+  outline: 2px solid var(--text-muted);
+  outline-offset: 1px;
+}
+
 input[type="range"].slider { -webkit-appearance: none; appearance: none; height: 16px; background: transparent; }
 .slider::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(var(--primary), var(--primary)) 0 / var(--fill-pct, 0%) 100% no-repeat, var(--field); }
 .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: var(--surface); border: 1px solid var(--control-off); box-sizing: border-box; }

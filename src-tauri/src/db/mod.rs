@@ -20,6 +20,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("012_exams.sql"),
     include_str!("013_studio_outputs.sql"),
     include_str!("014_notes.sql"),
+    include_str!("015_annotations.sql"),
 ];
 
 pub fn schema_version() -> i64 {

@@ -183,6 +183,10 @@ export const api = {
   noteDelete: (id: string) => call<void>("note_delete", { id }),
   glossaryGet: (subjectId: string) => call<T.Glossary | null>("glossary_get", { subjectId }),
   glossarySave: (glossary: Omit<T.Glossary, "createdAt">) => call<T.Glossary>("glossary_save", { glossary }),
+  annotationsList: (sourceId: string) => call<T.Annotation[]>("annotations_list", { sourceId }),
+  annotationAdd: (sourceId: string, start: number, end: number, quote: string, note = "") => call<T.Annotation>("annotation_add", { sourceId, start, end, quote, note }),
+  annotationUpdate: (id: string, start: number, end: number, note: string) => call<T.Annotation>("annotation_update", { id, start, end, note }),
+  annotationDelete: (id: string) => call<void>("annotation_delete", { id }),
   rewritesList: (sourceId: string, kind: string) => call<T.PassageRewrite[]>("rewrites_list", { sourceId, kind }),
   rewriteSave: (rewrite: T.PassageRewrite) => call<void>("rewrite_save", { rewrite }),
   /** Native save dialog; null when cancelled. Returns the saved path. */

@@ -896,6 +896,18 @@ export interface Glossary {
   createdAt: number;
 }
 
+export interface Annotation {
+  id: string;
+  sourceId: string;
+  /** UTF-16 offsets into the source text */
+  start: number;
+  end: number;
+  quote: string;
+  note: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface PassageRewrite {
   sourceId: string;
   kind: string;

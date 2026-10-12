@@ -18,6 +18,7 @@ export const qk = {
   space: (id: string) => ["space", id] as const,
   sources: (spaceId: string) => ["sources", spaceId] as const,
   sourceText: (id: string) => ["sourceText", id] as const,
+  annotations: (sourceId: string) => ["annotations", sourceId] as const,
   threads: (spaceId: string) => ["threads", spaceId] as const,
   messages: (threadId: string) => ["messages", threadId] as const,
   journal: (spaceId: string) => ["journal", spaceId] as const,

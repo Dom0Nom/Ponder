@@ -1,3 +1,4 @@
+mod annotations;
 mod ask;
 mod backup;
 mod calculator;
@@ -144,6 +145,10 @@ pub fn run() {
             studio::output_delete,
             studio::export_file,
             studio::print_window,
+            annotations::annotations_list,
+            annotations::annotation_add,
+            annotations::annotation_update,
+            annotations::annotation_delete,
             notes::notes_list,
             notes::note_get,
             notes::note_save,
