@@ -230,6 +230,7 @@ export const api = {
   mcpCall: (server: McpTarget, tool: string, args: unknown) =>
     call<T.McpCallResult>("mcp_client_call", { server: mcpTarget(server), tool, arguments: args }),
   mcpStop: (id: string) => call<void>("mcp_client_stop", { id }),
+  sourcePdf: (id: string) => call<ArrayBuffer>("source_pdf", { id }),
   mcpAuthStatus: (id: string) => call<{ signedIn: boolean }>("mcp_client_auth_status", { id }),
   mcpSignIn: (server: McpTarget) => call<void>("mcp_client_sign_in", { server: mcpTarget(server) }),
   mcpSignOut: (id: string) => call<void>("mcp_client_sign_out", { id }),

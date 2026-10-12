@@ -111,6 +111,7 @@ pub fn run() {
             commands::core::update_source,
             commands::core::delete_source,
             commands::core::get_source_text,
+            commands::core::source_pdf,
             commands::core::list_threads,
             commands::core::create_thread,
             commands::core::rename_thread,

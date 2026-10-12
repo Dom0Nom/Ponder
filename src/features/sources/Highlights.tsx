@@ -65,7 +65,7 @@ export function useAddHighlight(sourceId: string) {
   };
 }
 
-function NoteEditor({ annot, onDone }: { annot: Anchored; onDone: () => void }) {
+export function NoteEditor({ annot, onDone }: { annot: Anchored; onDone: () => void }) {
   const qc = useQueryClient();
   const [note, setNote] = useState(annot.note);
   const [busy, setBusy] = useState(false);

@@ -74,6 +74,30 @@ pub async fn get_source_text(state: State<'_, AppState>, id: String) -> AppResul
     m::get_source_text(&state.db.conn()?, &id)
 }
 
+/// Where the original PDF of a source is on disk: the kept copy, else the imported file if it's still there.
+pub fn original_pdf(c: &rusqlite::Connection, id: &str) -> AppResult<std::path::PathBuf> {
+    let (kind, origin, local): (String, Option<String>, Option<String>) =
+        c.query_row("SELECT kind, origin, local_path FROM sources WHERE id=?1", [id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+            .optional()?
+            .ok_or_else(|| crate::error::AppError::NotFound("Source".into()))?;
+    if kind != "pdf" {
+        return Err(crate::error::invalid("Only PDFs have a page view."));
+    }
+    [local, origin]
+        .into_iter()
+        .flatten()
+        .map(std::path::PathBuf::from)
+        .find(|p| p.is_absolute() && p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")) && p.is_file())
+        .ok_or_else(|| crate::error::AppError::NotFound("The original PDF".into()))
+}
+
+#[tauri::command]
+pub async fn source_pdf(state: State<'_, AppState>, id: String) -> AppResult<tauri::ipc::Response> {
+    let path = original_pdf(&state.db.conn()?, &id)?;
+    let bytes = tokio::fs::read(&path).await?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
 #[tauri::command]
 pub async fn list_threads(state: State<'_, AppState>, space_id: String) -> AppResult<Vec<Thread>> {
     m::list_threads(&state.db.conn()?, &space_id)
@@ -171,4 +195,25 @@ pub async fn update_memory(state: State<'_, AppState>, id: String, text: String)
 #[tauri::command]
 pub async fn delete_memory(state: State<'_, AppState>, id: String) -> AppResult<()> {
     m::delete_memory(&state.db.conn()?, &id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::test_db;
+
+    #[test]
+    fn finds_the_original_pdf() {
+        let (db, dir) = test_db();
+        let c = db.conn().unwrap();
+        let sp = m::create_space(&c, SpacePatch { name: Some("S".into()), ..Default::default() }).unwrap();
+        let file = dir.path().join("a.pdf");
+        std::fs::write(&file, b"%PDF-1.4").unwrap();
+        let pdf = m::insert_source(&c, &sp.id, "A", "pdf", Some(file.to_str().unwrap())).unwrap();
+        assert_eq!(original_pdf(&c, &pdf.id).unwrap(), file);
+        let gone = m::insert_source(&c, &sp.id, "B", "pdf", Some("/nowhere/b.pdf")).unwrap();
+        assert_eq!(original_pdf(&c, &gone.id).unwrap_err().code(), "not_found");
+        let web = m::insert_source(&c, &sp.id, "C", "url", Some("https://a.example")).unwrap();
+        assert_eq!(original_pdf(&c, &web.id).unwrap_err().code(), "invalid");
+    }
 }

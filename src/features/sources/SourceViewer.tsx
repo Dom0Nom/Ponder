@@ -1,11 +1,11 @@
 import { ListenButton } from "../speech/ListenButton";
 import { Reveal } from "../../components/motion/Reveal";
 import { motionReduced } from "../../app/useTheme";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useAddCard } from "../cards/FlashcardsCard";
 import { clozeFromSelection } from "../../lib/srs/cloze";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Bold, BookOpenCheck, ExternalLink, Highlighter, Layers, MonitorPlay, NotebookPen, ScanLine, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Bold, BookOpenCheck, ExternalLink, FileText, Highlighter, Layers, MonitorPlay, NotebookPen, ScanLine, SlidersHorizontal } from "lucide-react";
 import { useFocusPrefs, useSetFocusPref } from "../../lib/focusPrefs";
 import { api } from "../../lib/ipc";
 import { qk } from "../../lib/queries";
@@ -16,7 +16,8 @@ import { useUi } from "../../stores/ui";
 import { ErrorState, Skeleton, Tooltip } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { detectChapters } from "../../lib/placement/logic";
-import type { Source } from "../../lib/types";
+import type { Source, SourceText } from "../../lib/types";
+import { pdfSelectionOffsets } from "./pdfSelection";
 import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { BionicText } from "./BionicText";
 import { useSummarizing } from "./useAutoSummaries";
@@ -27,6 +28,8 @@ import { HighlightList, HighlightMark, selectionOffsets, useAddHighlight, useAnn
 import { GlossaryPanel } from "../notes/GlossaryPanel";
 import { useSpace } from "../../lib/queries";
 import type { ReadingLevel } from "../../lib/notes/passages";
+
+const PdfPages = lazy(() => import("./PdfPages"));
 
 export function SourceViewer({ target }: { target: { sourceId: string; start?: number; end?: number } }) {
   const openViewer = useUi((st) => st.openViewer);
@@ -40,7 +43,9 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
   const [lang, setLang] = useState<string | null>(null);
   const [tools, setTools] = useState(false);
   const [watching, setWatching] = useState(false);
-  const rewritten = level !== "original" || !!lang;
+  const [paged, setPaged] = useState(false);
+  const showPages = paged && source.data?.kind === "pdf";
+  const rewritten = !showPages && (level !== "original" || !!lang);
 
   const annots = useAnnotations(target.sourceId, text.data?.text);
   const placed = useMemo(() => annots.anchored.filter((a) => !a.detached), [annots.anchored]);
@@ -97,6 +102,17 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
         </div>
         {source.data && text.data && (
           <ListenButton id={`source-${source.data.id}`} text={text.data.text} className="flex size-7 items-center justify-center gap-1.5 rounded-btn text-fg hover:bg-fill" />
+        )}
+        {source.data?.kind === "pdf" && text.data && (
+          <Tooltip content={s.pdfView.toggleHelp}>
+            <button
+              aria-pressed={paged}
+              onClick={() => setPaged((p) => !p)}
+              className="flex h-7.5 items-center gap-1.5 rounded-btn px-[9px] font-medium hover:bg-fill aria-pressed:bg-fill-active aria-pressed:font-semibold"
+            >
+              <FileText size={14} /> {s.pdfView.toggle}
+            </button>
+          </Tooltip>
         )}
         {source.data?.kind === "youtube" && text.data && (
           <button
@@ -183,8 +199,12 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
                 <GlossaryPanel subjectId={source.data.id} text={text.data.text} space={space.data} />
               </div>
             )}
-            {!rewritten && <SelectionActions source={source.data} text={text.data.text} />}
-            {rewritten ? (
+            {!rewritten && <SelectionActions source={source.data} st={text.data} paged={showPages} />}
+            {showPages ? (
+              <Suspense fallback={<Skeleton className="mx-auto aspect-[1/1.41] w-full max-w-[900px]" />}>
+                <PdfPages sourceId={source.data.id} st={text.data} annots={placed} onShowText={() => setPaged(false)} />
+              </Suspense>
+            ) : rewritten ? (
               <PassageList sourceId={source.data.id} text={text.data.text} space={space.data} level={level} lang={lang} />
             ) : (
             <div className="whitespace-pre-wrap break-words" data-testid="source-text">
@@ -283,15 +303,16 @@ function MakeCourseButton({ source, text }: { source: Source; text: string }) {
 }
 
 /** Floating "Make card" and "Highlight" buttons for text selected in the viewer. */
-function SelectionActions({ source, text }: { source: Source; text: string }) {
+function SelectionActions({ source, st, paged }: { source: Source; st: SourceText; paged: boolean }) {
+  const text = st.text;
   const [sel, setSel] = useState<{ start: number; end: number; top: number; left: number } | null>(null);
   const openAdd = useAddCard((st) => st.open);
   const addHighlight = useAddHighlight(source.id);
   const keyRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     const onUp = () => {
-      const container = document.querySelector('[data-testid="source-text"]');
-      const r = container ? selectionOffsets(container, text) : null;
+      const container = document.querySelector(paged ? '[data-testid="pdf-pages"]' : '[data-testid="source-text"]');
+      const r = !container ? null : paged ? pdfSelectionOffsets(container, st) : selectionOffsets(container, text);
       if (!r || r.end - r.start < 2) {
         setSel(null);
         return;
@@ -301,7 +322,7 @@ function SelectionActions({ source, text }: { source: Source; text: string }) {
     };
     document.addEventListener("mouseup", onUp);
     return () => document.removeEventListener("mouseup", onUp);
-  }, [text]);
+  }, [text, st, paged]);
   useEffect(() => {
     if (!sel) return;
     const onKey = (e: KeyboardEvent) => {

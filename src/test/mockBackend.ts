@@ -4,6 +4,7 @@
  * real app. `window.__mock` exposes test hooks (clock control, LLM script, reset).
  */
 import { studioReply } from "./studioFixtures";
+import { tinyPdf } from "./tinyPdf";
 import { notesReply } from "./notesFixtures";
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { emit } from "@tauri-apps/api/event";
@@ -1230,6 +1231,15 @@ const handlers: Record<string, (a: Args) => unknown> = {
     return null;
   },
   get_source_text: (a) => db.texts[a.id as string] ?? err("not_found", "source text not found"),
+  source_pdf: (a) => {
+    const src = db.sources[a.id as string] ?? err("not_found", "Source not found");
+    if (src.kind !== "pdf") err("invalid", "Only PDFs have a page view.");
+    if (src.origin?.includes("missing")) err("not_found", "The original PDF not found");
+    const st = db.texts[src.id] ?? { text: "", pages: null };
+    const starts = st.pages?.length ? st.pages : [[1, 0] as [number, number]];
+    const pages = starts.map(([, off], i) => st.text.slice(off, i + 1 < starts.length ? starts[i + 1][1] : undefined));
+    return tinyPdf(pages).buffer;
+  },
   import_file: (a) => {
     const path = a.path as string;
     const name = path.split(/[\\/]/).pop() ?? path;

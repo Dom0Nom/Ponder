@@ -1755,6 +1755,15 @@ export const s = {
     removeFailed: "Couldn't remove the highlight",
     tooLong: "Highlights can be up to 20,000 characters.",
   },
+  pdfView: {
+    toggle: "Pages",
+    toggleHelp: "Show the PDF's pages instead of its text",
+    missing: "The original PDF isn't on this computer anymore, so only its text can be shown.",
+    showText: "Show text",
+    failed: "Couldn't show the PDF's pages",
+    pageFailed: (n: number) => `Couldn't show page ${n}`,
+    noMatch: "This selection couldn't be matched to the PDF's text. Try highlighting it in the text view.",
+  },
   readingTools: {
     toggle: "Reading tools",
     group: "Reading level and translation",
