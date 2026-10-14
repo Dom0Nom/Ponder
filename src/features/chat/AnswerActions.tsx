@@ -112,7 +112,7 @@ export function AnswerActions({ message, space, content }: { message: Message; s
 
   return (
     <div className="-ms-1.5 flex items-center gap-0.5 text-caption" data-testid="answer-actions">
-      <ActionTipGroup className="gap-0.5">
+      <ActionTipGroup className="t-ag gap-0.5">
         <button
           aria-label={s.common.copy}
           data-tip-name={s.common.copy}

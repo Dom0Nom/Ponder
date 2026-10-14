@@ -81,7 +81,7 @@ export function LanScanPage() {
       ) : !scan.data?.length ? (
         <EmptyState size="sm" icon={<Radar size={17} />} title={s.providers.scanEmpty} body={s.providers.scanEmptyBody} />
       ) : (
-        <ul className="rounded-card border border-border px-4 [&>*+*]:border-t [&>*+*]:border-divider">
+        <ul className="m-stagger m-stagger-sm rounded-card border border-border px-4 [&>*+*]:border-t [&>*+*]:border-divider">
           {scan.data.map((srv, i) => {
             const isAdded = added(srv);
             const adding = add.isPending && add.variables?.baseUrl === srv.baseUrl;

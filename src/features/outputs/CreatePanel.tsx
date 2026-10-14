@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { AiBeam } from "../../components/fx/AiBeam";
+import { ActivityOrb } from "../../components/motion/ActivityOrb";
 import { MessageSquareText } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input, fieldLabel } from "../../components/ui/input";
-import { ErrorState, Skeleton, Spinner } from "../../components/ui/misc";
+import { ErrorState, Skeleton } from "../../components/ui/misc";
 import { api } from "../../lib/ipc";
 import { s } from "../../lib/strings";
 import { AUDIO_STYLES, OUTPUT_KINDS, type AudioStyle } from "../../lib/studio/kinds";
@@ -38,8 +40,9 @@ export function CreatePanel({ space, onBack }: { space: Space; onBack: () => voi
         <Input value={focus} onChange={(e) => setFocus(e.target.value)} placeholder={s.outputs.focusPlaceholder} disabled={!!job} />
       </label>
       {job ? (
+        <AiBeam working after={0}>
         <div className="flex items-center gap-3 rounded-card border border-border px-3.5 py-3" data-testid="create-running" aria-live="polite">
-          <Spinner />
+          <ActivityOrb activity="cards" size={32} />
           <div className="flex min-w-0 flex-1 flex-col">
             <span className="font-medium">{s.outputs.creating(s.outputs.kinds[job.kind].name)}</span>
             <span className="text-label text-muted">{s.outputs.creatingNote}</span>
@@ -48,6 +51,7 @@ export function CreatePanel({ space, onBack }: { space: Space; onBack: () => voi
             {s.outputs.cancel}
           </Button>
         </div>
+        </AiBeam>
       ) : error ? (
         <ErrorState
           size="sm"

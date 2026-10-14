@@ -116,7 +116,7 @@ function ToolGrid({ space }: { space: Space }) {
   const pct = lessons.length ? Math.round((lessons.filter((l) => l.status === "done").length / lessons.length) * 100) : 0;
 
   return (
-    <div className="grid grid-cols-2 gap-2 px-4 pt-4">
+    <div className="m-stagger grid grid-cols-2 gap-2 px-4 pt-4">
       <Tile icon={Layers} name={s.studio.flashcards} testId="flashcards-tile" onClick={() => setStudioView("flashcards")}>
         <Meta loading={counts.isLoading} error={!!counts.error}>
           {row && row.due > 0 ? s.studio.due(row.due) : row && row.total > 0 ? s.studio.noneDue : s.studio.noCards}

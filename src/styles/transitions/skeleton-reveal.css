@@ -3,7 +3,7 @@
 :root {
   --pulse-dur: 1000ms;
   --pulse-count: infinite;
-  --pulse-min: 0.5;
+  --pulse-min: 0.35;
   --reveal-dur: var(--motion-slow);
   --reveal-blur: var(--motion-blur-sm);
   --reveal-ease: var(--motion-ease-swap);

@@ -44,7 +44,7 @@ export function InsightsScreen({ spaceId }: { spaceId?: string }) {
   const hasData = !!a && a.reviews.length + a.focus.length + a.attempts.length > 0;
   return (
     <div className="flex h-full overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-[760px] flex-col gap-[18px] px-10 pb-12 pt-10" data-testid="insights">
+      <div className="m-stagger mx-auto flex w-full max-w-[760px] flex-col gap-[18px] px-10 pb-12 pt-10" data-testid="insights">
         <div className="flex items-center gap-3">
           <h1 className="text-page font-semibold">{s.insights.title}</h1>
           <Menu>

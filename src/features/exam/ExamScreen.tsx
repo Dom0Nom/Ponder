@@ -1,3 +1,5 @@
+import { AiBeam } from "../../components/fx/AiBeam";
+import { SpinCounter } from "../../components/motion/SpinCounter";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { Calculator, ChevronDown, ChevronLeft, ChevronRight, Flag, GraduationCap, Lock, Sigma, Trash2 } from "lucide-react";
@@ -163,6 +165,12 @@ function StartView({ spaceId }: { spaceId: string }) {
     }
   };
 
+  const beginButton = (
+    <Button variant="primary" onClick={start} data-testid="exam-begin">
+      {s.exam.start}
+    </Button>
+  );
+
   return (
     <>
       <p className="text-fg-secondary">{s.exam.intro(format.title)}</p>
@@ -209,9 +217,7 @@ function StartView({ spaceId }: { spaceId: string }) {
               </Button>
             </>
           ) : (
-            <Button variant="primary" onClick={start} data-testid="exam-begin">
-              {s.exam.start}
-            </Button>
+            beginButton
           )}
         </div>
         {error ? <ErrorState title={s.exam.startError} error={error} onRetry={start} /> : null}
@@ -634,7 +640,9 @@ function Results({ attempt, format, section, space }: { attempt: ExamAttempt; fo
       </div>
       <section className="flex items-center gap-6 rounded-card border border-border px-6 py-5" data-testid="exam-result">
         <div className="flex flex-col">
-          <span className="text-timer font-semibold tabular-nums">{r.scaled ?? `${Math.round(r.share * 100)}%`}</span>
+          <span className="text-timer font-semibold tabular-nums">
+            <SpinCounter value={r.scaled ?? `${Math.round(r.share * 100)}%`} cell={56} />
+          </span>
           <span className={cn("text-label font-semibold", r.passed ? "text-success" : "text-muted")}>{r.passed ? s.exam.passed : s.exam.notPassed}</span>
         </div>
         <div className="flex flex-col gap-0.5 text-fg-secondary">
@@ -646,6 +654,7 @@ function Results({ attempt, format, section, space }: { attempt: ExamAttempt; fo
       </section>
 
       {essay ? (
+        <AiBeam working={grading}>
         <section className="flex flex-col gap-3 rounded-card border border-border px-5 py-4" data-testid="exam-essay-result">
           <h2 className="text-title-sm font-semibold">{s.exam.essay}</h2>
           {grading ? (
@@ -669,6 +678,7 @@ function Results({ attempt, format, section, space }: { attempt: ExamAttempt; fo
             </>
           ) : null}
         </section>
+        </AiBeam>
       ) : null}
 
       <section className="flex flex-col gap-3 rounded-card border border-border px-5 py-4" data-testid="exam-topics">

@@ -3,8 +3,8 @@
 :root {
   --modal-open-dur: var(--motion-fast);
   --modal-close-dur: var(--motion-quick);
-  --modal-scale: 0.96;
-  --modal-scale-close: 0.96;
+  --modal-scale: 0.92;
+  --modal-scale-close: 0.94;
   --modal-ease: var(--motion-ease-smooth);
 }
 @keyframes t-modal-open  { from { transform: scale(var(--modal-scale)); opacity: 0; } to { transform: scale(1); opacity: 1; } }

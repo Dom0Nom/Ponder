@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acquireGlSlot, glSlotsInUse, MAX_GL_SLOTS, releaseGlSlot } from "./glSlots";
+import { acquireFxSlot, acquireGlSlot, glSlotsInUse, MAX_GL_SLOTS, releaseFxSlot, releaseGlSlot } from "./glSlots";
 
 describe("glSlots", () => {
   it("caps live contexts and frees slots on release", () => {
@@ -12,5 +12,16 @@ describe("glSlots", () => {
     expect(acquireGlSlot(ids[2])).toBe(true);
     ids.forEach(releaseGlSlot);
     expect(glSlotsInUse()).toBe(0);
+  });
+});
+
+describe("fx slots", () => {
+  it("caps img-fx contexts separately from the mark slots", () => {
+    const ids = [Symbol("a"), Symbol("b"), Symbol("c")];
+    expect(ids.map(acquireFxSlot)).toEqual([true, true, false]);
+    expect(glSlotsInUse()).toBe(0);
+    releaseFxSlot(ids[0]);
+    expect(acquireFxSlot(ids[2])).toBe(true);
+    ids.forEach(releaseFxSlot);
   });
 });

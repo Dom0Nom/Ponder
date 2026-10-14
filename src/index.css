@@ -324,23 +324,28 @@ body {
 }
 
 :root {
-  --motion-stagger: 40ms;    /* transitions.dev --duration-stagger */
+  --motion-stagger: 60ms;    /* transitions.dev --duration-stagger */
   --motion-micro: 80ms;      /* --duration-micro */
-  --motion-quick: 150ms;     /* --duration-quick: closes, text swap, tooltip in, switch */
+  --motion-quick: 180ms;     /* --duration-quick: closes, text swap, tooltip in, switch */
   --motion-sidebar: 180ms;   /* design SSv2:17-18 ".18s ease" */
-  --motion-panel: 200ms;     /* design SSv2:133 ".2s" (studio, sources, chat card edges) */
-  --motion-fast: 250ms;      /* --duration-fast: opens, icon swap, page slide, accordion, tabs */
-  --motion-medium: 350ms;    /* --duration-medium: checkbox draw */
-  --motion-slow: 400ms;      /* --duration-slow: skeleton reveal, break fade, success check */
-  --motion-emph: 500ms;      /* --duration-very-slow: number pop-in, badge pop, texts reveal */
+  --motion-panel: 260ms;     /* design SSv2:133 ".2s" (studio, sources, chat card edges) */
+  --motion-fast: 320ms;      /* --duration-fast: opens, icon swap, page slide, accordion, tabs */
+  --motion-medium: 420ms;    /* --duration-medium: checkbox draw */
+  --motion-slow: 500ms;      /* --duration-slow: skeleton reveal, break fade, success check */
+  --motion-emph: 640ms;      /* --duration-very-slow: number pop-in, badge pop, texts reveal */
   --motion-ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);   /* --ease-smooth-out */
   --motion-ease-swap: ease-in-out;                        /* --ease-in-out */
   --motion-ease-tip: ease-out;                            /* --ease-out */
   --motion-ease-bounce: cubic-bezier(0.34, 1.36, 0.64, 1);/* --ease-bounce */
   --motion-ease-pop: cubic-bezier(0.34, 1.45, 0.64, 1);   /* number pop-in's own ease */
   --motion-ease-panel: ease;                              /* design's sidebar/studio curve */
-  --motion-blur-sm: 2px;                                  /* --blur-small */
-  --motion-blur-md: 3px;                                  /* --blur-medium */
+  --motion-blur-sm: 3px;                                  /* --blur-small */
+  --motion-blur-md: 4px;                                  /* --blur-medium */
+  --motion-distance-sm: 8px;
+  --motion-distance-md: 14px;
+  --motion-distance-lg: 24px;
+  --motion-press-scale: 0.97;
+  --motion-stagger-cap: 9;
 }
 
 /* markdown in chat + viewer */

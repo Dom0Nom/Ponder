@@ -8,7 +8,7 @@
   --badge-fade-close-dur: 180ms;
   --badge-blur: var(--motion-blur-sm);
   --badge-offset-x: 0px;
-  --badge-offset-y: 4px;
+  --badge-offset-y: 8px;
   --badge-slide-ease: var(--motion-ease-smooth);
   --badge-pop-ease: var(--motion-ease-bounce);
   --badge-close-ease: cubic-bezier(0.4, 0, 0.2, 1);

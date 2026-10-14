@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, useEffect, useRef, useState } from "react";
+import { Fx } from "../../components/fx/Fx";
 import { ArrowUp, Camera, ChevronDown, FileUp, Library, Plus, Square } from "lucide-react";
 import { storedControls } from "../../lib/chat/controls";
 import { runTurn, TurnBusyError } from "../../lib/chat/runner";
@@ -25,6 +26,8 @@ import { ContextMeter } from "./ContextMeter";
 import { compactChat, parseCompactCommand } from "../../lib/chat/compactChat";
 import { api } from "../../lib/ipc";
 import { queryClient, qk, useMessages, useUpdateSpace } from "../../lib/queries";
+
+const WorkBeam = lazy(() => import("../../components/fx/WorkBeam"));
 
 const iconBtn = "flex size-7 shrink-0 items-center justify-center rounded-btn text-fg hover:bg-fill";
 const textBtn = "flex h-7 items-center gap-1.5 rounded-btn px-2.5 font-medium hover:bg-fill";
@@ -154,7 +157,19 @@ export function Composer({
   const off = sources.ready - sources.inChat;
 
   return (
-    <div className={cn("mx-auto rounded-pane border border-control bg-surface transition-colors focus-within:border-fg/40", studioOpen ? "max-w-[654px]" : "max-w-[652px]")}>
+    <div className={cn("relative mx-auto rounded-pane border border-control bg-surface transition-colors focus-within:border-fg/40", studioOpen ? "max-w-[654px]" : "max-w-[652px]")}>
+      {running && (
+        <Fx
+          fallback={null}
+          render={() => (
+            <div aria-hidden className="pointer-events-none absolute inset-0">
+              <WorkBeam active size="line" radius={8}>
+                <div style={{ height: "100%", width: "100%" }} />
+              </WorkBeam>
+            </div>
+          )}
+        />
+      )}
       {voiceOn && <VoiceBar />}
       <textarea
         ref={ref}

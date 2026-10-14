@@ -3,7 +3,7 @@
 :root {
   --panel-open-dur: var(--motion-panel);
   --panel-close-dur: var(--motion-panel);
-  --panel-translate-y: 6px;
+  --panel-translate-y: 14px;
   --panel-blur: 0px;
   --panel-ease: var(--motion-ease-smooth);
 }

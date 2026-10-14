@@ -3,7 +3,7 @@
 :root {
   --page-slide-dur: var(--motion-fast);
   --page-fade-dur: var(--motion-fast);
-  --page-slide-distance: 8px;
+  --page-slide-distance: 24px;
   --page-blur: 0px;
   --page-stagger: 0ms;
   --page-exit-enabled: 1;

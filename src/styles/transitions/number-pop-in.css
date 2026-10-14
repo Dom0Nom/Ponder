@@ -2,8 +2,8 @@
 /* transitions.dev free tier, Transitions.dev License. Modified: :root mapped. */
 :root {
   --digit-dur: var(--motion-emph);
-  --digit-distance: 8px;
-  --digit-stagger: 70ms;
+  --digit-distance: 14px;
+  --digit-stagger: 90ms;
   --digit-blur: var(--motion-blur-sm);
   --digit-ease: var(--motion-ease-pop);
   --digit-dir-x: 0;

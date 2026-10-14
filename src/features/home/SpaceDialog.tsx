@@ -76,6 +76,12 @@ export function SpaceDialog({
     }
   };
 
+  const createButton = (
+    <Button variant="primary" className="px-4" disabled={!name.trim() || busy} onClick={submit}>
+      {space ? s.common.save : s.common.create}
+    </Button>
+  );
+
   return (
     <Dialog
       open={open}
@@ -86,9 +92,7 @@ export function SpaceDialog({
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
             {s.common.cancel}
           </Button>
-          <Button variant="primary" className="px-4" disabled={!name.trim() || busy} onClick={submit}>
-            {space ? s.common.save : s.common.create}
-          </Button>
+          {createButton}
         </>
       }
     >

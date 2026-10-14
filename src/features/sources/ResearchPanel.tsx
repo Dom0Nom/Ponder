@@ -255,7 +255,7 @@ export function ResearchPanel({
               </Button>
             )}
           </div>
-          <ul className="rounded-card border border-border px-3.5" data-testid="research-results">
+          <ul className="m-stagger m-stagger-sm rounded-card border border-border px-3.5" data-testid="research-results">
             {found.map((f, i) => {
               const host = new URL(f.url).hostname.replace(/^www\./, "");
               return (

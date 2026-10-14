@@ -2,7 +2,7 @@
 /* transitions.dev free tier, Transitions.dev License. Modified: a third line (the action button) staggered by 2x; @starting-style so an empty state mounted already shown animates in; exit (.is-hiding) not used; :root mapped. */
 :root {
   --stagger-dur: var(--motion-emph);
-  --stagger-distance: 12px;
+  --stagger-distance: 20px;
   --stagger-stagger: var(--motion-stagger);
   --stagger-blur: var(--motion-blur-md);
   --stagger-ease: var(--motion-ease-smooth);
