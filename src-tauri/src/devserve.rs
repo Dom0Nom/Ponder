@@ -103,7 +103,12 @@ impl Server {
         r.read_exact(&mut body)?;
         let args: Value = serde_json::from_slice(&body).unwrap_or(json!({}));
         let cmd = path.trim_start_matches('/');
-        let out = match self.call(cmd, &args) {
+        let t0 = std::time::Instant::now();
+        let res = self.call(cmd, &args);
+        if std::env::var_os("DEV_SERVE_TIMING").is_some() {
+            eprintln!("{cmd} {} ms", t0.elapsed().as_millis());
+        }
+        let out = match res {
             Ok(v) => json!({ "ok": v }),
             Err(e) => {
                 let e: AppError = e;

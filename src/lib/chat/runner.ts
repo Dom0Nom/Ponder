@@ -10,7 +10,7 @@ import { ThinkingTimer } from "./thinking";
 import type { ModelControls } from "../providers/controls";
 import { extractMemories, isKnownFact } from "./memory";
 import { buildSystemPrompt, describeFocus, historyMessages, threadTitleFrom, type Passage } from "./context";
-import { resolveChatModel, resolveHelperModel, type ResolvedModel } from "./llm";
+import { resolveChatModel, resolveHelperModel, resolveLargeModel, type ResolvedModel } from "./llm";
 import { buildContext, contextMessages, ContextOverflowError, type BuiltContext, type ContextStats } from "../context/build";
 import { mcpServers, mcpToolSet, type McpToolSet } from "../mcp/client";
 
@@ -148,7 +148,7 @@ export async function runTurn(input: TurnInput): Promise<Message> {
 
 async function runTurnInner(input: TurnInput): Promise<Message> {
   const { space, threadId } = input;
-  const llm = input.llm ?? (await resolveChatModel(space));
+  let llm = input.llm ?? (await resolveChatModel(space));
   const store = input.ephemeral ? memoryStore() : persistentStore;
   const invalidate = () => {
     if (!input.ephemeral) queryClient.invalidateQueries({ queryKey: qk.messages(threadId) });
@@ -179,53 +179,85 @@ async function runTurnInner(input: TurnInput): Promise<Message> {
   let ctx: BuiltContext | null = null;
   let retrievalError: string | null = null;
   try {
-    ctx = await buildContext({
-      spaceId: space.id,
-      thread,
-      prior,
-      latest: input.userText ?? input.query ?? "",
-      message: input.userText ?? `[Study buddy event, not typed by the learner] ${input.instruction ?? ""}`.trim(),
-      llm,
-      helper,
-      maxContext: typeof settings.maxContextTokens === "number" ? settings.maxContextTokens : null,
-      instructions: ({ sourceMap, fullText, toolInstruction }) =>
-        buildSystemPrompt({
-          memory: memory.map((m) => m.text),
-          extraInstructions: input.systemExtra,
-          voice: input.voice,
-          space,
-          tutorStyle: input.tutorStyle,
-          passages: [],
-          focus: input.focus,
-          now: Date.now(),
-          sourceCount,
-          sourceMap,
-          fullText,
-          passagesInMessage: true,
-          toolInstruction,
-          focusInMessage: true,
-        }),
-      preface: (() => {
-        const f = describeFocus(input.focus, Date.now());
-        return f ? `[Focus session: ${f}]` : undefined;
-      })(),
-      tools: !input.meta?.buddyKind && !input.voice,
-      plan: !input.voice && !!input.userText,
-      onPhase: (p) => stream0.setPhase(threadId, p),
-      onThread: () => {
-        if (!input.ephemeral) queryClient.invalidateQueries({ queryKey: qk.threads(space.id) });
-      },
-      onActivity: (label) => useChatStream.getState().setActivity(threadId, label),
-      toolLabels: {
-        searching: s.chat.toolSearching,
-        reading: s.chat.toolReading,
-        outline: s.chat.toolOutline,
-        listing: s.chat.toolListing,
-      },
-    });
+    const build = (model: ResolvedModel) =>
+      buildContext({
+        spaceId: space.id,
+        thread,
+        prior,
+        latest: input.userText ?? input.query ?? "",
+        message: input.userText ?? `[Study buddy event, not typed by the learner] ${input.instruction ?? ""}`.trim(),
+        llm: model,
+        helper,
+        maxContext: typeof settings.maxContextTokens === "number" ? settings.maxContextTokens : null,
+        instructions: ({ sourceMap, fullText, toolInstruction }) =>
+          buildSystemPrompt({
+            memory: memory.map((m) => m.text),
+            extraInstructions: input.systemExtra,
+            voice: input.voice,
+            space,
+            tutorStyle: input.tutorStyle,
+            passages: [],
+            focus: input.focus,
+            now: Date.now(),
+            sourceCount,
+            sourceMap,
+            fullText,
+            passagesInMessage: true,
+            toolInstruction,
+            focusInMessage: true,
+          }),
+        preface: (() => {
+          const f = describeFocus(input.focus, Date.now());
+          return f ? `[Focus session: ${f}]` : undefined;
+        })(),
+        tools: !input.meta?.buddyKind && !input.voice,
+        plan: !input.voice && !!input.userText,
+        onPhase: (p) => stream0.setPhase(threadId, p),
+        onThread: () => {
+          if (!input.ephemeral) queryClient.invalidateQueries({ queryKey: qk.threads(space.id) });
+        },
+        onActivity: (label) => useChatStream.getState().setActivity(threadId, label),
+        toolLabels: {
+          searching: s.chat.toolSearching,
+          reading: s.chat.toolReading,
+          outline: s.chat.toolOutline,
+          listing: s.chat.toolListing,
+        },
+      });
+    try {
+      ctx = await build(llm);
+    } catch (e) {
+      const large = e instanceof ContextOverflowError ? await resolveLargeModel(llm) : null;
+      if (!large) throw e;
+      llm = large;
+      ctx = await build(large);
+    }
+    // the material didn't fit: a configured large-context model takes the turn
+    if (ctx.stats.truncated.length && !input.llm) {
+      const large = await resolveLargeModel(llm);
+      if (large) {
+        const bigger = await build(large).catch(() => null);
+        if (bigger && bigger.stats.window > ctx.stats.window) {
+          llm = large;
+          ctx = bigger;
+        }
+      }
+    }
   } catch (e) {
-    if (e instanceof ContextOverflowError) throw e;
-    retrievalError = (e as Error).message;
+    if (!(e instanceof ContextOverflowError)) retrievalError = (e as Error).message;
+    else {
+      // nothing is dropped silently: the turn ends with the reason in the chat
+      const row = await store.addMessage({
+        threadId,
+        role: "assistant",
+        content: "",
+        status: "error",
+        meta: { ...input.meta, tutorStyle: input.tutorStyle, model: { providerId: llm.provider.id, model: llm.modelId } },
+      });
+      const failed = await store.updateMessage(row.id, { status: "error", error: e.message }).catch(() => ({ ...row, error: e.message }) as Message);
+      invalidate();
+      return failed;
+    }
   } finally {
     useChatStream.getState().setPhase(threadId, null);
   }

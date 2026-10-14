@@ -159,33 +159,66 @@ fn chunk_rows(c: &Connection, source_id: &str) -> AppResult<Vec<ChunkRow>> {
     Ok(rows.collect::<Result<_, _>>()?)
 }
 
-/// `text[start..end]` with UTF-16 offsets, plus whether it was cut at `max` chars.
-fn utf16_slice(text: &str, start: usize, end: usize, max: usize) -> (String, bool) {
-    let mut out = String::new();
-    let mut pos = 0usize;
-    let mut n = 0usize;
-    for ch in text.chars() {
-        if pos >= end {
-            break;
-        }
-        if pos >= start {
-            if n >= max {
-                return (out, true);
-            }
-            out.push(ch);
-            n += 1;
-        }
-        pos += ch.len_utf16();
-    }
-    (out, false)
+/// Byte positions of every 4096th UTF-16 unit, so slicing by UTF-16 offsets doesn't rescan the text.
+struct Utf16Index {
+    marks: Vec<(usize, usize)>,
 }
 
-pub fn read_range(c: &Connection, req: &RangeRequest) -> AppResult<SourceRange> {
-    let src = models::get_source(c, &req.source_id)?;
+const MARK: usize = 4096;
+
+impl Utf16Index {
+    fn new(text: &str) -> Self {
+        let mut marks = vec![(0, 0)];
+        let mut u = 0usize;
+        for (b, ch) in text.char_indices() {
+            if u >= marks.len() * MARK {
+                marks.push((u, b));
+            }
+            u += ch.len_utf16();
+        }
+        Self { marks }
+    }
+
+    /// Byte offset of UTF-16 offset `pos` (clamped to the text; inside a surrogate pair rounds up).
+    fn byte(&self, text: &str, pos: usize) -> usize {
+        let (mut u, b0) = self.marks[(pos / MARK).min(self.marks.len() - 1)];
+        for (b, ch) in text[b0..].char_indices() {
+            if u >= pos {
+                return b0 + b;
+            }
+            u += ch.len_utf16();
+        }
+        text.len()
+    }
+}
+
+/// `text[start..end]` with UTF-16 offsets, plus whether it was cut at `max` chars.
+fn slice_indexed(text: &str, idx: &Utf16Index, start: usize, end: usize, max: usize) -> (String, bool) {
+    let a = idx.byte(text, start);
+    let b = idx.byte(text, end.max(start));
+    let s = &text[a..b];
+    match s.char_indices().nth(max) {
+        Some((cut, _)) => (s[..cut].to_string(), true),
+        None => (s.to_string(), false),
+    }
+}
+
+/// Everything a range read needs from one source, loaded once per batch.
+struct Loaded {
+    src: models::Source,
+    text: String,
+    index: Utf16Index,
+    pages: Vec<(i64, i64)>,
+    chunks: Vec<ChunkRow>,
+    text_len: i64,
+}
+
+fn load(c: &Connection, source_id: &str) -> AppResult<Loaded> {
+    let src = models::get_source(c, source_id)?;
     let (text, pages): (String, Option<String>) = c
         .query_row(
             "SELECT text, pages FROM source_texts WHERE source_id = ?1",
-            [&req.source_id],
+            [source_id],
             |r| Ok((r.get(0)?, r.get(1)?)),
         )
         .optional()?
@@ -193,8 +226,25 @@ pub fn read_range(c: &Connection, req: &RangeRequest) -> AppResult<SourceRange> 
     let pages: Vec<(i64, i64)> = pages
         .and_then(|p| serde_json::from_str(&p).ok())
         .unwrap_or_default();
-    let chunks = chunk_rows(c, &req.source_id)?;
+    let chunks = chunk_rows(c, source_id)?;
     let text_len = crate::ingest::chunk::utf16_len(&text) as i64;
+    let index = Utf16Index::new(&text);
+    Ok(Loaded {
+        src,
+        text,
+        index,
+        pages,
+        chunks,
+        text_len,
+    })
+}
+
+pub fn read_range(c: &Connection, req: &RangeRequest) -> AppResult<SourceRange> {
+    read_loaded(&load(c, &req.source_id)?, req)
+}
+
+fn read_loaded(l: &Loaded, req: &RangeRequest) -> AppResult<SourceRange> {
+    let (pages, chunks, text_len) = (&l.pages, &l.chunks, l.text_len);
     let (start, end) = match req.unit.as_str() {
         "all" => (0, text_len),
         "chunk" => {
@@ -226,7 +276,7 @@ pub fn read_range(c: &Connection, req: &RangeRequest) -> AppResult<SourceRange> 
         _ => return Err(invalid("unit must be chunk, page or all")),
     };
     let max = req.max_chars.unwrap_or(MAX_RANGE_CHARS).min(MAX_RANGE_CHARS);
-    let (slice, truncated) = utf16_slice(&text, start as usize, end as usize, max);
+    let (slice, truncated) = slice_indexed(&l.text, &l.index, start as usize, end as usize, max);
     let inside: Vec<&ChunkRow> = chunks
         .iter()
         .filter(|k| k.end > start && k.start < end)
@@ -244,8 +294,8 @@ pub fn read_range(c: &Connection, req: &RangeRequest) -> AppResult<SourceRange> 
         end
     };
     Ok(SourceRange {
-        source_id: src.id,
-        source_title: src.title,
+        source_id: l.src.id.clone(),
+        source_title: l.src.title.clone(),
         chunk_id: inside.first().map(|k| k.id),
         ord_from: inside.first().map(|k| k.ord).unwrap_or(0),
         ord_to: inside
@@ -278,8 +328,16 @@ pub fn read_range(c: &Connection, req: &RangeRequest) -> AppResult<SourceRange> 
 }
 
 pub fn read_ranges(c: &Connection, reqs: &[RangeRequest]) -> Vec<Result<SourceRange, String>> {
+    let mut cache: std::collections::HashMap<String, Result<std::rc::Rc<Loaded>, String>> =
+        Default::default();
     reqs.iter()
-        .map(|r| read_range(c, r).map_err(|e| e.to_string()))
+        .map(|r| {
+            let l = cache
+                .entry(r.source_id.clone())
+                .or_insert_with(|| load(c, &r.source_id).map(std::rc::Rc::new).map_err(|e| e.to_string()))
+                .clone()?;
+            read_loaded(&l, r).map_err(|e| e.to_string())
+        })
         .collect()
 }
 
@@ -838,6 +896,18 @@ mod tests {
             to,
             max_chars: None,
         }
+    }
+
+    #[test]
+    fn utf16_index_finds_byte_offsets_past_its_marks() {
+        let text = format!("{}😀é{}", "a".repeat(5000), "b".repeat(9000));
+        let idx = Utf16Index::new(&text);
+        assert_eq!(idx.byte(&text, 5000), 5000);
+        assert_eq!(idx.byte(&text, 5002), 5004);
+        assert_eq!(idx.byte(&text, 5003), 5006);
+        assert_eq!(idx.byte(&text, 99_999), text.len());
+        assert_eq!(slice_indexed(&text, &idx, 4999, 5004, 99), ("a😀éb".into(), false));
+        assert_eq!(slice_indexed(&text, &idx, 4999, 5004, 2), ("a😀".into(), true));
     }
 
     #[test]

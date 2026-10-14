@@ -195,6 +195,7 @@ interface Run {
   steps: number;
 }
 
+const timing: { id: string; ctxMs: number; firstMs: number; total: number }[] = [];
 const usd = (inT: number, outT: number) => inT * 0.15e-6 + outT * 0.6e-6;
 
 async function runOld(c: Case, prior: Message[]): Promise<Run> {
@@ -247,13 +248,18 @@ async function runNew(c: Case, prior: Message[]): Promise<Run & { compactions: n
     instructions: ({ sourceMap, fullText, toolInstruction }) =>
       buildSystemPrompt({ space: { name: c.space, strictGrounding: false }, tutorStyle: "direct", passages: [], focus: null, now: Date.now(), sourceCount: 1, sourceMap, fullText, passagesInMessage: true, toolInstruction, focusInMessage: true }),
   });
-  const r = await generateText({
+  const ctxMs = Date.now() - t0;
+  let firstMs = 0;
+  const st = streamText({
     model: answerModel.model,
     ...answerModel.options({ thinking: false }),
     system: ctx.system,
     messages: contextMessages(ctx),
     ...(ctx.tools ? { tools: ctx.tools, stopWhen: stepCountIs(8) } : {}),
   });
+  for await (const part of st.fullStream) if (part.type === "text-delta" && !firstMs) firstMs = Date.now() - t0;
+  const r = { text: await st.text, totalUsage: await st.totalUsage, steps: await st.steps };
+  timing.push({ id: c.id, ctxMs, firstMs, total: Date.now() - t0 });
   const cites = ctx.finalCitations();
   return {
     answer: r.text,
@@ -332,6 +338,7 @@ for (const p of pipelines) {
   for (const kind of [...new Set(r.map((x) => x.kind))]) summary[p][`correct.${kind}`] = mean(r.filter((x) => x.kind === kind).map((x) => x.correctness));
 }
 console.log(JSON.stringify(summary, null, 2));
+if (timing.length) console.log("timing (context ms / first token ms / total ms):", timing.map((t) => `${t.id} ${t.ctxMs}/${t.firstMs}/${t.total}`).join(", "));
 writeFileSync(out, JSON.stringify({ at: new Date().toISOString(), model: answerModel.modelId, summary, results }, null, 2));
 server.kill();
 process.exit(0);
