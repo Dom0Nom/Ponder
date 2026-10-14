@@ -234,6 +234,27 @@ const tutor: Task = {
         return { output: t, expect: "Direct answer: stroma, uses ATP and NADPH, cites [2].", checks: [...tutorChecks(t, { lang: "en", maxCite: 2 }), check("cites [2]", t.includes("[2]"))] };
       },
     },
+    ...([
+      ["ar", "أين تحدث دورة كالفن وماذا تحتاج؟", /[\u0600-\u06ff]/g],
+      ["zh-Hans", "卡尔文循环在哪里进行？它需要什么？", /[\u4e00-\u9fff]/g],
+      ["hi", "केल्विन चक्र कहाँ होता है और इसे किसकी ज़रूरत होती है?", /[\u0900-\u097f]/g],
+    ] as [string, string, RegExp][]).map(([code, q, script]) => ({
+      name: `direct ${code} question, English passages`,
+      run: async () => {
+        const t = await tutorTurn({ style: "direct", q, passages: passages.photosynthesis });
+        const letters = t.replace(/\{\{[^}]*\}\}|\[\d+\]|[\s\d\p{P}\p{S}]/gu, "");
+        const share = letters.length ? (t.match(script)?.length ?? 0) / letters.length : 0;
+        return {
+          output: t,
+          expect: `Answers in the learner's language (${code}): stroma, ATP and NADPH, cites [2]. Terms like ATP may stay Latin.`,
+          checks: [
+            check(`mostly ${code} script`, share >= 0.6, share.toFixed(2)),
+            check("valid citations", [...t.matchAll(/\[(\d+)\]/g)].every((m) => Number(m[1]) >= 1 && Number(m[1]) <= 2)),
+            check("cites [2]", t.includes("[2]")),
+          ],
+        };
+      },
+    })),
     {
       name: "socratic EN math",
       run: async () => {
