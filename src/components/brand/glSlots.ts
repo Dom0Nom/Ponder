@@ -15,3 +15,18 @@ export function releaseGlSlot(id: symbol) {
 }
 
 export const glSlotsInUse = () => held.size;
+
+const MAX_FX_SLOTS = 2;
+const fxHeld = new Set<symbol>();
+
+/** Separate cap for Libraries.dev WebGL effects (img-fx); the PonderMark's own slots above are untouched. */
+export function acquireFxSlot(id: symbol): boolean {
+  if (fxHeld.has(id)) return true;
+  if (fxHeld.size >= MAX_FX_SLOTS) return false;
+  fxHeld.add(id);
+  return true;
+}
+
+export function releaseFxSlot(id: symbol) {
+  fxHeld.delete(id);
+}

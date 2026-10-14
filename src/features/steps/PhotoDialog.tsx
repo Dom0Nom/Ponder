@@ -1,6 +1,7 @@
+import { Fx } from "../../components/fx/Fx";
 import { Reveal } from "../../components/motion/Reveal";
 import { ActivityOrb } from "../../components/motion/ActivityOrb";
-import { useEffect, useRef, useState } from "react";
+import { lazy, useEffect, useRef, useState } from "react";
 import { Camera, Image, RotateCcw, X } from "lucide-react";
 import { Dialog } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
@@ -144,6 +145,8 @@ function FileView({ onFile }: { onFile: (f: File) => void }) {
   );
 }
 
+const ImageScan = lazy(() => import("../../components/fx/ImageScan"));
+
 export function PhotoDialog({
   open,
   onOpenChange,
@@ -224,6 +227,8 @@ export function PhotoDialog({
     await queryClient.invalidateQueries({ queryKey: qk.settings });
   };
 
+  const photoImg = photo ? <img src={photo.url} alt={s.steps.photoAlt} className="max-h-72 w-full rounded-card bg-fill-subtle object-contain" data-testid="photo-preview" /> : null;
+
   return (
     <Dialog
       open={open}
@@ -244,7 +249,10 @@ export function PhotoDialog({
       <div className="flex flex-col gap-3.5">
         {photo ? (
           <Reveal className="relative">
-            <img src={photo.url} alt={s.steps.photoAlt} className="max-h-72 w-full rounded-card bg-fill-subtle object-contain" data-testid="photo-preview" />
+            <Fx
+              fallback={photoImg}
+              render={() => <ImageScan reading={reading}>{photoImg}</ImageScan>}
+            />
             <div className="absolute end-2 top-2 flex gap-1">
               <Button size="icon-sm" variant="secondary" className="bg-surface" aria-label={tab === "camera" ? s.steps.retake : s.steps.removeImage} onClick={() => setPhoto(null)}>
                 {tab === "camera" ? <RotateCcw size={14} /> : <X size={14} />}

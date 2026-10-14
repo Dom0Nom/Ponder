@@ -1,5 +1,7 @@
-import { useEffect } from "react";
+import { lazy, useEffect } from "react";
 import { Mic, Pause, Square, Volume2, X } from "lucide-react";
+import { Fx } from "../../components/fx/Fx";
+import { ActivityOrb } from "../../components/motion/ActivityOrb";
 import { PonderMark } from "../../components/brand/PonderMark";
 import { Tooltip } from "../../components/ui/misc";
 import { s } from "../../lib/strings";
@@ -7,12 +9,15 @@ import { useVoice, type VoicePhase } from "../../stores/voice";
 import { cn } from "../../lib/utils";
 import { micPress, stopVoice } from "./tutor";
 
+const VoiceGlow = lazy(() => import("../../components/fx/VoiceGlow"));
+
 const BARS = [0.55, 1, 0.75, 0.9, 0.6];
 
 function Indicator({ phase, level }: { phase: VoicePhase; level: number }) {
   if (phase === "transcribing" || phase === "thinking") return <PonderMark size={26} state="generating" />;
   if (phase === "speaking") return <Volume2 size={20} />;
   if (phase === "paused") return <Pause size={20} />;
+  if (phase === "listening") return <ActivityOrb activity="listen" size={32} />;
   const grow = Math.min(1, level * 12);
   return (
     <span aria-hidden className="flex h-6 w-6 items-center justify-center gap-[2px]">
@@ -45,7 +50,7 @@ export function VoiceBar() {
   const mic = { listening: s.voice.micDone, speaking: s.voice.micInterrupt, paused: s.voice.micResume, transcribing: s.voice.micBusy, thinking: s.voice.micBusy }[phase];
   const busy = phase === "transcribing" || phase === "thinking";
 
-  return (
+  const bar = (
     <div className="flex items-center gap-3 px-3.5 py-3" data-testid="voice-bar" data-phase={phase}>
       <span className="flex size-8 shrink-0 items-center justify-center text-fg">
         <Indicator phase={phase} level={level} />
@@ -79,4 +84,5 @@ export function VoiceBar() {
       </Tooltip>
     </div>
   );
+  return <Fx fallback={bar} render={() => <VoiceGlow>{bar}</VoiceGlow>} />;
 }

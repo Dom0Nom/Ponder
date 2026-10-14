@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { lazy, useMemo, useState } from "react";
+import { Fx } from "../../components/fx/Fx";
 import { AlertCircle, Brain, ChevronRight, FileText, Globe2, Timer } from "lucide-react";
+const BuddyAvatar = lazy(() => import("../../components/fx/BuddyAvatar"));
 import { splitSegments, inferCitations } from "../../lib/chat/citations";
 import { stripMarkers } from "../../lib/chat/followUps";
 import { thoughtLabel, thoughtSeconds } from "../../lib/chat/thinking";
@@ -50,7 +52,7 @@ export function MessageView({
     return (
       <Reveal className="flex justify-center" data-testid="msg-buddy">
         <span className="inline-flex items-center gap-2 rounded-full bg-fill px-3.5 py-1.5 text-label font-medium text-fg-secondary">
-          <Timer size={13} /> {message.content}
+          <Fx fallback={<Timer size={13} />} render={() => <BuddyAvatar size={20} />} /> {message.content}
         </span>
       </Reveal>
     );
