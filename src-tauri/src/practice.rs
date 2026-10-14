@@ -60,6 +60,8 @@ pub struct NewAttempt {
     pub theta_before: f64,
     pub theta_after: f64,
     pub error_type: Option<String>,
+    #[serde(default)]
+    pub confidence: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
@@ -159,15 +161,18 @@ pub fn record_attempt(c: &Connection, space_id: &str, a: &NewAttempt) -> AppResu
             return Err(invalid(format!("Unknown error type: {e}")));
         }
     }
+    if matches!(a.confidence, Some(c) if !(0..=2).contains(&c)) {
+        return Err(invalid("Confidence must be 0, 1 or 2"));
+    }
     if !a.theta_after.is_finite() {
         return Err(invalid("Ability must be a number"));
     }
     let tx = c.unchecked_transaction()?;
     let now = now_ms();
     tx.execute(
-        "INSERT INTO practice_attempts (id, item_id, space_id, topic_key, response, correct, theta_before, theta_after, error_type, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-        params![new_id(), a.item_id, space_id, a.topic_key, a.response, a.correct as i64, a.theta_before, a.theta_after, a.error_type, now],
+        "INSERT INTO practice_attempts (id, item_id, space_id, topic_key, response, correct, theta_before, theta_after, error_type, created_at, confidence)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        params![new_id(), a.item_id, space_id, a.topic_key, a.response, a.correct as i64, a.theta_before, a.theta_after, a.error_type, now, a.confidence],
     )?;
     tx.execute(
         "INSERT INTO abilities (space_id, topic_key, topic_title, theta, n, updated_at) VALUES (?1, ?2, ?3, ?4, 1, ?5)

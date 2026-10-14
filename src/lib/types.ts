@@ -840,6 +840,20 @@ export interface NewAttempt {
   thetaBefore: number;
   thetaAfter: number;
   errorType?: ErrorType | null;
+  confidence?: Confidence | null;
+}
+
+/** 0 guess, 1 unsure, 2 sure */
+export type Confidence = 0 | 1 | 2;
+
+export type MasteryState = "learning" | "retest" | "mastered";
+
+export interface MasteryRow {
+  topicKey: string;
+  state: MasteryState;
+  learnedAt: number;
+  retestDueAt: number | null;
+  passedAt: number | null;
 }
 
 export interface ErrorPattern {
@@ -880,6 +894,7 @@ export interface ReviewRow {
   sourceId: string | null;
   rating: number;
   reviewedAt: number;
+  confidence?: Confidence | null;
 }
 
 export interface FocusRow {
@@ -893,6 +908,7 @@ export interface AttemptRow {
   topicKey: string;
   correct: boolean;
   createdAt: number;
+  confidence?: Confidence | null;
 }
 
 export interface InsightsActivity {

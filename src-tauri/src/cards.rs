@@ -482,9 +482,11 @@ pub async fn card_review(
     card_state: i64,
     duration_ms: Option<i64>,
     log: Option<Value>,
+    confidence: Option<i64>,
 ) -> AppResult<Card> {
-    review_card(
-        &state.db.conn()?,
+    let conn = state.db.conn()?;
+    let card = review_card(
+        &conn,
         &id,
         rating,
         &fsrs,
@@ -492,7 +494,14 @@ pub async fn card_review(
         card_state,
         duration_ms,
         log.as_ref(),
-    )
+    )?;
+    if let Some(conf) = confidence.filter(|c| (0..=2).contains(c)) {
+        conn.execute(
+            "UPDATE review_logs SET confidence=?2 WHERE id=(SELECT MAX(id) FROM review_logs WHERE card_id=?1)",
+            rusqlite::params![id, conf],
+        )?;
+    }
+    Ok(card)
 }
 
 #[tauri::command]

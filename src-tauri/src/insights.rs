@@ -14,6 +14,7 @@ pub struct ReviewRow {
     pub source_id: Option<String>,
     pub rating: i64,
     pub reviewed_at: i64,
+    pub confidence: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
@@ -31,6 +32,7 @@ pub struct AttemptRow {
     pub topic_key: String,
     pub correct: bool,
     pub created_at: i64,
+    pub confidence: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Clone, Default)]
@@ -44,7 +46,7 @@ pub struct Activity {
 /// Everything since `since` (ms), oldest first, for one space or all of them.
 pub fn activity(c: &Connection, space_id: Option<&str>, since: i64) -> AppResult<Activity> {
     let mut st = c.prepare(
-        "SELECT r.card_id, c.space_id, c.source_id, r.rating, r.reviewed_at FROM review_logs r JOIN cards c ON c.id = r.card_id
+        "SELECT r.card_id, c.space_id, c.source_id, r.rating, r.reviewed_at, r.confidence FROM review_logs r JOIN cards c ON c.id = r.card_id
          WHERE (?1 IS NULL OR c.space_id = ?1) AND r.reviewed_at >= ?2 ORDER BY r.reviewed_at, r.id",
     )?;
     let reviews = st
@@ -55,6 +57,7 @@ pub fn activity(c: &Connection, space_id: Option<&str>, since: i64) -> AppResult
                 source_id: r.get(2)?,
                 rating: r.get(3)?,
                 reviewed_at: r.get(4)?,
+                confidence: r.get(5)?,
             })
         })?
         .collect::<Result<_, _>>()?;
@@ -72,7 +75,7 @@ pub fn activity(c: &Connection, space_id: Option<&str>, since: i64) -> AppResult
         })?
         .collect::<Result<_, _>>()?;
     let mut st = c.prepare(
-        "SELECT space_id, topic_key, correct, created_at FROM practice_attempts
+        "SELECT space_id, topic_key, correct, created_at, confidence FROM practice_attempts
          WHERE (?1 IS NULL OR space_id = ?1) AND created_at >= ?2 ORDER BY created_at",
     )?;
     let attempts = st
@@ -82,6 +85,7 @@ pub fn activity(c: &Connection, space_id: Option<&str>, since: i64) -> AppResult
                 topic_key: r.get(1)?,
                 correct: r.get::<_, i64>(2)? != 0,
                 created_at: r.get(3)?,
+                confidence: r.get(4)?,
             })
         })?
         .collect::<Result<_, _>>()?;

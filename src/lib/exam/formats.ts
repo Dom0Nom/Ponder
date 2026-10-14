@@ -14,6 +14,11 @@ export interface ExamSection {
   essayMinutes?: Record<ExamLength, number>;
 }
 
+export interface ExamTier {
+  id: string;
+  min: number;
+}
+
 export interface ExamFormat {
   id: string;
   title: string;
@@ -22,6 +27,10 @@ export interface ExamFormat {
   passMark: number;
   /** scaled score range and passing score, when the exam reports one */
   scale?: { min: number; pass: number; max: number };
+  /** named levels by lowest scaled score, ascending */
+  tiers?: ExamTier[];
+  /** the exam's official practice test, named in the estimate note */
+  officialPractice?: string;
   sections: ExamSection[];
 }
 
@@ -35,6 +44,12 @@ export const GED: ExamFormat = {
   curriculumId: "ged",
   passMark: 0.62,
   scale: { min: 100, pass: 145, max: 200 },
+  tiers: [
+    { id: "pass", min: 145 },
+    { id: "collegeReady", min: 165 },
+    { id: "collegeReadyCredit", min: 175 },
+  ],
+  officialPractice: "GED Ready",
   sections: [
     { id: "math", title: "Mathematical Reasoning", group: "Math", minutes: { short: 30, full: 115 }, questions: { short: 12, full: 46 }, calculator: true },
     {

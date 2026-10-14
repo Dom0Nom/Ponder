@@ -188,8 +188,8 @@ export const api = {
   cardsDue: (spaceId?: string | null, limit?: number) =>
     call<T.Card[]>("cards_due", { spaceId: spaceId ?? null, limit: limit ?? null }),
   cardsDueCounts: () => call<T.DueCount[]>("cards_due_counts"),
-  cardReview: (id: string, rating: number, fsrs: Record<string, unknown>, due: number, cardState: number, durationMs?: number, log?: unknown) =>
-    call<T.Card>("card_review", { id, rating, fsrs, due, cardState, durationMs: durationMs ?? null, log: log ?? null }),
+  cardReview: (id: string, rating: number, fsrs: Record<string, unknown>, due: number, cardState: number, durationMs?: number, log?: unknown, confidence?: T.Confidence | null) =>
+    call<T.Card>("card_review", { id, rating, fsrs, due, cardState, durationMs: durationMs ?? null, log: log ?? null, confidence: confidence ?? null }),
   mistakesAdd: (spaceId: string, items: T.NewMistake[]) => call<T.Mistake[]>("mistakes_add", { spaceId, items }),
   mistakesList: (spaceId?: string | null) => call<T.Mistake[]>("mistakes_list", { spaceId: spaceId ?? null }),
   mistakeSetResolved: (id: string, resolved: boolean) => call<void>("mistake_set_resolved", { id, resolved }),
@@ -230,6 +230,9 @@ export const api = {
   practiceRecent: (spaceId: string, topicKey: string, limit?: number) =>
     call<string[]>("practice_recent", { spaceId, topicKey, limit: limit ?? null }),
   practiceAttempt: (spaceId: string, attempt: T.NewAttempt) => call<T.Ability>("practice_attempt", { spaceId, attempt }),
+  masteryList: (spaceId: string) => call<T.MasteryRow[]>("mastery_list", { spaceId }),
+  masteryUpsert: (spaceId: string, row: T.MasteryRow) => call<null>("mastery_upsert", { spaceId, row }),
+  clockNow: () => call<number>("clock_now"),
   mistakeSetErrorType: (id: string, errorType: T.ErrorType) => call<void>("mistake_set_error_type", { id, errorType }),
   errorPatterns: (spaceId?: string | null) => call<T.ErrorPattern[]>("error_patterns_list", { spaceId: spaceId ?? null }),
 

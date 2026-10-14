@@ -20,6 +20,7 @@ mod icons;
 mod inbox;
 mod ingest;
 mod insights;
+mod mastery;
 mod lan;
 pub mod mcp;
 mod mcp_client;
@@ -196,6 +197,9 @@ pub fn run() {
             practice::practice_item_add,
             practice::practice_recent,
             practice::practice_attempt,
+            mastery::mastery_list,
+            mastery::mastery_upsert,
+            mastery::clock_now,
             practice::mistake_set_error_type,
             practice::error_patterns_list,
             placement::curriculum_get,
