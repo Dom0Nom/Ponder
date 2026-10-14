@@ -1,0 +1,168 @@
+{
+  "de": {
+    "at": "2026-10-14T22:19:32.265Z",
+    "keys": 2067,
+    "of": 2067,
+    "failing": [],
+    "driftChecked": 80,
+    "driftFixed": 2
+  },
+  "pt-BR": {
+    "at": "2026-10-14T22:21:41.658Z",
+    "keys": 2066,
+    "of": 2067,
+    "failing": [
+      "plan.levels.unknown"
+    ],
+    "driftChecked": 80,
+    "driftFixed": 6
+  },
+  "ja": {
+    "at": "2026-10-14T22:21:56.934Z",
+    "keys": 2067,
+    "of": 2067,
+    "failing": [],
+    "driftChecked": 80,
+    "driftFixed": 2
+  },
+  "zh-Hans": {
+    "at": "2026-10-14T22:22:02.417Z",
+    "keys": 2066,
+    "of": 2067,
+    "failing": [
+      "plan.levels.unknown"
+    ],
+    "driftChecked": 80,
+    "driftFixed": 10
+  },
+  "vi": {
+    "at": "2026-10-14T22:22:19.991Z",
+    "keys": 2067,
+    "of": 2067,
+    "failing": [],
+    "driftChecked": 80,
+    "driftFixed": 4
+  },
+  "bn": {
+    "at": "2026-10-14T22:22:25.950Z",
+    "keys": 2067,
+    "of": 2067,
+    "failing": [],
+    "driftChecked": 80,
+    "driftFixed": 4
+  },
+  "tr": {
+    "at": "2026-10-14T22:22:46.087Z",
+    "keys": 2067,
+    "of": 2067,
+    "failing": [],
+    "driftChecked": 80,
+    "driftFixed": 1
+  },
+  "pl": {
+    "at": "2026-10-14T22:22:57.370Z",
+    "keys": 2066,
+    "of": 2067,
+    "failing": [
+      "plan.levels.unknown"
+    ],
+    "driftChecked": 80,
+    "driftFixed": 4
+  },
+  "es": {
+    "at": "2026-10-14T22:23:21.425Z",
+    "keys": 2066,
+    "of": 2067,
+    "failing": [
+      "plan.levels.unknown"
+    ],
+    "driftChecked": 80,
+    "driftFixed": 3
+  },
+  "hi": {
+    "at": "2026-10-14T22:23:39.456Z",
+    "keys": 2067,
+    "of": 2067,
+    "failing": [],
+    "driftChecked": 80,
+    "driftFixed": 0
+  },
+  "zh-Hant": {
+    "at": "2026-10-14T22:23:41.075Z",
+    "keys": 2067,
+    "of": 2067,
+    "failing": [],
+    "driftChecked": 80,
+    "driftFixed": 5
+  },
+  "id": {
+    "at": "2026-10-14T22:23:50.180Z",
+    "keys": 2066,
+    "of": 2067,
+    "failing": [
+      "plan.levels.unknown"
+    ],
+    "driftChecked": 80,
+    "driftFixed": 10
+  },
+  "ko": {
+    "at": "2026-10-14T22:23:50.606Z",
+    "keys": 2066,
+    "of": 2067,
+    "failing": [
+      "plan.levels.unknown"
+    ],
+    "driftChecked": 80,
+    "driftFixed": 10
+  },
+  "fr": {
+    "at": "2026-10-14T22:24:11.634Z",
+    "keys": 2067,
+    "of": 2067,
+    "failing": [],
+    "driftChecked": 80,
+    "driftFixed": 4
+  },
+  "it": {
+    "at": "2026-10-14T22:24:19.011Z",
+    "keys": 2067,
+    "of": 2067,
+    "failing": [],
+    "driftChecked": 80,
+    "driftFixed": 3
+  },
+  "ru": {
+    "at": "2026-10-14T22:24:19.327Z",
+    "keys": 2066,
+    "of": 2067,
+    "failing": [
+      "plan.levels.unknown"
+    ],
+    "driftChecked": 80,
+    "driftFixed": 44
+  },
+  "fa": {
+    "at": "2026-10-14T22:24:34.892Z",
+    "keys": 2067,
+    "of": 2067,
+    "failing": [],
+    "driftChecked": 80,
+    "driftFixed": 7
+  },
+  "ar": {
+    "at": "2026-10-14T22:25:00.997Z",
+    "keys": 2067,
+    "of": 2067,
+    "failing": [],
+    "driftChecked": 80,
+    "driftFixed": 5
+  },
+  "ur": {
+    "at": "2026-10-14T22:26:28.915Z",
+    "keys": 2067,
+    "of": 2067,
+    "failing": [],
+    "driftChecked": 80,
+    "driftFixed": 49
+  }
+}

@@ -2,6 +2,21 @@ import type { TopicRef } from "../types";
 
 export type ExamLength = "short" | "full";
 
+export type FormulaSheetId = "math" | "science";
+
+/** A stretch of a section with its own calculator rule. `questions` omitted = the rest of the section. */
+export interface SectionPart {
+  questions?: number;
+  calculator: boolean;
+}
+
+export interface ResolvedPart {
+  from: number;
+  to: number;
+  calculator: boolean;
+  minutes: number;
+}
+
 export interface ExamSection {
   id: string;
   title: string;
@@ -10,6 +25,10 @@ export interface ExamSection {
   minutes: Record<ExamLength, number>;
   questions: Record<ExamLength, number>;
   calculator: boolean;
+  /** calculator rule per stretch of questions; overrides `calculator` */
+  parts?: SectionPart[];
+  /** reference sheet offered during the section */
+  formulaSheet?: FormulaSheetId;
   /** extended response: minutes inside the section's time */
   essayMinutes?: Record<ExamLength, number>;
 }
@@ -36,7 +55,16 @@ export const GED: ExamFormat = {
   passMark: 0.62,
   scale: { min: 100, pass: 145, max: 200 },
   sections: [
-    { id: "math", title: "Mathematical Reasoning", group: "Math", minutes: { short: 30, full: 115 }, questions: { short: 12, full: 46 }, calculator: true },
+    {
+      id: "math",
+      title: "Mathematical Reasoning",
+      group: "Math",
+      minutes: { short: 30, full: 115 },
+      questions: { short: 12, full: 46 },
+      calculator: true,
+      parts: [{ questions: 5, calculator: false }, { calculator: true }],
+      formulaSheet: "math",
+    },
     {
       id: "rla",
       title: "Reasoning Through Language Arts",
@@ -46,8 +74,8 @@ export const GED: ExamFormat = {
       calculator: false,
       essayMinutes: { short: 25, full: 45 },
     },
-    { id: "science", title: "Science", group: "Science", minutes: { short: 25, full: 90 }, questions: { short: 10, full: 34 }, calculator: true },
-    { id: "social", title: "Social Studies", group: "Social Studies", minutes: { short: 20, full: 70 }, questions: { short: 10, full: 35 }, calculator: false },
+    { id: "science", title: "Science", group: "Science", minutes: { short: 25, full: 90 }, questions: { short: 10, full: 34 }, calculator: true, formulaSheet: "science" },
+    { id: "social", title: "Social Studies", group: "Social Studies", minutes: { short: 20, full: 70 }, questions: { short: 10, full: 35 }, calculator: true },
   ],
 };
 
@@ -119,3 +147,30 @@ export function scaledScore(format: ExamFormat, share: number): number | null {
   const v = x <= format.passMark ? sc.min + (x / format.passMark) * (sc.pass - sc.min) : sc.pass + ((x - format.passMark) / (1 - format.passMark)) * (sc.max - sc.pass);
   return Math.round(v);
 }
+
+/** Question ranges per part; the last part takes whatever the earlier ones leave. */
+export function partRanges(parts: SectionPart[] | undefined, calculator: boolean, total: number): Omit<ResolvedPart, "minutes">[] {
+  if (!parts?.length) return [{ from: 0, to: total, calculator }];
+  let from = 0;
+  return parts.map((p, i) => {
+    const to = i === parts.length - 1 ? total : Math.min(total, from + (p.questions ?? total - from));
+    const r = { from, to, calculator: p.calculator };
+    from = to;
+    return r;
+  });
+}
+
+/** Parts with minutes in proportion to their questions; the last part gets the remainder. */
+export function resolveParts(section: ExamSection, length: ExamLength): ResolvedPart[] {
+  const total = section.questions[length];
+  const minutes = section.minutes[length];
+  const ranges = partRanges(section.parts, section.calculator, total);
+  let left = minutes;
+  return ranges.map((r, i) => {
+    const m = i === ranges.length - 1 ? left : Math.round((minutes * (r.to - r.from)) / total);
+    left -= m;
+    return { ...r, minutes: m };
+  });
+}
+
+export const hasCalculator = (section: ExamSection) => (section.parts ?? [{ calculator: section.calculator }]).some((p) => p.calculator);

@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 import { extractJson } from "../chat/json";
 import type { ResolvedModel } from "../chat/llm";
+import { repairQuestions, type CheckStats, type Solver } from "../quality/answerCheck";
 import type { QuizQuestion, TopicCoverage, TopicLevelValue, TopicRef } from "../types";
 import { languageInstruction } from "../i18n/language";
 import { s } from "../strings";
@@ -48,23 +49,53 @@ export function parseQuiz(text: string, topicIds: string[]): QuizQuestion[] {
 
 export async function generateQuiz(
   llm: ResolvedModel,
-  opts: { topics: TopicRef[]; perTopic: number; context?: string; language?: string | null; purpose: string; signal?: AbortSignal },
+  opts: {
+    topics: TopicRef[];
+    perTopic: number;
+    context?: string;
+    language?: string | null;
+    purpose: string;
+    signal?: AbortSignal;
+    /** when set, each question is solved blind and failures are rewritten once */
+    solver?: Solver | null;
+    stats?: CheckStats;
+  },
 ): Promise<QuizQuestion[]> {
-  const topicList = opts.topics.map((t) => `- id "${t.id}": ${t.title} (${t.description})`).join("\n");
-  const prompt = [
-    `Write a multiple-choice quiz for a learner. Purpose: ${opts.purpose}`,
-    `Topics (write exactly ${opts.perTopic} question${opts.perTopic > 1 ? "s" : ""} per topic, ${opts.perTopic * opts.topics.length} in total, from easy to medium):`,
-    topicList,
-    opts.context ? `Base the questions on this material:\n"""\n${opts.context.slice(0, 9000)}\n"""` : "",
-    "Each question has exactly 4 options, one correct answer (0-based index), and a one-sentence explanation. Questions must be answerable without seeing a picture. Avoid 'all of the above'.",
-    `${languageInstruction(opts.language)} That includes the explanations.`,
-    'Return JSON only: [{"topicId": "…", "question": "…", "options": ["…","…","…","…"], "answer": 0, "explanation": "…"}]',
-  ]
-    .filter(Boolean)
-    .join("\n\n");
-  const r = await generateText({ model: llm.model, prompt, abortSignal: opts.signal, ...llm.options({ thinking: false }) });
-  const quiz = capPerTopic(parseQuiz(r.text, opts.topics.map((t) => t.id)), opts.perTopic);
-  return quiz.map((q) => shuffleOptions(q));
+  const write = async (topics: TopicRef[], per: number) => {
+    const topicList = topics.map((t) => `- id "${t.id}": ${t.title} (${t.description})`).join("\n");
+    const prompt = [
+      `Write a multiple-choice quiz for a learner. Purpose: ${opts.purpose}`,
+      `Topics (write exactly ${per} question${per > 1 ? "s" : ""} per topic, ${per * topics.length} in total, from easy to medium):`,
+      topicList,
+      opts.context ? `Base the questions on this material:\n"""\n${opts.context.slice(0, 9000)}\n"""` : "",
+      "Each question has exactly 4 options, one correct answer (0-based index), and a one-sentence explanation. Questions must be answerable without seeing a picture. Avoid 'all of the above'.",
+      `${languageInstruction(opts.language)} That includes the explanations.`,
+      'Return JSON only: [{"topicId": "…", "question": "…", "options": ["…","…","…","…"], "answer": 0, "explanation": "…"}]',
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    const r = await generateText({ model: llm.model, prompt, abortSignal: opts.signal, ...llm.options({ thinking: false }) });
+    return capPerTopic(parseQuiz(r.text, topics.map((t) => t.id)), per).map((q) => shuffleOptions(q));
+  };
+  const quiz = await write(opts.topics, opts.perTopic);
+  if (!opts.solver) return quiz;
+  return repairQuestions(quiz, {
+    solver: opts.solver,
+    signal: opts.signal,
+    stats: opts.stats,
+    regenerate: async (bad) => {
+      const need = new Map<string | null, number>();
+      for (const q of bad) need.set(q.topicId, (need.get(q.topicId) ?? 0) + 1);
+      const topics = opts.topics.filter((t) => need.has(t.id));
+      const fresh = await write(topics.length ? topics : opts.topics, Math.max(...need.values()));
+      const seen = new Map<string | null, number>();
+      return fresh.filter((q) => {
+        const n = seen.get(q.topicId) ?? 0;
+        seen.set(q.topicId, n + 1);
+        return n < (need.get(q.topicId) ?? 0);
+      });
+    },
+  });
 }
 
 /** Models sometimes write more questions than asked; keep the first `per` for each topic. */

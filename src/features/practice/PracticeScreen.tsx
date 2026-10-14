@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, CircleX, Lightbulb, ListChecks, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowRight, CircleX, Lightbulb, Sigma, ListChecks, TrendingDown, TrendingUp } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { gatherForTask } from "../../lib/context/task";
 import { invalidateCards, qk, useCurriculum, useSpace } from "../../lib/queries";
@@ -11,6 +11,9 @@ import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
 import { levelFor, levelFromTheta, skillPercent, targetDifficulty, updateTheta } from "../../lib/practice/irt";
 import { classifyError, generateProblem, generateVariation, gradeResponse, type Grade, type TopicSpec, type VariationMode } from "../../lib/practice/problems";
 import { curriculumById } from "../../lib/placement/curricula";
+import { resolveSolver } from "../../lib/quality/answerCheck";
+import { practiceSheetFor } from "../../lib/exam/formulas";
+import { FormulaSheet } from "../exam/FormulaSheet";
 import { useUi } from "../../stores/ui";
 import { NumberPop } from "../../components/motion/NumberPop";
 import { Collapse, Reveal } from "../../components/motion/Reveal";
@@ -112,6 +115,8 @@ function Session({
   const [n, setN] = useState(ability?.n ?? 0);
   const [stepsOpen, setStepsOpen] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const sheet = practiceSheetFor(topic.key);
 
   const prefetched = useRef<Promise<PracticeItem> | null>(null);
   const progress = useRef<{
@@ -135,7 +140,7 @@ function Session({
         .catch(() => []),
     ]);
     const context = hits.length ? hits.map((h) => h.text).join("\n\n") : undefined;
-    return api.practiceItemAdd(space.id, await generateProblem(llm, { topic, level: levelFor(targetDifficulty(atTheta)), avoid, context, language: language ?? space.language }));
+    return api.practiceItemAdd(space.id, await generateProblem(llm, { topic, level: levelFor(targetDifficulty(atTheta)), avoid, context, language: language ?? space.language, solver: await resolveSolver(llm, space) }));
   };
 
   const load = async (variation?: VariationMode) => {
@@ -150,7 +155,7 @@ function Session({
     try {
       if (variation && item) {
         const llm = await resolveChatModel(space);
-        setItem(await api.practiceItemAdd(space.id, await generateVariation(llm, item, variation)));
+        setItem(await api.practiceItemAdd(space.id, await generateVariation(llm, item, variation, undefined, await resolveSolver(llm, space))));
       } else {
         setItem(await (pending?.catch(() => makeNext(theta)) ?? makeNext(theta)));
       }
@@ -256,7 +261,12 @@ function Session({
             <span className="text-muted" data-testid="practice-skill">
               {s.practice.problems(n)}
             </span>
-            <Button variant="ghost" size="sm" className="ms-auto" onClick={() => load()} disabled={busy != null}>
+            {sheet && (
+              <Button variant="secondary" size="sm" className="ms-auto" aria-pressed={sheetOpen} onClick={() => setSheetOpen(!sheetOpen)} data-testid="formula-sheet-toggle">
+                <Sigma size={14} /> {s.gedExam.sheet.title}
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" className={sheet ? undefined : "ms-auto"} onClick={() => load()} disabled={busy != null}>
               {s.practice.skip}
             </Button>
           </div>
@@ -388,6 +398,7 @@ function Session({
           )}
         </div>
       </div>
+      {sheet && sheetOpen && <FormulaSheet sheet={sheet} onClose={() => setSheetOpen(false)} />}
       {stepsOpen && item && (
         <div className="w-[340px] flex-none border-s border-border">
           <StepCheckerPanel spaceId={space.id} problem={item.question} expectedAnswer={item.answer} onClose={() => setStepsOpen(false)} />

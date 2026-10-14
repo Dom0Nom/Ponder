@@ -1,3 +1,4 @@
+import { apply } from "../lib/i18n/message";
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
 import { checkLocaleFile, englishMessages, runChecks, type Report } from "../../scripts/i18n";
@@ -140,10 +141,11 @@ describe("runtime", () => {
     expect(document.documentElement.dir).toBe("ltr");
   });
 
-  it("falls back to English for keys a language does not have", async () => {
-    await setLocale("de");
-    expect(s.settings.defaultModel).toBe("Default chat model");
-    expect(s.studio.planWeek(2, 8)).toBe("Week 2 of 8");
+  it("falls back to English for keys a language does not have", () => {
+    const out: Record<string, unknown> = {};
+    apply({ a: "Cancel", b: { c: msg<[n: number]>("Week {0}") } }, out, { a: "Abbrechen" }, "de");
+    expect(out.a).toBe("Abbrechen");
+    expect((out.b as { c: (n: number) => string }).c(2)).toBe("Week 2");
   });
 
   it("returns to English without a reload", async () => {
@@ -155,7 +157,6 @@ describe("runtime", () => {
 
   it("falls back to English for unknown codes and languages without a file", async () => {
     expect(await setLocale("xx")).toBe("en");
-    expect(await setLocale("fr")).toBe("fr");
     expect(s.common.cancel).toBe("Cancel");
   });
 

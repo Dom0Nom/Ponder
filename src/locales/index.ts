@@ -10,7 +10,13 @@ export type Strings = Resolve<typeof en>;
 export const s = {} as Strings;
 apply(en, s, {}, DEFAULT_LOCALE);
 
-const loaders = import.meta.glob<Messages>(["./*.json", "!./en.json"], { import: "default" });
+// scripts run under Bun, which has no import.meta.glob; they only need English
+let loaders: Record<string, () => Promise<Messages>> = {};
+try {
+  loaders = import.meta.glob<Messages>(["./*.json", "!./en.json"], { import: "default" });
+} catch {
+  loaders = {};
+}
 const cache = new Map<string, Messages>();
 let seq = 0;
 

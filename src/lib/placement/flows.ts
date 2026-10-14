@@ -8,6 +8,7 @@ import { useQuiz } from "../../stores/quiz";
 import { useUi } from "../../stores/ui";
 import { useFocusStore } from "../../features/focus/focusStore";
 import { generateQuiz, gradeQuiz, pickPlacementTopics, type TopicResult } from "./logic";
+import { resolveSolver } from "../quality/answerCheck";
 import { curriculumById } from "./curricula";
 import { recordQuizMistakes } from "../srs/mistakes";
 import { s } from "../strings";
@@ -49,6 +50,7 @@ export async function runPlacement(space: Space, curriculum: SpaceCurriculum): P
     const questions = await generateQuiz(llm, {
       topics,
       perTopic: 2,
+      solver: await resolveSolver(llm, space),
       language: lang(curriculum),
       purpose: `placement test for "${curriculum.title}" to estimate what the learner already knows; mix easy and medium questions`,
     });
@@ -97,6 +99,7 @@ export async function startTopic(space: Space, curriculum: SpaceCurriculum, topi
       await generateQuiz(llm, {
         topics: checkTopics,
         perTopic: Math.ceil(3 / checkTopics.length),
+        solver: await resolveSolver(llm, space),
         language: lang(curriculum),
         purpose: `quick check of the prerequisites for "${topic.title}" (${topic.description}); test only what the learner must already know before starting it`,
       })
@@ -154,7 +157,7 @@ export async function checkLesson(space: Space, course: Course, lesson: Lesson):
     const { text } = await api.getSourceText(course.sourceId);
     const chapter = text.slice(lesson.startOffset, lesson.endOffset);
     const topic: TopicRef = { id: lesson.id, title: lesson.title, description: `chapter of ${course.title}`, group: course.title };
-    const questions = (await generateQuiz(llm, { topics: [topic], perTopic: 3, context: chapter, purpose: "check understanding of this chapter", language: space.language })).slice(0, 3);
+    const questions = (await generateQuiz(llm, { topics: [topic], perTopic: 3, context: chapter, purpose: "check understanding of this chapter", language: space.language, solver: await resolveSolver(llm, space) })).slice(0, 3);
     const assessment = await api.assessmentCreate(space.id, "lesson", null, `Lesson: ${lesson.title}`, questions);
     const answers = await quiz.ask(`Check: ${lesson.title}`, questions);
     if (!answers) return null;
