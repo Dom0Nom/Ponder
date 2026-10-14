@@ -249,8 +249,8 @@ export function ClassicCalculator({ globalKeys = false, className }: { globalKey
                   style={{ ...KEY_STYLE[key.kind], border: "1px solid var(--calc-key-border)", boxShadow: state.second && key.id === "2nd" ? "0 0 0 2px var(--calc-key-ring)" : undefined }}
                   data-key={key.id}
                   data-pressed={down === key.id ? "" : undefined}
-                  aria-label={s.classic.keyNames[key.id] ?? label}
-                  title={s.classic.keyNames[key.id] ?? label}
+                  aria-label={s.classic.keyNames[key.id === "." ? "dot" : key.id] ?? label}
+                  title={s.classic.keyNames[key.id === "." ? "dot" : key.id] ?? label}
                   aria-pressed={key.id === "2nd" ? state.second : undefined}
                   onPointerDown={() => setDown(key.id)}
                   onPointerUp={() => setDown(null)}

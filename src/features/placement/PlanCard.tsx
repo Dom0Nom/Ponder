@@ -74,12 +74,12 @@ export function CurriculumPicker({ space, onDone }: { space: Space; onDone?: () 
       <p className="text-muted">{s.plan.pickBody}</p>
       <PanelList inset={14}>
         {CURRICULA.map((c) => (
-          <button key={c.id} disabled={busy} onClick={() => choose(c.id)} className={cn(panelRow, "t-learn h-[42px] w-full gap-2.5 text-left")}>
+          <button key={c.id} disabled={busy} onClick={() => choose(c.id)} className={cn(panelRow, "t-learn h-[42px] w-full gap-2.5 text-start")}>
             <span className="min-w-0 flex-1 truncate font-medium">{c.title}</span>
             <span className="flex-none"><LearnChevron size={14} /></span>
           </button>
         ))}
-        <button onClick={() => setCustom(true)} className={cn(panelRow, "h-[42px] w-full gap-2.5 text-left")}>
+        <button onClick={() => setCustom(true)} className={cn(panelRow, "h-[42px] w-full gap-2.5 text-start")}>
           <Plus size={15} className="flex-none" />
           <span className="min-w-0 flex-1 truncate font-medium">{s.plan.custom}</span>
         </button>
@@ -135,7 +135,7 @@ function CustomCurriculumDialog({
           group: String(t.group ?? "Topics").trim(),
           prereqs: i > 0 ? [`custom.${i}`] : undefined,
         }));
-      if (topics.length < 2) throw new Error("Couldn't find a topic list in that text.");
+      if (topics.length < 2) throw new Error(s.failures.couldnTFindATopic);
       await api.curriculumSet(space.id, "custom", parsed?.title?.trim() || space.name, topics);
       toast.success(s.plan.customSaved(topics.length));
       onOpenChange(false);
@@ -250,7 +250,7 @@ function CoverageMap({ space, curriculum }: { space: Space; curriculum: SpaceCur
               <Menu key={t.id}>
                 <MenuTrigger asChild>
                   <button
-                    className={cn(panelRow, "h-[42px] w-full gap-2.5 text-left")}
+                    className={cn(panelRow, "h-[42px] w-full gap-2.5 text-start")}
                     data-testid="topic-row"
                     data-coverage={cov}
                     title={s.plan.coverage[cov]}

@@ -14,6 +14,7 @@
 }
 @import "katex/dist/katex.min.css";
 @import "./styles/motion.css";
+@import "./styles/rtl.css";
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
@@ -82,7 +83,8 @@
   --sh-dialog: 0 20px 50px rgba(0, 0, 0, 0.2);
   --sh-float: 0 6px 16px rgba(0, 0, 0, 0.18);
   --sh-panel: 8px 0 24px rgba(0, 0, 0, 0.06);
-  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-fallbacks: "IBM Plex Sans Arabic", "IBM Plex Sans Devanagari", "Noto Sans Bengali", "IBM Plex Sans JP", "IBM Plex Sans KR", "Noto Sans SC", "Noto Sans TC";
+  --font-ui: "IBM Plex Sans", var(--font-fallbacks), system-ui, -apple-system, sans-serif;
   --font-math-stack: "STIX Two Text", "Times New Roman", serif;
   --font-kbd-stack: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
   --text-scale: 1;
@@ -165,8 +167,14 @@
 }
 
 [data-font="dyslexic"] {
-  --font-ui: "OpenDyslexic", "IBM Plex Sans", system-ui, sans-serif;
+  --font-ui: "OpenDyslexic", "IBM Plex Sans", var(--font-fallbacks), system-ui, sans-serif;
 }
+
+/* Han characters differ per language, so the matching font goes first */
+:root:lang(zh-Hans) { --font-fallbacks: "Noto Sans SC", "Noto Sans TC", "IBM Plex Sans JP", "IBM Plex Sans KR"; }
+:root:lang(zh-Hant) { --font-fallbacks: "Noto Sans TC", "Noto Sans SC", "IBM Plex Sans JP", "IBM Plex Sans KR"; }
+:root:lang(ja) { --font-fallbacks: "IBM Plex Sans JP", "Noto Sans SC", "Noto Sans TC", "IBM Plex Sans KR"; }
+:root:lang(ko) { --font-fallbacks: "IBM Plex Sans KR", "IBM Plex Sans JP", "Noto Sans SC", "Noto Sans TC"; }
 
 @theme inline {
   --color-chrome: var(--chrome);
@@ -355,8 +363,8 @@ body {
 .prose-chat h1 { font-size: 1.25rem; }
 .prose-chat h2 { font-size: 1.125rem; }
 .prose-chat h3 { font-size: 1rem; }
-.prose-chat ul { list-style: disc; padding-left: 1.4em; }
-.prose-chat ol { list-style: decimal; padding-left: 1.4em; }
+.prose-chat ul { list-style: disc; padding-inline-start: 1.4em; }
+.prose-chat ol { list-style: decimal; padding-inline-start: 1.4em; }
 .prose-chat li + li { margin-top: 0.25em; }
 .prose-chat a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
 .prose-chat code:not(pre code) {
@@ -374,8 +382,8 @@ body {
   font-size: 0.8125rem;
 }
 .prose-chat blockquote {
-  border-left: 3px solid var(--border);
-  padding-left: 0.9em;
+  border-inline-start: 3px solid var(--border);
+  padding-inline-start: 0.9em;
   color: var(--text-muted);
 }
 .prose-chat table { border-collapse: collapse; }

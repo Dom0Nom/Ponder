@@ -73,7 +73,7 @@ export function QuickCaptureDialog() {
       bodyClassName="pb-4"
       footer={
         <>
-          <span className="mr-auto text-caption text-muted">{s.capture.hint}</span>
+          <span className="me-auto text-caption text-muted">{s.capture.hint}</span>
           <Button variant="primary" disabled={!canSave} onClick={save}>
             {saving ? s.sources.importing : s.capture.save}
           </Button>

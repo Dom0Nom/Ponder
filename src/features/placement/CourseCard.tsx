@@ -64,7 +64,7 @@ function CourseBlock({ space, course }: { space: Space; course: Course }) {
           <span className="flex-1 truncate text-input font-semibold">{course.title}</span>
           <Menu>
             <MenuTrigger asChild>
-              <Button variant="ghost-muted" size="icon-sm" className={cn(REVEAL, "absolute right-0 top-1/2 -translate-y-1/2 data-[state=open]:opacity-100")} title={s.course.options} aria-label={s.course.options}>
+              <Button variant="ghost-muted" size="icon-sm" className={cn(REVEAL, "absolute end-0 top-1/2 -translate-y-1/2 data-[state=open]:opacity-100")} title={s.course.options} aria-label={s.course.options}>
                 <Ellipsis size={15} />
               </Button>
             </MenuTrigger>

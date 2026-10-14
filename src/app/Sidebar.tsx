@@ -14,6 +14,8 @@ import { useUi } from "../stores/ui";
 import { SidebarThreadListSlot } from "./SidebarThreadListSlot";
 import { useFullscreen } from "./useFullscreen";
 import { useIsDark } from "./useTheme";
+import { localeInfo } from "../lib/i18n/locales";
+import { useLocale } from "../lib/i18n/state";
 
 function NavItem({
   icon: Icon,
@@ -40,7 +42,7 @@ function NavItem({
       aria-disabled={disabled || undefined}
       onClick={disabled ? undefined : onClick}
       className={cn(
-        "flex h-9 shrink-0 items-center gap-3 whitespace-nowrap rounded-btn px-4 text-left font-medium hover:bg-fill-active aria-[current=page]:font-semibold aria-[current=page]:bg-selected aria-[current=page]:hover:bg-selected",
+        "flex h-9 shrink-0 items-center gap-3 whitespace-nowrap rounded-btn px-4 text-start font-medium hover:bg-fill-active aria-[current=page]:font-semibold aria-[current=page]:bg-selected aria-[current=page]:hover:bg-selected",
         disabled && "opacity-50",
       )}
     >
@@ -63,10 +65,10 @@ function SearchButton() {
   return (
     <button
       onClick={() => setPaletteOpen(true)}
-      className="mb-2 flex h-[34px] shrink-0 cursor-text items-center gap-2 whitespace-nowrap rounded-btn border border-field bg-surface pl-2.5 pr-1.5 text-muted"
+      className="mb-2 flex h-[34px] shrink-0 cursor-text items-center gap-2 whitespace-nowrap rounded-btn border border-field bg-surface ps-2.5 pe-1.5 text-muted"
     >
       <Search size={14} className="text-fg" />
-      <span className="flex-1 text-left">{s.shell.search}</span>
+      <span className="flex-1 text-start">{s.shell.search}</span>
       <Kbd keys={["⌘", "K"]} />
     </button>
   );
@@ -119,7 +121,7 @@ function SidebarBody() {
           </>
         }
       >
-        <Button variant="chrome" size="icon" aria-label={s.common.settings} className="ml-1" onClick={() => navigate({ name: "settings" })}>
+        <Button variant="chrome" size="icon" aria-label={s.common.settings} className="ms-1" onClick={() => navigate({ name: "settings" })}>
           <Settings size={16} />
         </Button>
       </Tooltip>
@@ -167,6 +169,7 @@ export function Sidebar() {
   const open = useUi((st) => st.sidebarOpen);
   const dark = useIsDark();
   const fullscreen = useFullscreen();
+  const rtl = localeInfo(useLocale()).dir === "rtl";
   return (
     <aside
       aria-label={s.shell.sidebar}
@@ -181,7 +184,7 @@ export function Sidebar() {
             aria-label={s.appName}
             className={cn(
               "pointer-events-none absolute inset-0 flex items-center justify-center gap-[7px] transition-transform duration-[var(--motion-slow)] ease-[var(--motion-ease-smooth)]",
-              fullscreen ? "translate-x-0" : "translate-x-[38px]",
+              fullscreen || rtl ? "translate-x-0" : "translate-x-[38px]",
             )}
           >
             <img src={dark ? markDark : markLight} alt="" draggable={false} className="h-[22px] w-auto" />

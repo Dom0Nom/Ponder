@@ -1,7 +1,7 @@
 //! Streaming HTTP proxy for AI calls. Injects provider secrets; the webview never sees them.
 
 use crate::db::models::Provider;
-use crate::error::{invalid, AppError, AppResult};
+use crate::error::{invalid, invalid_key, keyed, AppError, AppResult};
 use crate::oauth::OAuth;
 use crate::secrets::SecretStore;
 use serde::{Deserialize, Serialize};
@@ -174,9 +174,12 @@ pub async fn prepare(
     secrets: &dyn SecretStore,
     oauth: &OAuth,
 ) -> AppResult<Prepared> {
-    let parsed = url::Url::parse(&req.url).map_err(|_| invalid("Invalid URL"))?;
+    let parsed = url::Url::parse(&req.url).map_err(|_| invalid_key("invalidUrl", "Invalid URL"))?;
     if !matches!(parsed.scheme(), "http" | "https") {
-        return Err(invalid("Only http and https URLs are allowed"));
+        return Err(invalid_key(
+            "onlyHttp",
+            "Only http and https URLs are allowed",
+        ));
     }
     let mut headers = strip_auth(&req.headers);
     let mut forbidden_message = None;
@@ -192,10 +195,12 @@ pub async fn prepare(
             } else if let Some(key) = secrets.get(&p.id)? {
                 headers.push(auth_header(t, &key));
             } else if p.kind == "apiKey" {
-                return Err(AppError::Other(format!(
-                    "No API key saved for {}. Add one in Settings.",
-                    p.name
-                )));
+                return Err(keyed(
+                    "other",
+                    "noApiKey",
+                    vec![p.name.clone()],
+                    format!("No API key saved for {}. Add one in Settings.", p.name),
+                ));
             }
         }
     }
@@ -414,10 +419,7 @@ pub async fn fetch_bytes(http: &reqwest::Client, req: Prepared) -> AppResult<Vec
     if let Some(b) = req.body {
         rb = rb.body(b);
     }
-    let resp = rb
-        .send()
-        .await
-        .map_err(|e| AppError::Other(describe_reqwest(&e, &req.url)))?;
+    let resp = rb.send().await.map_err(|e| reqwest_error(&e, &req.url))?;
     let status = resp.status().as_u16();
     if status == 403 {
         if let Some(m) = req.forbidden_message {
@@ -427,13 +429,9 @@ pub async fn fetch_bytes(http: &reqwest::Client, req: Prepared) -> AppResult<Vec
     let bytes = resp
         .bytes()
         .await
-        .map_err(|e| AppError::Other(describe_reqwest(&e, &req.url)))?;
+        .map_err(|e| reqwest_error(&e, &req.url))?;
     if !(200..300).contains(&status) {
-        return Err(AppError::Other(http_error_message(
-            status,
-            &host_of(&req.url),
-            &bytes,
-        )));
+        return Err(http_status_error(status, &host_of(&req.url), &bytes));
     }
     Ok(bytes.to_vec())
 }
@@ -510,6 +508,41 @@ fn root_cause(e: &reqwest::Error) -> String {
     msg
 }
 
+fn reqwest_error(e: &reqwest::Error, url: &str) -> AppError {
+    let host = host_of(url);
+    let message = describe_reqwest(e, url);
+    if e.is_connect() {
+        keyed("other", "cantConnect", vec![host], message)
+    } else if e.is_timeout() {
+        keyed("other", "timeout", vec![host], message)
+    } else {
+        AppError::Other(message)
+    }
+}
+
+fn http_status_error(status: u16, host: &str, body: &[u8]) -> AppError {
+    let message = http_error_message(status, host, body);
+    let detail = message
+        .strip_prefix(&format!("{host} answered {status}"))
+        .map(|rest| rest.trim_start_matches(": ").to_string())
+        .unwrap_or_default();
+    if detail.is_empty() {
+        keyed(
+            "other",
+            "httpStatus",
+            vec![host.into(), status.to_string()],
+            message,
+        )
+    } else {
+        keyed(
+            "other",
+            "httpStatusDetail",
+            vec![host.into(), status.to_string(), detail],
+            message,
+        )
+    }
+}
+
 fn describe_reqwest(e: &reqwest::Error, url: &str) -> String {
     let host = host_of(url);
     if e.is_connect() {
@@ -567,10 +600,13 @@ pub async fn get_text(
     url: &str,
     headers: Option<HashMap<String, String>>,
 ) -> AppResult<FetchedPage> {
-    let parsed =
-        url::Url::parse(url).map_err(|_| invalid("That doesn't look like a web address"))?;
+    let parsed = url::Url::parse(url)
+        .map_err(|_| invalid_key("badWebAddress", "That doesn't look like a web address"))?;
     if !matches!(parsed.scheme(), "http" | "https") {
-        return Err(invalid("Only http and https pages can be fetched"));
+        return Err(invalid_key(
+            "onlyHttpPages",
+            "Only http and https pages can be fetched",
+        ));
     }
     let mut rb = http.get(parsed).header(
         "Accept",
@@ -581,10 +617,7 @@ pub async fn get_text(
             rb = rb.header(k, v);
         }
     }
-    let mut resp = rb
-        .send()
-        .await
-        .map_err(|e| AppError::Other(describe_reqwest(&e, url)))?;
+    let mut resp = rb.send().await.map_err(|e| reqwest_error(&e, url))?;
     let status = resp.status().as_u16();
     let final_url = resp.url().to_string();
     let content_type = resp
@@ -593,13 +626,14 @@ pub async fn get_text(
         .and_then(|v| v.to_str().ok())
         .map(str::to_string);
     let mut buf: Vec<u8> = Vec::new();
-    while let Some(chunk) = resp
-        .chunk()
-        .await
-        .map_err(|e| AppError::Other(describe_reqwest(&e, url)))?
-    {
+    while let Some(chunk) = resp.chunk().await.map_err(|e| reqwest_error(&e, url))? {
         if buf.len() + chunk.len() > PAGE_LIMIT {
-            return Err(AppError::Other("The page is larger than 15 MB".into()));
+            return Err(keyed(
+                "other",
+                "pageTooLarge",
+                Vec::new(),
+                "The page is larger than 15 MB",
+            ));
         }
         buf.extend_from_slice(&chunk);
     }

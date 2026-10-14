@@ -29,10 +29,10 @@ const FIELDS: Record<FocusTechnique, Partial<Record<Field, number>>> = {
 };
 
 const FIELD_LABEL: Record<Field, string> = {
-  workMins: s.focus.workMins,
-  breakMins: s.focus.breakMins,
-  longBreakMins: s.focus.longBreakMins,
-  cyclesBeforeLong: s.focus.cycles,
+  get workMins() { return s.focus.workMins; },
+  get breakMins() { return s.focus.breakMins; },
+  get longBreakMins() { return s.focus.longBreakMins; },
+  get cyclesBeforeLong() { return s.focus.cycles; },
 };
 
 const EDITABLE: FocusTechnique[] = ["timebox", "custom"];
@@ -64,7 +64,7 @@ function StepsButton({
           const n = await generate(goal.trim());
           if (n) onReady(n);
         }}
-        className="-ml-2.25 flex h-7.5 items-center gap-1.5 self-start rounded-btn px-2.25 font-medium hover:bg-fill disabled:opacity-60"
+        className="-ms-2.25 flex h-7.5 items-center gap-1.5 self-start rounded-btn px-2.25 font-medium hover:bg-fill disabled:opacity-60"
       >
         {busy ? <PonderMark size={20} state="generating" /> : <ListChecks size={14} />}
         {busy ? s.focus.micro.generating : s.focus.micro.button}

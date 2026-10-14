@@ -4,6 +4,10 @@ import { useUi, type FontPref, type ThemePref } from "../../stores/ui";
 import { Segmented, Switch } from "../../components/ui/misc";
 import { Slider } from "../../components/ui/slider";
 import { motionReduced, useIsDark, useReducedMotion } from "../../app/useTheme";
+import { NativeSelect } from "./NativeSelect";
+import { LOCALES } from "../../lib/i18n/locales";
+import { useLocale } from "../../lib/i18n/state";
+import { changeLocale } from "../../lib/i18n/init";
 import { ProvidersSection } from "./ProvidersSection";
 import { ModelPicker } from "./ModelPicker";
 import { ResearchSection } from "./ResearchSection";
@@ -57,6 +61,7 @@ function About() {
 
 export function SettingsScreen() {
   const ui = useUi();
+  const locale = useLocale();
   const reduced = useReducedMotion();
   const { data: settings } = useSettings();
   const setSetting = useSetSetting();
@@ -79,6 +84,20 @@ export function SettingsScreen() {
                 onChange={ui.setTheme}
                 options={(["system", "light", "dark"] as const).map((v) => ({ value: v, label: s.settings.themes[v] }))}
               />
+            </SettingsRow>
+            <SettingsRow title={s.settings.language}>
+              <NativeSelect
+                aria-label={s.settings.language}
+                className="w-56"
+                value={locale}
+                onChange={(e) => changeLocale(e.target.value).catch((err) => toastError(s.errors.generic, err))}
+              >
+                {LOCALES.map((l) => (
+                  <option key={l.code} value={l.code} lang={l.code}>
+                    {l.name}
+                  </option>
+                ))}
+              </NativeSelect>
             </SettingsRow>
             <SettingsRow title={s.settings.font}>
               <Segmented<FontPref>

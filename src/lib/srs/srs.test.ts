@@ -38,7 +38,7 @@ describe("fsrs scheduling", () => {
     expect(Object.keys(p)).toHaveLength(4);
     expect(formatInterval(10 * 60_000)).toBe("10m");
     expect(formatInterval(3 * 86_400_000)).toBe("3d");
-    expect(formatInterval(90 * 86_400_000)).toBe("3mo");
+    expect(formatInterval(90 * 86_400_000)).toBe("3 mths");
   });
 });
 

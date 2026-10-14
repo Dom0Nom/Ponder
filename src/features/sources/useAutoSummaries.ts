@@ -6,6 +6,7 @@ import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
 import { summarizeText } from "../../lib/sources/summary";
 import type { Source, Space } from "../../lib/types";
 import { toastError } from "../../components/ui/toast";
+import { s } from "../../lib/strings";
 
 /** Source ids whose summary is queued or being written. */
 export const useSummarizing = create<{ ids: Record<string, true> }>(() => ({ ids: {} }));
@@ -46,7 +47,7 @@ export function useAutoSummaries(space: Space, sources: Source[] | undefined) {
             attempted.delete(src.id);
             return;
           }
-          toastError(`Couldn't summarize “${src.title}”`, e);
+          toastError(s.failures.summarizeFailed(src.title), e);
         } finally {
           setSummarizing(src.id, false);
         }

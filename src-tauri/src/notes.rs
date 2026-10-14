@@ -4,7 +4,7 @@
 //! its text and title are replaced (and re-indexed) on every later save, and it is removed when the toggle
 //! goes off, the body is emptied or the note is deleted.
 use crate::db::{new_id, now_ms};
-use crate::error::{invalid, AppResult};
+use crate::error::{invalid_key, AppResult};
 use crate::ingest::Ingest;
 use crate::AppState;
 use rusqlite::{params, Connection, OptionalExtension};
@@ -167,7 +167,7 @@ pub fn save(c: &Connection, ingest: &Ingest, n: &Note) -> AppResult<Note> {
 /// With `sync` false only the note row is written; the linked source catches up on the next synced save.
 pub fn save_with(c: &Connection, ingest: &Ingest, n: &Note, sync: bool) -> AppResult<Note> {
     if n.space_id.is_empty() {
-        return Err(invalid("A note needs a space"));
+        return Err(invalid_key("noteNeedsSpace", "A note needs a space"));
     }
     let saved = save_row(c, n)?;
     if sync {

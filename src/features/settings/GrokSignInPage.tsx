@@ -58,7 +58,7 @@ export function GrokSignInPage({ providerId }: { providerId: string }) {
         code && (
           <>
             <div className="flex items-center justify-center gap-3 rounded-card bg-fill-subtle p-5">
-              <span aria-label="code" className="text-code font-semibold leading-[1.45] tabular-nums">
+              <span aria-label={s.providers.codeLabel} className="text-code font-semibold leading-[1.45] tabular-nums">
                 {code.userCode}
               </span>
               <Tooltip content={s.providers.copyCode}>

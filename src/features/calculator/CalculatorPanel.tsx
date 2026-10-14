@@ -83,7 +83,7 @@ function useMode() {
 export function CalculatorPanel({ popOut = false }: { popOut?: boolean }) {
   const [mode, setMode] = useMode();
   return (
-    <div className="relative h-full min-h-0" data-testid="calculator-panel" data-mode={mode}>
+    <div dir="ltr" className="relative h-full min-h-0" data-testid="calculator-panel" data-mode={mode}>
       <div className={cn("absolute left-2 top-1 z-10", popOut ? "right-10" : "right-2")}>
         <ModeSwitch mode={mode} onChange={setMode} />
       </div>
@@ -121,7 +121,7 @@ export function CalculatorWindowBody() {
     document.title = s.calc.title;
   }, []);
   return (
-    <div className="flex h-screen flex-col bg-surface" data-testid="calculator-panel" data-mode={mode}>
+    <div dir="ltr" className="flex h-screen flex-col bg-surface" data-testid="calculator-panel" data-mode={mode}>
       <div className="flex h-10 shrink-0 items-center justify-center px-2">
         <ModeSwitch mode={mode} onChange={setMode} />
       </div>

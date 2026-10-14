@@ -4,11 +4,11 @@ import { BarChart3, ChevronDown } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { useCurriculum, useDueCounts, useSpaces } from "../../lib/queries";
 import { s } from "../../lib/strings";
+import { WEEKDAY_DAY, formatPercent, formatClock, formatDate, formatMinutesHuman } from "../../lib/i18n/format";
 import type { InsightsActivity, TopicRef } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import {
   bestStudyTime,
-  clock,
   dailyMinutes,
   forgetFastest,
   prereqDepth,
@@ -49,7 +49,7 @@ export function InsightsScreen({ spaceId }: { spaceId?: string }) {
           <h1 className="text-page font-semibold">{s.insights.title}</h1>
           <Menu>
             <MenuTrigger asChild>
-              <Button variant="secondary" size="sm" className="ml-auto" data-testid="insights-space">
+              <Button variant="secondary" size="sm" className="ms-auto" data-testid="insights-space">
                 {space?.name ?? s.insights.allSpaces}
                 <ChevronDown size={14} className="text-muted" />
               </Button>
@@ -102,8 +102,6 @@ function Section({ title, body, children, testId }: { title: string; body?: stri
   );
 }
 
-const pct = (x: number) => Math.round(x * 100);
-
 function ActivitySections({ a, now, spaceId }: { a: InsightsActivity; now: number; spaceId?: string }) {
   const navigate = useUi((st) => st.navigate);
   const spaces = useSpaces();
@@ -123,10 +121,10 @@ function ActivitySections({ a, now, spaceId }: { a: InsightsActivity; now: numbe
   const otherAcc = others.length ? others.reduce((n, t) => n + t.accuracy * t.answers, 0) / others.reduce((n, t) => n + t.answers, 0) : 0;
   return (
     <>
-      <Section title={s.insights.focusTitle} body={s.insights.focusTotal(total)} testId="insights-focus">
+      <Section title={s.insights.focusTitle} body={s.insights.focusTotal(formatMinutesHuman(total))} testId="insights-focus">
         <div className="flex h-24 items-end gap-1.5" role="img" aria-label={s.insights.focusTitle}>
           {days.map((d) => {
-            const label = new Date(d.day).toLocaleDateString(undefined, { weekday: "short", day: "numeric" });
+            const label = formatDate(d.day, WEEKDAY_DAY);
             return (
               <div key={d.day} className="flex h-full flex-1 flex-col justify-end" title={s.insights.dayMinutes(label, d.minutes)}>
                 <div
@@ -146,9 +144,9 @@ function ActivitySections({ a, now, spaceId }: { a: InsightsActivity; now: numbe
               <div key={b.label} className="grid grid-cols-[88px_1fr_88px] items-center gap-3">
                 <span className="text-muted">{b.label}</span>
                 <div className="h-2 overflow-hidden rounded-full bg-fill">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${pct(b.recall)}%` }} />
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${Math.round(b.recall * 100)}%` }} />
                 </div>
-                <span className="text-right tabular-nums text-fg-secondary">{s.insights.recalled(pct(b.recall), b.n)}</span>
+                <span className="text-end tabular-nums text-fg-secondary">{s.insights.recalled(b.recall, b.n)}</span>
               </div>
             ))}
           </div>
@@ -156,7 +154,7 @@ function ActivitySections({ a, now, spaceId }: { a: InsightsActivity; now: numbe
           <p className="text-muted">{s.insights.retentionEmpty}</p>
         )}
         {forget.length > 1 && spaceName.get(forget[0].key) && (
-          <p className="text-fg-secondary">{s.insights.forgetFastest(spaceName.get(forget[0].key)!, pct(forget[0].lapseRate))}</p>
+          <p className="text-fg-secondary">{s.insights.forgetFastest(spaceName.get(forget[0].key)!, forget[0].lapseRate)}</p>
         )}
       </Section>
 
@@ -169,19 +167,19 @@ function ActivitySections({ a, now, spaceId }: { a: InsightsActivity; now: numbe
             >
               <span className="font-semibold capitalize">{s.insights.parts[t.part]}</span>
               <span className="text-label text-muted">{s.insights.partHours[t.part]}</span>
-              <span className="mt-1 text-title-sm font-semibold tabular-nums">{t.answers ? `${pct(t.accuracy)}%` : "–"}</span>
+              <span className="mt-1 text-title-sm font-semibold tabular-nums">{t.answers ? formatPercent(t.accuracy) : "–"}</span>
               <span className="text-label text-muted">{s.insights.answers(t.answers)}</span>
             </div>
           ))}
         </div>
         <p className="text-fg-secondary">
-          {best ? s.insights.timeBest(s.insights.parts[best.part], pct(best.accuracy), pct(otherAcc)) : s.insights.timeUnknown}
+          {best ? s.insights.timeBest(s.insights.parts[best.part], best.accuracy, otherAcc) : s.insights.timeUnknown}
         </p>
       </Section>
 
       {sleep && end != null && (
         <Section title={s.insights.sleepTitle} testId="insights-sleep">
-          <p className="text-fg-secondary">{s.insights.sleepBody(clock(end), clock(sleep.at), sleep.cards)}</p>
+          <p className="text-fg-secondary">{s.insights.sleepBody(formatClock(end), formatClock(sleep.at), sleep.cards)}</p>
           <Button size="sm" className="self-start" onClick={() => navigate({ name: "review", spaceId })}>
             {s.insights.sleepReview}
           </Button>
@@ -307,10 +305,10 @@ function MasteryMap({ spaceId, topics, mastery }: { spaceId: string; topics: Top
                       type="button"
                       data-topic={t.id}
                       data-tone={tone}
-                      title={s.insights.topicTip(t.title, s.insights.level[tone], m?.p == null ? null : pct(m.p))}
+                      title={m?.p == null ? s.insights.topicTip(t.title, s.insights.level[tone]) : s.insights.topicTipPct(t.title, s.insights.level[tone], m.p)}
                       onClick={() => navigate({ name: "practice", spaceId, topicKey: t.id, topicTitle: t.title })}
                       className={cn(
-                        "relative rounded-item border px-2.5 py-1.5 text-left text-label font-medium leading-snug transition-colors hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-ring",
+                        "relative rounded-item border px-2.5 py-1.5 text-start text-label font-medium leading-snug transition-colors hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-ring",
                         TONE[tone],
                       )}
                     >
@@ -351,8 +349,8 @@ function Readiness({ topics, mastery, passMark, examSpaceId }: { topics: TopicRe
               <span className="w-40 shrink-0 font-semibold">{g}</span>
               {r ? (
                 <span className="flex flex-1 flex-wrap gap-x-2 text-fg-secondary">
-                  {passMark != null && <span className="font-semibold text-fg tabular-nums">{s.insights.readinessPass(pct(r.pass))}</span>}
-                  <span className="tabular-nums">{s.insights.readinessExpected(pct(r.expected))}</span>
+                  {passMark != null && <span className="font-semibold text-fg tabular-nums">{s.insights.readinessPass(r.pass)}</span>}
+                  <span className="tabular-nums">{s.insights.readinessExpected(r.expected)}</span>
                   <span className="text-muted">{s.insights.readinessBasis(r.known, r.total)}</span>
                 </span>
               ) : (

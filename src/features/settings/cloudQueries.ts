@@ -36,7 +36,7 @@ export function statusPill(st: CloudStatus | undefined): { tone: Tone; label: st
   if (!st.configured) return { tone: "muted", label: s.cloud.status.notConfigured };
   switch (st.state) {
     case "signedIn":
-      return { tone: "ok", label: s.cloud.status.signedIn(st.account) };
+      return { tone: "ok", label: st.account ? s.cloud.status.signedInAs(st.account) : s.cloud.status.signedIn };
     case "pending":
       return { tone: "pending", label: s.cloud.status.pending };
     case "error":

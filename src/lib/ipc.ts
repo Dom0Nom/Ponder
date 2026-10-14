@@ -1,13 +1,27 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { s } from "./strings";
 import type * as T from "./types";
+
+/** The translated text for an error that carries a message key, else the English message from Rust. */
+export function localizedError(e: T.AppError): string {
+  const entry = e.key ? (s.errors as Record<string, unknown>)[e.key] : undefined;
+  if (typeof entry === "function") {
+    const params = e.params ?? [];
+    if (e.key === "notFound") return String(entry(s.errors.things[params[0]] ?? params[0]));
+    return String(entry(...params));
+  }
+  if (typeof entry === "string") return entry;
+  return String(e.message);
+}
 
 /** Normalizes anything thrown by invoke into an Error with a readable message. */
 export function toError(e: unknown): Error {
   if (e instanceof Error) return e;
   if (e && typeof e === "object" && "message" in e) {
-    const err = new Error(String((e as T.AppError).message));
-    (err as Error & { code?: string }).code = (e as T.AppError).code;
+    const app = e as T.AppError;
+    const err = new Error(localizedError(app));
+    (err as Error & { code?: string }).code = app.code;
     return err;
   }
   return new Error(String(e));
@@ -133,6 +147,7 @@ export const api = {
   // settings
   getSettings: () => call<Record<string, unknown>>("get_settings"),
   setSetting: (key: string, value: unknown) => call<void>("set_setting", { key, value }),
+  setLocale: (locale: string) => call<void>("set_locale", { locale }),
 
   // placement
   topicCoverage: (spaceId: string, topics: { id: string; text: string }[]) =>
@@ -334,6 +349,7 @@ export const events = {
   backupUpdated: (cb: () => void) => listen("backup://updated", () => cb()),
   deeplinkPending: (cb: () => void) => listen("deeplink://pending", () => cb()),
   inboxChanged: (cb: () => void) => listen("inbox://changed", () => cb()),
+  localeChanged: (cb: (locale: string) => void) => listen<string>("locale://changed", (e) => cb(e.payload)),
 };
 
 export type { UnlistenFn };

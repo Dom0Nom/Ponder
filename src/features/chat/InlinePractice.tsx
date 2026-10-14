@@ -163,14 +163,14 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
   if (isDone(meta)) {
     return (
       <div className="overflow-hidden rounded-card border border-field bg-surface" data-testid="inline-practice">
-        <div className="flex items-center gap-2.5 py-2.5 pl-4 pr-3">
+        <div className="flex items-center gap-2.5 py-2.5 ps-4 pe-3">
           <span className="font-semibold">{s.practice.inlineTitle}</span>
           <Dashes meta={meta} />
           <span className="font-medium text-muted" data-testid="inline-practice-done">
             {s.practice.inlineDone(rightCount(meta), meta.total)}
           </span>
           <button
-            className={cn(headBtn, "ml-auto")}
+            className={cn(headBtn, "ms-auto")}
             onClick={() => navigate({ name: "practice", spaceId: space.id, topicKey: meta.topicKey, topicTitle: meta.topicTitle })}
           >
             {s.practice.keepPracticing} <ArrowRight size={13} />
@@ -185,16 +185,16 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
 
   return (
     <div className="overflow-hidden rounded-card border border-field bg-surface" data-testid="inline-practice">
-      <div className="flex items-center gap-2.5 border-b border-divider py-2.5 pl-4 pr-3">
+      <div className="flex items-center gap-2.5 border-b border-divider py-2.5 ps-4 pe-3">
         <span className="font-semibold">{s.practice.inlineTitle}</span>
         <Dashes meta={meta} />
         <span className="font-medium text-muted">{s.practice.inlineProgress(meta.index + 1, meta.total || INLINE_TOTAL)}</span>
         {item?.hint && (
-          <button className={cn(headBtn, "ml-auto", hintOpen && "bg-fill-active")} aria-pressed={hintOpen} onClick={() => setHintOpen(!hintOpen)}>
+          <button className={cn(headBtn, "ms-auto", hintOpen && "bg-fill-active")} aria-pressed={hintOpen} onClick={() => setHintOpen(!hintOpen)}>
             <Lightbulb size={13} /> {s.practice.hint}
           </button>
         )}
-        <button className={cn(headBtn, !item?.hint && "ml-auto")} disabled={busy === "next"} onClick={() => goNext("skipped")}>
+        <button className={cn(headBtn, !item?.hint && "ms-auto")} disabled={busy === "next"} onClick={() => goNext("skipped")}>
           {s.practice.skip}
         </button>
       </div>
@@ -235,7 +235,7 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
                   onClick={() => setResponse(String(i))}
                   {...(checked && !correct && response === String(i) ? shake.props : {})}
                   className={cn(
-                    "flex min-h-9 items-center rounded-btn border px-3 text-left text-input",
+                    "flex min-h-9 items-center rounded-btn border px-3 text-start text-input",
                     shake.cls(checked && !correct && response === String(i)),
                     checked && String(i) === item.answer
                       ? "border-success"
@@ -301,7 +301,7 @@ export function InlinePractice({ message, space }: { message: Message; space: Sp
         <Reveal
           data-testid="inline-practice-result"
           className={cn(
-            "flex items-center gap-3 border-t py-3 pl-4 pr-3",
+            "flex items-center gap-3 border-t py-3 ps-4 pe-3",
             correct ? "border-success-border bg-success-soft" : "border-danger-border bg-danger-soft",
           )}
         >

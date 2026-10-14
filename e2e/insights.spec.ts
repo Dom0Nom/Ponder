@@ -52,7 +52,7 @@ test("insights: empty state, then charts, best time, mastery map and readiness f
   });
   await app.evaluate(() => (window as any).__qc.invalidateQueries());
 
-  await expect(page.getByTestId("insights-focus")).toContainText("2 h 0 min in total");
+  await expect(page.getByTestId("insights-focus")).toContainText("2 hr in total");
   await expect(page.getByTestId("insights-retention")).toContainText("3–7 days");
   await expect(page.getByTestId("insights-retention")).toContainText("75% of 8");
   await expect(page.getByTestId("insights-time")).toContainText("You answer most accurately in the morning: 89%, against 50%");

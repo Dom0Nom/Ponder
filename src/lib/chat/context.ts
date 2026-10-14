@@ -2,6 +2,7 @@ import type { FocusState, Message, Space, TutorStyle } from "../types";
 import { FOLLOWUP_INSTRUCTION } from "./followUps";
 import { MEMORY_INSTRUCTION } from "./memory";
 import { toHistory, usableMessages } from "../context/history";
+import { languageInstruction } from "../i18n/language";
 
 export interface Passage {
   n: number;
@@ -25,7 +26,7 @@ export const VOICE_INSTRUCTION =
 export interface ContextInput {
   /** the answer is read aloud to a learner who is talking */
   voice?: boolean;
-  space: Pick<Space, "name" | "strictGrounding">;
+  space: Pick<Space, "name" | "strictGrounding"> & { language?: string | null };
   tutorStyle: TutorStyle;
   passages: Passage[];
   focus: FocusState | null;
@@ -87,7 +88,7 @@ export function buildSystemPrompt(input: ContextInput): string {
   const { space, passages } = input;
   const parts: string[] = [];
   parts.push(
-    `You are a patient, encouraging study tutor inside a learning app. The learner is studying in the space "${space.name}". Reply in the language the learner writes in. Use Markdown; use LaTeX ($...$, $$...$$) for math. Respond to the content directly: no opening praise like "Great question", no emoji, no filler.`,
+    `You are a patient, encouraging study tutor inside a learning app. The learner is studying in the space "${space.name}". ${languageInstruction(space.language)} Use Markdown; use LaTeX ($...$, $$...$$) for math. Respond to the content directly: no opening praise like "Great question", no emoji, no filler.`,
   );
   parts.push(TUTOR[input.tutorStyle]);
   if (input.memory?.length) {

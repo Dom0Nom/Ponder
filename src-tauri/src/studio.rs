@@ -145,6 +145,7 @@ pub async fn export_file(
         .dialog()
         .file()
         .set_parent(&window)
+        .set_title(crate::i18n::t("native.dialog.exportFile"))
         .set_file_name(format!("{}.{ext}", safe_name(&name)))
         .add_filter(ext.to_uppercase(), &[ext.as_str()])
         .blocking_save_file();

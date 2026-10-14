@@ -3,6 +3,7 @@ import { s } from "../strings";
 import type { ResolvedModel } from "../chat/llm";
 import type { SnipImage } from "../types";
 import type { ImageInput } from "../steps/vision";
+import { DATE_MEDIUM, formatDate } from "../i18n/format";
 
 export const SNIP_SOURCE_PROMPT = [
   "Describe this screenshot as study material so it can be searched later.",
@@ -26,7 +27,7 @@ export function parseSnipSource(text: string, now = new Date()): { title: string
     .split("\n")
     .map((l) => l.replace(/^#{1,6}\s+/, "").replace(/^["'“”]+|["'“”]+$/g, "").trim())
     .find(Boolean);
-  const date = now.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  const date = formatDate(now, DATE_MEDIUM);
   const title = first && first.length <= 80 ? first : s.ask.sourceTitleFallback(date);
   return { title, body };
 }

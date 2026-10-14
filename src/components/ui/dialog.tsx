@@ -48,7 +48,7 @@ export function Dialog({
             )}
             style={style}
           >
-            <div className="flex items-start pb-1 pl-5 pr-4 pt-4">
+            <div className="flex items-start pb-1 ps-5 pe-4 pt-4">
               <div className="min-w-0 flex-1">
                 <D.Title className="text-title font-semibold">{title}</D.Title>
                 {description ? (

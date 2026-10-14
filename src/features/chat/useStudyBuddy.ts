@@ -23,7 +23,7 @@ async function threadFor(spaceId: string): Promise<string> {
   const threads = await api.listThreads(spaceId);
   const active = pickActiveThread(threads, ui.activeThread[spaceId]);
   if (active) return active.id;
-  const t = await api.createThread(spaceId, "Focus session");
+  const t = await api.createThread(spaceId, strings.failures.focusThread);
   ui.setActiveThread(spaceId, t.id);
   queryClient.invalidateQueries({ queryKey: qk.threads(spaceId) });
   return t.id;
@@ -123,7 +123,7 @@ async function handle(ev: BuddyEvent, prefs: FocusPrefs) {
   if (ev.kind === "session-summary") {
     const p = ev.previous;
     const stats = p
-      ? `${formatShortMinutes(p.totalFocusMs)} focused${p.pauseCount ? `, ${strings.focus.pauses(p.pauseCount)}` : ""}.`
+      ? [strings.focus.focusedShort(formatShortMinutes(p.totalFocusMs)), p.pauseCount ? strings.focus.pauses(p.pauseCount) : null].filter(Boolean).join(", ") + "."
       : "";
     const clean = content
       .replaceAll("{{general}}", "")
@@ -133,7 +133,7 @@ async function handle(ev: BuddyEvent, prefs: FocusPrefs) {
     const body = [stats, clean].filter(Boolean).join(" ");
     const threadTitle = (await api.listThreads(spaceId).catch(() => [])).find((x) => x.id === threadId)?.title;
     const title = p?.goal?.trim() || (threadTitle && threadTitle !== "New chat" ? threadTitle : "") || strings.focus.sessionTitle;
-    await api.addJournal(spaceId, "session-summary", title, body || "Session ended.");
+    await api.addJournal(spaceId, "session-summary", title, body || strings.failures.sessionEnded);
     await api.focusSetSummary(ev.sessionId, body).catch(() => {});
     queryClient.invalidateQueries({ queryKey: qk.journal(spaceId) });
     queryClient.invalidateQueries({ queryKey: ["focusHistory"] });
@@ -154,7 +154,7 @@ export function useStudyBuddy() {
       const r = stepBuddy(state, s.state, optionsOf(prefsRef.current));
       state = r.state;
       for (const ev of r.events) {
-        chain = chain.then(() => handle(ev, prefsRef.current)).catch((e) => toastError("Study buddy couldn't post", e));
+        chain = chain.then(() => handle(ev, prefsRef.current)).catch((e) => toastError(strings.failures.studyBuddyFailed, e));
       }
     });
     // initialize from the backend's current session so a UI reload doesn't re-announce anything

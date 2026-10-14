@@ -11,6 +11,13 @@
         "@ai-sdk/openai-compatible": "^3.0.63",
         "@ai-sdk/xai": "^5.0.15",
         "@fontsource/ibm-plex-sans": "5",
+        "@fontsource/ibm-plex-sans-arabic": "^5.3.0",
+        "@fontsource/ibm-plex-sans-devanagari": "^5.3.0",
+        "@fontsource/ibm-plex-sans-jp": "^5.3.1",
+        "@fontsource/ibm-plex-sans-kr": "^5.3.0",
+        "@fontsource/noto-sans-bengali": "^5.3.0",
+        "@fontsource/noto-sans-sc": "^5.3.1",
+        "@fontsource/noto-sans-tc": "^5.3.1",
         "@fontsource/opendyslexic": "^5.3.0",
         "@mozilla/readability": "^0.6.0",
         "@paper-design/shaders-react": "0.0.81",
@@ -142,6 +149,20 @@
     "@floating-ui/utils": ["@floating-ui/utils@0.2.12", "", {}, "sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww=="],
 
     "@fontsource/ibm-plex-sans": ["@fontsource/ibm-plex-sans@5.3.0", "", {}, "sha512-CbE4CbbEEZJX860XyUiRpsksXIQR8Rp2XDva2VO53NJox9tVNtusrysd2x5YkUEY3ErQ66W1IiiQL8/wihhw5w=="],
+
+    "@fontsource/ibm-plex-sans-arabic": ["@fontsource/ibm-plex-sans-arabic@5.3.0", "", {}, "sha512-ZZ4g+JDgQY0NqSh4o0MNWU1sHQmtcee1g++aKAwyJvZxnT5y51JXsN1cIXnaQaMd40dcbK6QFYa+Z1LbaiNuqA=="],
+
+    "@fontsource/ibm-plex-sans-devanagari": ["@fontsource/ibm-plex-sans-devanagari@5.3.0", "", {}, "sha512-jPhKEfsF4bYClUBD/AG9NoYs7Zk+iBDvFn5oncQ3u6H8osnQstjY4kOrKqkT7ym7X4MjVn7LDISrloSwrBVPww=="],
+
+    "@fontsource/ibm-plex-sans-jp": ["@fontsource/ibm-plex-sans-jp@5.3.1", "", {}, "sha512-lFejXBGcWN/htaffKJryghb/zd2WKwFKyJWJRTcRP57/HUAGEdjNHI0UtIUN8pv4A5F9hPBxZ0dY8oILd88xIA=="],
+
+    "@fontsource/ibm-plex-sans-kr": ["@fontsource/ibm-plex-sans-kr@5.3.0", "", {}, "sha512-Malq1TQAnpPHASG76fAthnCY0E41py2r7pZ5JEjgmGfA5tVGz7gwBfvrkhPvT3ZmyMobQrJakHhKZVuXQp7FjQ=="],
+
+    "@fontsource/noto-sans-bengali": ["@fontsource/noto-sans-bengali@5.3.0", "", {}, "sha512-EFBMU0UvzyFSc1ERK369zfqEu6DMRuWmCQ2+2ahhQTQAIDPEyN1UYlQdQeFkheu2DWG2hfdwrhiLlGFl2sSr/A=="],
+
+    "@fontsource/noto-sans-sc": ["@fontsource/noto-sans-sc@5.3.1", "", {}, "sha512-YxZ/VWAWo9FWzH08Q6fGTzIW6vYNP2TMhUFCnfhlimbhdXnWrxJLrzX3KWt2FKnV0s8XiM5vjpGHQiyFRlTj0w=="],
+
+    "@fontsource/noto-sans-tc": ["@fontsource/noto-sans-tc@5.3.1", "", {}, "sha512-kiOTKRnkEV4dsMqfmIuH3TnkYp5Rqq2f4LgAArx0Y5eVzCebU2TgWup5TWCWWSk28nBf4mgunLTyQP+xQ74gcQ=="],
 
     "@fontsource/opendyslexic": ["@fontsource/opendyslexic@5.3.0", "", {}, "sha512-BVYIW/ghc1U2iAghhYTN+GFWiZ3lnCy8Jf2KkZC23aHQHBNcMqKT718zckfqVxRx4qsXJmIMPWvczirRuhmtsg=="],
 

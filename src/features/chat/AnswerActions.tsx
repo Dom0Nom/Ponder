@@ -30,7 +30,7 @@ function SourcesPopover({ citations, spaceId }: { citations: Citation[]; spaceId
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
-        <button className={`${actionTextBtn} ml-auto text-fg-secondary`}>
+        <button className={`${actionTextBtn} ms-auto text-fg-secondary`}>
           <Library size={13} /> {s.chat.sourcesCount(count)}
         </button>
       </Popover.Trigger>
@@ -51,11 +51,11 @@ function SourcesPopover({ citations, spaceId }: { citations: Citation[]; spaceId
                   openViewer({ sourceId: c.sourceId, start: c.start, end: c.end });
                   setOpen(false);
                 }}
-                className="flex h-8 w-full items-center gap-2 rounded-item px-2 text-left hover:bg-fill"
+                className="flex h-8 w-full items-center gap-2 rounded-item px-2 text-start hover:bg-fill"
               >
                 <Icon size={14} className="shrink-0" />
                 <span className="min-w-0 flex-1 truncate font-medium">{c.sourceTitle}</span>
-                {c.page != null && <span className="shrink-0 text-muted">p. {c.page}</span>}
+                {c.page != null && <span className="shrink-0 text-muted">{s.chat.pageShort(c.page)}</span>}
               </button>
             );
           })}
@@ -111,7 +111,7 @@ export function AnswerActions({ message, space, content }: { message: Message; s
   };
 
   return (
-    <div className="-ml-1.5 flex items-center gap-0.5 text-caption" data-testid="answer-actions">
+    <div className="-ms-1.5 flex items-center gap-0.5 text-caption" data-testid="answer-actions">
       <ActionTipGroup className="gap-0.5">
         <button
           aria-label={s.common.copy}

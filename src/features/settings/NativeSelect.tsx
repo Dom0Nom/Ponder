@@ -7,11 +7,11 @@ export function NativeSelect({ className, children, ...props }: SelectHTMLAttrib
     <div className={cn("relative", className)}>
       <select
         {...props}
-        className="h-9 w-full appearance-none truncate rounded-control border border-control bg-surface pl-3 pr-8 text-input text-fg transition-colors focus:border-fg focus:outline-none disabled:opacity-60"
+        className="h-9 w-full appearance-none truncate rounded-control border border-control bg-surface ps-3 pe-8 text-input text-fg transition-colors focus:border-fg focus:outline-none disabled:opacity-60"
       >
         {children}
       </select>
-      <ChevronsUpDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
+      <ChevronsUpDown size={14} className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
     </div>
   );
 }

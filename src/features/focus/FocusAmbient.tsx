@@ -23,7 +23,7 @@ export function FocusAmbient() {
   useEffect(() => () => player.current?.close(), []);
 
   useEffect(() => {
-    const un = events.focusDistraction((n) => toast(s.distraction.nudge(n.app.name, n.remainingMs)));
+    const un = events.focusDistraction((n) => toast(n.remainingMs != null && n.remainingMs > 0 ? s.distraction.nudgeLeft(n.app.name, Math.max(1, Math.round(n.remainingMs / 60000))) : s.distraction.nudge(n.app.name)));
     return () => void un.then((f) => f()).catch(() => {});
   }, []);
 

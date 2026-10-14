@@ -31,7 +31,7 @@ export function SubPage({
           <span className="font-medium text-fg">{crumb}</span>
         </nav>
         <div className="-mx-5 flex flex-col">
-          <div className="flex flex-col gap-[5px] pb-[5px] pl-5 pr-4 pt-[15px]">
+          <div className="flex flex-col gap-[5px] pb-[5px] ps-5 pe-4 pt-[15px]">
             <h1 className="text-title font-semibold">{title}</h1>
             {description && <p className="text-pretty text-body leading-[1.5] text-muted">{description}</p>}
           </div>

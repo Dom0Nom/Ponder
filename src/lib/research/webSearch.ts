@@ -9,6 +9,7 @@ import { createProxyFetch } from "../providers/proxyFetch";
 import type { Provider } from "../types";
 import { modelSearchPrompt } from "./reportPrompts";
 import type { SearchResult } from "./search";
+import { s } from "../../lib/strings";
 
 const SDK_SEARCH_TYPES = ["openai", "anthropic", "google", "xai"];
 
@@ -64,7 +65,7 @@ async function viaOpenRouter(provider: Pick<Provider, "type" | "baseUrl">, model
     }),
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(`Web search via the model failed (HTTP ${res.status}): ${text.slice(0, 160)}`);
+  if (!res.ok) throw new Error(s.failures.webSearchFailed(res.status, text.slice(0, 160)));
   return parseOpenRouterCitations(JSON.parse(text));
 }
 

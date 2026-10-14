@@ -263,11 +263,11 @@ export function OutputScreen({ spaceId, outputId }: { spaceId: string; outputId:
   return (
     <Shell wide={out.kind === "table" || out.kind === "mindmap" || out.kind === "diagram"}>
       <div className="flex flex-wrap items-center gap-2 print:hidden">
-        <Button variant="ghost-muted" size="sm" onClick={back} className="-ml-2">
+        <Button variant="ghost-muted" size="sm" onClick={back} className="-ms-2">
           <ArrowLeft size={14} />
           {space.data ? s.common.backTo(space.data.name) : s.outputs.back}
         </Button>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ms-auto flex items-center gap-2">
           {out.kind === "diagram" && (
             <Button variant="secondary" size="sm" onClick={() => setEditing((e) => !e)} aria-pressed={editing}>
               {editing ? s.outputs.doneEditing : s.outputs.editCode}
@@ -342,7 +342,7 @@ function WorksheetKeyOnly({ data }: { data: OutputDataMap["worksheet"] }) {
       <ol className="flex flex-col gap-1 text-body">
         {data.questions.map((q, i) => (
           <li key={i}>
-            <span className="mr-1.5 font-semibold">{i + 1}.</span>
+            <span className="me-1.5 font-semibold">{i + 1}.</span>
             {q.answer}
           </li>
         ))}

@@ -81,7 +81,7 @@ export function QuizLayer() {
             <Button
               variant="ghost"
               size="sm"
-              className="mr-auto"
+              className="me-auto"
               onClick={() => {
                 setRevealed(true);
               }}
@@ -100,7 +100,7 @@ export function QuizLayer() {
           <p className="text-timer font-semibold tabular-nums">
             <NumberPop text={String(correct)} popKey={correct} onMount /> / {qs.length}
           </p>
-          <p className="mt-3 text-muted">{s.quiz.resultBody(correct, qs.length)}</p>
+          <p className="mt-3 text-muted">{correct === qs.length ? s.quiz.resultAll : correct >= qs.length / 2 ? s.quiz.resultGood : s.quiz.resultLow}</p>
         </div>
       ) : (
         <div key={i} className="t-page-enter flex flex-col gap-3" data-testid="quiz-question">

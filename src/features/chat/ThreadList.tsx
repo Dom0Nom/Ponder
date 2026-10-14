@@ -63,7 +63,7 @@ function RenameInput({ thread, spaceId }: { thread: Thread; spaceId: string }) {
         else if (e.key === "Escape") finish(false);
       }}
       onBlur={() => finish(true)}
-      className="-ml-[7px] h-6 min-w-0 flex-1 rounded-kbd border border-fg bg-surface px-1.5 font-medium text-fg outline-none"
+      className="-ms-[7px] h-6 min-w-0 flex-1 rounded-kbd border border-fg bg-surface px-1.5 font-medium text-fg outline-none"
     />
   );
 }
@@ -93,7 +93,7 @@ function ThreadRow({ thread, spaceId, active, fresh, onDelete }: { thread: Threa
         }
       }}
       className={cn(
-        "group relative flex h-8 shrink-0 cursor-pointer items-center gap-0.5 whitespace-nowrap rounded-btn pl-4 pr-1.5",
+        "group relative flex h-8 shrink-0 cursor-pointer items-center gap-0.5 whitespace-nowrap rounded-btn ps-4 pe-1.5",
         fresh && "t-panel-slide",
         active ? "bg-selected font-semibold" : "font-medium hover:bg-fill-hover",
         menuOpen && !active && "bg-fill-hover",
@@ -173,7 +173,7 @@ export function ThreadList({ spaceId }: { spaceId: string }) {
           <button
             aria-label={s.chat.newThread}
             onClick={() => newThread().catch(() => {})}
-            className="absolute -bottom-1 right-1 flex size-6 items-center justify-center rounded-btn hover:bg-pressed"
+            className="absolute -bottom-1 end-1 flex size-6 items-center justify-center rounded-btn hover:bg-pressed"
           >
             <Plus size={15} />
           </button>
@@ -188,7 +188,7 @@ export function ThreadList({ spaceId }: { spaceId: string }) {
           </div>
         )}
         {threads.error && (
-          <button className="px-4 py-3 text-left text-muted hover:text-fg" onClick={() => threads.refetch()}>
+          <button className="px-4 py-3 text-start text-muted hover:text-fg" onClick={() => threads.refetch()}>
             {s.errors.generic} · {s.common.retry}
           </button>
         )}

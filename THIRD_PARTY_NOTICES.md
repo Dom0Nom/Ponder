@@ -69,6 +69,15 @@ The Ponder logo (`src/assets/brand/`, `design/brand/`) and the "ponder" display 
 the project owner. They are not covered by this repository's MIT license, and they are not to
 be reused in forks without permission.
 
+## Language fonts (SIL Open Font License 1.1)
+
+Loaded only for the languages that need them, bundled through Fontsource so they work offline:
+
+- IBM Plex Sans Arabic, IBM Plex Sans Devanagari, IBM Plex Sans JP, IBM Plex Sans KR (`@fontsource/ibm-plex-sans-*`): © IBM Corp., Reserved Font Name "Plex".
+- Noto Sans Bengali, Noto Sans SC, Noto Sans TC (`@fontsource/noto-sans-*`): © Google LLC / Adobe, Reserved Font Name "Noto". IBM Plex Sans has no Simplified or Traditional Chinese package on npm, so Noto Sans is used for those two.
+
+The license text is at https://openfontlicense.org.
+
 ## Provider logos (trademarks)
 
 The icons in `src/assets/providers/` are the logos or favicons of the services the app connects to. They are trademarks of their owners, used only to identify the provider, and are not covered by this repository's MIT license. Downscaled to 64 px from the sources below.

@@ -2,6 +2,8 @@ import { generateText } from "ai";
 import { extractJson } from "../chat/json";
 import type { ResolvedModel } from "../chat/llm";
 import type { QuizQuestion, TopicCoverage, TopicLevelValue, TopicRef } from "../types";
+import { languageInstruction } from "../i18n/language";
+import { s } from "../strings";
 
 export type CoverageLevel = "covered" | "partial" | "missing";
 
@@ -27,7 +29,7 @@ export const topicQuery = (t: TopicRef) => `${t.title}: ${t.description}`;
 export function parseQuiz(text: string, topicIds: string[]): QuizQuestion[] {
   const raw = extractJson<unknown>(text);
   const list = Array.isArray(raw) ? raw : raw && typeof raw === "object" && Array.isArray((raw as { questions?: unknown }).questions) ? (raw as { questions: unknown[] }).questions : null;
-  if (!list) throw new Error("The model didn't return a usable quiz. Try again.");
+  if (!list) throw new Error(s.failures.theModelDidnTReturn5);
   const out: QuizQuestion[] = [];
   for (const q of list) {
     if (!q || typeof q !== "object") continue;
@@ -40,13 +42,13 @@ export function parseQuiz(text: string, topicIds: string[]): QuizQuestion[] {
     const topicId = typeof o.topicId === "string" && topicIds.includes(o.topicId) ? o.topicId : topicIds.length === 1 ? topicIds[0] : null;
     out.push({ topicId, question: o.question.trim(), options, answer, explanation: typeof o.explanation === "string" ? o.explanation.trim() : "" });
   }
-  if (!out.length) throw new Error("The model's quiz had no valid questions. Try again.");
+  if (!out.length) throw new Error(s.failures.theModelSQuizHad);
   return out;
 }
 
 export async function generateQuiz(
   llm: ResolvedModel,
-  opts: { topics: TopicRef[]; perTopic: number; context?: string; language?: string; purpose: string; signal?: AbortSignal },
+  opts: { topics: TopicRef[]; perTopic: number; context?: string; language?: string | null; purpose: string; signal?: AbortSignal },
 ): Promise<QuizQuestion[]> {
   const topicList = opts.topics.map((t) => `- id "${t.id}": ${t.title} (${t.description})`).join("\n");
   const prompt = [
@@ -55,7 +57,7 @@ export async function generateQuiz(
     topicList,
     opts.context ? `Base the questions on this material:\n"""\n${opts.context.slice(0, 9000)}\n"""` : "",
     "Each question has exactly 4 options, one correct answer (0-based index), and a one-sentence explanation. Questions must be answerable without seeing a picture. Avoid 'all of the above'.",
-    opts.language && opts.language !== "en" ? `Write the quiz in the language with ISO code "${opts.language}".` : "",
+    `${languageInstruction(opts.language)} That includes the explanations.`,
     'Return JSON only: [{"topicId": "…", "question": "…", "options": ["…","…","…","…"], "answer": 0, "explanation": "…"}]',
   ]
     .filter(Boolean)

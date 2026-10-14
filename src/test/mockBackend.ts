@@ -1219,6 +1219,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
       tutorStyle: input.tutorStyle ?? "mixed",
       strictGrounding: input.strictGrounding ?? false,
       modelOverride: input.modelOverride ?? null,
+      language: input.language ?? null,
       createdAt: now(),
       updatedAt: now(),
       lastOpenedAt: null,
@@ -1928,6 +1929,12 @@ const handlers: Record<string, (a: Args) => unknown> = {
     return null;
   },
   get_settings: () => db.settings,
+  set_locale: (a) => {
+    db.settings.locale = a.locale;
+    save();
+    void emit("locale://changed", a.locale);
+    return null;
+  },
   set_setting: (a) => {
     if (a.value === null) delete db.settings[a.key as string];
     else db.settings[a.key as string] = a.value;

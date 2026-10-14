@@ -1,6 +1,7 @@
 import { useSettings, useSetSetting } from "./queries";
 import { AMBIENT_KEY, readAmbient } from "./ambient";
 import type { AppInfo } from "./types";
+import { s } from "./strings";
 
 /** Per-user ADHD focus pack preferences, stored as one settings key each. */
 export interface HyperfocusPrefs {
@@ -43,12 +44,7 @@ export const PREF_KEYS = {
 } as const;
 
 export const DEFAULT_HYPERFOCUS: HyperfocusPrefs = { enabled: true, minutes: 90 };
-export const DEFAULT_BREAK_MENU: string[] = [
-  "Drink a glass of water",
-  "Stretch or walk around",
-  "Look out of a window",
-  "Do ten slow breaths",
-];
+export const defaultBreakMenu = (): string[] => [...s.focus.defaultBreakMenu];
 export const DEFAULT_CHECKINS: CheckInPrefs = { minutes: 15 };
 export const DEFAULT_READING: ReadingPrefs = { bionic: false, ruler: false };
 export const DEFAULT_MUSIC: MusicPrefs = { enabled: false, playlist: "" };
@@ -69,7 +65,7 @@ export function readPrefs(settings: Record<string, unknown> | undefined) {
   const menu = settings?.[PREF_KEYS.breakMenu];
   return {
     hyperfocus: obj(settings?.[PREF_KEYS.hyperfocus], DEFAULT_HYPERFOCUS),
-    breakMenu: Array.isArray(menu) ? menu.filter((x): x is string => typeof x === "string") : DEFAULT_BREAK_MENU,
+    breakMenu: Array.isArray(menu) ? menu.filter((x): x is string => typeof x === "string") : defaultBreakMenu(),
     reading: obj(settings?.[PREF_KEYS.reading], DEFAULT_READING),
     music: obj(settings?.[PREF_KEYS.music], DEFAULT_MUSIC),
     checkIns: obj(settings?.[PREF_KEYS.checkIns], DEFAULT_CHECKINS),

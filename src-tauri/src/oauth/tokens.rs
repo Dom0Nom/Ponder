@@ -182,15 +182,23 @@ impl TokenManager {
     {
         let lock = self.lock_for(provider_id);
         let _guard = lock.lock().await;
-        let ts = self
-            .load(provider_id)?
-            .ok_or_else(|| AppError::Other("Not signed in. Sign in again in Settings.".into()))?;
+        let ts = self.load(provider_id)?.ok_or_else(|| {
+            crate::error::keyed(
+                "other",
+                "notSignedIn",
+                Vec::new(),
+                "Not signed in. Sign in again in Settings.",
+            )
+        })?;
         if !ts.needs_refresh(now_ms(), skew_ms(&ts)) {
             return Ok(ts);
         }
         if ts.refresh.is_none() {
-            return Err(AppError::Other(
-                "Session expired. Sign in again in Settings.".into(),
+            return Err(crate::error::keyed(
+                "other",
+                "sessionExpired",
+                Vec::new(),
+                "Session expired. Sign in again in Settings.",
             ));
         }
         let mut fresh = refresh(ts.clone()).await?;

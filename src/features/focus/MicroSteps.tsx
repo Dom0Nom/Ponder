@@ -32,7 +32,7 @@ export function MicroEntryRow({ spaceId, onOpen }: { spaceId: string; onOpen: ()
     <button
       type="button"
       onClick={onOpen}
-      className="-ml-2.25 flex min-h-7.5 min-w-0 flex-1 items-center gap-1.5 rounded-btn px-2.25 text-left text-body font-medium hover:bg-fill"
+      className="-ms-2.25 flex min-h-7.5 min-w-0 flex-1 items-center gap-1.5 rounded-btn px-2.25 text-start text-body font-medium hover:bg-fill"
     >
       <ListChecks size={14} className="shrink-0" />
       {data?.length ? (
@@ -93,7 +93,7 @@ function StepRow({ step, current, fresh, onChanged }: { step: MicroStep; current
         className={cn("mt-0.5", !step.done && "-mt-px h-[19.7px] w-[2px]")}
         inputClassName={cn(
           !step.done &&
-            "absolute -left-[7px] h-full w-4 rounded-none border-0 bg-[linear-gradient(var(--text-faint),var(--text-faint))] bg-[length:2px_100%] bg-center bg-no-repeat",
+            "absolute -start-[7px] h-full w-4 rounded-none border-0 bg-[linear-gradient(var(--text-faint),var(--text-faint))] bg-[length:2px_100%] bg-center bg-no-repeat",
         )}
         aria-label={s.focus.micro.markDone(step.text)}
         checked={step.done}
@@ -144,7 +144,7 @@ function StepRow({ step, current, fresh, onChanged }: { step: MicroStep; current
             {step.text}
           </span>
           <span className="shrink-0 whitespace-nowrap text-label text-muted">{s.focus.micro.minutes(step.minutes)}</span>
-          <span className="absolute right-0 top-1.5 hidden items-center rounded-btn bg-surface group-focus-within:flex group-hover:flex">
+          <span className="absolute end-0 top-1.5 hidden items-center rounded-btn bg-surface group-focus-within:flex group-hover:flex">
             <button
               type="button"
               aria-label={s.focus.micro.edit}

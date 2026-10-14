@@ -4,6 +4,8 @@ import type { ResolvedModel } from "../chat/llm";
 import type { ErrorType, PracticeItem, PracticeKind } from "../types";
 import { difficultyFor, LEVEL_WORDS, levelFor } from "./irt";
 import { numbersMatch, parseNumber } from "./grade";
+import { languageInstruction } from "../i18n/language";
+import { s } from "../strings";
 
 export interface TopicSpec {
   key: string;
@@ -18,7 +20,7 @@ const ask = async (llm: ResolvedModel, prompt: string, signal?: AbortSignal) =>
 
 export function parseProblem(text: string, topicKey: string, level: number, parentId: string | null = null): NewItem {
   const o = extractJson<Record<string, unknown>>(text);
-  if (!o || typeof o !== "object") throw new Error("The model didn't return a usable problem. Try again.");
+  if (!o || typeof o !== "object") throw new Error(s.failures.theModelDidnTReturn6);
   const kind = (["mcq", "numeric", "short"].includes(String(o.kind)) ? o.kind : "short") as PracticeKind;
   const question = String(o.question ?? "").trim();
   const solution = String(o.solution ?? "").trim();
@@ -27,16 +29,16 @@ export function parseProblem(text: string, topicKey: string, level: number, pare
   if (kind === "mcq") {
     options = Array.isArray(o.options) ? o.options.map(String).map((x) => x.trim()).filter(Boolean) : [];
     const idx = Number(o.answer);
-    if (options.length < 2 || new Set(options).size !== options.length) throw new Error("The model's options were unusable. Try again.");
+    if (options.length < 2 || new Set(options).size !== options.length) throw new Error(s.failures.theModelSOptionsWere);
     if (Number.isInteger(idx) && idx >= 0 && idx < options.length) answer = String(idx);
     else {
       const byText = options.indexOf(answer);
-      if (byText < 0) throw new Error("The model's answer wasn't one of the options. Try again.");
+      if (byText < 0) throw new Error(s.failures.theModelSAnswerWasn);
       answer = String(byText);
     }
   }
-  if (kind === "numeric" && parseNumber(answer) == null) throw new Error("The model's numeric answer wasn't a number. Try again.");
-  if (!question || !answer || !solution) throw new Error("The model's problem was incomplete. Try again.");
+  if (kind === "numeric" && parseNumber(answer) == null) throw new Error(s.failures.theModelSNumericAnswer);
+  if (!question || !answer || !solution) throw new Error(s.failures.theModelSProblemWas);
   const hint = String(o.hint ?? "").trim() || null;
   const lvl = Number(o.level);
   return {
@@ -57,7 +59,7 @@ const FORMAT =
 
 export async function generateProblem(
   llm: ResolvedModel,
-  opts: { topic: TopicSpec; level: number; context?: string; avoid?: string[]; language?: string; signal?: AbortSignal },
+  opts: { topic: TopicSpec; level: number; context?: string; avoid?: string[]; language?: string | null; signal?: AbortSignal },
 ): Promise<NewItem> {
   const prompt = [
     `Write ONE practice problem on "${opts.topic.title}" (${opts.topic.description}) at difficulty ${opts.level}/5: ${LEVEL_WORDS[opts.level]}.`,
@@ -65,7 +67,7 @@ export async function generateProblem(
     "Ask exactly one question. Harder means deeper reasoning, not more text, extra conditions or several sub-questions. Keep it under 80 words.",
     opts.context ? `Base it on this material:\n"""\n${opts.context.slice(0, 6000)}\n"""` : "",
     opts.avoid?.length ? `Make it different from these recent problems:\n${opts.avoid.slice(0, 10).map((q) => `- ${q}`).join("\n")}` : "",
-    opts.language && opts.language !== "en" ? `Write in the language with ISO code "${opts.language}".` : "",
+    languageInstruction(opts.language),
     FORMAT,
   ]
     .filter(Boolean)
@@ -132,7 +134,7 @@ async function checked(llm: ResolvedModel, prompt: string, parse: (text: string)
       if (item.kind === "short") return item;
       const solved = await solveIndependently(llm, item, signal);
       if (solved == null || answersAgree(item, solved)) return item;
-      lastError = new Error("The model's answer didn't hold up when checked. Try again.");
+      lastError = new Error(s.failures.theModelSAnswerDidn);
     } catch (e) {
       if (signal?.aborted) throw e;
       lastError = e;
@@ -167,7 +169,7 @@ export async function gradeResponse(llm: ResolvedModel, item: PracticeItem, resp
     signal,
   );
   const o = extractJson<{ correct?: unknown; feedback?: unknown }>(text);
-  if (!o || typeof o.correct !== "boolean") throw new Error("The answer couldn't be graded. Try again.");
+  if (!o || typeof o.correct !== "boolean") throw new Error(s.failures.theAnswerCouldnTBe);
   return { correct: o.correct, feedback: typeof o.feedback === "string" ? o.feedback : null };
 }
 

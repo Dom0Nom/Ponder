@@ -5,6 +5,7 @@
 import { api } from "../ipc";
 import type { Source } from "../types";
 import type { Importer } from "./types";
+import { s } from "../strings";
 
 export function youTubeId(input: string): string | null {
   const t = input.trim();
@@ -112,17 +113,17 @@ export async function fetchTranscript(
 ): Promise<{ title: string; markdown: string }> {
   const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
   const page = await http(watchUrl, { method: "GET", headers: { "Accept-Language": "en-US,en;q=0.9" } });
-  if (page.status >= 400) throw new TranscriptError(`YouTube returned HTTP ${page.status}.`);
+  if (page.status >= 400) throw new TranscriptError(s.failures.youtubeHttp(page.status));
   const key = page.body.match(/"INNERTUBE_API_KEY":\s*"([^"]+)"/)?.[1];
   const htmlTitle = decodeEntities(page.body.match(/<title>([^<]*)<\/title>/)?.[1] ?? "").replace(/ - YouTube$/, "").trim();
-  if (!key) throw new TranscriptError("YouTube's page format changed; transcripts can't be read right now.");
+  if (!key) throw new TranscriptError(s.failures.youtubeSPageFormatChanged);
 
   const player = await http(`https://www.youtube.com/youtubei/v1/player?key=${key}&prettyPrint=false`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ context: { client: { ...ANDROID_CLIENT, hl: "en" } }, videoId }),
   });
-  if (player.status >= 400) throw new TranscriptError(`YouTube's player API returned HTTP ${player.status}.`);
+  if (player.status >= 400) throw new TranscriptError(s.failures.youtubePlayerHttp(player.status));
   let data: {
     playabilityStatus?: { status?: string; reason?: string };
     videoDetails?: { title?: string };
@@ -131,21 +132,21 @@ export async function fetchTranscript(
   try {
     data = JSON.parse(player.body);
   } catch {
-    throw new TranscriptError("YouTube sent an unexpected response.");
+    throw new TranscriptError(s.failures.youtubeSentAnUnexpectedResponse);
   }
   const status = data.playabilityStatus?.status;
   if (status && status !== "OK") {
-    throw new TranscriptError(`This video can't be read: ${data.playabilityStatus?.reason ?? status}.`);
+    throw new TranscriptError(s.failures.videoUnreadable(data.playabilityStatus?.reason ?? status));
   }
   const tracks = data.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
   // the auto-generated track reveals the spoken language; prefer it over translations
   const spoken = tracks.find((t) => t.kind === "asr")?.languageCode;
   const track = pickTrack(tracks, spoken ? [spoken, ...prefer] : prefer);
-  if (!track) throw new TranscriptError("This video has no captions or transcript.");
+  if (!track) throw new TranscriptError(s.failures.thisVideoHasNoCaptions);
   const xml = await http(track.baseUrl.replace(/&fmt=[^&]+/, ""), { method: "GET" });
-  if (xml.status >= 400 || !xml.body.trim()) throw new TranscriptError("YouTube didn't return the transcript.");
+  if (xml.status >= 400 || !xml.body.trim()) throw new TranscriptError(s.failures.youtubeDidnTReturnThe);
   const cues = parseTimedText(xml.body);
-  if (!cues.length) throw new TranscriptError("The transcript is empty.");
+  if (!cues.length) throw new TranscriptError(s.failures.theTranscriptIsEmpty);
   const title = data.videoDetails?.title || htmlTitle || `YouTube video ${videoId}`;
   return { title, markdown: transcriptToMarkdown(title, watchUrl, cues) };
 }
@@ -155,7 +156,7 @@ export const youtubeImporter = (http: HttpFn): Importer<string> => ({
   canHandle: isYouTubeUrl,
   async import(spaceId, input): Promise<Source> {
     const id = youTubeId(input);
-    if (!id) throw new TranscriptError("That isn't a YouTube link.");
+    if (!id) throw new TranscriptError(s.failures.thatIsnTAYoutube);
     const { title, markdown } = await fetchTranscript(id, http);
     return api.importText(spaceId, title, markdown, "youtube", `https://www.youtube.com/watch?v=${id}`);
   },

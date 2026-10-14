@@ -16,6 +16,7 @@ import type { ModelRef, Space, TutorStyle } from "../../lib/types";
 import { useUi } from "../../stores/ui";
 import { ModelPicker } from "../settings/ModelPicker";
 import { NativeSelect } from "../settings/NativeSelect";
+import { LanguageSelect } from "./LanguageSelect";
 
 interface Draft {
   name: string;
@@ -23,6 +24,7 @@ interface Draft {
   tutorStyle: TutorStyle;
   strictGrounding: boolean;
   modelOverride: ModelRef | null;
+  language: string | null;
 }
 
 const sameModel = (a: ModelRef | null, b: ModelRef | null) => a?.providerId === b?.providerId && a?.model === b?.model;
@@ -40,6 +42,7 @@ export function SpaceSettingsPanel({ space, onBack }: { space: Space; onBack: ()
     tutorStyle: space.tutorStyle,
     strictGrounding: space.strictGrounding,
     modelOverride: space.modelOverride,
+    language: space.language,
   };
   const [draft, setDraft] = useState<Draft>(initial);
   const [saving, setSaving] = useState(false);
@@ -53,6 +56,7 @@ export function SpaceSettingsPanel({ space, onBack }: { space: Space; onBack: ()
       tutorStyle: space.tutorStyle,
       strictGrounding: space.strictGrounding,
       modelOverride: space.modelOverride,
+      language: space.language,
     });
   }, [space.id, curriculumId]);
 
@@ -61,6 +65,7 @@ export function SpaceSettingsPanel({ space, onBack }: { space: Space; onBack: ()
     draft.curriculumId !== initial.curriculumId ||
     draft.tutorStyle !== initial.tutorStyle ||
     draft.strictGrounding !== initial.strictGrounding ||
+    draft.language !== initial.language ||
     !sameModel(draft.modelOverride, initial.modelOverride);
 
   const save = async () => {
@@ -73,6 +78,7 @@ export function SpaceSettingsPanel({ space, onBack }: { space: Space; onBack: ()
           tutorStyle: draft.tutorStyle,
           strictGrounding: draft.strictGrounding,
           modelOverride: draft.modelOverride,
+          language: draft.language,
         },
       });
       if (draft.curriculumId !== curriculumId) {
@@ -165,9 +171,14 @@ export function SpaceSettingsPanel({ space, onBack }: { space: Space; onBack: ()
           <Label>{s.space.model}</Label>
           <ModelPicker value={draft.modelOverride} allowDefault onChange={(v) => setDraft({ ...draft, modelOverride: v })} />
         </div>
+        <div>
+          <Label htmlFor="space-settings-language">{s.space.language}</Label>
+          <LanguageSelect id="space-settings-language" value={draft.language} onChange={(v) => setDraft({ ...draft, language: v })} />
+          <p className="mt-1.5 text-caption text-muted">{s.space.languageHelp}</p>
+        </div>
       </div>
       <div className="flex shrink-0 gap-2 border-t border-divider px-4 py-3">
-        <span className="mr-auto">
+        <span className="me-auto">
           <Button variant="secondary" className="text-danger" onClick={() => setDeleting(true)}>
             <Trash2 size={15} />
             {s.space.deleteSpace}

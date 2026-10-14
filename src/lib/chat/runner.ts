@@ -449,11 +449,16 @@ export class FramePainter {
   }
 }
 
+function streamBrokeMessage(cause: string): string {
+  if (/closed before the answer finished|stopped sending data/.test(cause)) return s.chat.streamClosed(cause);
+  return cause ? s.chat.streamBrokeCause(cause) : s.chat.streamBroke;
+}
+
 export function describeError(e: unknown): string {
   const err = e as { message?: string; statusCode?: number; responseBody?: string; cause?: unknown };
   let msg = err?.message ?? String(e);
   const cause = (err?.cause as { message?: string } | undefined)?.message;
-  if (msg === "Failed to process successful response") return s.chat.streamBroke(cause ?? "");
+  if (msg === "Failed to process successful response") return streamBrokeMessage(cause ?? "");
   if (err?.statusCode === 401 || err?.statusCode === 403) msg = s.chat.rejected(err.statusCode);
   else if (err?.statusCode === 404) msg = s.chat.modelNotFound(err.statusCode);
   else if (err?.statusCode === 429) msg = s.chat.rateLimited;

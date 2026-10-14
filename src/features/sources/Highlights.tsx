@@ -172,7 +172,7 @@ export function HighlightList({ anchored, error, onRetry }: { anchored: Anchored
         {sorted.map((a) => (
           <li key={a.id} className="flex flex-col gap-1 text-body" data-testid="highlight-item">
             <button
-              className="line-clamp-2 rounded-btn text-left text-fg-secondary hover:text-fg disabled:hover:text-fg-secondary"
+              className="line-clamp-2 rounded-btn text-start text-fg-secondary hover:text-fg disabled:hover:text-fg-secondary"
               disabled={a.detached}
               onClick={() => document.querySelector(`[data-annot="${a.id}"]`)?.scrollIntoView({ block: "center" })}
             >
@@ -182,7 +182,7 @@ export function HighlightList({ anchored, error, onRetry }: { anchored: Anchored
             {editing === a.id ? (
               <NoteEditor annot={a} onDone={() => setEditing(null)} />
             ) : (
-              <button className="self-start text-left text-label text-muted hover:text-fg" onClick={() => setEditing(a.id)}>
+              <button className="self-start text-start text-label text-muted hover:text-fg" onClick={() => setEditing(a.id)}>
                 {a.note || s.highlights.notePlaceholder}
               </button>
             )}

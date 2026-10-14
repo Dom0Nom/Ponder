@@ -25,7 +25,7 @@ const CompactTimer = forwardRef<HTMLButtonElement, { state: FocusState } & Butto
   const pct = elapsedFraction(state) * 100;
   return (
     <button ref={ref} {...rest} aria-label={`${phaseLabel(state)}, ${clockLabel(state)}`} className={triggerClass} onClick={onClick}>
-      <span className="text-body-lg font-semibold tabular-nums">{clockText(state)}</span>
+      <span dir="ltr" className="text-body-lg font-semibold tabular-nums">{clockText(state)}</span>
       <span
         className="relative size-4 rounded-full"
         style={{ background: `conic-gradient(var(--primary) 0 ${pct}%, var(--timer-track) ${pct}% 100%)` }}
@@ -70,7 +70,7 @@ export function FocusHeaderTimer() {
               <PhaseIcon state={state} size={14} /> {phaseLabel(state)}
               <span className="font-normal text-faint">· {s.focus.block(state.block)}</span>
             </p>
-            <p className="text-title font-semibold tabular-nums">{clockText(state)}</p>
+            <p dir="ltr" className="text-title font-semibold tabular-nums">{clockText(state)}</p>
           </div>
           <TimeBar state={state} className="mb-3" />
           {state.goal && <p className="mb-3 text-body text-muted">{state.goal}</p>}

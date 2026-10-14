@@ -76,7 +76,7 @@ export function HyperfocusSettings({ part = "switch" }: { part?: "switch" | "min
             onBlur={() => {
               if (parsed != null && parsed !== hf.minutes) void save({ ...hf, minutes: parsed });
             }}
-            className={cn("h-7.5 w-20 text-right", parsed == null && "border-danger")}
+            className={cn("h-7.5 w-20 text-end", parsed == null && "border-danger")}
           />
         </SettingsRow>
       )}

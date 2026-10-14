@@ -1,7 +1,7 @@
 //! Highlights and margin notes on a source's text, anchored by character offsets plus the quoted text.
 
 use crate::db::{new_id, now_ms};
-use crate::error::{invalid, AppResult};
+use crate::error::{invalid, invalid_key, AppResult};
 use crate::AppState;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -66,10 +66,13 @@ pub fn add(
     note: &str,
 ) -> AppResult<Annotation> {
     if start < 0 || end <= start {
-        return Err(invalid("Select some text to highlight."));
+        return Err(invalid_key("selectText", "Select some text to highlight."));
     }
     if quote.trim().is_empty() || quote.len() > MAX_QUOTE {
-        return Err(invalid("Highlights can be up to 20,000 characters."));
+        return Err(invalid_key(
+            "highlightTooLong",
+            "Highlights can be up to 20,000 characters.",
+        ));
     }
     if note.len() > MAX_NOTE {
         return Err(invalid("Notes can be up to 10,000 characters."));
@@ -86,7 +89,7 @@ pub fn add(
 
 pub fn update(c: &Connection, id: &str, start: i64, end: i64, note: &str) -> AppResult<Annotation> {
     if start < 0 || end <= start {
-        return Err(invalid("Select some text to highlight."));
+        return Err(invalid_key("selectText", "Select some text to highlight."));
     }
     if note.len() > MAX_NOTE {
         return Err(invalid("Notes can be up to 10,000 characters."));

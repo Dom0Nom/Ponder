@@ -27,7 +27,7 @@ function Tile({ type, onPick }: { type: ProviderType; onPick: (t: ProviderType) 
   return (
     <button
       onClick={() => onPick(type)}
-      className="t-learn flex h-12 items-center gap-3 rounded-tile border border-border px-3 text-left hover:bg-fill-faint"
+      className="t-learn flex h-12 items-center gap-3 rounded-tile border border-border px-3 text-start hover:bg-fill-faint"
     >
       <ProviderIcon type={type} size={15} />
       <span className="flex flex-1 flex-col">

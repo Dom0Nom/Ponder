@@ -59,8 +59,10 @@ function save(v: Saved) {
 }
 
 export function errorMessage(e: ParseError): string {
-  const m = s.graph.errors[e.code];
-  return typeof m === "function" ? m(e.detail) : m;
+  const errors = s.graph.errors;
+  if (e.code === "unexpected") return e.detail ? errors.unexpected(e.detail) : errors.unexpectedChar;
+  if (e.code === "unknownName") return errors.unknownName(e.detail ?? "");
+  return errors[e.code];
 }
 
 export function GraphingCalculator({ className }: { className?: string }) {
@@ -151,10 +153,10 @@ export function GraphingCalculator({ className }: { className?: string }) {
           return (
             <li key={it.id}>
               <div className="flex items-center gap-1.5">
-                <Tooltip content={s.graph.toggle(i + 1, it.visible)}>
+                <Tooltip content={it.visible ? s.graph.hideExpression(i + 1) : s.graph.showExpression(i + 1)}>
                   <button
                     type="button"
-                    aria-label={s.graph.toggle(i + 1, it.visible)}
+                    aria-label={it.visible ? s.graph.hideExpression(i + 1) : s.graph.showExpression(i + 1)}
                     aria-pressed={it.visible}
                     onClick={() => setItem(it.id, { visible: !it.visible })}
                     className="flex size-7 shrink-0 items-center justify-center rounded-btn hover:bg-fill-hover"

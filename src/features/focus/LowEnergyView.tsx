@@ -20,7 +20,7 @@ function Row({ icon: Icon, title, disabled, onClick, children }: { icon: LucideI
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="t-learn flex min-h-13 w-full items-center gap-3 text-left not-first:border-t not-first:border-divider disabled:opacity-50"
+      className="t-learn flex min-h-13 w-full items-center gap-3 text-start not-first:border-t not-first:border-divider disabled:opacity-50"
     >
       <Icon size={15} className="shrink-0" />
       <span className="flex min-w-0 flex-1 flex-col">

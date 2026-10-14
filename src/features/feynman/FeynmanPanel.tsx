@@ -27,7 +27,7 @@ function Section({ title, items, testId, tone }: { title: string; items: string[
   return (
     <div data-testid={testId}>
       <h4 className={LABEL}>{title}</h4>
-      <ul className="mt-1 flex list-disc flex-col gap-1 pl-4 text-body text-fg-secondary">
+      <ul className="mt-1 flex list-disc flex-col gap-1 ps-4 text-body text-fg-secondary">
         {items.map((x, i) => (
           <li key={i} className={tone === "danger" ? "marker:text-danger" : undefined}>
             {x}

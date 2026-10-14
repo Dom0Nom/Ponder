@@ -1,5 +1,6 @@
 import { generateText } from "ai";
 import type { ResolvedModel } from "../chat/llm";
+import { s } from "../strings";
 
 export type ReadingLevel = "simpler" | "original" | "advanced";
 
@@ -91,7 +92,7 @@ export async function rewritePassage(llm: ResolvedModel, prompt: string, signal?
     const t = cleanRewrite(r.text);
     if (t) return t;
   }
-  throw new Error("The model returned an empty rewrite.");
+  throw new Error(s.failures.theModelReturnedAnEmpty2);
 }
 
 export const LANGUAGES = ["German", "Spanish", "French", "English", "Italian", "Portuguese", "Turkish", "Arabic"] as const;

@@ -139,7 +139,7 @@ function CloudBrowser({ service, space, done }: { service: CloudService; space: 
   });
 
   useImportFooter({
-    label: s.cloud.importN(selected.size),
+    label: selected.size <= 1 ? s.sources.import : s.cloud.importN(selected.size),
     disabled: !selected.size,
     busy: importSel.isPending,
     status: selected.size ? s.cloud.selected(selected.size) : s.cloud.supportedHint,
@@ -177,9 +177,9 @@ function CloudBrowser({ service, space, done }: { service: CloudService; space: 
             onChange={(e) => setSearch(e.target.value)}
             placeholder={s.cloud.search(s.cloud.names[service])}
             aria-label={s.cloud.search(s.cloud.names[service])}
-            className="pl-3 pr-8 text-input"
+            className="ps-3 pe-8 text-input"
           />
-          <Search size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
+          <Search size={14} className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
         </div>
       </div>
 
@@ -237,7 +237,7 @@ function Row({ item, checked, onOpen, onToggle }: { item: CloudItem; checked: bo
     return (
       <div role="listitem" className={cn(base, "hover:bg-fill-faint")}>
         <span />
-        <button type="button" onClick={onOpen} className="truncate text-left font-medium">
+        <button type="button" onClick={onOpen} className="truncate text-start font-medium">
           {item.name}
         </button>
         {cells}

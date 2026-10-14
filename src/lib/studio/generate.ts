@@ -51,8 +51,9 @@ export async function generateOutput<K extends OutputKind>(
   focus?: string,
   signal?: AbortSignal,
   style?: AudioStyle,
+  language?: string | null,
 ): Promise<Parsed<K>> {
-  const prompt = outputPrompt(kind, material, focus, style);
+  const prompt = outputPrompt(kind, material, focus, style, language);
   for (let i = 0; i < 2; i++) {
     const r = await generateText({ model: llm.model, prompt, abortSignal: signal, ...llm.options({ thinking: false }) });
     const parsed = parseOutput(kind, r.text);

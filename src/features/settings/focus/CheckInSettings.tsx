@@ -55,7 +55,7 @@ export function CheckInSettings() {
         onBlur={() => {
           if (parsed != null && parsed !== minutes) void save(parsed);
         }}
-        className={cn("h-7.5 w-20 text-right", parsed == null && "border-danger")}
+        className={cn("h-7.5 w-20 text-end", parsed == null && "border-danger")}
       />
     </SettingsRow>
   );

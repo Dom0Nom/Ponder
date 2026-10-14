@@ -4,6 +4,7 @@ import { api } from "../../../lib/ipc";
 import type { AppInfo } from "../../../lib/types";
 import { useFocusPrefs, useSetFocusPref, type DistractionPrefs } from "../../../lib/focusPrefs";
 import { s } from "../../../lib/strings";
+import { formatDurationHuman } from "../../../lib/i18n/format";
 import { Button } from "../../../components/ui/button";
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuTrigger } from "../../../components/ui/menu";
 import { Segmented, Spinner, Switch } from "../../../components/ui/misc";
@@ -54,7 +55,7 @@ export function DistractionSettings() {
           <ul data-testid="distraction-apps" className="flex flex-wrap gap-1.5">
             {d.apps.length === 0 && <li className="text-caption text-muted">{s.distraction.none}</li>}
             {d.apps.map((a) => (
-              <li key={a.id} className="flex h-7 items-center gap-1 rounded-btn bg-fill pl-2.5 pr-1 text-label font-medium">
+              <li key={a.id} className="flex h-7 items-center gap-1 rounded-btn bg-fill ps-2.5 pe-1 text-label font-medium">
                 {a.name}
                 <button
                   type="button"
@@ -98,7 +99,7 @@ export function DistractionSettings() {
                 label={s.distraction.grace}
                 value={String(d.graceSec)}
                 onChange={(v) => void save({ ...d, graceSec: Number(v) })}
-                options={GRACE.map((g) => ({ value: String(g), label: s.distraction.seconds(g) }))}
+                options={GRACE.map((g) => ({ value: String(g), label: formatDurationHuman(g * 1000, "short", true) }))}
               />
             </span>
           </div>

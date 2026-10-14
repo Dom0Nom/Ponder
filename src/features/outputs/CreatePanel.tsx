@@ -74,7 +74,7 @@ export function CreatePanel({ space, onBack }: { space: Space; onBack: () => voi
                 data-kind={k}
                 aria-expanded={k === "audio" ? audioOpen : undefined}
                 onClick={() => (k === "audio" ? setAudioOpen((o) => !o) : run(k))}
-                className="-mx-1 flex w-[calc(100%+8px)] items-center gap-3 px-1 py-2 text-left hover:bg-fill-subtle disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent"
+                className="-mx-1 flex w-[calc(100%+8px)] items-center gap-3 px-1 py-2 text-start hover:bg-fill-subtle disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent"
               >
                 <Icon size={15} className="shrink-0" />
                 <span className="flex min-w-0 flex-1 flex-col">
@@ -83,14 +83,14 @@ export function CreatePanel({ space, onBack }: { space: Space; onBack: () => voi
                 </span>
               </button>
               {k === "audio" && audioOpen && !job && (
-                <ul className="flex flex-col pb-1.5 pl-7" role="list" aria-label={s.outputs.audio.style} data-testid="audio-styles">
+                <ul className="flex flex-col pb-1.5 ps-7" role="list" aria-label={s.outputs.audio.style} data-testid="audio-styles">
                   {AUDIO_STYLES.map((st) => (
                     <li key={st}>
                       <button
                         type="button"
                         data-style={st}
                         onClick={() => run("audio", st)}
-                        className="-mx-1 flex w-[calc(100%+8px)] items-baseline gap-2 rounded-item px-1 py-1.5 text-left hover:bg-fill-subtle"
+                        className="-mx-1 flex w-[calc(100%+8px)] items-baseline gap-2 rounded-item px-1 py-1.5 text-start hover:bg-fill-subtle"
                       >
                         <span className="font-medium">{s.outputs.audio.styles[st].name}</span>
                         <span className="truncate text-label text-muted">{s.outputs.audio.styles[st].meta}</span>
@@ -107,7 +107,7 @@ export function CreatePanel({ space, onBack }: { space: Space; onBack: () => voi
         type="button"
         onClick={() => useUi.getState().setStudioView("feynman")}
         data-testid="create-feynman"
-        className="-mx-1 -mt-1.5 flex w-[calc(100%+8px)] items-center gap-3 border-b border-divider px-1 py-2 text-left hover:bg-fill-subtle"
+        className="-mx-1 -mt-1.5 flex w-[calc(100%+8px)] items-center gap-3 border-b border-divider px-1 py-2 text-start hover:bg-fill-subtle"
       >
         <MessageSquareText size={15} className="shrink-0" />
         <span className="flex min-w-0 flex-1 flex-col">
@@ -128,7 +128,7 @@ export function CreatePanel({ space, onBack }: { space: Space; onBack: () => voi
                 <button
                   type="button"
                   onClick={() => navigate({ name: "output", spaceId: space.id, outputId: o.id })}
-                  className="-mx-1 flex h-9.75 w-[calc(100%+8px)] items-center gap-2.5 px-1 text-left text-body hover:bg-fill-subtle"
+                  className="-mx-1 flex h-9.75 w-[calc(100%+8px)] items-center gap-2.5 px-1 text-start text-body hover:bg-fill-subtle"
                 >
                   <Icon size={14} className="shrink-0" />
                   <span className="min-w-0 flex-1 truncate font-medium">{o.title}</span>

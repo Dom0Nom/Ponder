@@ -2,6 +2,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { api } from "../ipc";
 import type { Source } from "../types";
 import type { Importer } from "./types";
+import { s } from "../strings";
 
 export const FILE_EXTENSIONS = ["pdf", "epub", "docx", "md", "markdown", "txt"];
 
@@ -9,7 +10,7 @@ export async function pickFiles(): Promise<string[]> {
   const res = await open({
     multiple: true,
     directory: false,
-    filters: [{ name: "Documents", extensions: FILE_EXTENSIONS }],
+    filters: [{ name: s.sources.documentsFilter, extensions: FILE_EXTENSIONS }],
   });
   if (!res) return [];
   return Array.isArray(res) ? res : [res];

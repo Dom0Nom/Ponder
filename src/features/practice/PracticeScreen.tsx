@@ -135,7 +135,7 @@ function Session({
         .catch(() => []),
     ]);
     const context = hits.length ? hits.map((h) => h.text).join("\n\n") : undefined;
-    return api.practiceItemAdd(space.id, await generateProblem(llm, { topic, level: levelFor(targetDifficulty(atTheta)), avoid, context, language }));
+    return api.practiceItemAdd(space.id, await generateProblem(llm, { topic, level: levelFor(targetDifficulty(atTheta)), avoid, context, language: language ?? space.language }));
   };
 
   const load = async (variation?: VariationMode) => {
@@ -256,7 +256,7 @@ function Session({
             <span className="text-muted" data-testid="practice-skill">
               {s.practice.problems(n)}
             </span>
-            <Button variant="ghost" size="sm" className="ml-auto" onClick={() => load()} disabled={busy != null}>
+            <Button variant="ghost" size="sm" className="ms-auto" onClick={() => load()} disabled={busy != null}>
               {s.practice.skip}
             </Button>
           </div>
@@ -322,7 +322,7 @@ function Session({
               )}
               {item.hint && !result && (
                 <div className="flex flex-col gap-1.5">
-                  <Button variant="ghost" size="sm" className="-ml-[9px] self-start" aria-expanded={showHint} onClick={() => setShowHint(!showHint)}>
+                  <Button variant="ghost" size="sm" className="-ms-[9px] self-start" aria-expanded={showHint} onClick={() => setShowHint(!showHint)}>
                     <Lightbulb size={14} /> {s.practice.hint}
                   </Button>
                   <Collapse open={showHint} noblur>
@@ -346,7 +346,7 @@ function Session({
                     <div className={cn("flex h-[23px] items-center gap-2.5 text-input font-semibold", ok ? "text-success-text" : "text-danger-text")}>
                       {ok ? <SuccessCircleCheck size={16} /> : <CircleX size={16} />}
                       {ok ? s.practice.correct : s.practice.notQuite}
-                      <span className="ml-auto flex items-center gap-1 text-label font-normal tabular-nums text-muted" data-testid="skill-change">
+                      <span className="ms-auto flex items-center gap-1 text-label font-normal tabular-nums text-muted" data-testid="skill-change">
                         {result.after >= result.before ? <TrendingUp size={14} className="text-success" /> : <TrendingDown size={14} className="text-danger" />}
                         {skillPercent(result.before)} → <NumberPop text={String(skillPercent(result.after))} popKey={result.after} onMount />
                       </span>
@@ -389,7 +389,7 @@ function Session({
         </div>
       </div>
       {stepsOpen && item && (
-        <div className="w-[340px] flex-none border-l border-border">
+        <div className="w-[340px] flex-none border-s border-border">
           <StepCheckerPanel spaceId={space.id} problem={item.question} expectedAnswer={item.answer} onClose={() => setStepsOpen(false)} />
         </div>
       )}

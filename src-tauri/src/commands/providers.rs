@@ -1,5 +1,5 @@
 use crate::db::models::{self as m, Provider};
-use crate::error::{invalid, AppError, AppResult};
+use crate::error::{invalid, invalid_key, AppError, AppResult};
 use crate::lan::{self, LanServer};
 use crate::oauth::{chatgpt, loopback::Loopback, xai, OAuth, OAuthStatus};
 use crate::proxy::{self, FetchedPage, Inflight, ProxyEvent, ProxyRequest};
@@ -96,7 +96,10 @@ pub async fn save_provider(
             .map(|u| matches!(u.scheme(), "http" | "https") && u.host().is_some())
             .unwrap_or(false);
         if !ok {
-            return Err(invalid("Base URL must start with http:// or https://"));
+            return Err(invalid_key(
+                "baseUrlScheme",
+                "Base URL must start with http:// or https://",
+            ));
         }
     }
     if provider.config.is_null() {

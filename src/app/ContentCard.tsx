@@ -7,8 +7,8 @@ export function ContentCard({ children, className, scroll = true }: { children: 
   return (
     <div
       className={cn(
-        "absolute bottom-[8px] right-[8px] top-0 rounded-pane border border-border bg-surface transition-[left] duration-[180ms] ease-[ease]",
-        sidebarOpen ? "left-0" : "left-[8px]",
+        "absolute bottom-[8px] end-[8px] top-0 rounded-pane border border-border bg-surface transition-[inset-inline-start] duration-[180ms] ease-[ease]",
+        sidebarOpen ? "start-0" : "start-[8px]",
         scroll ? "overflow-auto" : "overflow-hidden",
         className,
       )}

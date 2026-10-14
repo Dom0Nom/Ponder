@@ -76,16 +76,16 @@ export function SourcesPanel({ space, open }: { space: Space; open: boolean }) {
       role="region"
       data-open={open}
       inert={!open}
-      style={{ "--panel-translate-x": "-16px", "--panel-translate-y": "0px" } as React.CSSProperties}
+      style={{ "--panel-translate-x": "calc(-16px * var(--dir-x))", "--panel-translate-y": "0px" } as React.CSSProperties}
       onKeyDown={(e) => {
         if (e.key === "Escape" && !e.defaultPrevented) setSourcesOpen(space.id, false);
       }}
       className={cn(
-        "t-panel-slide group/panel absolute inset-y-px left-px z-10 flex w-[341px] flex-col overflow-hidden border-r border-border bg-surface",
+        "t-panel-slide group/panel absolute inset-y-px start-px z-10 flex w-[341px] flex-col overflow-hidden border-e border-border bg-surface",
         dragging && "ring-2 ring-inset ring-fg/30",
       )}
     >
-      <div className="flex h-[49px] shrink-0 items-center gap-2 border-b border-divider pl-4 pr-2.5">
+      <div className="flex h-[49px] shrink-0 items-center gap-2 border-b border-divider ps-4 pe-2.5">
         <h2 className="flex-1 text-input font-semibold">{s.panes.sources}</h2>
         {researching && (
           <button
@@ -117,7 +117,7 @@ export function SourcesPanel({ space, open }: { space: Space; open: boolean }) {
             className="relative flex size-7 items-center justify-center rounded-btn text-muted hover:bg-fill hover:text-fg"
           >
             <FolderSync size={15} />
-            {folders?.some(needsAttention) && <span aria-label={s.watch.attention} className="absolute right-1 top-1 size-1.5 rounded-full bg-danger" />}
+            {folders?.some(needsAttention) && <span aria-label={s.watch.attention} className="absolute end-1 top-1 size-1.5 rounded-full bg-danger" />}
           </button>
         </Tooltip>
         <button
@@ -250,7 +250,7 @@ function SourceRow({ source, fresh }: { source: Source; fresh: boolean }) {
       />
       <Icon size={15} className={cn("shrink-0", source.status === "error" ? "text-danger" : "text-fg")} />
       <button
-        className="flex min-w-0 flex-1 flex-col text-left"
+        className="flex min-w-0 flex-1 flex-col text-start"
         onClick={() => source.status !== "processing" && openViewer({ sourceId: source.id })}
         disabled={source.status === "processing"}
         title={source.status === "error" ? (source.error ?? s.sources.error) : source.status === "processing" ? `${Math.round(source.progress * 100)}%` : undefined}
@@ -318,7 +318,7 @@ function SourceRow({ source, fresh }: { source: Source; fresh: boolean }) {
             await api.deleteSource(source.id);
             refresh();
             qc.invalidateQueries({ queryKey: qk.spaces });
-            toast.success(`Deleted “${source.title}”`);
+            toast.success(s.sources.deletedSource(source.title));
           } catch (e) {
             toastError(s.errors.generic, e);
           }

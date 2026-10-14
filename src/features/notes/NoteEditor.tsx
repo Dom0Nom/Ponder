@@ -221,7 +221,7 @@ export function NoteEditor({
       const passages: Passage[] = all
         .filter((_, i) => i % step === 0)
         .map((p) => ({ sourceId: note.sourceId ?? "", sourceTitle: title, text: p.text, start: p.start, end: p.end }));
-      const made = await generateCards(llm, passages, { count: 6, only: "cloze", existingFronts: (cards.data ?? []).map((c) => c.front) });
+      const made = await generateCards(llm, passages, { count: 6, only: "cloze", existingFronts: (cards.data ?? []).map((c) => c.front), language: space?.language });
       const linked = made.map((c) => ({
         ...c,
         sourceId: note.sourceId,
@@ -286,13 +286,13 @@ export function NoteEditor({
         <span className="text-label text-muted" role="status" data-testid="note-status">
           {status === "saving" ? s.notes.saving : s.notes.saved}
         </span>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+        <div className="ms-auto flex flex-wrap items-center gap-2">
           <span className="flex items-center gap-2 text-body text-fg-secondary" title={s.notes.useAsSourceHelp}>
             <Switch checked={useAsSource} onCheckedChange={toggleSource} label={s.notes.useAsSource} size="sm" />
             {s.notes.useAsSource}
             {note.sourceId && source.data && (
               <span className="text-label text-muted" data-testid="note-source-status">
-                {s.notes.sourceStatus(source.data.status)}
+                {source.data.status === "ready" ? s.notes.sourceReady : source.data.status === "error" ? s.notes.sourceError : s.notes.sourceIndexing}
               </span>
             )}
           </span>
@@ -345,7 +345,7 @@ export function NoteEditor({
               role="listbox"
               aria-label={s.notes.linkSuggestions}
               data-testid="link-suggestions"
-              className="absolute bottom-2 left-3 z-10 flex w-[min(320px,calc(100%-24px))] flex-col rounded-pane border border-border bg-surface p-1 shadow-menu"
+              className="absolute bottom-2 start-3 z-10 flex w-[min(320px,calc(100%-24px))] flex-col rounded-pane border border-border bg-surface p-1 shadow-menu"
             >
               {sugg.map((n, i) => (
                 <li
@@ -380,7 +380,7 @@ export function NoteEditor({
             {incoming.map((n) => (
               <li key={n.id}>
                 <button
-                  className="flex h-8 w-full items-center gap-2 rounded-control px-2 text-left font-medium hover:bg-fill"
+                  className="flex h-8 w-full items-center gap-2 rounded-control px-2 text-start font-medium hover:bg-fill"
                   onClick={async () => {
                     await flush();
                     onOpen(n.id);

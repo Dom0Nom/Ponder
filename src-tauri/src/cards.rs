@@ -1,7 +1,7 @@
 //! Flashcards, their FSRS state, review logs and the mistake notebook. Scheduling runs in the UI
 //! (ts-fsrs); this module stores cards and states and answers "what's due" across spaces.
 use crate::db::{new_id, now_ms};
-use crate::error::{invalid, AppError, AppResult};
+use crate::error::{invalid, invalid_key, AppError, AppResult};
 use crate::AppState;
 use base64::Engine;
 use rusqlite::{params, Connection, OptionalExtension, Row};
@@ -138,10 +138,10 @@ fn validate(card: &NewCard) -> AppResult<()> {
         return Err(invalid(format!("Unknown card type: {}", card.kind)));
     }
     if card.front.trim().is_empty() && card.kind != "occlusion" {
-        return Err(invalid("A card needs a front"));
+        return Err(invalid_key("cardNeedsFront", "A card needs a front"));
     }
     if card.kind == "basic" && card.back.trim().is_empty() {
-        return Err(invalid("A card needs a back"));
+        return Err(invalid_key("cardNeedsBack", "A card needs a back"));
     }
     if card.kind == "cloze" && !card.front.contains("{{c") {
         return Err(invalid("A cloze card needs at least one {{c1::…}} gap"));
@@ -264,7 +264,7 @@ pub fn review_card(
     log: Option<&Value>,
 ) -> AppResult<Card> {
     if !(1..=4).contains(&rating) {
-        return Err(invalid("Rating must be 1–4"));
+        return Err(invalid_key("ratingRange", "Rating must be 1–4"));
     }
     let tx = c.unchecked_transaction()?;
     let n = tx.execute(
@@ -390,11 +390,14 @@ pub fn store_image(dir: &std::path::Path, src: &std::path::Path) -> AppResult<St
         .unwrap_or("")
         .to_ascii_lowercase();
     if !["png", "jpg", "jpeg", "webp", "gif"].contains(&ext.as_str()) {
-        return Err(invalid("Use a PNG, JPEG, WebP or GIF image"));
+        return Err(invalid_key(
+            "imageType",
+            "Use a PNG, JPEG, WebP or GIF image",
+        ));
     }
     let len = std::fs::metadata(src)?.len() as usize;
     if len > MAX_IMAGE_BYTES {
-        return Err(invalid("Images must be under 15 MB"));
+        return Err(invalid_key("imageSize", "Images must be under 15 MB"));
     }
     std::fs::create_dir_all(dir)?;
     let name = format!("{}.{ext}", new_id());

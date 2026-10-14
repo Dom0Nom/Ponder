@@ -165,13 +165,13 @@ export function Composer({
         </Menu>
         <Menu>
           <MenuTrigger asChild>
-            <button aria-label={s.chat.tutorStyleTitle} className={cn(textBtn, "pl-2.5 pr-2 data-[state=open]:bg-fill")}>
+            <button aria-label={s.chat.tutorStyleTitle} className={cn(textBtn, "ps-2.5 pe-2 data-[state=open]:bg-fill")}>
               {s.space.tutorStyles[space.tutorStyle]}
               <ChevronDown size={13} />
             </button>
           </MenuTrigger>
           <MenuContent side="top" align="start" sideOffset={8} popover className="w-[248px]">
-            <p className="pb-1 pl-3 pr-2.5 pt-2 text-label font-semibold text-muted">{s.chat.tutorStyleTitle}</p>
+            <p className="pb-1 ps-3 pe-2.5 pt-2 text-label font-semibold text-muted">{s.chat.tutorStyleTitle}</p>
             <MenuRadioGroup
               value={space.tutorStyle}
               onValueChange={(v) =>
@@ -197,7 +197,7 @@ export function Composer({
             </button>
           </Tooltip>
         )}
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ms-auto flex items-center gap-1">
           <DictateButton
             className={iconBtn}
             onText={(t) => {

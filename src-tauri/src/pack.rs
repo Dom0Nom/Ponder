@@ -2,7 +2,7 @@
 //! Rows are stored as JSON objects keyed by column name. Import always creates a new space with new ids;
 //! the ingest queue then rebuilds chunks and embeddings from each source's text.
 use crate::db::{models, new_id, now_ms};
-use crate::error::{invalid, AppError, AppResult};
+use crate::error::{invalid, invalid_key, AppError, AppResult};
 use crate::ingest::Ingest;
 use crate::AppState;
 use rusqlite::types::{Value as Sql, ValueRef};
@@ -363,16 +363,19 @@ fn unique_name(c: &Connection, base: &str) -> AppResult<String> {
 /// Creates a new space from the pack. Sources come in as `processing`; the caller enqueues them for indexing.
 pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResult<PackImport> {
     let mut zip = zip::ZipArchive::new(File::open(pack)?)
-        .map_err(|_| invalid("This isn't a Ponder study pack."))?;
+        .map_err(|_| invalid_key("notStudyPack", "This isn't a Ponder study pack."))?;
     let manifest: Manifest = {
         let mut f = zip
             .by_name(MANIFEST)
-            .map_err(|_| invalid("This isn't a Ponder study pack."))?;
+            .map_err(|_| invalid_key("notStudyPack", "This isn't a Ponder study pack."))?;
         serde_json::from_slice(&read_limited(&mut f, 1 << 20, "The manifest")?)
-            .map_err(|_| invalid("This isn't a Ponder study pack."))?
+            .map_err(|_| invalid_key("notStudyPack", "This isn't a Ponder study pack."))?
     };
     if manifest.app != "ponder" {
-        return Err(invalid("This isn't a Ponder study pack."));
+        return Err(invalid_key(
+            "notStudyPack",
+            "This isn't a Ponder study pack.",
+        ));
     }
     if manifest.format > FORMAT {
         return Err(invalid(
@@ -614,8 +617,9 @@ pub async fn pack_export(
         .dialog()
         .file()
         .set_parent(&window)
+        .set_title(crate::i18n::t("native.dialog.exportPack"))
         .set_file_name(format!("{}.{EXTENSION}", file_stem(&name)))
-        .add_filter("Ponder study pack", &[EXTENSION])
+        .add_filter(crate::i18n::t("native.dialog.packFilter"), &[EXTENSION])
         .blocking_save_file();
     let Some(path) = picked else { return Ok(None) };
     let mut path = path
@@ -652,7 +656,8 @@ pub async fn pack_import(
         .dialog()
         .file()
         .set_parent(&window)
-        .add_filter("Ponder study pack", &[EXTENSION])
+        .set_title(crate::i18n::t("native.dialog.importPack"))
+        .add_filter(crate::i18n::t("native.dialog.packFilter"), &[EXTENSION])
         .blocking_pick_file();
     let Some(path) = picked else { return Ok(None) };
     let path = path

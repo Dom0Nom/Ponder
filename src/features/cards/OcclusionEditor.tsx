@@ -216,7 +216,7 @@ export function OcclusionEditor({
             />
             <span className={fieldLabel}>{s.occlusion.masks}</span>
             <MaskList masks={masks} setMasks={setMasks} selected={selected} setSelected={setSelected} />
-            <span className="-ml-[9px]">
+            <span className="-ms-[9px]">
               <Button variant="ghost" size="sm" onClick={addMask}>
                 <Plus size={14} />
                 {s.occlusion.addMask}
@@ -429,7 +429,7 @@ function MaskList({
               aria-pressed={m.id === selected}
               aria-label={s.occlusion.mask(i + 1)}
               onClick={() => setSelected(m.id)}
-              className="w-[42px] text-left text-label text-muted"
+              className="w-[42px] text-start text-label text-muted"
             >
               {s.occlusion.mask(i + 1)}
             </button>

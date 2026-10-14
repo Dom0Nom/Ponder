@@ -49,7 +49,7 @@ export const useAddCard = create<{ req: AddCardRequest; open: (r: Omit<AddCardRe
   close: () => set({ req: { open: false } }),
 }));
 
-const ROW = cn(panelRow, "t-learn h-[42px] w-full gap-3 text-left disabled:opacity-40");
+const ROW = cn(panelRow, "t-learn h-[42px] w-full gap-3 text-start disabled:opacity-40");
 const AREA = "min-h-[72px] leading-[1.6]";
 
 export function FlashcardsPanel({ space, onBack }: { space: Space; onBack: () => void }) {
@@ -66,7 +66,7 @@ export function FlashcardsPanel({ space, onBack }: { space: Space; onBack: () =>
     setQuizzing(true);
     try {
       const r = await quizSpace(space);
-      if (r) toast.success(s.cards.quizResult(r.score, r.mistakes));
+      if (r) toast.success(r.mistakes ? s.cards.quizResultSaved(r.score, r.mistakes) : s.cards.quizResult(r.score));
     } catch (e) {
       toastError(e instanceof NoModelError ? s.chat.noModel : s.errors.generic, e);
     } finally {
@@ -143,11 +143,12 @@ function GenerateCardsDialog({ space, open, onOpenChange }: { space: Space; open
       const llm = await resolveChatModel(space);
       const query = focus.trim() || ready.map((x) => x.title).join(" ") || space.name;
       const material = await gatherForTask({ spaceId: space.id, topic: focus.trim() || query, llm, maxTokens: Number(count) >= 20 ? 16_000 : 10_000 });
-      if (!material.passages.length) throw new Error("No passages found. Add sources or change the focus.");
+      if (!material.passages.length) throw new Error(s.failures.noPassagesFoundAddSources);
       const made = await generateCards(llm, material.passages, {
         count: Number(count),
         focus: focus.trim() || undefined,
         existingFronts: (cards.data ?? []).map((c) => c.front),
+        language: space.language,
       });
       const added = await api.cardsAdd(space.id, made.flatMap((c) => expandCloze(c)));
       invalidateCards(space.id);
@@ -304,7 +305,7 @@ export function AddCardDialog({ space }: { space: Space }) {
               <p className="rounded-pane bg-fill-subtle px-3 py-2 text-input">{clozeFront(front, clozeNumbers(front)[0])}</p>
             )}
             <label className="mt-1.5 flex flex-col gap-1.5">
-              <span className={fieldLabel}>{s.cards.back} (optional)</span>
+              <span className={fieldLabel}>{s.cards.backOptional}</span>
               <Input id="card-extra" value={back} onChange={(e) => setBack(e.target.value)} />
             </label>
           </div>
@@ -353,8 +354,8 @@ function BrowseCardsDialog({ space, onClose }: { space: Space; onClose: () => vo
     >
       <div className="px-5 pb-2">
         <div className="relative">
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.cards.browseSearch} aria-label={s.cards.browseSearch} className="pr-8" />
-          <Search size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" aria-hidden />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.cards.browseSearch} aria-label={s.cards.browseSearch} className="pe-8" />
+          <Search size={14} className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2" aria-hidden />
         </div>
       </div>
       {isLoading && <Skeleton className="mx-5 h-40" />}

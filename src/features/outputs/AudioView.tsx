@@ -73,7 +73,7 @@ export function AudioView({ id, title, data, space }: { id: string; title: strin
     try {
       const llm = await resolveChatModel(space);
       const material = await gatherMaterial(space.id, q, llm);
-      const prompt = audioAnswerPrompt(material, title, data.lines.slice(Math.max(0, at - 3), at + 1), q);
+      const prompt = audioAnswerPrompt(material, title, data.lines.slice(Math.max(0, at - 3), at + 1), q, space.language);
       const r = await generateText({ model: llm.model, prompt, abortSignal: ac.signal, ...llm.options({ thinking: false }) });
       if (ac.signal.aborted) return;
       const lines = parseAudioAnswer(r.text);
@@ -124,7 +124,7 @@ export function AudioView({ id, title, data, space }: { id: string; title: strin
               <Square size={12} />
             </Button>
           )}
-          <span className="ml-auto text-label tabular-nums text-muted" data-testid="audio-position">
+          <span className="ms-auto text-label tabular-nums text-muted" data-testid="audio-position">
             {s.outputs.audio.lineOf(cursor + 1, total)}
           </span>
         </div>
@@ -158,7 +158,7 @@ export function AudioView({ id, title, data, space }: { id: string; title: strin
               onClick={() => (ready ? playFrom(i) : setCursor(i))}
               aria-current={line === i ? "true" : undefined}
               className={cn(
-                "flex gap-3 rounded-item px-2 py-1.5 text-left text-body leading-[1.55] hover:bg-fill-subtle",
+                "flex gap-3 rounded-item px-2 py-1.5 text-start text-body leading-[1.55] hover:bg-fill-subtle",
                 line === i && "bg-fill",
               )}
             >
@@ -168,14 +168,14 @@ export function AudioView({ id, title, data, space }: { id: string; title: strin
             {asides
               .filter((a) => a.at === i)
               .map((a, j) => (
-                <div key={j} className="ml-[68px] flex flex-col gap-1 rounded-card border border-border px-3 py-2 text-body" data-testid="audio-aside">
+                <div key={j} className="ms-[68px] flex flex-col gap-1 rounded-card border border-border px-3 py-2 text-body" data-testid="audio-aside">
                   <span>
-                    <span className="mr-2 text-label font-semibold text-muted">{s.outputs.audio.you}</span>
+                    <span className="me-2 text-label font-semibold text-muted">{s.outputs.audio.you}</span>
                     {a.question}
                   </span>
                   {a.lines.map((al, k) => (
                     <span key={k}>
-                      <span className="mr-2 text-label font-semibold text-muted">{s.outputs.audio.hosts[al.host]}</span>
+                      <span className="me-2 text-label font-semibold text-muted">{s.outputs.audio.hosts[al.host]}</span>
                       {al.text}
                     </span>
                   ))}
