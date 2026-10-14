@@ -233,8 +233,8 @@ export function WorksheetBuilder({ space, onBack }: { space: Space; onBack: () =
         <label className="flex flex-col gap-1.5">
           <span className={fieldLabel}>{s.worksheets.paper}</span>
           <NativeSelect value={o.paper} onChange={(e) => patch({ paper: e.target.value as "a4" | "letter" })}>
-            <option value="a4">A4</option>
-            <option value="letter">Letter</option>
+            <option value="a4">{s.worksheets.paperA4}</option>
+            <option value="letter">{s.worksheets.paperLetter}</option>
           </NativeSelect>
         </label>
       </div>

@@ -54,12 +54,14 @@ function BlockView({ b }: { b: Block }) {
   }
 }
 
+const pageCss = (paper: string) => ["@media print { @page { size: ", paper, "; margin: 16mm; } }"].join("");
+
 /** The printed sheet: header fields, numbered tasks that never split across pages, and the key on its own page. */
 export function SheetPrint({ sheet, withKey }: { sheet: Sheet; withKey: boolean }) {
   const paper = sheet.options.paper === "a4" ? "A4" : "letter";
   return (
     <div className="hidden flex-col gap-3 print:flex" data-testid="sheet-print" data-paper={paper}>
-      <style>{`@media print { @page { size: ${paper}; margin: 16mm; } }`}</style>
+      <style>{pageCss(paper)}</style>
       <div className="flex flex-col gap-2">
         {headBlocks(sheet, false).map((b, i) => (
           <BlockView key={i} b={b} />

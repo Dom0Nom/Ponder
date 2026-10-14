@@ -35,11 +35,20 @@ All calls go through `generateText`/`streamText` from the `ai` SDK; there is no 
 | vision-transcribe | `steps/vision.ts` `TRANSCRIBE_PROMPT` | read handwritten math from a photo | vision model | JSON `{problem, steps[]}` → `parseTranscription` |
 | source-summary | `sources/summary.ts` | 2–3 sentence summary per source | chat | text |
 | studio-outputs | `studio/prompts.ts` `outputPrompt` | reports, cheat sheets, worksheets, timelines, tables, mind maps, diagrams, slides, infographics, audio overview scripts | chat | JSON per kind → `parseOutput` |
+| exam-questions-rich | `exam/generate.ts` `examQuestionPrompt` (sections with `kinds`, GED), pieces in `questions/prompts.ts` `questionKindsPrompt`, `STIMULUS_RULES` | exam questions of several kinds (mc, multi, fill, dropdown, drag, hotspot) with optional passage, table, chart or plane stimulus | chat, thinking off | JSON `[{topicId, kind, prompt, …}]` → `parseQuestions` (invalid questions dropped), `toQuiz` |
+| worksheet | `worksheets/prompts.ts` `worksheetPrompt` | whole sheet in the chosen preset, language, size, task types, option count and label rules; German style names, Operatoren and Anforderungsbereiche | chat, thinking off | JSON `{title, instructions, tasks[]}` → `parseSheet` (drops unusable tasks, rescales points) → `checkKeys` hook |
+| worksheet-task | `worksheets/prompts.ts` `regenerateTaskPrompt` | rewrite one task, avoiding the others' questions | chat | JSON task → `parseTask` |
+| worksheet-open-grade | `worksheets/prompts.ts` `openGradePrompt` | grade open answers against key and rubric in steps of 0.5 with a one-sentence reason | chat | JSON `[{id, points, reason}]` → `gradeOpenParts` |
+| worksheet-paper-read | `worksheets/prompts.ts` `paperReadPrompt` | read a photo of a filled paper sheet into "task.part: answer" lines | vision | JSON `{problem, steps[]}` → `parseTranscription` → `paperResponses` |
 | audio-answer | `studio/prompts.ts` `audioAnswerPrompt` | hosts answer a listener's interruption | chat | JSON `{lines[]}` → `parseAudioAnswer` |
 
 Deterministic guards already in code: citation numbers are filtered to real passages (`citations.ts`, `remarkCitations.ts`, `parseCheck`); math is re-checked with mathjs (`steps/verify.ts`) and practice answers are re-solved; every JSON parser validates enums, counts and ranges.
 
 The e2e fake LLM (`src/test/mockBackend.ts`) recognises prompts by their opening text ("Solve this problem carefully", "You are a strict fact-checker", "Write ONE practice problem", …). Keep a prompt's first line when rewording it, or update the mock in the same commit.
+
+### Rich questions and worksheets (new)
+
+Not run yet (no live checks in this pass). `prompt-eval --only worksheets` has six cases: international en, Arbeitsblatt de, Klassenarbeit de (40 points), IHK de (100 points), GED en, US en (5 options, several correct, A B C). Checks: parsed, at least 3 tasks, point sum, language, option count, several keys for "multi". The solver check for keys comes from the answer-key check (`src/lib/quality/keyHook.ts` is the hook point until `answerCheck.ts` lands). Mock-backend replies match the first lines "Write a worksheet for a learner", "Rewrite ONE task of a worksheet", "You grade open answers on a worksheet" and, for exams, "Write questions of several kinds for a timed".
 
 ## Research
 
