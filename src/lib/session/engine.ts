@@ -80,7 +80,7 @@ function fit(blocks: Block[], budget: number): Block[] {
 export const totalMinutes = (blocks: Block[]) => blocks.reduce((n, b) => n + b.minutes, 0);
 
 /** Goal text for a Focus session started from the list. */
-export function focusGoal(input: Pick<NextInput, "goal" | "planToday">, blocks: Block[]): string {
+export function focusGoal(input: Pick<NextInput, "goal" | "planToday">, blocks: Block[], describe: (b: Block) => string = () => ""): string {
   const first = blocks.find((b) => b.kind !== "reflect");
-  return input.goal?.trim() || input.planToday[0] || first?.topic?.title || "";
+  return input.goal?.trim() || input.planToday[0] || first?.topic?.title || (first ? describe(first) : "");
 }

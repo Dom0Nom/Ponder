@@ -83,7 +83,7 @@ export function NextCard({ spaceId }: { spaceId: string }) {
           size="sm"
           onClick={() => {
             navigate({ name: "space", spaceId });
-            openFocusDialog(focusGoal(input, blocks));
+            openFocusDialog(focusGoal(input, blocks, blockLabel));
           }}
         >
           <Timer size={13} />
