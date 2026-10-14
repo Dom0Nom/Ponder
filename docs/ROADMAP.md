@@ -4,22 +4,26 @@
 
 Outside the app: take the official GED Ready test per subject (ged.com) for a real baseline. The app's score is an estimate; GED Ready is the only official predictor.
 
+## Status (2026-10-15)
+
+All 14 items are built (see `docs/HANDOFF.md` for gaps per item). Animation picks below are superseded by `docs/redesign/07-motion-prominent.md` where they differ. Open decisions are decided: Next replaces "Start session" as the main session button and carries metal-fx; mixed practice is the default; rarely used Studio formats go behind "More" in Create.
+
 ## Order
 
-1. GED fixes
-2. Answer-key check
-3. Rich questions
-4. Confidence and mixed practice
-5. Next (session engine)
-6. Mastery retest
-7. Mistake patterns
-8. Score band
-9. Essay grader calibration
-10. Worked → faded examples
-11. Goals without a date + goal → skill graph
-12. NumPy in Python cells
-13. Projects and build log
-14. Lab cards
+1. GED fixes — done
+2. Answer-key check — done
+3. Rich questions — done
+4. Confidence and mixed practice — done
+5. Next (session engine) — done
+6. Mastery retest — done
+7. Mistake patterns — done
+8. Score band — done
+9. Essay grader calibration — done
+10. Worked → faded examples — done
+11. Goals without a date + goal → skill graph — done
+12. NumPy in Python cells — done
+13. Projects and build log — done
+14. Lab cards — done
 
 
 > Animation lines in this file are the minimum. `docs/redesign/07-motion-prominent.md` supersedes them (orbs for waits over 0.5 s, Libraries.dev effects per section 3, re-picked snippets, one metal CTA per screen).
