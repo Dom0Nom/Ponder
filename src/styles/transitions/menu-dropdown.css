@@ -1,10 +1,10 @@
 /* Transitions.dev — Menu dropdown */
 /* transitions.dev free tier, Transitions.dev License. Modified: .is-open/.is-closing transitions became keyframes on Radix data-state; data-origin attributes replaced by Radix's --radix-*-content-transform-origin; :root mapped. */
 :root {
-  --dropdown-open-dur: var(--motion-fast);
-  --dropdown-close-dur: var(--motion-quick);
-  --dropdown-pre-scale: 0.97;
-  --dropdown-closing-scale: 0.99;
+  --dropdown-open-dur: 240ms;
+  --dropdown-close-dur: 160ms;
+  --dropdown-pre-scale: 0.92;
+  --dropdown-closing-scale: 0.97;
   --dropdown-ease: var(--motion-ease-smooth);
 }
 @keyframes t-dropdown-open  { from { transform: scale(var(--dropdown-pre-scale)); opacity: 0; } to { transform: scale(1); opacity: 1; } }

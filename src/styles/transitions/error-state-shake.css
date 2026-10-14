@@ -1,9 +1,9 @@
 /* Transitions.dev — Error state shake */
 /* transitions.dev free tier, Transitions.dev License. Modified: only the input rules are kept (the result callout is a separate element, so .t-error-msg/.t-input-wrap and the timed revert are not used; the red border stays until the next try, as in the design); :root mapped. */
 :root {
-  --shake-distance: 6px;
-  --shake-overshoot: 4px;
-  --shake-dur-a: var(--motion-micro);
+  --shake-distance: 10px;
+  --shake-overshoot: 6px;
+  --shake-dur-a: 90ms;
   --shake-dur-b: 60ms;
   --shake-ease: var(--motion-ease-smooth);
 }

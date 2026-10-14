@@ -18,8 +18,8 @@ export function Reveal({
   active?: boolean;
 }) {
   const style = {
-    "--panel-translate-y": `${y ?? 6}px`,
-    ...(index ? { transitionDelay: `${Math.min(index, 8) * 40}ms` } : {}),
+    "--panel-translate-y": `${y ?? 12}px`,
+    ...(index ? { transitionDelay: `calc(${Math.min(index, 9)} * var(--motion-stagger))` } : {}),
   } as CSSProperties;
   if (!active)
     return (

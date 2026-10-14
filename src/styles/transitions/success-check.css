@@ -3,9 +3,9 @@
 :root {
   --check-opacity-dur: var(--motion-slow);
   --check-rotate-dur: var(--motion-slow);
-  --check-rotate-from: 45deg;
+  --check-rotate-from: 60deg;
   --check-bob-dur: var(--motion-slow);
-  --check-y-amount: 6px;
+  --check-y-amount: 8px;
   --check-blur-dur: var(--motion-slow);
   --check-blur-from: 4px;
   --check-path-dur: var(--motion-slow);

@@ -193,7 +193,7 @@ export function ThreadList({ spaceId }: { spaceId: string }) {
           </button>
         )}
         {groups.map(({ group, items }) => (
-          <div key={group} className="flex flex-col gap-0.5">
+          <div key={group} className="m-stagger m-stagger-sm flex flex-col gap-0.5">
             <p className="whitespace-nowrap px-4 pb-1 pt-2.5 text-label font-semibold text-muted">{s.shell.groups[group]}</p>
             {items.map((t) => (
               <ThreadRow key={t.id} thread={t} spaceId={spaceId} active={t.id === active?.id} fresh={isFresh(t.id)} onDelete={() => setDeleting(t)} />

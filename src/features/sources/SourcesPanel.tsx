@@ -150,7 +150,7 @@ export function SourcesPanel({ space, open }: { space: Space; open: boolean }) {
         </div>
       )}
       {all.length > 0 && (
-        <ul className="min-h-0 flex-1 overflow-y-auto px-2 py-1.5" data-testid="source-list">
+        <ul className="m-stagger m-stagger-sm min-h-0 flex-1 overflow-y-auto px-2 py-1.5" data-testid="source-list">
           {all.map((src) => (
             <SourceRow key={src.id} source={src} fresh={isFresh(src.id)} />
           ))}

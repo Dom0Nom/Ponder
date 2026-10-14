@@ -1,8 +1,8 @@
 /* Transitions.dev — Text states swap */
 /* transitions.dev free tier, Transitions.dev License. Modified: :root mapped. */
 :root {
-  --text-swap-dur: var(--motion-quick);
-  --text-swap-translate-y: 4px;
+  --text-swap-dur: 180ms;
+  --text-swap-translate-y: 8px;
   --text-swap-blur: var(--motion-blur-sm);
   --text-swap-ease: var(--motion-ease-swap);
 }

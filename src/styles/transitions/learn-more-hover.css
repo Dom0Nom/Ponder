@@ -1,8 +1,8 @@
 /* Transitions.dev — Learn more hover */
 /* transitions.dev free tier, Transitions.dev License. Modified: :root mapped; the hover trigger is the whole navigable row. */
 :root {
-  --learn-shift: 2px;
-  --learn-spread: 8deg;
+  --learn-shift: 4px;
+  --learn-spread: 12deg;
   --learn-in: var(--motion-medium);
   --learn-out: var(--motion-medium);
   --learn-ease: var(--motion-ease-smooth);

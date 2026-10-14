@@ -74,7 +74,7 @@ export function HomeScreen() {
         )}
         {error && <ErrorState title={s.home.loadError} error={error} onRetry={() => refetch()} />}
         {data && data.length > 0 && (
-          <div ref={gridRef} className="relative grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3" data-testid="space-grid">
+          <div ref={gridRef} className="m-stagger relative grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3" data-testid="space-grid">
             {data.map((sp) => (
               <Reveal key={sp.id} active={isFresh(sp.id)} data-flip-key={sp.id}>
                 <SpaceCard space={sp} onEdit={() => setEditing(sp)} onDelete={() => setDeleting(sp)} />
