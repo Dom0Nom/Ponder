@@ -1,5 +1,8 @@
+const MetalButton = lazy(() => import("../../components/fx/MetalButton"));
+import { Fx } from "../../components/fx/Fx";
+import { AiBeam } from "../../components/fx/AiBeam";
 import { SpinCounter } from "../../components/motion/SpinCounter";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { lazy, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { Calculator, ChevronDown, ChevronLeft, ChevronRight, Flag, GraduationCap, Trash2 } from "lucide-react";
 import { api } from "../../lib/ipc";
@@ -153,6 +156,12 @@ function StartView({ spaceId }: { spaceId: string }) {
     }
   };
 
+  const beginButton = (
+    <Button variant="primary" onClick={start} data-testid="exam-begin">
+      {s.exam.start}
+    </Button>
+  );
+
   return (
     <>
       <p className="text-fg-secondary">{s.exam.intro(format.title)}</p>
@@ -192,9 +201,11 @@ function StartView({ spaceId }: { spaceId: string }) {
               </Button>
             </>
           ) : (
-            <Button variant="primary" onClick={start} data-testid="exam-begin">
-              {s.exam.start}
-            </Button>
+            <Fx
+              needsWebGL2
+              fallback={beginButton}
+              render={() => <MetalButton>{beginButton}</MetalButton>}
+            />
           )}
         </div>
         {error ? <ErrorState title={s.exam.startError} error={error} onRetry={start} /> : null}
@@ -568,6 +579,7 @@ function Results({ attempt, format, section, space }: { attempt: ExamAttempt; fo
       </section>
 
       {essay ? (
+        <AiBeam working={grading}>
         <section className="flex flex-col gap-3 rounded-card border border-border px-5 py-4" data-testid="exam-essay-result">
           <h2 className="text-title-sm font-semibold">{s.exam.essay}</h2>
           {grading ? (
@@ -591,6 +603,7 @@ function Results({ attempt, format, section, space }: { attempt: ExamAttempt; fo
             </>
           ) : null}
         </section>
+        </AiBeam>
       ) : null}
 
       <section className="flex flex-col gap-3 rounded-card border border-border px-5 py-4" data-testid="exam-topics">

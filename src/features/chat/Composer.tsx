@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, useEffect, useRef, useState } from "react";
+import { Fx } from "../../components/fx/Fx";
 import { ArrowUp, Camera, ChevronDown, FileUp, Library, Plus, Square } from "lucide-react";
 import { storedControls } from "../../lib/chat/controls";
 import { runTurn, TurnBusyError } from "../../lib/chat/runner";
@@ -22,6 +23,8 @@ import { VoiceButton } from "../voice/VoiceButton";
 import { useVoice } from "../../stores/voice";
 import { toast, toastError } from "../../components/ui/toast";
 import { ModelMenu } from "./ModelMenu";
+
+const WorkBeam = lazy(() => import("../../components/fx/WorkBeam"));
 
 const iconBtn = "flex size-7 shrink-0 items-center justify-center rounded-btn text-fg hover:bg-fill";
 const textBtn = "flex h-7 items-center gap-1.5 rounded-btn px-2.5 font-medium hover:bg-fill";
@@ -122,7 +125,7 @@ export function Composer({
   const disabled = busy || !!running || pending;
   const off = sources.ready - sources.inChat;
 
-  return (
+  const box = (
     <div className={cn("mx-auto rounded-pane border border-control bg-surface transition-colors focus-within:border-fg/40", studioOpen ? "max-w-[654px]" : "max-w-[652px]")}>
       {voiceOn && <VoiceBar />}
       <textarea
@@ -231,4 +234,5 @@ export function Composer({
       />
     </div>
   );
+  return <Fx fallback={box} render={() => <WorkBeam active={!!running} size="line" radius={8}>{box}</WorkBeam>} />;
 }
