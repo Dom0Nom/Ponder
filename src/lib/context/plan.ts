@@ -95,7 +95,7 @@ const words = (t: string) =>
   t
     .toLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
-    .filter((w) => w.length > 2);
+    .filter((w) => w.length > 2 || /^\d+$/.test(w));
 
 /** Sources the text names: every significant word of a short title, or most of a long one. */
 export function namedSources(text: string, sources: Source[]): Source[] {
@@ -103,7 +103,8 @@ export function namedSources(text: string, sources: Source[]): Source[] {
   const stop = new Set(["the", "and", "for", "pdf", "with", "der", "die", "das", "und", "openstax", "rice", "university", "edition"]);
   return sources
     .map((s) => {
-      const tw = [...new Set(words(s.title.replace(/\.[a-z]{2,4}$/i, "")))].filter((w) => !stop.has(w) && !/^\d+e?$/.test(w));
+      // "Volume 1" vs "Volume 2" differ only by the number, so numbers count; "2e" (edition) doesn't
+      const tw = [...new Set(words(s.title.replace(/\.[a-z]{2,4}$/i, "")))].filter((w) => !stop.has(w) && !/^\d+e$/.test(w));
       const hits = tw.filter((w) => said.has(w)).length;
       return { s, score: tw.length ? hits / tw.length : 0, hits };
     })

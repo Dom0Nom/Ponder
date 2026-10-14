@@ -108,23 +108,57 @@ function pageAt(r: SourceRange, offset: number): number | null {
   return page;
 }
 
-/** Splits a range's text into blocks of about BLOCK_CHARS at paragraph breaks. */
-export function blocks(r: SourceRange): { text: string; start: number; end: number; page: number | null; pageTo: number | null }[] {
-  const out = [];
-  let i = 0;
+export interface Block {
+  text: string;
+  start: number;
+  end: number;
+  page: number | null;
+  pageTo: number | null;
+  chunkId: number | null;
+}
+
+/**
+ * Splits a range into separately citable blocks: one per chunk (the search's own granularity),
+ * merged up to `minChars` when budgets are so large that numbers would run past 999. Without chunk
+ * offsets, blocks of about BLOCK_CHARS cut at line breaks.
+ */
+export function blocks(r: SourceRange, minChars = 0): Block[] {
   const t = r.text;
-  while (i < t.length) {
-    let j = Math.min(t.length, i + BLOCK_CHARS);
-    if (j < t.length) {
-      const para = t.lastIndexOf("\n", j);
-      if (para > i + BLOCK_CHARS / 2) j = para + 1;
+  const cuts: { at: number; chunkId: number | null }[] = [];
+  if (r.chunkStarts?.length) {
+    let last = -Infinity;
+    for (const [id, off] of r.chunkStarts) {
+      const at = Math.max(0, off - r.start);
+      if (at >= t.length) break;
+      if (cuts.length && at - last < minChars) continue;
+      if (cuts.length && at <= cuts[cuts.length - 1].at) continue;
+      cuts.push({ at: cuts.length ? at : 0, chunkId: id });
+      last = cuts.length === 1 ? 0 : at;
     }
-    const start = r.start + i;
-    const end = r.start + j;
-    out.push({ text: t.slice(i, j).trim(), start, end, page: pageAt(r, start), pageTo: j >= t.length ? (r.pageTo ?? pageAt(r, end - 1)) : pageAt(r, end - 1) });
-    i = j;
+  } else {
+    let i = 0;
+    while (i < t.length) {
+      cuts.push({ at: i, chunkId: cuts.length ? null : r.chunkId });
+      let j = Math.min(t.length, i + BLOCK_CHARS);
+      if (j < t.length) {
+        const para = t.lastIndexOf("\n", j);
+        if (para > i + BLOCK_CHARS / 2) j = para + 1;
+      }
+      i = j;
+    }
   }
-  return out.filter((b) => b.text);
+  if (!cuts.length) cuts.push({ at: 0, chunkId: r.chunkId });
+  const out: Block[] = [];
+  cuts.forEach((c, k) => {
+    const i = c.at;
+    const j = k + 1 < cuts.length ? cuts[k + 1].at : t.length;
+    const raw = t.slice(i, j);
+    const start = r.start + i + (raw.length - raw.trimStart().length);
+    const end = r.start + j - (raw.length - raw.trimEnd().length);
+    if (!raw.trim()) return;
+    out.push({ text: raw.trim(), start, end, page: pageAt(r, start), pageTo: j >= t.length ? (r.pageTo ?? pageAt(r, end - 1)) : pageAt(r, end - 1), chunkId: c.chunkId ?? r.chunkId });
+  });
+  return out;
 }
 
 export interface Numbered {
@@ -139,12 +173,14 @@ export function numberRanges(
   budget: number,
   startAt = 1,
 ): Numbered {
+  // keep citation numbers under 1000 even when the budget holds whole books
+  const minChars = budget * 4 > 800 * 900 ? Math.ceil((budget * 4) / 800) : 0;
   const passages: ContextPassage[] = [];
   const truncated: string[] = [];
   let tokens = 0;
   let n = startAt;
   outer: for (const { range, label, why } of ranges) {
-    for (const b of blocks(range)) {
+    for (const b of blocks(range, minChars)) {
       let text = b.text;
       let t = countTokens(text) + 20;
       if (tokens + t > budget) {
@@ -161,7 +197,7 @@ export function numberRanges(
         n: n++,
         sourceId: range.sourceId,
         sourceTitle: range.sourceTitle,
-        chunkId: range.chunkId ?? 0,
+        chunkId: b.chunkId ?? range.chunkId ?? 0,
         start: b.start,
         end: b.end,
         page: b.page,

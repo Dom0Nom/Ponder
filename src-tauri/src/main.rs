@@ -6,6 +6,10 @@ fn main() {
     if args.get(1).is_some_and(|a| a == "mcp") {
         std::process::exit(app_lib::mcp::run_stdio(&args[2..]));
     }
+    #[cfg(debug_assertions)]
+    if args.get(1).is_some_and(|a| a == "dev-serve") {
+        std::process::exit(app_lib::devserve::run(&args[2..]));
+    }
     if app_lib::cli::is_cli_invocation(&args) {
         std::process::exit(app_lib::cli::run(args));
     }

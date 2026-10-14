@@ -10,6 +10,7 @@ import { StudioSubpanel } from "../space/StudioSubpanel";
 import { DictateButton } from "../speech/DictateButton";
 import { ListenButton } from "../speech/ListenButton";
 import { api } from "../../lib/ipc";
+import { gatherForTask } from "../../lib/context/task";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
 import { generateNoThinking } from "../../lib/steps/check";
 import { feynmanPrompt, MIN_WORDS, parseFeynman, wordCount, type FeynmanTurn } from "../../lib/feynman/feynman";
@@ -86,11 +87,13 @@ export function FeynmanPanel({ space, onBack }: { space: Space; onBack: () => vo
     setEditing(false);
     try {
       const llm = await resolveChatModel(space);
-      const hits = await api.searchChunks(space.id, `${topic}\n${text.slice(0, 400)}`, 8).catch(() => []);
+      const hits = await gatherForTask({ spaceId: space.id, topic, queries: [text.slice(0, 400)], llm, maxTokens: 10_000 })
+        .then((m) => m.passages)
+        .catch(() => []);
       const prompt = feynmanPrompt({
         topic,
         explanation: text,
-        passages: hits.map((h) => ({ source: h.sourceTitle, text: h.text })),
+        passages: hits.map((h) => ({ source: h.label ? `${h.sourceTitle} · ${h.label}` : h.sourceTitle, text: h.text })),
         history: rounds,
         answer: withAnswer,
       });

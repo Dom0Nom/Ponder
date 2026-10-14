@@ -1,4 +1,5 @@
 import { api } from "../ipc";
+import { gatherForTask } from "../context/task";
 import { resolveChatModel } from "../chat/llm";
 import { generateQuiz, gradeQuiz } from "../placement/logic";
 import type { Space } from "../types";
@@ -11,9 +12,9 @@ export async function quizSpace(space: Space, focus?: string): Promise<{ score: 
   quiz.setPreparing("Writing questions from your sources…");
   try {
     const llm = await resolveChatModel(space);
-    const hits = await api.searchChunks(space.id, focus?.trim() || space.name, 10);
-    if (!hits.length) throw new Error("This space has no ready sources to quiz you on.");
-    const context = hits.map((h) => `(${h.sourceTitle}) ${h.text}`).join("\n\n");
+    const material = await gatherForTask({ spaceId: space.id, topic: focus?.trim() ?? "", llm, maxTokens: 12_000 });
+    if (!material.passages.length) throw new Error("This space has no ready sources to quiz you on.");
+    const context = material.passages.map((h) => `(${h.sourceTitle}${h.label ? ` · ${h.label}` : ""}) ${h.text}`).join("\n\n");
     const topic = { id: "space", title: focus?.trim() || space.name, description: "the learner's sources", group: space.name };
     const questions = (await generateQuiz(llm, { topics: [topic], perTopic: 5, context, purpose: "practice quiz on the learner's own sources" })).slice(0, 5);
     const answers = await quiz.ask(`Quiz: ${topic.title}`, questions);

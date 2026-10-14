@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, CircleX, Lightbulb, ListChecks, TrendingDown, TrendingUp } from "lucide-react";
 import { api } from "../../lib/ipc";
+import { gatherForTask } from "../../lib/context/task";
 import { invalidateCards, qk, useCurriculum, useSpace } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Ability, ErrorType, PracticeItem, Space } from "../../lib/types";
@@ -129,7 +130,9 @@ function Session({
     const llm = await resolveChatModel(space);
     const [avoid, hits] = await Promise.all([
       api.practiceRecent(space.id, topic.key, 10),
-      api.searchChunks(space.id, `${topic.title} ${topic.description}`, 4).catch(() => []),
+      gatherForTask({ spaceId: space.id, topic: topic.title, queries: [`${topic.title} ${topic.description}`], maxTokens: 3_000 })
+        .then((m) => m.passages)
+        .catch(() => []),
     ]);
     const context = hits.length ? hits.map((h) => h.text).join("\n\n") : undefined;
     return api.practiceItemAdd(space.id, await generateProblem(llm, { topic, level: levelFor(targetDifficulty(atTheta)), avoid, context, language }));

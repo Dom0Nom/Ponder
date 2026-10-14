@@ -4,6 +4,8 @@ mod backup;
 mod calculator;
 mod capture;
 mod context;
+#[cfg(debug_assertions)]
+pub mod devserve;
 mod cards;
 pub mod cli;
 mod cloud;

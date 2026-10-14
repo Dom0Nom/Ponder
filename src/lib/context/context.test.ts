@@ -198,6 +198,17 @@ describe("passages", () => {
     expect(n.passages.map((p) => p.n)).toEqual([5, 6, 7]);
   });
 
+  it("numbers each chunk separately so citations point at the chunk, merging only for huge budgets", () => {
+    const text = "First chunk text.\nSecond chunk text.\nThird chunk text.";
+    const r = range(text, { chunkStarts: [[11, 100], [12, 118], [13, 137]], pageStarts: [] });
+    expect(blocks(r).map((b) => [b.text, b.chunkId, b.start])).toEqual([
+      ["First chunk text.", 11, 100],
+      ["Second chunk text.", 12, 118],
+      ["Third chunk text.", 13, 137],
+    ]);
+    expect(blocks(r, 30).map((b) => b.chunkId)).toEqual([11, 13]);
+  });
+
   it("cuts the last passage with a notice when the budget runs out", () => {
     const n = numberRanges([{ range: range("word ".repeat(4000)), label: null, why: "full" }], 900);
     expect(n.truncated).toEqual(["Book"]);

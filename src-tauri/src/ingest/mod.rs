@@ -326,21 +326,11 @@ impl Ingest {
     }
 }
 
-pub fn start(app: &AppHandle, db: Db, data_dir: PathBuf) {
-    let handle = app.clone();
-    let emit: Emit = Arc::new(move |event: &str, payload: serde_json::Value| {
-        let _ = handle.emit(event, payload);
-    });
-    let model_id = db
-        .conn()
-        .ok()
-        .and_then(|c| models::get_setting(&c, embed::SETTING_MODEL).ok().flatten())
-        .and_then(|v| v.as_str().map(str::to_string))
-        .unwrap_or_else(|| embed::DEFAULT_MODEL.to_string());
+/// The OpenRouter key for remote embedding models: the first OpenRouter provider's key.
+pub fn remote_key(db: Db) -> embed::RemoteKey {
     use rusqlite::OptionalExtension;
-    let key_db = db.clone();
-    let remote_key: embed::RemoteKey = Arc::new(move || {
-        let c = key_db.conn()?;
+    Arc::new(move || {
+        let c = db.conn()?;
         let id: Option<String> = c
             .query_row(
                 "SELECT id FROM providers WHERE type = 'openrouter' ORDER BY created_at LIMIT 1",
@@ -355,7 +345,21 @@ pub fn start(app: &AppHandle, db: Db, data_dir: PathBuf) {
             .get(&id)?
             .filter(|k| !k.trim().is_empty())
             .ok_or_else(missing)
+    })
+}
+
+pub fn start(app: &AppHandle, db: Db, data_dir: PathBuf) {
+    let handle = app.clone();
+    let emit: Emit = Arc::new(move |event: &str, payload: serde_json::Value| {
+        let _ = handle.emit(event, payload);
     });
+    let model_id = db
+        .conn()
+        .ok()
+        .and_then(|c| models::get_setting(&c, embed::SETTING_MODEL).ok().flatten())
+        .and_then(|v| v.as_str().map(str::to_string))
+        .unwrap_or_else(|| embed::DEFAULT_MODEL.to_string());
+    let remote_key = remote_key(db.clone());
     let embedder = Arc::new(EmbedderService::new(
         data_dir.join("models"),
         &model_id,

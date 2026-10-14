@@ -5,10 +5,9 @@ import { s } from "../strings";
 import type { SearchHit, Source } from "../types";
 import { parseOutput, type AudioStyle, type OutputKind, type Parsed } from "./kinds";
 import { outputPrompt, type Material } from "./prompts";
+import { gatherForTask } from "../context/task";
 
 export class NoMaterialError extends Error {}
-
-const PASSAGES = 14;
 
 /** Numbers the sources the passages come from, so a report's [n] markers map back to titles. */
 export function buildMaterial(sources: Pick<Source, "id" | "title" | "summary">[], hits: SearchHit[]): Material {
@@ -31,11 +30,16 @@ export function buildMaterial(sources: Pick<Source, "id" | "title" | "summary">[
   };
 }
 
-export async function gatherMaterial(spaceId: string, query: string): Promise<Material> {
+/**
+ * The topic's sections and best passages through the shared context builder (`topic` empty = the
+ * whole space). Long passages stay whole so outputs can follow a chapter, not 14 random snippets.
+ */
+export async function gatherMaterial(spaceId: string, topic: string, llm?: ResolvedModel): Promise<Material> {
   const sources = (await api.listSources(spaceId)).filter((src) => src.status === "ready" && src.useInChat);
   if (!sources.length) throw new NoMaterialError();
-  const hits = await api.searchChunks(spaceId, query, PASSAGES, sources.map((src) => src.id));
-  if (!hits.length) throw new NoMaterialError();
+  const m = await gatherForTask({ spaceId, topic, llm, maxTokens: 24_000 });
+  if (!m.passages.length) throw new NoMaterialError();
+  const hits: SearchHit[] = m.passages.map((p) => ({ chunkId: p.chunkId, sourceId: p.sourceId, sourceTitle: p.sourceTitle, text: p.text, start: p.start, end: p.end, page: p.page, score: 1 }));
   return buildMaterial(sources.slice(0, 12), hits);
 }
 

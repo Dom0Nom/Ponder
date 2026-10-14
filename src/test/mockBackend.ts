@@ -712,6 +712,7 @@ function readRange(r: T.RangeRequest): T.SourceRange {
     totalChunks: chunks.length,
     totalPages: null,
     pageStarts: [],
+    chunkStarts: inside.map((c) => [c.id, Math.max(c.start, start)] as [number, number]),
   };
 }
 

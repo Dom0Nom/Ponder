@@ -71,7 +71,8 @@ export function AudioView({ id, title, data, space }: { id: string; title: strin
     asking.current = ac;
     setThinking(true);
     try {
-      const [llm, material] = await Promise.all([resolveChatModel(space), gatherMaterial(space.id, q)]);
+      const llm = await resolveChatModel(space);
+      const material = await gatherMaterial(space.id, q, llm);
       const prompt = audioAnswerPrompt(material, title, data.lines.slice(Math.max(0, at - 3), at + 1), q);
       const r = await generateText({ model: llm.model, prompt, abortSignal: ac.signal, ...llm.options({ thinking: false }) });
       if (ac.signal.aborted) return;

@@ -101,7 +101,8 @@ export interface BuildInput {
   tools?: boolean;
   /** skip search planning (voice turns, buddy events) */
   plan?: boolean;
-  /** `/compact` was asked for with this focus */
+  /** most tokens of retrieved passages (the model can read more with tools) */
+  passageCap?: number;
   onPhase?: (p: ContextPhase | null) => void;
   onThread?: (t: Thread) => void;
   toolLabels?: ToolEnv["labels"];
@@ -212,7 +213,7 @@ export async function buildContext(input: BuildInput): Promise<BuiltContext> {
     sections,
     searchable,
     outlines,
-    budget: Math.floor(left * (useTools ? 0.75 : 1)),
+    budget: Math.min(input.passageCap ?? Infinity, Math.floor(left * (useTools ? 0.75 : 1))),
     large: left >= LARGE_CONTEXT_SOURCES,
     startAt: (full[full.length - 1]?.n ?? 0) + 1,
   }).finally(() => input.onPhase?.(null));
@@ -229,7 +230,7 @@ export async function buildContext(input: BuildInput): Promise<BuiltContext> {
     : enabled.length
       ? "(No passage in my sources matched this message.)\n\n"
       : "";
-  const userText = `${input.preface ? `${input.preface}\n\n` : ""}${passageBlock}${said}`;
+  const userText = `${input.preface ? `${input.preface}\n\n` : ""}${passageBlock}${passageBlock ? "My message (answer this):\n" : ""}${said}`;
 
   const book = new PassageBook([...full, ...gathered.passages]);
   const readBudget = Math.max(0, Math.floor(left - gathered.tokens));

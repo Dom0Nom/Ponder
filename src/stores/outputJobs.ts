@@ -42,7 +42,7 @@ export const useOutputJobs = create<OutputJobs>((set, get) => ({
       });
     try {
       const llm = await resolveChatModel(space);
-      const material = await gatherMaterial(space.id, focus.trim() || space.name);
+      const material = await gatherMaterial(space.id, focus.trim(), llm);
       const out = await generateOutput(llm, kind, material, focus, ctrl.signal, style);
       if (ctrl.signal.aborted) return null;
       const prev = replaceId ? await api.outputGet(replaceId) : null;

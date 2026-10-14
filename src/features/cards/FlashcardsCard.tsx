@@ -7,7 +7,8 @@ import { s } from "../../lib/strings";
 import type { Card, CardKind, NewCard, Space } from "../../lib/types";
 import { cn, dueLabel } from "../../lib/utils";
 import { resolveChatModel, NoModelError } from "../../lib/chat/llm";
-import { generateCards, hitsToPassages } from "../../lib/srs/generate";
+import { generateCards } from "../../lib/srs/generate";
+import { gatherForTask } from "../../lib/context/task";
 import { addGap, clozeFront, clozeNumbers, expandCloze } from "../../lib/srs/cloze";
 import { quizSpace } from "../../lib/srs/quizSpace";
 import { motionReduced } from "../../app/useTheme";
@@ -141,9 +142,9 @@ function GenerateCardsDialog({ space, open, onOpenChange }: { space: Space; open
     try {
       const llm = await resolveChatModel(space);
       const query = focus.trim() || ready.map((x) => x.title).join(" ") || space.name;
-      const hits = await api.searchChunks(space.id, query, Number(count) >= 20 ? 12 : 8);
-      if (!hits.length) throw new Error("No passages found. Add sources or change the focus.");
-      const made = await generateCards(llm, hitsToPassages(hits), {
+      const material = await gatherForTask({ spaceId: space.id, topic: focus.trim() || query, llm, maxTokens: Number(count) >= 20 ? 16_000 : 10_000 });
+      if (!material.passages.length) throw new Error("No passages found. Add sources or change the focus.");
+      const made = await generateCards(llm, material.passages, {
         count: Number(count),
         focus: focus.trim() || undefined,
         existingFronts: (cards.data ?? []).map((c) => c.front),

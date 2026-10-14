@@ -4,7 +4,7 @@
 use crate::db::models;
 use crate::error::{invalid, AppError, AppResult};
 use crate::ingest::extract;
-use crate::{inbox, paths, retrieval};
+use crate::{context, inbox, paths, retrieval};
 use rusqlite::{params, Connection};
 use serde_json::{json, Value};
 use std::io::{BufRead, Write};
@@ -48,7 +48,7 @@ fn read_tools() -> Vec<Value> {
         },
         {
             "name": "search",
-            "description": "Keyword search (FTS5, best match first) over the text chunks of the sources. Searches every space unless one is given.",
+            "description": "Keyword search (FTS5, best match first) over the text chunks of the sources. Searches every space unless one is given. Each result has its chunk number (ord); read around it with read_source.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -57,6 +57,29 @@ fn read_tools() -> Vec<Value> {
                     "limit": { "type": "integer", "minimum": 1, "maximum": MAX_LIMIT, "description": "Default 8." },
                 },
                 "required": ["query"],
+            },
+        },
+        {
+            "name": "read_source",
+            "description": "Read part of a source exactly: a page range (PDFs), a chunk range (ord numbers from search), or an outline section. Up to 60 000 characters per call.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "source": { "type": "string", "description": "Source id." },
+                    "pages": { "type": "string", "description": "Page range like \"40-52\"." },
+                    "chunks": { "type": "string", "description": "Chunk range like \"10-14\"." },
+                    "section": { "type": "string", "description": "Outline entry title (or its start), from get_outline." },
+                },
+                "required": ["source"],
+            },
+        },
+        {
+            "name": "get_outline",
+            "description": "Table of contents of a source (from PDF bookmarks or headings) with page and chunk ranges.",
+            "inputSchema": {
+                "type": "object",
+                "properties": { "source": { "type": "string", "description": "Source id." } },
+                "required": ["source"],
             },
         },
         {
@@ -254,6 +277,7 @@ fn search(c: &Connection, args: &Value) -> AppResult<Value> {
                 "sourceTitle": r.get::<_, String>(2)?,
                 "space": r.get::<_, String>(3)?,
                 "text": snippet(&r.get::<_, String>(5)?),
+                "ord": r.get::<_, i64>(4)?,
                 "start": r.get::<_, i64>(6)?,
                 "end": r.get::<_, i64>(7)?,
                 "page": r.get::<_, Option<i64>>(8)?,
@@ -262,6 +286,60 @@ fn search(c: &Connection, args: &Value) -> AppResult<Value> {
         })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(json!({ "results": rows }))
+}
+
+fn span(s: &str) -> Option<(i64, i64)> {
+    let mut it = s.split(['-', '–']).map(|p| p.trim().parse::<i64>().ok());
+    let a = it.next()??;
+    let b = it.next().flatten().unwrap_or(a);
+    Some((a.min(b), a.max(b)))
+}
+
+fn read_source(c: &Connection, args: &Value) -> AppResult<Value> {
+    let id = text_arg(args, "source")?;
+    let get = |k: &str| args.get(k).and_then(Value::as_str).filter(|v| !v.trim().is_empty());
+    let (unit, from, to) = if let Some(p) = get("pages") {
+        let (a, b) = span(p).ok_or_else(|| invalid("pages must look like 40-52"))?;
+        ("page", a, b)
+    } else if let Some(k) = get("chunks") {
+        let (a, b) = span(k).ok_or_else(|| invalid("chunks must look like 10-14"))?;
+        ("chunk", a, b)
+    } else if let Some(sec) = get("section") {
+        let want = sec.trim().to_lowercase();
+        let o = context::outline_readonly(c, id)?;
+        let e = o
+            .entries
+            .iter()
+            .find(|e| e.title.to_lowercase().starts_with(&want) || e.title.to_lowercase().contains(&want))
+            .ok_or_else(|| invalid(format!("No section \"{sec}\" in this source; see get_outline.")))?;
+        ("chunk", e.ord_from, e.ord_to)
+    } else {
+        return Err(invalid("Give pages, chunks or a section."));
+    };
+    let r = context::read_range(
+        c,
+        &context::RangeRequest {
+            source_id: id.to_string(),
+            unit: unit.into(),
+            from,
+            to,
+            max_chars: Some(60_000),
+        },
+    )?;
+    Ok(json!({
+        "source": r.source_id,
+        "sourceTitle": r.source_title,
+        "pages": [r.page_from, r.page_to],
+        "chunks": [r.ord_from, r.ord_to],
+        "truncated": r.truncated,
+        "text": r.text,
+    }))
+}
+
+fn get_outline(c: &Connection, args: &Value) -> AppResult<Value> {
+    let id = text_arg(args, "source")?;
+    let o = context::outline_readonly(c, id)?;
+    Ok(json!({ "source": id, "method": o.method, "entries": o.entries }))
 }
 
 fn get_source_text(c: &Connection, args: &Value) -> AppResult<Value> {
@@ -475,6 +553,8 @@ fn call_tool(c: &Connection, write: bool, name: &str, args: &Value) -> Option<Ap
         "list_spaces" => list_spaces(c),
         "list_sources" => list_sources(c, args),
         "search" => search(c, args),
+        "read_source" => read_source(c, args),
+        "get_outline" => get_outline(c, args),
         "get_source_text" => get_source_text(c, args),
         "list_notes" => list_notes(c, args),
         "get_note" => get_note(c, args),
@@ -676,17 +756,17 @@ mod tests {
             c.execute("INSERT INTO sources (id,space_id,title,kind,created_at,updated_at,char_count,chunk_count) VALUES ('a','s1','Cells','text',1,1,26,2)", []).unwrap();
             c.execute("INSERT INTO sources (id,space_id,title,kind,created_at,updated_at) VALUES ('b','s2','Equations','text',2,2)", []).unwrap();
             c.execute("INSERT INTO source_texts (source_id,text) VALUES ('a','Chloroplasts make sugar. Mitochondria burn it.')", []).unwrap();
-            for (i, (src, sp, t)) in [
-                ("a", "s1", "Chloroplasts make sugar."),
-                ("a", "s1", "Mitochondria burn it."),
-                ("b", "s2", "Chloroplasts of equations"),
+            for (i, (src, sp, t, a, b)) in [
+                ("a", "s1", "Chloroplasts make sugar.", 0, 24),
+                ("a", "s1", "Mitochondria burn it.", 25, 46),
+                ("b", "s2", "Chloroplasts of equations", 0, 1),
             ]
             .into_iter()
             .enumerate()
             {
                 c.execute(
-                    "INSERT INTO chunks (source_id,space_id,ord,text,start_offset,end_offset) VALUES (?1,?2,?3,?4,0,1)",
-                    params![src, sp, i as i64, t],
+                    "INSERT INTO chunks (source_id,space_id,ord,text,start_offset,end_offset) VALUES (?1,?2,?3,?4,?5,?6)",
+                    params![src, sp, i as i64, t, a, b],
                 )
                 .unwrap();
             }
@@ -745,6 +825,8 @@ mod tests {
                 "list_spaces",
                 "list_sources",
                 "search",
+                "read_source",
+                "get_outline",
                 "get_source_text",
                 "list_notes",
                 "get_note"
@@ -823,6 +905,19 @@ mod tests {
             assert_eq!(r["result"]["isError"], true, "{tool}: {r}");
             assert!(r["result"]["content"][0]["text"].as_str().unwrap().len() > 3);
         }
+    }
+
+    #[test]
+    fn reads_chunk_ranges_and_outlines() {
+        let (_d, c) = seeded();
+        let r = call(&c, "read_source", json!({ "source": "a", "chunks": "1-1" }));
+        let v = &r["result"]["structuredContent"];
+        assert_eq!(v["text"], "Mitochondria burn it.");
+        assert_eq!(v["chunks"], json!([1, 1]));
+        let r = call(&c, "read_source", json!({ "source": "a" }));
+        assert_eq!(r["result"]["isError"], true);
+        let r = call(&c, "get_outline", json!({ "source": "a" }));
+        assert_eq!(r["result"]["structuredContent"]["method"], "none");
     }
 
     #[test]
@@ -955,7 +1050,7 @@ mod tests {
                 .map(|t| t["name"].as_str().unwrap().to_string())
                 .collect::<Vec<_>>()
         };
-        assert_eq!(list(false).len(), 6);
+        assert_eq!(list(false).len(), 8);
         assert!(list(true).iter().any(|n| n == "add_url_source"));
         let r = call(
             &c,

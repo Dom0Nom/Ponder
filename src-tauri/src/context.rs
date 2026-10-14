@@ -129,6 +129,8 @@ pub struct SourceRange {
     pub total_pages: Option<i64>,
     /// (page, UTF-16 offset) of each page that starts inside the range
     pub page_starts: Vec<(i64, i64)>,
+    /// (chunk id, UTF-16 start offset) of each chunk inside the range, in order
+    pub chunk_starts: Vec<(i64, i64)>,
 }
 
 struct ChunkRow {
@@ -178,7 +180,7 @@ fn utf16_slice(text: &str, start: usize, end: usize, max: usize) -> (String, boo
     (out, false)
 }
 
-fn read_range(c: &Connection, req: &RangeRequest) -> AppResult<SourceRange> {
+pub fn read_range(c: &Connection, req: &RangeRequest) -> AppResult<SourceRange> {
     let src = models::get_source(c, &req.source_id)?;
     let (text, pages): (String, Option<String>) = c
         .query_row(
@@ -266,6 +268,11 @@ fn read_range(c: &Connection, req: &RangeRequest) -> AppResult<SourceRange> {
             .iter()
             .filter(|(_, o)| *o > start && *o < shown_end)
             .copied()
+            .collect(),
+        chunk_starts: inside
+            .iter()
+            .filter(|k| k.start < shown_end)
+            .map(|k| (k.id, k.start.max(start)))
             .collect(),
     })
 }
@@ -551,6 +558,20 @@ fn store_outline(c: &Connection, source_id: &str, method: &str, entries: &[Outli
 
 /// Outline from what ingest already stored (chunk headings, heading-like lines); no file reads.
 pub fn build_outline(c: &Connection, source_id: &str) -> AppResult<SourceOutline> {
+    let o = compute_outline(c, source_id)?;
+    store_outline(c, source_id, &o.method, &o.entries)?;
+    Ok(o)
+}
+
+/// The stored outline, else one computed now without writing (read-only connections).
+pub fn outline_readonly(c: &Connection, source_id: &str) -> AppResult<SourceOutline> {
+    match stored_outline(c, source_id)? {
+        Some(o) => Ok(o),
+        None => compute_outline(c, source_id),
+    }
+}
+
+fn compute_outline(c: &Connection, source_id: &str) -> AppResult<SourceOutline> {
     let chunks = chunk_rows(c, source_id)?;
     let mut entries = outline_from_headings(&chunks);
     let mut method = "headings";
@@ -571,7 +592,6 @@ pub fn build_outline(c: &Connection, source_id: &str) -> AppResult<SourceOutline
     if entries.is_empty() {
         method = "none";
     }
-    store_outline(c, source_id, method, &entries)?;
     Ok(SourceOutline {
         source_id: source_id.into(),
         method: method.into(),

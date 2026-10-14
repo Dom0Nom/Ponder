@@ -98,6 +98,8 @@ export interface SourceRange {
   totalPages: number | null;
   /** [page, UTF-16 offset] of each page that starts inside the range */
   pageStarts: [number, number][];
+  /** [chunk id, UTF-16 start] of each chunk inside the range */
+  chunkStarts?: [number, number][];
 }
 
 export interface RangeResult {
