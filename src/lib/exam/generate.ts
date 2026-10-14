@@ -4,22 +4,36 @@ import type { QuizQuestion, TopicRef } from "../types";
 import { parseQuiz, shuffleOptions } from "../placement/logic";
 import { batches, distribute, type ExamFormat, type ExamSection } from "./formats";
 import { languageInstruction } from "../i18n/language";
+import { parseQuestions, shuffleChoices } from "../questions/parse";
+import { questionKindsPrompt } from "../questions/prompts";
+import type { Question } from "../questions/types";
 import { s } from "../strings";
 
 export function examQuestionPrompt(format: ExamFormat, section: ExamSection, batch: { topic: TopicRef; n: number }[], avoid: string[] = [], language?: string | null): string {
   const total = batch.reduce((n, b) => n + b.n, 0);
+  const rich = !!section.kinds && section.kinds.some((k) => k !== "mc");
   return [
-    `Write multiple-choice questions for a timed ${format.title} ${section.title} practice test.`,
+    rich ? `Write questions of several kinds for a timed ${format.title} ${section.title} practice test.` : `Write multiple-choice questions for a timed ${format.title} ${section.title} practice test.`,
     `Topics (exactly this many questions per topic, ${total} in total):`,
     batch.map((b) => `- id "${b.topic.id}": ${b.topic.title} (${b.topic.description}): ${b.n}`).join("\n"),
-    `Match the real ${format.title} test's difficulty and style: mostly medium, some hard, applied to realistic situations. Where the real test gives a short passage, quote, table or scenario, include it in the question text (under 120 words; tables in Markdown; math in LaTeX inside $…$).`,
+    `Match the real ${format.title} test's difficulty and style: mostly medium, some hard, applied to realistic situations. Where the real test gives a short passage, quote, table or scenario, include it ${rich ? 'as the question\'s "stimulus"' : "in the question text"} (under 120 words; tables in Markdown; math in LaTeX inside $…$).`,
     section.calculator ? "A scientific calculator is allowed, so numbers may need one." : "No calculator is allowed, so keep any arithmetic simple.",
-    `Each question has exactly 4 options and one correct answer (0-based index). Wrong options are plausible mistakes, not jokes. The explanation is one sentence on why the answer is right, and ${languageInstruction(language)} Questions must be answerable without a picture. Avoid 'all of the above'.`,
+    rich
+      ? `About half of the questions are "mc"; spread the rest over the other kinds, using each kind where the real test would. ${questionKindsPrompt(section.kinds!, { stimulus: true })}\nEvery question also has "topicId" (one of the ids above). Multiple choice has exactly 4 options and one correct answer (0-based index); wrong options are plausible mistakes, not jokes. ${languageInstruction(language)} Avoid 'all of the above'.`
+      : `Each question has exactly 4 options and one correct answer (0-based index). Wrong options are plausible mistakes, not jokes. The explanation is one sentence on why the answer is right, and ${languageInstruction(language)} Questions must be answerable without a picture. Avoid 'all of the above'.`,
     avoid.length ? `Don't repeat these questions:\n${avoid.slice(-20).map((q) => `- ${q.slice(0, 100)}`).join("\n")}` : "",
-    'Return JSON only: [{"topicId": "…", "question": "…", "options": ["…","…","…","…"], "answer": 0, "explanation": "…"}]',
+    rich
+      ? 'Return JSON only: [{"topicId": "…", "kind": "mc", "prompt": "…", "options": ["…","…","…","…"], "answer": 0, "explanation": "…"}, … other kinds as described]'
+      : 'Return JSON only: [{"topicId": "…", "question": "…", "options": ["…","…","…","…"], "answer": 0, "explanation": "…"}]',
   ]
     .filter(Boolean)
     .join("\n\n");
+}
+
+/** A rich question as the exam stores it: plain multiple choice stays in the old shape. */
+export function toQuiz(q: Question): QuizQuestion {
+  if (q.kind === "mc" && !q.stimulus) return { topicId: q.topicId ?? null, question: q.prompt, options: q.options, answer: q.answer, explanation: q.explanation ?? "" };
+  return { topicId: q.topicId ?? null, question: q.prompt, options: [], answer: -1, explanation: q.explanation ?? "", rich: q };
 }
 
 /** Keeps at most `quota[topicId]` questions per topic, in order. */
@@ -49,6 +63,11 @@ async function runBatch(
     abortSignal: signal,
     ...llm.options({ thinking: false }),
   });
+  if (section.kinds?.some((k) => k !== "mc")) {
+    const qs = parseQuestions(r.text).map((q) => toQuiz(shuffleChoices(q)));
+    if (!qs.length) throw new Error(s.failures.theModelDidnTReturn3);
+    return capByQuota(qs, quota);
+  }
   return capByQuota(parseQuiz(r.text, [...quota.keys()]), quota).map((q) => shuffleOptions(q));
 }
 

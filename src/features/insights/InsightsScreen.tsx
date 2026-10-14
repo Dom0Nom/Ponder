@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, ChevronDown } from "lucide-react";
+import { BarChart3, ChevronDown, FileText } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { useCurriculum, useDueCounts, useSpaces } from "../../lib/queries";
 import { s } from "../../lib/strings";
@@ -283,6 +283,7 @@ function MasteryMap({ spaceId, topics, mastery }: { spaceId: string; topics: Top
     return () => ro.disconnect();
   }, [topics, groups]);
 
+  const weak = topics.filter((t) => toneOf(byId.get(t.id)?.p ?? null) === "weak").slice(0, 4);
   return (
     <div ref={box} className="relative flex flex-col gap-4">
       <svg className="pointer-events-none absolute inset-0 size-full overflow-visible" aria-hidden>
@@ -329,6 +330,20 @@ function MasteryMap({ spaceId, topics, mastery }: { spaceId: string; topics: Top
           </span>
         ))}
       </div>
+      {weak.length > 0 && (
+        <div className="flex flex-col gap-1.5 border-t border-divider pt-3" data-testid="weak-worksheets">
+          <span className="text-label font-semibold text-muted">{s.worksheets.weakTitle}</span>
+          {weak.map((t) => (
+            <div key={t.id} className="flex items-center gap-3" data-weak={t.id}>
+              <span className="min-w-0 flex-1 truncate">{t.title}</span>
+              <Button size="sm" variant="secondary" onClick={() => useUi.getState().openWorksheetBuilder(spaceId, { topic: t.title })}>
+                <FileText size={13} />
+                {s.worksheets.makeSheet}
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

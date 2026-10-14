@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Command } from "cmdk";
 import * as D from "@radix-ui/react-dialog";
-import { BarChart3, Brain, CalendarCheck, Download, FilePlus2, FolderSync, Gauge, GraduationCap, House, Layers, MessageSquareText, Notebook, NotebookPen, PencilLine, Plus, Search, Settings, Shapes, Sparkles, SquarePen, SunMoon, Timer, Upload, Zap } from "lucide-react";
+import { BarChart3, Brain, CalendarCheck, Download, FilePlus2, FileText, FolderSync, Gauge, GraduationCap, House, Layers, MessageSquareText, Notebook, NotebookPen, PencilLine, Plus, Search, Settings, Shapes, Sparkles, SquarePen, SunMoon, Timer, Upload, Zap } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces, qk, useCaptureStatus } from "../../lib/queries";
 import { splitShortcut } from "../../lib/capture/shortcut";
@@ -130,6 +130,14 @@ export function CommandPalette() {
                     >
                       <Shapes size={15} />
                       <span className="flex-1">{s.palette.create}</span>
+                    </Command.Item>
+                    <Command.Item
+                      className={item}
+                      onSelect={() => run(() => ui.openWorksheetBuilder(spaceId))}
+                      keywords={["worksheet", "arbeitsblatt", "klassenarbeit", "test", "quiz", "print", "pdf", "docx"]}
+                    >
+                      <FileText size={15} />
+                      <span className="flex-1">{s.palette.worksheet}</span>
                     </Command.Item>
                     <Command.Item
                       className={item}

@@ -576,6 +576,8 @@ export interface QuizQuestion {
   options: string[];
   answer: number;
   explanation: string;
+  /** set for kinds other than plain multiple choice (and mc with a stimulus); `question`/`options` are then placeholders */
+  rich?: import("./questions/types").Question;
 }
 
 export type AssessmentKind = "placement" | "prereq" | "lesson";

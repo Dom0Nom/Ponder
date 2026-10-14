@@ -13,6 +13,7 @@ export type Route =
   | { name: "insights"; spaceId?: string }
   | { name: "exam"; spaceId?: string; attemptId?: string }
   | { name: "output"; spaceId: string; outputId: string }
+  | { name: "worksheet"; spaceId: string; worksheetId: string }
   | { name: "notes"; spaceId: string; noteId?: string };
 export type SettingsPage =
   | { kind: "addProvider"; type?: ProviderType }
@@ -31,6 +32,7 @@ export type StudioView =
   | "settings"
   | "calculator"
   | "create"
+  | "worksheet"
   | "feynman";
 export type ThemePref = "system" | "light" | "dark";
 export type FontPref = "default" | "dyslexic";
@@ -58,6 +60,8 @@ interface UiState {
   /** Sources panel per space; undefined is closed. Not persisted. */
   sourcesOpen: Record<string, boolean>;
   paletteOpen: boolean;
+  /** topic / mistakes the worksheet builder opens with; consumed on open */
+  worksheetSeed: { topic?: string; source?: "mistakes" } | null;
   focusDialogOpen: boolean;
   /** goal the next Focus start dialog opens with; consumed on open */
   focusGoalPreset: string | null;
@@ -88,6 +92,8 @@ interface UiState {
   toggleStudio: () => void;
   setSourcesOpen: (spaceId: string, open: boolean) => void;
   setPaletteOpen: (o: boolean) => void;
+  openWorksheetBuilder: (spaceId: string, seed?: { topic?: string; source?: "mistakes" }) => void;
+  clearWorksheetSeed: () => void;
   setFocusDialogOpen: (o: boolean) => void;
   openFocusDialog: (goal?: string) => void;
   setCaptureOpen: (o: boolean) => void;
@@ -117,6 +123,7 @@ export const useUi = create<UiState>()(
       studioOpen: true,
       sourcesOpen: {},
       paletteOpen: false,
+      worksheetSeed: null,
       focusDialogOpen: false,
       focusGoalPreset: null,
       captureOpen: false,
@@ -163,6 +170,16 @@ export const useUi = create<UiState>()(
       toggleStudio: () => set((st) => ({ studioOpen: !st.studioOpen })),
       setSourcesOpen: (spaceId, open) => set((st) => ({ sourcesOpen: { ...st.sourcesOpen, [spaceId]: open } })),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+      openWorksheetBuilder: (spaceId, seed) =>
+        set((st) => ({
+          route: { name: "space", spaceId },
+          viewer: null,
+          studioOpen: true,
+          studioView: "worksheet",
+          studioFrom: st.route.name === "space" && st.route.spaceId === spaceId ? st.studioView : null,
+          worksheetSeed: seed ?? null,
+        })),
+      clearWorksheetSeed: () => set({ worksheetSeed: null }),
       setFocusDialogOpen: (focusDialogOpen) => set({ focusDialogOpen }),
       openFocusDialog: (goal) => set({ focusDialogOpen: true, focusGoalPreset: goal ?? null }),
       setCaptureOpen: (captureOpen) => set({ captureOpen }),

@@ -21,18 +21,29 @@ export interface KindProps<Q extends Question> {
   /** show right and wrong (after checking) */
   reveal?: boolean;
   disabled?: boolean;
-  /** hide the stimulus (the caller shows it) */
-  id?: string;
+  /** prefix for choice options (a), A., 1., ☐) */
+  optionLabel?: (i: number) => string;
 }
 
-function ChoiceMc({ q, value, onChange, reveal, disabled }: KindProps<McQuestion>) {
+function OptionText({ text, label }: { text: string; label?: string }) {
+  return (
+    <span className="flex gap-2">
+      {label && <span className="text-muted">{label}</span>}
+      <span className="min-w-0 flex-1">
+        <Markdown text={text} />
+      </span>
+    </span>
+  );
+}
+
+function ChoiceMc({ q, value, onChange, reveal, disabled, optionLabel }: KindProps<McQuestion>) {
   const choice = value?.kind === "mc" ? value.choice : -1;
   return (
     <div role="radiogroup" aria-label={q.prompt} className="flex flex-col gap-2">
       {q.options.map((o, k) => (
         <ChoiceOption
           key={k}
-          label={<Markdown text={o} />}
+          label={<OptionText text={o} label={optionLabel?.(k)} />}
           selected={choice === k}
           disabled={disabled}
           state={reveal ? (k === q.answer ? "correct" : choice === k ? "wrong" : "idle") : "idle"}
@@ -43,7 +54,7 @@ function ChoiceMc({ q, value, onChange, reveal, disabled }: KindProps<McQuestion
   );
 }
 
-function ChoiceMulti({ q, value, onChange, reveal, disabled }: KindProps<MultiQuestion>) {
+function ChoiceMulti({ q, value, onChange, reveal, disabled, optionLabel }: KindProps<MultiQuestion>) {
   const picked = value?.kind === "multi" ? value.choices : [];
   const toggle = (k: number) => onChange({ kind: "multi", choices: picked.includes(k) ? picked.filter((x) => x !== k) : [...picked, k].sort((a, b) => a - b) });
   return (
@@ -62,7 +73,7 @@ function ChoiceMulti({ q, value, onChange, reveal, disabled }: KindProps<MultiQu
           >
             <Checkbox16 checked={on} disabled={disabled} onChange={() => toggle(k)} />
             <span className="min-w-0 flex-1">
-              <Markdown text={o} />
+              <OptionText text={o} label={optionLabel?.(k)} />
             </span>
             {reveal && right && <SuccessCheck size={16} />}
             {reveal && !right && on && <X size={16} className="text-danger" />}
