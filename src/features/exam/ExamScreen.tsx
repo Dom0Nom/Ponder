@@ -11,7 +11,11 @@ import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
 import { examById, examFor, sectionTopics, type ExamFormat, type ExamLength, type ExamSection } from "../../lib/exam/formats";
 import { generateExamQuestions } from "../../lib/exam/generate";
 import { generateEssayTask, gradeEssay } from "../../lib/exam/essay";
-import { clockText, examResult, remainingMs, type ExamData } from "../../lib/exam/attempt";
+import { clockText, examResult, remainingMs, weakTopics, type ExamData } from "../../lib/exam/attempt";
+import { scoreBand } from "../../lib/exam/band";
+import { examPatterns } from "../../lib/insights/patterns";
+import { ScoreBandView } from "./ScoreBandView";
+import { InsightSection, PatternList } from "../insights/LearningSections";
 import { useUi } from "../../stores/ui";
 import { Button } from "../../components/ui/button";
 import { ChoiceOption } from "../../components/ui/choice";
@@ -510,6 +514,24 @@ function Results({ attempt, format, section, space }: { attempt: ExamAttempt; fo
   const navigate = useUi((st) => st.navigate);
   const r = useMemo(() => examResult(format, attempt.data), [format, attempt.data]);
   const essay = attempt.data.essay;
+  const history = useQuery({ queryKey: qkExams(attempt.spaceId), queryFn: () => api.examsList(attempt.spaceId) });
+  const attemptsDone = Math.max(1, (history.data ?? []).filter((a) => a.completedAt != null && a.examId === attempt.examId && a.section === attempt.section).length);
+  const band = useMemo(() => (format.scale ? scoreBand(format, r.share, r.total, attemptsDone) : null), [format, r.share, r.total, attemptsDone]);
+  const patterns = useMemo(() => {
+    const weak = new Set(weakTopics(r).map((t) => t.topicId));
+    const title = new Map(attempt.data.topics.map((t) => [t.id, t.title]));
+    return examPatterns(
+      attempt.data.questions.map((q, i) => ({
+        id: String(i),
+        question: q.question,
+        options: q.options,
+        answer: q.answer,
+        given: attempt.data.answers[i],
+        topic: title.get(q.topicId ?? "") ?? "",
+        topicWeak: weak.has(q.topicId ?? ""),
+      })),
+    );
+  }, [r, attempt.data]);
   const [grading, setGrading] = useState(false);
   const [gradeError, setGradeError] = useState<unknown>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -556,6 +578,7 @@ function Results({ attempt, format, section, space }: { attempt: ExamAttempt; fo
           <span className="text-timer font-semibold tabular-nums">{r.scaled ?? `${Math.round(r.share * 100)}%`}</span>
           <span className={cn("text-label font-semibold", r.passed ? "text-success" : "text-muted")}>{r.passed ? s.exam.passed : s.exam.notPassed}</span>
         </div>
+        {band ? <ScoreBandView band={band} format={format} attempts={attemptsDone} /> : null}
         <div className="flex flex-col gap-0.5 text-fg-secondary">
           <span>{s.exam.correct(r.correct, r.total)}</span>
           {r.essayPoints != null && essay?.grade ? <span>{s.exam.essayScore(r.essayPoints)}</span> : null}
@@ -616,6 +639,12 @@ function Results({ attempt, format, section, space }: { attempt: ExamAttempt; fo
           })}
         </ul>
       </section>
+
+      {patterns.length > 0 ? (
+        <InsightSection title={s.patterns.title} body={s.patterns.examNote} testId="exam-patterns">
+          <PatternList patterns={patterns} topics={attempt.data.topics as TopicRef[]} spaceId={attempt.spaceId} />
+        </InsightSection>
+      ) : null}
 
       <section className="flex flex-col gap-3">
         <div className="flex gap-2">
