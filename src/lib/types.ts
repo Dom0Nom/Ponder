@@ -912,11 +912,44 @@ export interface StudioOutput {
   updatedAt: number;
 }
 
-export type PlanTaskKind = "learn" | "practice" | "review" | "mock";
+export type PlanTaskKind = "learn" | "practice" | "review" | "mock" | "milestone";
+
+export interface GoalSource {
+  title: string;
+  url: string;
+  summary: string;
+  free: boolean;
+}
+
+export interface GoalNode {
+  id: string;
+  title: string;
+  description: string;
+  group: string;
+  prereqs: string[];
+  /** marked "I know this": starts at a strong level and is left out of the schedule */
+  known: boolean;
+  sources: GoalSource[];
+}
+
+export interface GoalGraph {
+  nodes: GoalNode[];
+}
+
+export type GoalKind = "exam" | "skill";
+
+export interface Goal {
+  spaceId: string;
+  kind: GoalKind;
+  title: string;
+  graph: GoalGraph;
+  createdAt: number;
+  updatedAt: number;
+}
 
 export interface PlanFields {
   goal: string;
-  /** YYYY-MM-DD */
+  /** YYYY-MM-DD; empty for a goal without a date (the schedule runs on weekly minutes and milestones) */
   examDate: string;
   weeklyMinutes: number;
   /** 0 = Sunday … 6 = Saturday */

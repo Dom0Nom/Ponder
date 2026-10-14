@@ -81,6 +81,7 @@ export interface DB {
   assessments: Row<T.Assessment>;
   courses: Row<T.Course>;
   plans: Row<T.StudyPlan>;
+  goals?: Row<T.Goal>;
   planTasks: Row<T.PlanTask>;
   watched: Row<T.WatchedFolder>;
   speech: { url: string; body: unknown }[];
@@ -1271,6 +1272,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
     for (const w of Object.values(db.watched)) if (w.spaceId === sid) delete db.watched[w.id];
     for (const m of Object.values(db.microSteps)) if (m.spaceId === sid) delete db.microSteps[m.id];
     delete db.plans[sid];
+    delete db.goals?.[sid];
     for (const x of Object.values(db.planTasks)) if (x.spaceId === sid) delete db.planTasks[x.id];
     save();
     return null;
@@ -2470,6 +2472,23 @@ const handlers: Record<string, (a: Args) => unknown> = {
     save();
     return null;
   },
+  goal_get: (a) => db.goals?.[a.spaceId as string] ?? null,
+  goal_save: (a) => {
+    const sid = a.spaceId as string;
+    if (!db.spaces[sid]) err("not_found", "space not found");
+    if (a.kind !== "exam" && a.kind !== "skill") err("invalid", "A goal is either an exam or a skill");
+    if (!String(a.title).trim()) err("invalid", "A goal needs a title");
+    db.goals ??= {};
+    const prev = db.goals[sid];
+    db.goals[sid] = { spaceId: sid, kind: a.kind, title: String(a.title).trim(), graph: a.graph as T.GoalGraph, createdAt: prev?.createdAt ?? now(), updatedAt: now() };
+    save();
+    return db.goals[sid];
+  },
+  goal_delete: (a) => {
+    delete db.goals?.[a.spaceId as string];
+    save();
+    return null;
+  },
   get_study_plan: (a) => planBundle(a.spaceId as string),
   save_study_plan: (a) => {
     const sid = a.spaceId as string;
@@ -2477,11 +2496,11 @@ const handlers: Record<string, (a: Args) => unknown> = {
     const f = a.plan as T.PlanFields;
     const tasks = a.tasks as T.NewPlanTask[];
     if (!f.goal.trim()) err("invalid", "A plan needs a goal");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(f.examDate)) err("invalid", "The exam date must look like 2026-12-31");
+    if (f.examDate && !/^\d{4}-\d{2}-\d{2}$/.test(f.examDate)) err("invalid", "The exam date must look like 2026-12-31");
     if (!(f.weeklyMinutes > 0)) err("invalid", "Weekly study time must be more than zero");
     if (!f.studyDays.length || f.studyDays.some((d) => d < 0 || d > 6)) err("invalid", "Pick at least one study day");
     for (const x of tasks) {
-      if (!["learn", "practice", "review", "mock"].includes(x.kind)) err("invalid", `Unknown task kind: ${x.kind}`);
+      if (!["learn", "practice", "review", "mock", "milestone"].includes(x.kind)) err("invalid", `Unknown task kind: ${x.kind}`);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(x.date) || !(x.minutes > 0) || !x.title.trim()) err("invalid", "Invalid plan task");
     }
     const prev = db.plans[sid];

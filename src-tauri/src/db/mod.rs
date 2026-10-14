@@ -24,6 +24,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("016_inbox.sql"),
     include_str!("017_context.sql"),
     include_str!("018_space_language.sql"),
+    include_str!("021_goals.sql"),
 ];
 
 pub fn schema_version() -> i64 {
@@ -227,6 +228,7 @@ mod tests {
             "studio_outputs",
             "notes",
             "annotations",
+            "goal_graphs",
         ] {
             let n: i64 = c
                 .query_row(

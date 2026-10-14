@@ -171,6 +171,9 @@ export const api = {
   lessonSetStatus: (id: string, status: T.Lesson["status"], score?: number | null) =>
     call<void>("lesson_set_status", { id, status, score: score ?? null }),
 
+  goalGet: (spaceId: string) => call<T.Goal | null>("goal_get", { spaceId }),
+  goalSave: (spaceId: string, kind: T.GoalKind, title: string, graph: T.GoalGraph) => call<T.Goal>("goal_save", { spaceId, kind, title, graph }),
+  goalDelete: (spaceId: string) => call<void>("goal_delete", { spaceId }),
   // study plans
   getStudyPlan: (spaceId: string) => call<T.StudyPlanBundle | null>("get_study_plan", { spaceId }),
   saveStudyPlan: (spaceId: string, plan: T.PlanFields, replanned: boolean, tasks: T.NewPlanTask[]) =>
