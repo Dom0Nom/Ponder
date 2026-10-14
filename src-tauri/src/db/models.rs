@@ -186,6 +186,7 @@ pub struct Source {
     pub chunk_count: i64,
     pub created_at: i64,
     pub updated_at: i64,
+    pub context_mode: String,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -212,6 +213,7 @@ fn source_from_row(r: &Row) -> rusqlite::Result<Source> {
         chunk_count: r.get("chunk_count")?,
         created_at: r.get("created_at")?,
         updated_at: r.get("updated_at")?,
+        context_mode: r.get("context_mode")?,
     })
 }
 
@@ -312,6 +314,9 @@ pub struct Thread {
     pub created_at: i64,
     pub updated_at: i64,
     pub pinned: bool,
+    pub summary: Option<String>,
+    pub summary_until: Option<i64>,
+    pub auto_compact: bool,
 }
 
 fn thread_from_row(r: &Row) -> rusqlite::Result<Thread> {
@@ -322,6 +327,9 @@ fn thread_from_row(r: &Row) -> rusqlite::Result<Thread> {
         created_at: r.get("created_at")?,
         updated_at: r.get("updated_at")?,
         pinned: r.get::<_, i64>("pinned")? != 0,
+        summary: r.get("summary")?,
+        summary_until: r.get("summary_until")?,
+        auto_compact: r.get::<_, i64>("auto_compact")? != 0,
     })
 }
 

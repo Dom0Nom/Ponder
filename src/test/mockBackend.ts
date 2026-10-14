@@ -669,7 +669,50 @@ function search(spaceId: string, query: string, limit: number, sourceIds: string
       end: c.end,
       page: c.page,
       score,
+      ord: ordOf(c),
+      heading: null,
     }));
+}
+
+function ordOf(c: MockChunk): number {
+  return db.chunks.filter((x) => x.sourceId === c.sourceId && x.id < c.id).length;
+}
+
+function readRange(r: T.RangeRequest): T.SourceRange {
+  const src = db.sources[r.sourceId] ?? err("not_found", "source not found");
+  const text = db.texts[src.id]?.text ?? err("not_found", "source text not found");
+  const chunks = db.chunks.filter((c) => c.sourceId === src.id).sort((a, b) => a.id - b.id);
+  let start = 0;
+  let end = text.length;
+  if (r.unit === "chunk") {
+    const a = Math.min(r.from ?? 0, r.to ?? 0);
+    const b = Math.max(r.from ?? 0, r.to ?? 0);
+    const sel = chunks.filter((_, i) => i >= a && i <= b);
+    if (!sel.length) err("invalid", "No chunks in that range.");
+    start = sel[0].start;
+    end = sel[sel.length - 1].end;
+  } else if (r.unit === "page") err("invalid", "This source has no page numbers.");
+  const max = r.maxChars ?? 400_000;
+  const truncated = end - start > max;
+  if (truncated) end = start + max;
+  const inside = chunks.filter((c) => c.end > start && c.start < end);
+  return {
+    sourceId: src.id,
+    sourceTitle: src.title,
+    chunkId: inside[0]?.id ?? null,
+    ordFrom: inside.length ? chunks.indexOf(inside[0]) : 0,
+    ordTo: inside.length ? chunks.indexOf(inside[inside.length - 1]) : 0,
+    start,
+    end,
+    pageFrom: null,
+    pageTo: null,
+    heading: null,
+    text: text.slice(start, end),
+    truncated,
+    totalChunks: chunks.length,
+    totalPages: null,
+    pageStarts: [],
+  };
 }
 
 // ---------- focus (mirrors src-tauri/src/focus/machine.rs + service.rs) ----------
@@ -1273,6 +1316,29 @@ const handlers: Record<string, (a: Args) => unknown> = {
   },
   search_chunks: (a) =>
     search(a.spaceId as string, a.query as string, (a.limit as number) ?? 8, (a.sourceIds as string[]) ?? null),
+  search_many_chunks: (a) =>
+    (a.queries as string[]).map((q) =>
+      search(a.spaceId as string, q, (a.limit as number) ?? 20, (a.sourceIds as string[]) ?? null),
+    ),
+  read_source_ranges: (a) =>
+    (a.ranges as T.RangeRequest[]).map((r) => {
+      try {
+        return { range: readRange(r), error: null };
+      } catch (e) {
+        return { range: null, error: (e as { message?: string }).message ?? String(e) };
+      }
+    }),
+  source_outlines: (a) =>
+    Object.values(db.sources)
+      .filter((x) => x.spaceId === a.spaceId && x.status === "ready")
+      .map((x) => ({ sourceId: x.id, method: "none", entries: [] })),
+  set_source_context_mode: (a) => {
+    const src = db.sources[a.id as string] ?? err("not_found", "source not found");
+    if (!["auto", "summary", "full"].includes(a.mode as string)) err("invalid", "Unknown context mode.");
+    src.contextMode = a.mode as T.ContextMode;
+    save();
+    return src;
+  },
   embedder_status: () => embedderStatus("ready", 1),
   embedding_models: () => EMBEDDING_MODELS,
   openrouter_embedding_models: () => REMOTE_EMBEDDING_MODELS,
@@ -1462,6 +1528,20 @@ const handlers: Record<string, (a: Args) => unknown> = {
   create_thread: (a) => {
     const t: T.Thread = { id: id(), spaceId: a.spaceId as string, title: (a.title as string) ?? "New chat", createdAt: now(), updatedAt: now(), pinned: false };
     db.threads[t.id] = t;
+    save();
+    return t;
+  },
+  get_thread: (a) => db.threads[a.id as string] ?? err("not_found", "thread not found"),
+  save_thread_summary: (a) => {
+    const t = db.threads[a.threadId as string] ?? err("not_found", "thread not found");
+    t.summary = (a.summary as string | null) ?? null;
+    t.summaryUntil = (a.until as number | null) ?? null;
+    save();
+    return t;
+  },
+  set_thread_auto_compact: (a) => {
+    const t = db.threads[a.threadId as string] ?? err("not_found", "thread not found");
+    t.autoCompact = !!a.on;
     save();
     return t;
   },

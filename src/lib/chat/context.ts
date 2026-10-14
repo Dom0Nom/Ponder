@@ -1,6 +1,7 @@
 import type { FocusState, Message, Space, TutorStyle } from "../types";
 import { FOLLOWUP_INSTRUCTION } from "./followUps";
 import { MEMORY_INSTRUCTION } from "./memory";
+import { toHistory, usableMessages } from "../context/history";
 
 export interface Passage {
   n: number;
@@ -34,6 +35,16 @@ export interface ContextInput {
   extraInstructions?: string;
   /** learner memory, shared across spaces */
   memory?: string[];
+  /** one line per enabled source (title, size, summary, outline) */
+  sourceMap?: string;
+  /** "full text" sources, already numbered */
+  fullText?: string;
+  /** retrieved passages travel with the learner's message instead of the system prompt */
+  passagesInMessage?: boolean;
+  /** the model can read more with tools */
+  toolInstruction?: string;
+  /** the focus line goes with the learner's message (it changes every minute) */
+  focusInMessage?: boolean;
 }
 
 export function describeFocus(f: FocusState | null, now: number): string | null {
@@ -90,7 +101,19 @@ export function buildSystemPrompt(input: ContextInput): string {
   parts.push(MEMORY_INSTRUCTION);
   parts.push(FOLLOWUP_INSTRUCTION);
 
-  if (passages.length > 0) {
+  if (input.sourceMap) {
+    parts.push(
+      `Sources in this space (handles like S3 name them in tools):\n${input.sourceMap}\n\nThis list shows what exists; only numbered passages are quoted text you can cite.`,
+    );
+  }
+  if (input.fullText) parts.push(`Sources the learner put in full (numbered passages):\n\n${input.fullText}`);
+  if (input.passagesInMessage) {
+    parts.push(
+      "Numbered passages from the learner's sources come with their message (and above, for sources in full). Ground your answer in them. Every sentence that uses information from a passage must end with that passage's number in square brackets, like [1] or [2][3] — including sentences in your direct answer, not only the first one. Only cite a number if that passage actually supports the sentence. Never invent citation numbers. When the passages don't cover the question, say so and name the sources from the list above that probably do.",
+    );
+    if (input.toolInstruction) parts.push(input.toolInstruction);
+    if (input.sourceCount === 0) parts.push("This space has no sources yet.");
+  } else if (passages.length > 0) {
     parts.push(
       [
         "Passages from the learner's sources, numbered:",
@@ -118,32 +141,16 @@ export function buildSystemPrompt(input: ContextInput): string {
     );
   }
 
-  const focus = describeFocus(input.focus, input.now);
+  const focus = input.focusInMessage ? null : describeFocus(input.focus, input.now);
   if (focus) parts.push(`Focus session: ${focus}`);
   if (input.extraInstructions) parts.push(input.extraInstructions);
   if (input.voice) parts.push(VOICE_INSTRUCTION);
   return parts.join("\n\n");
 }
 
-/** Chat history for the model: drops failed/empty turns and the marker syntax of earlier replies. */
-export function historyMessages(
-  messages: Message[],
-  maxTurns = 12,
-): { role: "user" | "assistant"; content: string }[] {
-  const usable = messages.filter(
-    (m) =>
-      (m.role === "user" || m.role === "assistant" || m.role === "buddy") &&
-      m.status !== "error" &&
-      !m.meta?.secondOpinionOf &&
-      m.content.trim(),
-  );
-  return usable.slice(-maxTurns * 2).map((m) => ({
-    role: m.role === "user" ? "user" : "assistant",
-    content:
-      m.role === "buddy"
-        ? `(Study buddy note: ${m.content})`
-        : m.content.replaceAll("{{general}}", "").replaceAll("{{/general}}", ""),
-  }));
+/** Chat history for the model: every usable turn, without failed/empty turns or answer markers. */
+export function historyMessages(messages: Message[]): { role: "user" | "assistant"; content: string }[] {
+  return usableMessages(messages).map(toHistory);
 }
 
 export function threadTitleFrom(text: string): string {

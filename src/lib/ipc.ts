@@ -52,6 +52,11 @@ export const api = {
   reindexSource: (id: string) => call<T.Source>("reindex_source", { id }),
   searchChunks: (spaceId: string, query: string, limit?: number, sourceIds?: string[]) =>
     call<T.SearchHit[]>("search_chunks", { spaceId, query, limit: limit ?? null, sourceIds: sourceIds ?? null }),
+  searchManyChunks: (spaceId: string, queries: string[], limit?: number, sourceIds?: string[]) =>
+    call<T.SearchHit[][]>("search_many_chunks", { spaceId, queries, limit: limit ?? null, sourceIds: sourceIds ?? null }),
+  readSourceRanges: (ranges: T.RangeRequest[]) => call<T.RangeResult[]>("read_source_ranges", { ranges }),
+  sourceOutlines: (spaceId: string) => call<T.SourceOutline[]>("source_outlines", { spaceId }),
+  setSourceContextMode: (id: string, mode: T.ContextMode) => call<T.Source>("set_source_context_mode", { id, mode }),
   embedderStatus: () => call<T.EmbedderStatus>("embedder_status"),
   embeddingModels: () => call<T.EmbeddingModel[]>("embedding_models"),
   setEmbeddingModel: (model: string) => call<void>("set_embedding_model", { model }),
@@ -109,6 +114,10 @@ export const api = {
   createThread: (spaceId: string, title?: string) =>
     call<T.Thread>("create_thread", { spaceId, title: title ?? null }),
   renameThread: (id: string, title: string) => call<T.Thread>("rename_thread", { id, title }),
+  getThread: (id: string) => call<T.Thread>("get_thread", { id }),
+  saveThreadSummary: (threadId: string, summary: string | null, until: number | null) =>
+    call<T.Thread>("save_thread_summary", { threadId, summary, until }),
+  setThreadAutoCompact: (threadId: string, on: boolean) => call<T.Thread>("set_thread_auto_compact", { threadId, on }),
   pinThread: (id: string, pinned: boolean) => call<T.Thread>("pin_thread", { id, pinned }),
   deleteThread: (id: string) => call<void>("delete_thread", { id }),
   listMessages: (threadId: string) => call<T.Message[]>("list_messages", { threadId }),

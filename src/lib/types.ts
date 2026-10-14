@@ -48,6 +48,7 @@ export interface Source {
   chunkCount: number;
   createdAt: number;
   updatedAt: number;
+  contextMode?: ContextMode;
 }
 
 export interface SourceText {
@@ -65,6 +66,58 @@ export interface SearchHit {
   end: number;
   page: number | null;
   score: number;
+  ord?: number;
+  heading?: string | null;
+}
+
+/** How a source goes into the model's context; "off" is `useInChat: false`. */
+export type ContextMode = "auto" | "summary" | "full";
+
+export interface RangeRequest {
+  sourceId: string;
+  unit: "chunk" | "page" | "all";
+  from?: number;
+  to?: number;
+  maxChars?: number;
+}
+
+export interface SourceRange {
+  sourceId: string;
+  sourceTitle: string;
+  chunkId: number | null;
+  ordFrom: number;
+  ordTo: number;
+  start: number;
+  end: number;
+  pageFrom: number | null;
+  pageTo: number | null;
+  heading: string | null;
+  text: string;
+  truncated: boolean;
+  totalChunks: number;
+  totalPages: number | null;
+  /** [page, UTF-16 offset] of each page that starts inside the range */
+  pageStarts: [number, number][];
+}
+
+export interface RangeResult {
+  range: SourceRange | null;
+  error: string | null;
+}
+
+export interface OutlineEntry {
+  title: string;
+  level: number;
+  ordFrom: number;
+  ordTo: number;
+  pageFrom: number | null;
+  pageTo: number | null;
+}
+
+export interface SourceOutline {
+  sourceId: string;
+  method: string;
+  entries: OutlineEntry[];
 }
 
 export interface Thread {
@@ -74,6 +127,11 @@ export interface Thread {
   createdAt: number;
   updatedAt: number;
   pinned: boolean;
+  /** compaction summary of the messages up to `summaryUntil` (createdAt, inclusive) */
+  summary?: string | null;
+  summaryUntil?: number | null;
+  /** false = "Don't compact" */
+  autoCompact?: boolean;
 }
 
 export type MessageRole = "user" | "assistant" | "buddy" | "system" | "practice";
@@ -94,6 +152,21 @@ export interface Citation {
 
 export interface MessageMeta {
   tutorStyle?: TutorStyle;
+  /** what went into the model's context for this answer */
+  context?: {
+    used: number;
+    window: number;
+    cap: number;
+    conversation: number;
+    conversationBudget: number;
+    summarized: boolean;
+    passages: number;
+    full: string[];
+    summaryOnly: string[];
+    truncated: string[];
+    whole: string[];
+    cost: number | null;
+  };
   model?: ModelRef;
   buddyKind?: BuddyEventKind;
   focus?: FocusState | null;
@@ -775,6 +848,9 @@ export interface OpenRouterModel {
   supportedParameters: string[];
   created: number | null;
   reasoning?: OpenRouterReasoning | null;
+  /** USD per token */
+  pricing?: { prompt: number; completion: number; cacheRead: number | null } | null;
+  maxOutput?: number | null;
 }
 
 export interface OpenRouterReasoning {

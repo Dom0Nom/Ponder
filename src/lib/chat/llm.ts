@@ -35,4 +35,20 @@ export async function resolveChatModel(space?: Pick<Space, "modelOverride"> | nu
   };
 }
 
+/** Settings → Models → helper model (summaries, search planning), else the chat model itself. */
+export async function resolveHelperModel(_space: Pick<Space, "modelOverride"> | null, chat: ResolvedModel): Promise<ResolvedModel> {
+  const [providers, settings] = await Promise.all([api.listProviders(), api.getSettings()]);
+  const ref = settings.helperModel as ModelRef | undefined;
+  if (!ref?.providerId || !ref.model) return chat;
+  const picked = resolveModel(ref, null, providers);
+  if (!picked) return chat;
+  if (picked.provider.id === chat.provider.id && picked.modelId === chat.modelId) return chat;
+  return {
+    provider: picked.provider,
+    modelId: picked.modelId,
+    model: createLanguageModel(picked.provider, picked.modelId),
+    options: (o) => callOptions(picked.provider, picked.modelId, o),
+  };
+}
+
 export { extractJson } from "./json";

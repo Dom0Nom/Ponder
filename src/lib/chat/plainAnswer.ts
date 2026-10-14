@@ -3,6 +3,6 @@ export function plainAnswer(content: string): string {
   return content
     .replaceAll("{{general}}", "")
     .replaceAll("{{/general}}", "")
-    .replace(/\s*\[~?\d{1,2}(?:\s*[,;]\s*~?\d{1,2})*\]/g, "")
+    .replace(/\s*\[~?\d{1,3}(?:\s*[,;]\s*~?\d{1,3})*\]/g, "")
     .trim();
 }

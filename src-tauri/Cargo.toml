@@ -39,6 +39,7 @@ base64 = "0.22"
 rand = "0.8"
 url = "2"
 pdf-extract = "0.10"
+lopdf = "0.38"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 quick-xml = "0.37"
 scraper = "0.22"

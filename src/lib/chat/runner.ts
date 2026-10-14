@@ -5,13 +5,13 @@ import { queryClient, qk } from "../queries";
 import type { Citation, FocusState, Message, MessageMeta, NewMessage, MessagePatch, SearchHit, Space, ToolCallMeta, TutorStyle } from "../types";
 import type { ImageInput } from "../steps/vision";
 import { isDiscarded, useChatStream } from "../../stores/chatStream";
-import { hitsToCitations } from "./citations";
 import { extractFollowUps, stripMarkers } from "./followUps";
 import { ThinkingTimer } from "./thinking";
 import type { ModelControls } from "../providers/controls";
 import { extractMemories, isKnownFact } from "./memory";
-import { buildSystemPrompt, historyMessages, threadTitleFrom, type Passage } from "./context";
-import { resolveChatModel, type ResolvedModel } from "./llm";
+import { buildSystemPrompt, describeFocus, historyMessages, threadTitleFrom, type Passage } from "./context";
+import { resolveChatModel, resolveHelperModel, type ResolvedModel } from "./llm";
+import { buildContext, contextMessages, ContextOverflowError, type BuiltContext, type ContextStats } from "../context/build";
 import { mcpServers, mcpToolSet, type McpToolSet } from "../mcp/client";
 
 export interface TurnInput {
@@ -107,9 +107,22 @@ export function userContent(text: string, image?: ImageInput): ModelMessage["con
 
 const PERSIST_EVERY_MS = 1500;
 
-async function retrieve(spaceId: string, query: string): Promise<SearchHit[]> {
-  if (!query.trim()) return [];
-  return api.searchChunks(spaceId, query, 8);
+/** What the context meter shows for an answer. */
+export function contextMeta(st: ContextStats): NonNullable<MessageMeta["context"]> {
+  return {
+    used: st.used,
+    window: st.window,
+    cap: st.cap,
+    conversation: st.conversation.used,
+    conversationBudget: st.conversation.budget,
+    summarized: st.conversation.summarized,
+    passages: st.passages,
+    full: st.full,
+    summaryOnly: st.summaryOnly,
+    truncated: st.truncated,
+    whole: st.whole,
+    cost: st.cost,
+  };
 }
 
 export function passagesFrom(hits: SearchHit[]): Passage[] {
@@ -156,18 +169,67 @@ async function runTurnInner(input: TurnInput): Promise<Message> {
     invalidate();
   }
 
-  let hits: SearchHit[] = [];
+  const memory = await api.listMemory().catch(() => []);
+  const settings = await api.getSettings().catch(() => ({}) as Record<string, unknown>);
+  const sources = queryClient.getQueryData<{ status: string }[]>(qk.sources(space.id)) ?? [];
+  const sourceCount = sources.filter((x) => x.status === "ready").length || space.sourceCount;
+  const thread = input.ephemeral ? null : await api.getThread(threadId).catch(() => null);
+  const helper = await resolveHelperModel(space, llm).catch(() => llm);
+  const stream0 = useChatStream.getState();
+  let ctx: BuiltContext | null = null;
   let retrievalError: string | null = null;
-  useChatStream.getState().setPhase(threadId, "search");
   try {
-    hits = await retrieve(space.id, input.userText ?? input.query ?? "");
+    ctx = await buildContext({
+      spaceId: space.id,
+      thread,
+      prior,
+      latest: input.userText ?? input.query ?? "",
+      message: input.userText ?? `[Study buddy event, not typed by the learner] ${input.instruction ?? ""}`.trim(),
+      llm,
+      helper,
+      maxContext: typeof settings.maxContextTokens === "number" ? settings.maxContextTokens : null,
+      instructions: ({ sourceMap, fullText, toolInstruction }) =>
+        buildSystemPrompt({
+          memory: memory.map((m) => m.text),
+          extraInstructions: input.systemExtra,
+          voice: input.voice,
+          space,
+          tutorStyle: input.tutorStyle,
+          passages: [],
+          focus: input.focus,
+          now: Date.now(),
+          sourceCount,
+          sourceMap,
+          fullText,
+          passagesInMessage: true,
+          toolInstruction,
+          focusInMessage: true,
+        }),
+      preface: (() => {
+        const f = describeFocus(input.focus, Date.now());
+        return f ? `[Focus session: ${f}]` : undefined;
+      })(),
+      tools: !input.meta?.buddyKind && !input.voice,
+      plan: !input.voice && !!input.userText,
+      onPhase: (p) => stream0.setPhase(threadId, p),
+      onThread: () => {
+        if (!input.ephemeral) queryClient.invalidateQueries({ queryKey: qk.threads(space.id) });
+      },
+      onActivity: (label) => useChatStream.getState().setActivity(threadId, label),
+      toolLabels: {
+        searching: s.chat.toolSearching,
+        reading: s.chat.toolReading,
+        outline: s.chat.toolOutline,
+        listing: s.chat.toolListing,
+      },
+    });
   } catch (e) {
+    if (e instanceof ContextOverflowError) throw e;
     retrievalError = (e as Error).message;
   } finally {
     useChatStream.getState().setPhase(threadId, null);
   }
-  const citations: Citation[] = hitsToCitations(hits);
-  const sources = queryClient.getQueryData<{ status: string }[]>(qk.sources(space.id)) ?? [];
+  const citations: Citation[] = ctx?.citations ?? [];
 
   const assistant = await store.addMessage({
     threadId,
@@ -180,6 +242,7 @@ async function runTurnInner(input: TurnInput): Promise<Message> {
       tutorStyle: input.tutorStyle,
       model: { providerId: llm.provider.id, model: llm.modelId },
       ...(input.thinking != null ? { thinking: input.thinking } : {}),
+      ...(ctx ? { context: contextMeta(ctx.stats) } : {}),
     },
   });
   invalidate();
@@ -190,26 +253,23 @@ async function runTurnInner(input: TurnInput): Promise<Message> {
     stream.start(threadId, assistant.id, controller);
     input.onStart?.(assistant);
 
-    const memory = await api.listMemory().catch(() => []);
-    const system = buildSystemPrompt({
-      memory: memory.map((m) => m.text),
-      extraInstructions: input.systemExtra,
-      voice: input.voice,
-      space,
-      tutorStyle: input.tutorStyle,
-      passages: passagesFrom(hits),
-      focus: input.focus,
-      now: Date.now(),
-      sourceCount: sources.filter((s) => s.status === "ready").length || space.sourceCount,
-    });
-    const history = historyMessages(prior) as ModelMessage[];
-    const messages: ModelMessage[] = [...history];
-    if (input.userText) messages.push({ role: "user", content: userContent(input.userText, input.image) } as ModelMessage);
-    else
-      messages.push({
-        role: "user",
-        content: `[Study buddy event, not typed by the learner] ${input.instruction ?? ""}`.trim(),
+    const fallbackSystem = () =>
+      buildSystemPrompt({
+        memory: memory.map((m) => m.text),
+        extraInstructions: input.systemExtra,
+        voice: input.voice,
+        space,
+        tutorStyle: input.tutorStyle,
+        passages: [],
+        focus: input.focus,
+        now: Date.now(),
+        sourceCount,
       });
+    const system = ctx?.system ?? fallbackSystem();
+    const said = input.userText ?? `[Study buddy event, not typed by the learner] ${input.instruction ?? ""}`.trim();
+    const messages: ModelMessage[] = ctx
+      ? contextMessages(ctx, input.image ? userContent(ctx.userText, input.image) : undefined)
+      : [...(historyMessages(prior) as ModelMessage[]), { role: "user", content: userContent(said, input.image) } as ModelMessage];
 
     let content = "";
     let reasoning = "";
@@ -220,7 +280,8 @@ async function runTurnInner(input: TurnInput): Promise<Message> {
 
     const toolCalls: ToolCallMeta[] = [];
     const mcp = input.meta?.buddyKind ? null : await loadTools(toolCalls);
-    const useTools = !!mcp && Object.keys(mcp.tools).length > 0;
+    const tools = { ...(ctx?.tools ?? {}), ...(mcp?.tools ?? {}) };
+    const useTools = Object.keys(tools).length > 0;
     const paint = new FramePainter((c, r) => useChatStream.getState().update(assistant.id, { content: c, reasoning: r }));
     try {
       const result = streamText({
@@ -228,7 +289,7 @@ async function runTurnInner(input: TurnInput): Promise<Message> {
         system,
         messages,
         abortSignal: controller.signal,
-        ...(useTools ? { tools: mcp.tools, stopWhen: stepCountIs(6) } : {}),
+        ...(useTools ? { tools, stopWhen: stepCountIs(8) } : {}),
         ...llm.options({ ...(input.thinking != null ? { thinking: input.thinking } : {}), ...input.controls }),
       });
       for await (const part of result.stream) {
@@ -283,6 +344,7 @@ async function runTurnInner(input: TurnInput): Promise<Message> {
       reasoning,
       status: error ? "error" : "complete",
       error: error ?? undefined,
+      ...(ctx && ctx.book.passages.length > citations.length ? { citations: ctx.finalCitations() } : {}),
       meta: {
         ...assistant.meta,
         ...(stopped ? { stopped: true } : {}),

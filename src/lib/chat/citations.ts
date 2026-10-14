@@ -14,7 +14,7 @@ export function hitsToCitations(hits: SearchHit[]): Citation[] {
   }));
 }
 
-export const CITE_RE = /\[(~?\d{1,2}(?:\s*[,;]\s*~?\d{1,2})*)\]/g;
+export const CITE_RE = /\[(~?\d{1,3}(?:\s*[,;]\s*~?\d{1,3})*)\]/g;
 
 /** Citation numbers referenced in the text, in first-use order, limited to known ones. */
 export function citedNumbers(text: string, known: number): number[] {

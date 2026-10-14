@@ -20,6 +20,8 @@ pub struct SearchHit {
     pub end: i64,
     pub page: Option<i64>,
     pub score: f64,
+    pub ord: i64,
+    pub heading: Option<String>,
 }
 
 /// Word tokens, each quoted, joined with OR. None when there are no tokens.
@@ -79,6 +81,7 @@ fn fts_ranked(
     space_id: &str,
     q: &str,
     filter: &Option<String>,
+    candidates: usize,
 ) -> AppResult<Vec<i64>> {
     let Some(m) = fts_query(q) else {
         return Ok(vec![]);
@@ -91,7 +94,7 @@ fn fts_ranked(
            AND (?3 IS NULL OR c.source_id IN (SELECT value FROM json_each(?3)))
          ORDER BY bm25(chunks_fts) LIMIT ?4",
     )?;
-    let rows = st.query_map(params![m, space_id, filter, CANDIDATES as i64], |r| {
+    let rows = st.query_map(params![m, space_id, filter, candidates as i64], |r| {
         r.get(0)
     })?;
     Ok(rows.collect::<Result<_, _>>()?)
@@ -102,12 +105,13 @@ fn vec_ranked(
     space_id: &str,
     qv: &[f32],
     filter: &Option<String>,
+    candidates: usize,
 ) -> AppResult<Vec<i64>> {
     // over-fetch because use_in_chat / source filters are applied after the KNN
     let k = if filter.is_some() {
-        CANDIDATES * 5
+        candidates * 5
     } else {
-        CANDIDATES * 2
+        candidates * 2
     };
     let mut st = c.prepare_cached(
         "SELECT v.chunk_id FROM (
@@ -121,7 +125,7 @@ fn vec_ranked(
          ORDER BY v.distance LIMIT ?5",
     )?;
     let rows = st.query_map(
-        params![vec_blob(qv), k as i64, space_id, filter, CANDIDATES as i64],
+        params![vec_blob(qv), k.min(4096) as i64, space_id, filter, candidates as i64],
         |r| r.get(0),
     )?;
     Ok(rows.collect::<Result<_, _>>()?)
@@ -148,17 +152,31 @@ pub fn search(
     limit: usize,
     source_ids: Option<&[String]>,
 ) -> AppResult<Vec<SearchHit>> {
+    search_with(c, space_id, query, query_vec, limit, CANDIDATES, source_ids)
+}
+
+/// `candidates`: how many results each ranker contributes before fusion.
+pub fn search_with(
+    c: &Connection,
+    space_id: &str,
+    query: &str,
+    query_vec: Option<&[f32]>,
+    limit: usize,
+    candidates: usize,
+    source_ids: Option<&[String]>,
+) -> AppResult<Vec<SearchHit>> {
     if limit == 0 || source_ids.map(|s| s.is_empty()).unwrap_or(false) {
         return Ok(vec![]);
     }
     let filter = source_filter_json(source_ids);
-    let mut lists = vec![fts_ranked(c, space_id, query, &filter)?];
+    let candidates = candidates.max(limit);
+    let mut lists = vec![fts_ranked(c, space_id, query, &filter, candidates)?];
     if let Some(qv) = query_vec {
-        lists.push(vec_ranked(c, space_id, qv, &filter)?);
+        lists.push(vec_ranked(c, space_id, qv, &filter, candidates)?);
     }
     let fused = rrf(&lists);
     let mut st = c.prepare_cached(
-        "SELECT c.source_id, s.title, c.text, c.start_offset, c.end_offset, c.page
+        "SELECT c.source_id, s.title, c.text, c.start_offset, c.end_offset, c.page, c.ord, c.heading
          FROM chunks c JOIN sources s ON s.id = c.source_id WHERE c.id = ?1",
     )?;
     let mut hits = Vec::new();
@@ -173,6 +191,8 @@ pub fn search(
                 end: r.get(4)?,
                 page: r.get(5)?,
                 score,
+                ord: r.get(6)?,
+                heading: r.get(7)?,
             })
         });
         match hit {
@@ -227,7 +247,7 @@ pub fn coverage(
         "SELECT count(*) FROM chunks_fts f JOIN chunks c ON c.id = f.rowid WHERE chunks_fts MATCH ?1 AND c.space_id = ?2",
     )?;
     let mut chunk = c.prepare_cached(
-        "SELECT c.source_id, s.title, c.text, c.start_offset, c.end_offset, c.page
+        "SELECT c.source_id, s.title, c.text, c.start_offset, c.end_offset, c.page, c.ord, c.heading
          FROM chunks c JOIN sources s ON s.id = c.source_id WHERE c.id = ?1",
     )?;
     let mut out = Vec::with_capacity(topics.len());
@@ -259,6 +279,8 @@ pub fn coverage(
                             end: r.get(4)?,
                             page: r.get(5)?,
                             score: 1.0 - dist,
+                            ord: r.get(6)?,
+                            heading: r.get(7)?,
                         })
                     })
                     .optional()?;

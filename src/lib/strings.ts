@@ -574,6 +574,12 @@ export const s = {
     emptyNoSources: "Add a source first, or ask a general question.",
     thinking: "Thinking",
     searchingSources: "Searching your sources…",
+    planningSearch: "Working out what to look up…",
+    compacting: "Summarizing earlier messages…",
+    toolSearching: (q: string) => `Searching for “${q}”`,
+    toolReading: (title: string, where: string) => `Reading ${title}, ${where}`,
+    toolOutline: (title: string) => `Looking at the outline of ${title}`,
+    toolListing: "Looking through your sources",
     writing: "Writing",
     thoughts: "Reasoning",
     thoughtFor: (sec: number) =>

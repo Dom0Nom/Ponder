@@ -3,6 +3,7 @@ mod ask;
 mod backup;
 mod calculator;
 mod capture;
+mod context;
 mod cards;
 pub mod cli;
 mod cloud;
@@ -221,6 +222,13 @@ pub fn run() {
             ingest::commands::embedding_models,
             ingest::commands::set_embedding_model,
             ingest::commands::openrouter_embedding_models,
+            context::search_many_chunks,
+            context::read_source_ranges,
+            context::source_outlines,
+            context::set_source_context_mode,
+            context::save_thread_summary,
+            context::set_thread_auto_compact,
+            context::get_thread,
             ingest::commands::topic_coverage,
             watch::commands::watch_list,
             watch::commands::watch_add,

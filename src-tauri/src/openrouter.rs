@@ -7,7 +7,7 @@ use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const URL: &str = "https://openrouter.ai/api/v1/models";
-const CACHE_FILE: &str = "openrouter-chat-models-v2.json";
+const CACHE_FILE: &str = "openrouter-chat-models-v3.json";
 const TTL: Duration = Duration::from_secs(24 * 60 * 60);
 
 /// What OpenRouter reports about a model's reasoning controls.
@@ -31,6 +31,33 @@ pub struct OpenRouterModel {
     pub created: Option<u64>,
     #[serde(default)]
     pub reasoning: Option<OpenRouterReasoning>,
+    #[serde(default)]
+    pub pricing: Option<OpenRouterPricing>,
+    /// most tokens one answer can have
+    #[serde(default)]
+    pub max_output: Option<u64>,
+}
+
+/// USD per token.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenRouterPricing {
+    pub prompt: f64,
+    pub completion: f64,
+    pub cache_read: Option<f64>,
+}
+
+fn parse_pricing(p: &Value) -> Option<OpenRouterPricing> {
+    let num = |k: &str| {
+        p.get(k)
+            .and_then(|v| v.as_str().and_then(|s| s.parse::<f64>().ok()).or(v.as_f64()))
+            .filter(|n| *n >= 0.0)
+    };
+    Some(OpenRouterPricing {
+        prompt: num("prompt")?,
+        completion: num("completion")?,
+        cache_read: num("input_cache_read"),
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,6 +150,11 @@ pub fn parse(body: &str) -> AppResult<Vec<OpenRouterModel>> {
                 supported_parameters,
                 created: m.get("created").and_then(Value::as_u64),
                 reasoning: m.get("reasoning").and_then(parse_reasoning),
+                pricing: m.get("pricing").and_then(parse_pricing),
+                max_output: m
+                    .get("top_provider")
+                    .and_then(|t| t.get("max_completion_tokens"))
+                    .and_then(Value::as_u64),
             })
         })
         .collect();
