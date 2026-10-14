@@ -2259,7 +2259,7 @@ saveFailed: "Couldn't save the distraction nudge",
   },
   goal: {
     start: "Start from a goal",
-    createAndSet: "Create and set a goal",
+    createAndSet: "Start from a goal",
     title: "What do you want to learn?",
     stepOf: msg<[n: number, total: number]>("Step {0} of {1}"),
     steps: ["Goal", "Skill graph", "Schedule"],

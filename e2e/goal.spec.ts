@@ -3,7 +3,7 @@ import { test, expect } from "./fixtures";
 test("empty space -> goal wizard -> skill graph -> dateless schedule", async ({ app }) => {
   await app.getByRole("button", { name: "New space" }).first().click();
   await app.getByLabel("Name").fill("Robotics");
-  await app.getByRole("button", { name: "Create", exact: true }).click();
+  await app.getByRole("button", { name: "Create" }).click();
 
   await app.getByTestId("goal-start").click();
   const wizard = app.getByTestId("goal-wizard");
@@ -57,7 +57,7 @@ test("empty space -> goal wizard -> skill graph -> dateless schedule", async ({ 
 test("goal wizard from the New space dialog seeds the graph from an exam outline", async ({ app }) => {
   await app.getByRole("button", { name: "New space" }).first().click();
   await app.getByLabel("Name").fill("GED");
-  await app.getByRole("button", { name: "Create and set a goal" }).click();
+  await app.getByRole("button", { name: "Start from a goal" }).click();
 
   await app.getByRole("radio", { name: "Exam outline" }).click();
   await app.getByLabel("Exam or course").selectOption("ged");

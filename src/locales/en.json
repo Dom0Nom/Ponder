@@ -2269,7 +2269,7 @@
   "ladder.restart": "Start over",
   "ladder.checkFailed": "Couldn't check your answer",
   "goal.start": "Start from a goal",
-  "goal.createAndSet": "Create and set a goal",
+  "goal.createAndSet": "Start from a goal",
   "goal.title": "What do you want to learn?",
   "goal.stepOf": "Step {0} of {1}",
   "goal.steps.0": "Goal",
