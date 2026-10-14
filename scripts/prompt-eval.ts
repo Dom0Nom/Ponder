@@ -1006,6 +1006,58 @@ const essayGradeEval: Task = {
   })),
 };
 
+const midEssay = `The second article, "Keep Five Days," is better supported. It cites a study of 12 districts where students gained about 20 percent less in math, which is real evidence about learning. The first article says Pine Valley saved 7 percent and teachers liked the change, but that is only one district.
+
+The first article does have some good points, like attendance going up. But it does not show numbers for that. The second article also has a weak point, the neighbor whose son is bored, which is just a story.
+
+So I think keeping five days is the better choice since it has more evidence and cares about students that need the care on fridays.`;
+
+const sloppyEssay = `four day week is better in my opinion. the first article give good reason like saving money 7 percent and teachers want it, and the second one only got a study and a neighbour. The study is not as good because it dont say which districts. kids is happy with less school and parents can do things on friday so its better and the first one win`;
+
+const cleanThinEssay = `Both articles take a clear position on the four-day school week. The first argues for it, and the second argues against it. Each author gives reasons for the position, and each reasons from a different kind of fact.
+
+The first article discusses savings, teacher recruitment, and attendance. The second discusses test results, savings, and child care. These topics overlap in some places and not in others.
+
+In the end, a reader has to decide which position to accept. The question of the school week matters for students, for parents, and for teachers, and it deserves careful thought from everyone involved.`;
+
+/** Anchor-style set written for this harness (not official GED samples): expected [trait1, trait2, trait3], each 0-2. */
+const essayCalibrationEval: Task = {
+  id: "essay-calibration",
+  purpose: "Run the two-pass (temperature 0) essay grader over anchor-style essays and report per-trait agreement with the expected scores.",
+  dims: ["calibration"],
+  cases: [
+    { name: "strong", essay: strongEssay, expected: [2, 2, 2] },
+    { name: "mid", essay: midEssay, expected: [1, 1, 2] },
+    { name: "clean but empty", essay: cleanThinEssay, expected: [0, 1, 2] },
+    { name: "sloppy", essay: sloppyEssay, expected: [1, 1, 0] },
+    { name: "weak", essay: weakEssay, expected: [1, 0, 0] },
+    { name: "off-topic", essay: "My favorite season is summer because we go to the lake. ".repeat(6), expected: [0, 0, 0] },
+  ].map((c) => ({
+    name: c.name,
+    run: async () => {
+      const m = await lib("exam/essay.ts");
+      let g: { total: number; traits: { score: number }[] } | null = null;
+      let err = "";
+      try {
+        g = await m.gradeEssay(gen, essayFixture, c.essay);
+      } catch (e) {
+        err = String(e);
+      }
+      const got = g?.traits.map((t) => t.score) ?? [];
+      const exact = got.filter((v, i) => v === c.expected[i]).length;
+      const near = got.filter((v, i) => Math.abs(v - c.expected[i]) <= 1).length;
+      return {
+        output: `EXPECTED ${c.expected.join("/")}  GOT ${got.join("/") || err}`,
+        expect: `Traits ${c.expected.join("/")}; every trait within one point.`,
+        checks: [
+          check("parsed", !!g, err),
+          check("within one on all traits", near === 3, `${near}/3 within one, ${exact}/3 exact`),
+        ],
+      };
+    },
+  })),
+};
+
 const studioMaterial = {
   en: {
     sources: ["Biology notes", "Plant physiology handout"],
@@ -1102,7 +1154,7 @@ const studioOutputs: Task = {
   })),
 };
 
-const TASKS: Task[] = [tutor, voiceTutor, buddy, micro, quiz, practice, grade, classify, cards, selfcheck, stepcheck, researchQuery, researchPlan, researchRank, summary, curriculum, examTask, essayTaskEval, essayGradeEval, studioOutputs];
+const TASKS: Task[] = [tutor, voiceTutor, buddy, micro, quiz, practice, grade, classify, cards, selfcheck, stepcheck, researchQuery, researchPlan, researchRank, summary, curriculum, examTask, essayTaskEval, essayGradeEval, essayCalibrationEval, studioOutputs];
 
 // ---------- judge ----------
 async function judge(task: Task, caseName: string, r: CaseResult, prompt: string): Promise<Record<string, number> & { rationale?: unknown }> {
