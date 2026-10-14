@@ -1,8 +1,6 @@
-import { lazy, useEffect, useState } from "react";
-import { Fx } from "../../components/fx/Fx";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog } from "../../components/ui/dialog";
-const MetalButton = lazy(() => import("../../components/fx/MetalButton"));
 import { Button } from "../../components/ui/button";
 import { Input, Label } from "../../components/ui/input";
 import { toast, toastError } from "../../components/ui/toast";
@@ -94,11 +92,7 @@ export function SpaceDialog({
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
             {s.common.cancel}
           </Button>
-          {space ? (
-            createButton
-          ) : (
-            <Fx needsWebGL2 fallback={createButton} render={() => <MetalButton>{createButton}</MetalButton>} />
-          )}
+          {createButton}
         </>
       }
     >

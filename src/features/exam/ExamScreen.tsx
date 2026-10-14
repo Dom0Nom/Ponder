@@ -1,8 +1,6 @@
-const MetalButton = lazy(() => import("../../components/fx/MetalButton"));
-import { Fx } from "../../components/fx/Fx";
 import { AiBeam } from "../../components/fx/AiBeam";
 import { SpinCounter } from "../../components/motion/SpinCounter";
-import { lazy, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { Calculator, ChevronDown, ChevronLeft, ChevronRight, Flag, GraduationCap, Trash2 } from "lucide-react";
 import { api } from "../../lib/ipc";
@@ -201,11 +199,7 @@ function StartView({ spaceId }: { spaceId: string }) {
               </Button>
             </>
           ) : (
-            <Fx
-              needsWebGL2
-              fallback={beginButton}
-              render={() => <MetalButton>{beginButton}</MetalButton>}
-            />
+            beginButton
           )}
         </div>
         {error ? <ErrorState title={s.exam.startError} error={error} onRetry={start} /> : null}
