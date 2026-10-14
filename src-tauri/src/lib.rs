@@ -295,3 +295,11 @@ pub fn run() {
 pub mod dev_proxy {
     pub use crate::proxy::{run, stream_client, Prepared, ProxyEvent};
 }
+
+/// Local embedding, chunking and extraction without Tauri, for `examples/embed_bench.rs`.
+#[doc(hidden)]
+pub mod dev_embed {
+    pub use crate::ingest::chunk::chunk_text;
+    pub use crate::ingest::embed::{spec, BertEmbedder, Embedder};
+    pub use crate::ingest::extract::extract_file_with;
+}

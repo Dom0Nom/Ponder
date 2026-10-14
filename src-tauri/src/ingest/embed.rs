@@ -8,9 +8,10 @@ use candle_nn::VarBuilder;
 use candle_transformers::models::bert::{BertModel, Config};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use tokenizers::{PaddingParams, Tokenizer, TruncationParams};
+use tokenizers::{Tokenizer, TruncationParams};
 
 /// Size of the local models' vectors.
 pub const DIMS: usize = 384;
@@ -202,10 +203,19 @@ fn other<E: std::fmt::Display>(e: E) -> AppError {
     AppError::Other(e.to_string())
 }
 
+/// Texts per forward pass. One at a time carries no padding and, run on several threads, keeps
+/// every core busy; larger batches were slower on CPU.
+const GROUP: usize = 1;
+/// Texts the worker hands over per call, so the threads stay fed.
+const LOCAL_BATCH: usize = 32;
+
 pub struct BertEmbedder {
     model: BertModel,
     tokenizer: Tokenizer,
     device: Device,
+    pad_id: u32,
+    group: usize,
+    threads: usize,
     query_prefix: &'static str,
     passage_prefix: &'static str,
 }
@@ -215,15 +225,10 @@ impl BertEmbedder {
         let device = Device::Cpu;
         let cfg: Config = serde_json::from_str(&std::fs::read_to_string(dir.join("config.json"))?)?;
         let mut tokenizer = Tokenizer::from_file(dir.join("tokenizer.json")).map_err(other)?;
-        let (pad_id, pad_token) = ["[PAD]", "<pad>"]
+        let pad_id = ["[PAD]", "<pad>"]
             .iter()
-            .find_map(|t| tokenizer.token_to_id(t).map(|id| (id, t.to_string())))
-            .unwrap_or((0, "[PAD]".into()));
-        tokenizer.with_padding(Some(PaddingParams {
-            pad_id,
-            pad_token,
-            ..Default::default()
-        }));
+            .find_map(|t| tokenizer.token_to_id(t))
+            .unwrap_or(0);
         tokenizer
             .with_truncation(Some(TruncationParams {
                 max_length: 256,
@@ -240,10 +245,14 @@ impl BertEmbedder {
             .map_err(other)?
         };
         let model = BertModel::load(vb, &cfg).map_err(other)?;
+        let cpus = std::thread::available_parallelism().map_or(2, |n| n.get());
         Ok(Self {
             model,
             tokenizer,
             device,
+            pad_id,
+            group: GROUP,
+            threads: cpus.saturating_sub(1).clamp(2, 8),
             query_prefix: spec.query_prefix,
             passage_prefix: spec.passage_prefix,
         })
@@ -253,28 +262,78 @@ impl BertEmbedder {
         if texts.is_empty() {
             return Ok(vec![]);
         }
-        if prefix.is_empty() {
-            return self.embed_batch(texts).map_err(other);
-        }
-        let texts: Vec<String> = texts.iter().map(|t| format!("{prefix}{t}")).collect();
-        self.embed_batch(&texts).map_err(other)
+        let texts: Vec<String> = if prefix.is_empty() {
+            texts.to_vec()
+        } else {
+            texts.iter().map(|t| format!("{prefix}{t}")).collect()
+        };
+        self.embed_sorted(texts).map_err(other)
     }
 
-    fn embed_batch(&self, texts: &[String]) -> candle_core::Result<Vec<Vec<f32>>> {
+    /// Tokenizes once, groups texts of similar length so batches carry little padding, and runs
+    /// the groups on `threads` workers. Output order matches the input.
+    fn embed_sorted(&self, texts: Vec<String>) -> candle_core::Result<Vec<Vec<f32>>> {
+        let n = texts.len();
         let enc = self
             .tokenizer
-            .encode_batch(texts.to_vec(), true)
+            .encode_batch(texts, true)
             .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
-        let ids = enc
+        let mut order: Vec<usize> = (0..n).collect();
+        order.sort_by_key(|&i| enc[i].get_ids().len());
+        let groups: Vec<&[usize]> = order.chunks(self.group).collect();
+        let next = AtomicUsize::new(0);
+        let results: Mutex<Vec<(usize, Vec<Vec<f32>>)>> = Mutex::new(Vec::new());
+        let failure: Mutex<Option<candle_core::Error>> = Mutex::new(None);
+        std::thread::scope(|s| {
+            for _ in 0..self.threads.min(groups.len()) {
+                s.spawn(|| loop {
+                    let g = next.fetch_add(1, Ordering::Relaxed);
+                    let Some(group) = groups.get(g) else { break };
+                    match self.forward_group(&enc, group) {
+                        Ok(v) => results.lock().unwrap().push((g, v)),
+                        Err(e) => {
+                            *failure.lock().unwrap() = Some(e);
+                            break;
+                        }
+                    }
+                });
+            }
+        });
+        if let Some(e) = failure.into_inner().unwrap() {
+            return Err(e);
+        }
+        let mut out = vec![Vec::new(); n];
+        for (g, vecs) in results.into_inner().unwrap() {
+            for (&i, v) in groups[g].iter().zip(vecs) {
+                out[i] = v;
+            }
+        }
+        Ok(out)
+    }
+
+    fn forward_group(
+        &self,
+        enc: &[tokenizers::Encoding],
+        group: &[usize],
+    ) -> candle_core::Result<Vec<Vec<f32>>> {
+        let len = group
             .iter()
-            .map(|e| Tensor::new(e.get_ids(), &self.device))
-            .collect::<Result<Vec<_>, _>>()?;
-        let mask = enc
-            .iter()
-            .map(|e| Tensor::new(e.get_attention_mask(), &self.device))
-            .collect::<Result<Vec<_>, _>>()?;
-        let ids = Tensor::stack(&ids, 0)?;
-        let mask = Tensor::stack(&mask, 0)?;
+            .map(|&i| enc[i].get_ids().len())
+            .max()
+            .unwrap_or(0);
+        let mut ids = Vec::with_capacity(group.len() * len);
+        let mut mask = Vec::with_capacity(group.len() * len);
+        for &i in group {
+            let e = &enc[i];
+            ids.extend_from_slice(e.get_ids());
+            mask.extend_from_slice(e.get_attention_mask());
+            let pad = len - e.get_ids().len();
+            ids.resize(ids.len() + pad, self.pad_id);
+            mask.resize(mask.len() + pad, 0);
+        }
+        let shape = (group.len(), len);
+        let ids = Tensor::from_vec(ids, shape, &self.device)?;
+        let mask = Tensor::from_vec(mask, shape, &self.device)?;
         let token_types = ids.zeros_like()?;
         let out = self.model.forward(&ids, &token_types, Some(&mask))?;
         let m = mask.to_dtype(DType::F32)?.unsqueeze(2)?;
@@ -294,6 +353,9 @@ impl Embedder for BertEmbedder {
     }
     fn embed_queries(&self, texts: &[String]) -> AppResult<Vec<Vec<f32>>> {
         self.embed_prefixed(self.query_prefix, texts)
+    }
+    fn batch_size(&self) -> usize {
+        LOCAL_BATCH
     }
 }
 

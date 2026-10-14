@@ -320,7 +320,7 @@ mod tests {
         assert_eq!(lookup("de", "native.tray.quit"), "Beenden");
         assert_eq!(lookup("de", "native.tray.show"), "App anzeigen");
         assert_eq!(
-            lookup("fr", "native.tray.quit"),
+            lookup("xx", "native.tray.quit"),
             "Quit",
             "missing languages fall back to English"
         );
