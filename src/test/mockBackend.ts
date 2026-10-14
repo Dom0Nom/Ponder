@@ -63,6 +63,7 @@ export interface DB {
   abilities: Record<string, Row<T.Ability>>;
   practiceItems: Row<T.PracticeItem & { spaceId: string }>;
   attempts: (T.NewAttempt & { spaceId: string; at: number })[];
+  mastery?: Record<string, Record<string, T.MasteryRow>>;
   reviews?: T.ReviewRow[];
   exams?: Row<T.ExamAttempt>;
   outputs?: Row<T.StudioOutput>;
@@ -1788,7 +1789,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
     Object.assign(c, { fsrs: a.fsrs, due: a.due, state: a.cardState });
     const logs = ((db as unknown as { reviewLogs?: Record<string, number[]> }).reviewLogs ??= {});
     (logs[c.id] ??= []).push(rating);
-    (db.reviews ??= []).push({ cardId: c.id, spaceId: c.spaceId, sourceId: c.sourceId, rating, reviewedAt: now() });
+    (db.reviews ??= []).push({ cardId: c.id, spaceId: c.spaceId, sourceId: c.sourceId, rating, reviewedAt: now(), confidence: (a.confidence as T.Confidence | null) ?? null });
     const last = logs[c.id].slice(-2);
     if (last.length === 2 && last.every((r) => r >= 3)) for (const m of Object.values(db.mistakes)) if (m.cardId === c.id) m.resolved = true;
     save();
@@ -1878,6 +1879,14 @@ const handlers: Record<string, (a: Args) => unknown> = {
     db.attempts.push({ ...at, spaceId: a.spaceId as string, at: now() });
     save();
     return sp[at.topicKey];
+  },
+  mastery_list: (a) => Object.values((db.mastery ??= {})[a.spaceId as string] ?? {}),
+  mastery_upsert: (a) => {
+    const row = a.row as T.MasteryRow;
+    if (!["learning", "retest", "mastered"].includes(row.state)) err("invalid", `Unknown mastery state: ${row.state}`);
+    ((db.mastery ??= {})[a.spaceId as string] ??= {})[row.topicKey] = row;
+    save();
+    return null;
   },
   mistake_set_error_type: (a) => {
     const m = db.mistakes[a.id as string];
@@ -2389,7 +2398,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
         .map((x) => ({ spaceId: x.spaceId, startedAt: x.startedAt, focusMs: x.focusMs })),
       attempts: db.attempts
         .filter((x) => inSpace(x.spaceId) && x.at >= since)
-        .map((x) => ({ spaceId: x.spaceId, topicKey: x.topicKey, correct: x.correct, createdAt: x.at })),
+        .map((x) => ({ spaceId: x.spaceId, topicKey: x.topicKey, correct: x.correct, createdAt: x.at, confidence: x.confidence ?? null })),
     } satisfies T.InsightsActivity;
   },
   parking_add: (a) => {

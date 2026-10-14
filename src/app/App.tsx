@@ -21,6 +21,7 @@ import { OutputScreen } from "../features/outputs/OutputScreen";
 import { NotesScreen } from "../features/notes/NotesScreen";
 import { CommandPalette } from "../features/palette/CommandPalette";
 import { FocusLayer } from "../features/focus/FocusLayer";
+import { SessionBar } from "../features/session/SessionBar";
 import { QuizLayer } from "../features/placement/QuizDialog";
 import { OnboardingHost } from "../features/onboarding/Onboarding";
 import { TourHost } from "../features/onboarding/Tour";
@@ -118,6 +119,7 @@ function Shell() {
       </div>
       <CommandPalette />
       <FocusLayer />
+      <SessionBar />
       <QuizLayer />
       <QuickCaptureDialog />
       <SpaceDialogHost />

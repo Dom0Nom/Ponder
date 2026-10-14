@@ -33,6 +33,7 @@ export const qk = {
   mistakes: (spaceId: string | null) => ["mistakes", spaceId] as const,
   curriculum: (spaceId: string) => ["curriculum", spaceId] as const,
   levels: (spaceId: string) => ["levels", spaceId] as const,
+  mastery: (spaceId: string) => ["mastery", spaceId] as const,
   coverage: (spaceId: string) => ["coverage", spaceId] as const,
   assessments: (spaceId: string) => ["assessments", spaceId] as const,
   courses: (spaceId: string) => ["courses", spaceId] as const,
@@ -117,6 +118,7 @@ export const useMemory = () => useQuery({ queryKey: qk.memory, queryFn: api.list
 export const useCurriculum = (spaceId: string) =>
   useQuery({ queryKey: qk.curriculum(spaceId), queryFn: () => api.curriculumGet(spaceId) });
 export const useLevels = (spaceId: string) => useQuery({ queryKey: qk.levels(spaceId), queryFn: () => api.topicLevels(spaceId) });
+export const useMastery = (spaceId: string) => useQuery({ queryKey: qk.mastery(spaceId), queryFn: () => api.masteryList(spaceId) });
 export const useCourses = (spaceId: string) => useQuery({ queryKey: qk.courses(spaceId), queryFn: () => api.coursesList(spaceId) });
 export const useStudyPlan = (spaceId: string) => useQuery({ queryKey: qk.studyPlan(spaceId), queryFn: () => api.getStudyPlan(spaceId) });
 /** Every scheduled task across spaces; the Today view and palette derive from it. */

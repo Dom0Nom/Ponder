@@ -5,7 +5,7 @@ import { api } from "../../lib/ipc";
 import { useCurriculum, useDueCounts, useSpaces } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import { WEEKDAY_DAY, formatPercent, formatClock, formatDate, formatMinutesHuman } from "../../lib/i18n/format";
-import type { InsightsActivity, TopicRef } from "../../lib/types";
+import type { AttemptRow, InsightsActivity, TopicRef } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import {
   bestStudyTime,
@@ -20,11 +20,14 @@ import {
   usualEnd,
   type TopicMastery,
 } from "../../lib/insights/analytics";
-import { examFor } from "../../lib/exam/formats";
+import { examFor, type ExamFormat } from "../../lib/exam/formats";
 import { useUi } from "../../stores/ui";
 import { Button } from "../../components/ui/button";
 import { Menu, MenuContent, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../../components/ui/menu";
 import { EmptyState, ErrorState, Skeleton } from "../../components/ui/misc";
+import { CalibrationSection, MasteryStatusSection, PatternsSection } from "./LearningSections";
+import { scoreBand } from "../../lib/exam/band";
+import { ScoreBandView } from "../exam/ScoreBandView";
 
 const DAY = 86_400_000;
 const HISTORY_DAYS = 120;
@@ -82,7 +85,7 @@ export function InsightsScreen({ spaceId }: { spaceId?: string }) {
                 <EmptyState className="flex-1" icon={<BarChart3 size={20} />} title={s.insights.emptyTitle} body={s.insights.emptyBody} />
               </div>
             )}
-            {spaceId ? <MasterySections spaceId={spaceId} /> : null}
+            {spaceId ? <MasterySections spaceId={spaceId} attempts={a?.attempts ?? []} /> : null}
           </>
         )}
       </div>
@@ -189,7 +192,7 @@ function ActivitySections({ a, now, spaceId }: { a: InsightsActivity; now: numbe
   );
 }
 
-function MasterySections({ spaceId }: { spaceId: string }) {
+function MasterySections({ spaceId, attempts }: { spaceId: string; attempts: AttemptRow[] }) {
   const curriculum = useCurriculum(spaceId);
   const levels = useQuery({ queryKey: ["levels", spaceId], queryFn: () => api.topicLevels(spaceId) });
   const abilities = useQuery({ queryKey: ["abilities", spaceId], queryFn: () => api.abilitiesList(spaceId) });
@@ -224,7 +227,10 @@ function MasterySections({ spaceId }: { spaceId: string }) {
       <Section title={s.insights.masteryTitle} body={s.insights.masteryBody} testId="insights-mastery">
         <MasteryMap spaceId={spaceId} topics={topics} mastery={mastery} />
       </Section>
-      <Readiness topics={topics} mastery={mastery} passMark={PASS_MARK[curriculum.data!.curriculumId] ?? examFor(curriculum.data!.curriculumId)?.passMark} examSpaceId={examFor(curriculum.data!.curriculumId) ? spaceId : undefined} />
+      <MasteryStatusSection spaceId={spaceId} topics={topics} />
+      <CalibrationSection attempts={attempts} topics={topics} />
+      <PatternsSection spaceId={spaceId} topics={topics} />
+      <Readiness topics={topics} mastery={mastery} passMark={PASS_MARK[curriculum.data!.curriculumId] ?? examFor(curriculum.data!.curriculumId)?.passMark} examSpaceId={examFor(curriculum.data!.curriculumId) ? spaceId : undefined} format={examFor(curriculum.data!.curriculumId)} />
     </>
   );
 }
@@ -333,7 +339,7 @@ function MasteryMap({ spaceId, topics, mastery }: { spaceId: string; topics: Top
   );
 }
 
-function Readiness({ topics, mastery, passMark, examSpaceId }: { topics: TopicRef[]; mastery: TopicMastery[]; passMark?: number; examSpaceId?: string }) {
+function Readiness({ topics, mastery, passMark, examSpaceId, format }: { topics: TopicRef[]; mastery: TopicMastery[]; passMark?: number; examSpaceId?: string; format?: ExamFormat | null }) {
   const navigate = useUi((st) => st.navigate);
   const groups = [...new Set(topics.map((t) => t.group))];
   const byId = new Map(mastery.map((m) => [m.topicId, m]));
@@ -343,6 +349,8 @@ function Readiness({ topics, mastery, passMark, examSpaceId }: { topics: TopicRe
         {groups.map((g) => {
           const ms = topics.filter((t) => t.group === g).map((t) => byId.get(t.id)!);
           const r = readiness(ms, passMark ?? 0.6);
+          const sec = format?.sections.find((x) => x.group === g);
+          const band = format && sec && r ? scoreBand(format, r.expected, sec.questions.full, 1) : null;
           const known = ms.filter((m) => m.p != null).length;
           return (
             <div key={g} className="flex items-baseline gap-3 py-2 [&+&]:border-t [&+&]:border-divider">
@@ -352,6 +360,7 @@ function Readiness({ topics, mastery, passMark, examSpaceId }: { topics: TopicRe
                   {passMark != null && <span className="font-semibold text-fg tabular-nums">{s.insights.readinessPass(r.pass)}</span>}
                   <span className="tabular-nums">{s.insights.readinessExpected(r.expected)}</span>
                   <span className="text-muted">{s.insights.readinessBasis(r.known, r.total)}</span>
+                  {band && format ? <ScoreBandView band={band} format={format} attempts={1} /> : null}
                 </span>
               ) : (
                 <span className="flex-1 text-muted">{s.insights.readinessLow(known, ms.length)}</span>
