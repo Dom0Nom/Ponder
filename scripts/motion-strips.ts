@@ -71,9 +71,10 @@ for (const theme of ["light", "dark"] as const) {
   await page.getByRole("button", { name: "Settings" }).click();
   await page.waitForTimeout(800);
   const sw = page.getByRole("switch", { name: "Reduce motion" });
+  await sw.scrollIntoViewIfNeeded();
   const box = await sw.boundingBox();
   if (box) {
-    await capture(page, "toggle", theme, { x: Math.max(0, box.x - 120), y: box.y - 14, width: 220, height: 48 }, async () => {
+    await capture(page, "toggle", theme, { x: Math.max(0, box.x - 160), y: Math.max(0, box.y - 14), width: 220, height: 48 }, async () => {
       await page.getByRole("switch", { name: "Visual effects" }).click();
     });
   }
