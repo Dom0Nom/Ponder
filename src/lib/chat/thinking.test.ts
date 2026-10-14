@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { s } from "../strings";
-import { ThinkingTimer, thoughtSeconds } from "./thinking";
+import { ThinkingTimer, thoughtLabel, thoughtSeconds } from "./thinking";
 
 function clock() {
   let t = 1000;
@@ -46,9 +46,9 @@ describe("thought label", () => {
     expect(thoughtSeconds(4500)).toBe(5);
   });
   it("uses the decided copy", () => {
-    expect(s.chat.thoughtFor(1)).toBe("Thought for 1 second");
-    expect(s.chat.thoughtFor(12)).toBe("Thought for 12 seconds");
-    expect(s.chat.thoughtFor(120)).toBe("Thought for 2 min");
+    expect(thoughtLabel(1)).toBe("Thought for 1 second");
+    expect(thoughtLabel(12)).toBe("Thought for 12 seconds");
+    expect(thoughtLabel(120)).toBe("Thought for 2 min");
     expect(s.chat.thoughts).toBe("Reasoning");
   });
 });

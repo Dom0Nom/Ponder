@@ -28,7 +28,7 @@ export async function importStudyPack() {
       return;
     }
     for (const k of [qk.spaces, qk.dueCounts]) await queryClient.invalidateQueries({ queryKey: k });
-    toast.success(s.pack.imported(res.name, res.counts.sources), { id });
+    toast.success(res.counts.sources > 0 ? s.pack.importedIndexing(res.name, res.counts.sources) : s.pack.imported(res.name), { id });
     useUi.getState().navigate({ name: "space", spaceId: res.spaceId });
   } catch (e) {
     dismissLater(id);

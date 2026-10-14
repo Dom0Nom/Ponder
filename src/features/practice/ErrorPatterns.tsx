@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/ipc";
 import { s } from "../../lib/strings";
+import { formatList } from "../../lib/i18n/format";
 import { relativeShort } from "../../lib/utils";
 import { ErrorState, Skeleton } from "../../components/ui/misc";
 
@@ -25,7 +26,7 @@ export function ErrorPatterns({ spaceId }: { spaceId?: string | null }) {
               <span className="tabular-nums">{p.count}</span>
             </div>
             <span className="text-label leading-[1.4] text-muted">
-              {s.errorPatterns.detail(p.topics, relativeShort(p.lastAt))}
+              {s.errorPatterns.detail(formatList(p.topics), relativeShort(p.lastAt))}
             </span>
           </div>
         ))

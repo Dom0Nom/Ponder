@@ -44,7 +44,7 @@ function Key({ k, h }: { k: KeyDef; h: KeyHandlers }) {
     <button
       type="button"
       tabIndex={-1}
-      aria-label={s.calc.keys[k.id] ?? k.id}
+      aria-label={s.calc.keys[k.id === "." ? "dot" : k.id] ?? k.id}
       data-key={k.id}
       data-pressed={down || undefined}
       data-last={h.last === k.id || undefined}
@@ -205,7 +205,7 @@ function ArrowPad({ h }: { h: KeyHandlers }) {
             key={id}
             data-key={id}
             role="button"
-            aria-label={s.calc.keys[id]}
+            aria-label={s.calc.keys[id === "." ? "dot" : id]}
             data-pressed={down || undefined}
             className="calc-key cursor-pointer touch-none"
             {...handlers(id, h)}

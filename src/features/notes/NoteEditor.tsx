@@ -292,7 +292,7 @@ export function NoteEditor({
             {s.notes.useAsSource}
             {note.sourceId && source.data && (
               <span className="text-label text-muted" data-testid="note-source-status">
-                {s.notes.sourceStatus(source.data.status)}
+                {source.data.status === "ready" ? s.notes.sourceReady : source.data.status === "error" ? s.notes.sourceError : s.notes.sourceIndexing}
               </span>
             )}
           </span>

@@ -48,7 +48,7 @@ export function CodeCell({ lang, code, children }: { lang: CellLang; code: strin
       {result && (
         <div className="mt-1.5 rounded-[8px] border border-border bg-surface" data-testid="cell-output" data-ok={result.ok}>
           <div className="flex items-center gap-2 border-b border-border px-3 py-1 text-[11px] text-muted">
-            <span>{result.ok ? s.codeCell.output(Math.max(1, Math.round(result.ms))) : s.codeCell.errorTitle}</span>
+            <span>{result.ok ? result.ms < 1000 ? s.codeCell.outputMs(Math.max(1, Math.round(result.ms))) : s.codeCell.outputSec(Math.round(result.ms / 100) / 10) : s.codeCell.errorTitle}</span>
             <button type="button" className="ml-auto rounded p-0.5 hover:bg-fill hover:text-fg" onClick={() => setState({ status: "idle" })} aria-label={s.codeCell.clear}>
               <X size={12} />
             </button>

@@ -4,6 +4,7 @@ import { api } from "../../../lib/ipc";
 import type { AppInfo } from "../../../lib/types";
 import { useFocusPrefs, useSetFocusPref, type DistractionPrefs } from "../../../lib/focusPrefs";
 import { s } from "../../../lib/strings";
+import { formatDurationHuman } from "../../../lib/i18n/format";
 import { Button } from "../../../components/ui/button";
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuTrigger } from "../../../components/ui/menu";
 import { Segmented, Spinner, Switch } from "../../../components/ui/misc";
@@ -98,7 +99,7 @@ export function DistractionSettings() {
                 label={s.distraction.grace}
                 value={String(d.graceSec)}
                 onChange={(v) => void save({ ...d, graceSec: Number(v) })}
-                options={GRACE.map((g) => ({ value: String(g), label: s.distraction.seconds(g) }))}
+                options={GRACE.map((g) => ({ value: String(g), label: formatDurationHuman(g * 1000, "short", true) }))}
               />
             </span>
           </div>

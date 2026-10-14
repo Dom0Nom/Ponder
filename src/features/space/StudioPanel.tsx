@@ -145,7 +145,7 @@ function ToolGrid({ space }: { space: Space }) {
       </Tile>
       <Tile icon={GraduationCap} name={s.studio.course} testId="course-tile" onClick={() => setStudioView("course")}>
         <Meta loading={courses.isLoading} error={!!courses.error}>
-          {course.length === 0 ? s.studio.courseNone : course.length === 1 ? s.studio.coursePct(pct) : s.studio.courses(course.length)}
+          {course.length === 0 ? s.studio.courseNone : course.length === 1 ? s.studio.coursePct(pct / 100) : s.studio.courses(course.length)}
         </Meta>
       </Tile>
       <Tile icon={NotebookPen} name={s.studio.journal} onClick={() => setStudioView("journal")}>

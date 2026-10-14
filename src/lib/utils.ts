@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { extendTailwindMerge } from "tailwind-merge";
 import { s } from "./strings";
+import { DATE_NUMERIC, DATE_SHORT, WEEKDAY_SHORT, formatDate, formatDurationHuman, formatRelative } from "./i18n/format";
 
 // custom font-size tokens must not be mistaken for text colors, or `text-label text-muted` loses its size
 const twMerge = extendTailwindMerge({
@@ -42,73 +43,52 @@ export function dayGroup(ts: number, now = Date.now()): DayGroup {
   return "older";
 }
 
-export function formatMinutes(ms: number): string {
-  const mins = Math.round(ms / 60000);
-  if (mins < 60) return `${mins} min`;
-  const h = Math.floor(mins / 60);
-  return `${h} h ${mins % 60} min`;
-}
-
 export function relativeTime(ts: number, now = Date.now()): string {
-  if (ts - now > 60_000) {
-    const m = Math.round((ts - now) / 60_000);
-    if (m < 60) return `in ${m} min`;
-    const h = Math.round(m / 60);
-    if (h < 24) return `in ${h} h`;
-    const d = Math.round(h / 24);
-    return d === 1 ? "tomorrow" : `in ${d} days`;
-  }
-  const diff = now - ts;
-  const min = 60_000;
-  if (diff < min) return "just now";
-  if (diff < 60 * min) return `${Math.floor(diff / min)} min ago`;
-  if (diff < 24 * 60 * min) return `${Math.floor(diff / (60 * min))} h ago`;
-  const days = Math.floor(diff / (24 * 60 * min));
-  if (days === 1) return "yesterday";
-  if (days < 7) return `${days} days ago`;
-  return new Date(ts).toLocaleDateString();
+  const diff = ts - now;
+  if (diff <= 60_000 && diff > -60_000) return s.common.justNow;
+  const abs = Math.abs(diff);
+  const sign = diff < 0 ? -1 : 1;
+  if (abs < 3_600_000) return formatRelative(sign * Math.round(abs / 60_000), "minute", "short");
+  if (abs < 86_400_000) return formatRelative(sign * Math.round(abs / 3_600_000), "hour", "short");
+  const days = Math.round(abs / 86_400_000);
+  if (sign < 0 && days >= 7) return formatDate(ts, DATE_NUMERIC);
+  return formatRelative(sign * days, "day", "short");
 }
 
 export function formatShortMinutes(ms: number): string {
-  const mins = Math.max(0, Math.round(ms / 60000));
-  if (mins < 60) return `${mins}m`;
-  const h = Math.floor(mins / 60);
-  return mins % 60 ? `${h}h ${mins % 60}m` : `${h}h`;
+  return formatDurationHuman(ms, "narrow");
 }
 
 /** "Today", "Yesterday", short weekday within a week, else "Sep 3". */
 export function dayLabel(ts: number, now = Date.now()): string {
   const g = dayGroup(ts, now);
-  if (g === "today") return "Today";
-  if (g === "yesterday") return "Yesterday";
-  const d = new Date(ts);
-  return g === "week"
-    ? d.toLocaleDateString("en-US", { weekday: "short" })
-    : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  if (g === "today") return s.shell.groups.today;
+  if (g === "yesterday") return s.shell.groups.yesterday;
+  return formatDate(ts, g === "week" ? WEEKDAY_SHORT : DATE_SHORT);
 }
 
 /** "just now", "5m ago", "2h ago", "Yesterday", "3d ago", else "Sep 3". */
 export function shortRelative(ts: number, now = Date.now()): string {
   const diff = now - ts;
-  if (diff < 60_000) return "just now";
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 60_000) return s.common.justNow;
+  if (diff < 3_600_000) return formatRelative(-Math.floor(diff / 60_000), "minute", "narrow");
   const g = dayGroup(ts, now);
-  if (g === "today") return `${Math.floor(diff / 3_600_000)}h ago`;
-  if (g === "yesterday") return "Yesterday";
-  if (g === "week") return `${Math.round(diff / 86_400_000)}d ago`;
-  return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  if (g === "today") return formatRelative(-Math.floor(diff / 3_600_000), "hour", "narrow");
+  if (g === "yesterday") return s.shell.groups.yesterday;
+  if (g === "week") return formatRelative(-Math.round(diff / 86_400_000), "day", "narrow");
+  return formatDate(ts, DATE_SHORT);
 }
 
 export function relativeShort(ts: number, now = Date.now()): string {
   const m = Math.floor((now - ts) / 60_000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
+  if (m < 1) return s.common.justNow;
+  if (m < 60) return formatRelative(-m, "minute", "narrow");
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return formatRelative(-h, "hour", "narrow");
   const d = Math.floor(h / 24);
-  if (d < 7) return `${d}d ago`;
-  if (d < 60) return `${Math.floor(d / 7)}w ago`;
-  return new Date(ts).toLocaleDateString();
+  if (d < 7) return formatRelative(-d, "day", "narrow");
+  if (d < 60) return formatRelative(-Math.floor(d / 7), "week", "narrow");
+  return formatDate(ts, DATE_NUMERIC);
 }
 
 export function dueLabel(due: number, now = new Date()): string {

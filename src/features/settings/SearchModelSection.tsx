@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, events } from "../../lib/ipc";
 import { qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
+import { formatCurrency } from "../../lib/i18n/format";
 import type { EmbedderStatus } from "../../lib/types";
 import { ErrorState, Skeleton } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
@@ -98,7 +99,7 @@ export function SearchModelSection() {
             <>
               {s.searchModel.remoteDetail}
               {remoteCurrent?.price != null && (
-                <> · {remoteCurrent.price === 0 ? s.searchModel.free : s.searchModel.price(remoteCurrent.price)}</>
+                <> · {remoteCurrent.price === 0 ? s.searchModel.free : s.searchModel.price(formatCurrency(remoteCurrent.price, "USD", remoteCurrent.price < 0.01 ? 3 : 2, 2))}</>
               )}
               <br />
               {remote.error ? s.searchModel.remoteListFailed : status}
@@ -128,7 +129,7 @@ export function SearchModelSection() {
           title={s.searchModel.names[local.id] ?? local.id}
           description={
             <>
-              {s.searchModel.detail(local.sizeMb, local.multilingual)}
+              {local.multilingual ? s.searchModel.detailMultilingual(local.sizeMb) : s.searchModel.detailEnglish(local.sizeMb)}
               <br />
               {status}
             </>

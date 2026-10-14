@@ -5,6 +5,7 @@ import { pasteImporter } from "../../lib/importers/files";
 import { SEGMENT_MS, TranscriptQueue, clock } from "../../lib/lecture/capture";
 import { qk, useProviders, useSettings } from "../../lib/queries";
 import { s } from "../../lib/strings";
+import { DATE_SHORT, TIME_SHORT, formatDate, formatTime } from "../../lib/i18n/format";
 import { AUDIO_FORMATS, speechSettings, transcribe } from "../../lib/tts/speech";
 import type { Space } from "../../lib/types";
 import { Button } from "../../components/ui/button";
@@ -17,6 +18,11 @@ const formatOf = (mime: string): (typeof AUDIO_FORMATS)[number] =>
   mime.includes("mp4") || mime.includes("aac") ? "m4a" : mime.includes("ogg") ? "ogg" : "webm";
 
 /** Shown only when transcription is available (an OpenRouter provider and MediaRecorder). */
+const lectureTitle = () => {
+  const d = new Date();
+  return s.lecture.defaultTitle(formatDate(d, DATE_SHORT), formatTime(d, TIME_SHORT));
+};
+
 export function useLectureAvailable() {
   const { data: providers } = useProviders();
   return !!providers?.some((p) => p.type === "openrouter") && typeof MediaRecorder !== "undefined";
@@ -37,7 +43,7 @@ export function LectureTab({
   const { data: providers } = useProviders();
   const { data: settings } = useSettings();
   const [, render] = useReducer((n: number) => n + 1, 0);
-  const [title, setTitle] = useState(() => s.lecture.defaultTitle(new Date()));
+  const [title, setTitle] = useState(() => lectureTitle());
   const [recording, setRecording] = useState(false);
   const [startedAt, setStartedAt] = useState(0);
   const [now, setNow] = useState(0);
@@ -162,7 +168,7 @@ export function LectureTab({
   const save = async () => {
     setBusy(true);
     try {
-      const src = await pasteImporter.import(space.id, { title: title.trim() || s.lecture.defaultTitle(new Date()), text });
+      const src = await pasteImporter.import(space.id, { title: title.trim() || lectureTitle(), text });
       qc.invalidateQueries({ queryKey: qk.sources(space.id) });
       toast.success(s.sources.imported(src.title));
       setSaved(true);

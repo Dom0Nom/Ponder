@@ -65,7 +65,7 @@ export function FlashcardsPanel({ space, onBack }: { space: Space; onBack: () =>
     setQuizzing(true);
     try {
       const r = await quizSpace(space);
-      if (r) toast.success(s.cards.quizResult(r.score, r.mistakes));
+      if (r) toast.success(r.mistakes ? s.cards.quizResultSaved(r.score, r.mistakes) : s.cards.quizResult(r.score));
     } catch (e) {
       toastError(e instanceof NoModelError ? s.chat.noModel : s.errors.generic, e);
     } finally {

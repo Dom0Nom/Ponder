@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { AlertCircle, Brain, ChevronRight, FileText, Globe2, Timer } from "lucide-react";
 import { splitSegments, inferCitations } from "../../lib/chat/citations";
 import { stripMarkers } from "../../lib/chat/followUps";
-import { thoughtSeconds } from "../../lib/chat/thinking";
+import { thoughtLabel, thoughtSeconds } from "../../lib/chat/thinking";
 import { useSources } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Citation, Message, Space } from "../../lib/types";
@@ -172,7 +172,7 @@ function AssistantMessage({
 
 function Thinking({ text, active, ms }: { text: string; active: boolean; ms?: number }) {
   const [open, setOpen] = useState(false);
-  const label = active ? `${s.chat.thinking}…` : ms ? s.chat.thoughtFor(thoughtSeconds(ms)) : s.chat.thoughts;
+  const label = active ? `${s.chat.thinking}…` : ms ? thoughtLabel(thoughtSeconds(ms)) : s.chat.thoughts;
   return (
     <div className="t-acc t-acc--noblur flex flex-col" data-open={open}>
       <button

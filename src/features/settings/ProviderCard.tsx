@@ -29,6 +29,8 @@ import {
 } from "../../components/ui/menu";
 import { pk, storeModels, useHasSecret, useOAuthStatus } from "./providerQueries";
 
+const signedInLabel = (account?: string | null) => (account ? s.providers.status.signedInAs(account) : s.providers.status.signedIn);
+
 export type Tone = "ok" | "warn" | "error" | "muted" | "pending";
 
 function KeyDialog({ provider, open, onOpenChange }: { provider: Provider; open: boolean; onOpenChange: (o: boolean) => void }) {
@@ -167,7 +169,7 @@ export function ProviderCard({ provider, justAdded }: { provider: Provider; just
   else if (isOAuth) {
     if (oauth.isLoading) status = { tone: "pending", label: s.common.loading };
     else if (oauthState === "signedIn")
-      status = { tone: "ok", label: s.providers.status.signedIn(oauth.data?.account ?? provider.config.account) };
+      status = { tone: "ok", label: signedInLabel(oauth.data?.account ?? provider.config.account) };
     else if (oauthState === "pending") status = { tone: "pending", label: s.providers.status.pending };
     else if (oauthState === "error") status = { tone: "error", label: oauth.data?.error ?? s.providers.status.error };
     else status = { tone: "muted", label: s.providers.status.signedOut };

@@ -62,7 +62,7 @@ export function RetryButton({ message, space, subtle }: { message: Message; spac
       <button
         aria-label={s.chat.regenerate}
         data-tip-name={s.chat.regenerate}
-        data-tip-desc={s.chat.regenerateDesc(message.meta?.model?.model ?? "")}
+        data-tip-desc={message.meta?.model?.model ? s.chat.regenerateDescBy(message.meta.model.model) : s.chat.regenerateDesc}
         disabled={busy}
         onClick={retry}
         className={actionIconBtn}

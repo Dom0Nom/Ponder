@@ -4,6 +4,7 @@ import { Calculator, ChevronDown, ChevronLeft, ChevronRight, Flag, GraduationCap
 import { api } from "../../lib/ipc";
 import { useCurriculum, useSpace, useSpaces } from "../../lib/queries";
 import { s } from "../../lib/strings";
+import { DATE_NUMERIC, formatDate } from "../../lib/i18n/format";
 import type { ExamAttempt, Space, TopicRef } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
@@ -167,7 +168,7 @@ function StartView({ spaceId }: { spaceId: string }) {
                 <span className="flex flex-col">
                   <span>{x.title}</span>
                   <span className="text-label font-normal text-muted">
-                    {s.exam.lengthInfo(x.minutes[length], x.questions[length], !!x.essayMinutes)}
+                    {(x.essayMinutes ? s.exam.lengthInfoEssay : s.exam.lengthInfo)(x.minutes[length], x.questions[length])}
                     {x.calculator ? ` · ${s.exam.calculatorAllowed}` : ""}
                   </span>
                 </span>
@@ -233,7 +234,7 @@ function History({ spaceId, format, query }: { spaceId: string; format: ExamForm
                 <button type="button" className="flex flex-1 items-baseline gap-3 text-left" onClick={open}>
                   <span className="font-medium">{section?.title ?? a.section}</span>
                   <span className="text-label text-muted">
-                    {s.exam.lengths[a.length]} · {new Date(a.startedAt).toLocaleDateString()}
+                    {s.exam.lengths[a.length]} · {formatDate(a.startedAt, DATE_NUMERIC)}
                   </span>
                   <span className="ml-auto tabular-nums">
                     {a.completedAt == null ? (
