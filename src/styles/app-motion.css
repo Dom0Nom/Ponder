@@ -35,3 +35,12 @@
 
 /* Settled panels drop the compositing hint so their text keeps the same antialiasing as static content */
 .t-panel-slide[data-open="true"] { will-change: auto; }
+
+/* Rich questions: held and dropped drag items, hotspot marker and revealed region */
+.m-drag-lift { transform: scale(1.02); box-shadow: var(--shadow-popover); transition: transform var(--motion-fast) var(--motion-ease-smooth), box-shadow var(--motion-fast) var(--motion-ease-smooth); }
+.m-drop-settle { transition: transform var(--motion-fast) var(--motion-ease-smooth), box-shadow var(--motion-fast) var(--motion-ease-smooth); }
+@keyframes m-hotspot-pin { from { transform: scale(0); } to { transform: scale(1); } }
+.m-hotspot-pin { transform-box: fill-box; transform-origin: center; animation: m-hotspot-pin var(--motion-fast) var(--motion-ease-smooth) both; }
+@keyframes m-hotspot-reveal { from { opacity: 0; } to { opacity: 1; } }
+.m-hotspot-reveal { animation: m-hotspot-reveal var(--motion-medium) var(--motion-ease-smooth) both; }
+[data-motion="reduce"] .m-hotspot-pin, [data-motion="reduce"] .m-hotspot-reveal { animation: none; }

@@ -132,3 +132,10 @@ export function shuffleChoices<T extends Question>(q: T, rand: () => number = Ma
   if (q.kind === "mc") return { ...q, options, answer: order.indexOf(q.answer) };
   return { ...q, options, answers: q.answers.map((a) => order.indexOf(a)).sort((a, b) => a - b) };
 }
+
+/** Starting arrangement of an order question: never the right order. */
+export function scrambleOrder(q: { items: string[]; correctOrder?: number[] }): number[] {
+  const n = q.items.length;
+  const base = q.correctOrder ?? q.items.map((_, i) => i);
+  return n >= 4 ? base.map((_, i) => base[(i + 2) % n]) : [...base].reverse();
+}
