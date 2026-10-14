@@ -20,7 +20,7 @@ All calls go through `generateText`/`streamText` from the `ai` SDK; there is no 
 | custom-curriculum | `placement/customCurriculum.ts` | syllabus → 5–25 topics | chat | JSON `{title, topics[]}` → `parseCustomCurriculum` |
 | practice-problem | `practice/problems.ts` `generateProblem`, `FORMAT`, `LEVEL_WORDS` (`practice/irt.ts`) | one problem at level 1–5 | chat | JSON `{kind, question, options, answer, solution, hint, level}` → `parseProblem` |
 | practice-variation | `practice/problems.ts` `generateVariation` | "More like this" | chat | as above |
-| practice-solve-check | `practice/problems.ts` `solveIndependently` | re-solve without the key; disagreements regenerate (3 tries) | chat | last `{"answer": …}` → `parseSolvedAnswer`, `answersAgree` |
+| answer-check | `quality/answerCheck.ts` `choicePrompt`, `numberPrompt` (both open "Solve this problem carefully"); used by `exam/generate.ts`, `placement/logic.ts` `generateQuiz` (quizzes, placement, lesson checks) and `practice/problems.ts` | solve every generated question blind: step by step, then list every option that is correct (two or more = ambiguous, none = wrong). Disagreement or ambiguity drops the question; dropped ones are rewritten once in one batch and checked again. Solver = `helperModel` when set and different, else the same model at temperature 0, thinking off. Failed or unparseable solver calls keep the question. Settings → Models → "Check answer keys" (default on) | helper or chat | last `{"correct": ["B"]}` → `parseChoices`, `choiceVerdict`; numeric: last `{"answer": …}` → `parseSolvedAnswer`, `numberVerdict` |
 | grade-short | `practice/problems.ts` `gradeResponse` | grade a free-text answer (mcq/numeric graded in code) | chat | JSON `{correct, feedback}` |
 | classify-error | `practice/problems.ts` `classifyError` | mistake type from a closed list | chat | JSON `{errorType, note}`, unknown → `other` |
 | flashcards | `srs/generate.ts` `generateCards` | basic + cloze cards with a supporting quote | chat | JSON → `parseCards`, `locateQuote`, `expandCloze` |
@@ -37,7 +37,7 @@ All calls go through `generateText`/`streamText` from the `ai` SDK; there is no 
 | studio-outputs | `studio/prompts.ts` `outputPrompt` | reports, cheat sheets, worksheets, timelines, tables, mind maps, diagrams, slides, infographics, audio overview scripts | chat | JSON per kind → `parseOutput` |
 | audio-answer | `studio/prompts.ts` `audioAnswerPrompt` | hosts answer a listener's interruption | chat | JSON `{lines[]}` → `parseAudioAnswer` |
 
-Deterministic guards already in code: citation numbers are filtered to real passages (`citations.ts`, `remarkCitations.ts`, `parseCheck`); math is re-checked with mathjs (`steps/verify.ts`) and practice answers are re-solved; every JSON parser validates enums, counts and ranges.
+Deterministic guards already in code: citation numbers are filtered to real passages (`citations.ts`, `remarkCitations.ts`, `parseCheck`); math is re-checked with mathjs (`steps/verify.ts`) and every generated question is re-solved (`quality/answerCheck.ts`); every JSON parser validates enums, counts and ranges.
 
 The e2e fake LLM (`src/test/mockBackend.ts`) recognises prompts by their opening text ("Solve this problem carefully", "You are a strict fact-checker", "Write ONE practice problem", …). Keep a prompt's first line when rewording it, or update the mock in the same commit.
 

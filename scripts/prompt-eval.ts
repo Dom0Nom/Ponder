@@ -1102,7 +1102,46 @@ const studioOutputs: Task = {
   })),
 };
 
-const TASKS: Task[] = [tutor, voiceTutor, buddy, micro, quiz, practice, grade, classify, cards, selfcheck, stepcheck, researchQuery, researchPlan, researchRank, summary, curriculum, examTask, essayTaskEval, essayGradeEval, studioOutputs];
+const answerCheckEval: Task = {
+  id: "answer-check",
+  purpose: "Solve a multiple-choice question blind (no key shown) and list every correct option. Catches wrong keys and questions with two correct options. Ends with one JSON line.",
+  dims: ["format"],
+  cases: (
+    [
+      ["en right key", "A rectangle is 12 ft long and 5 ft wide. What is its area?", ["60 sq ft", "34 sq ft", "17 sq ft", "120 sq ft"], 0, "ok"],
+      ["en wrong key", "A rectangle is 12 ft long and 5 ft wide. What is its area?", ["60 sq ft", "34 sq ft", "17 sq ft", "120 sq ft"], 1, "wrong"],
+      ["en two correct", "Which number is even?", ["4", "7", "10", "9"], 0, "ambiguous"],
+      ["en percent", "What is 15% of 80?", ["12", "15", "9.5", "120"], 0, "ok"],
+      ["de right key", "Welche Zahl ist eine Primzahl?", ["15", "21", "17", "27"], 2, "ok"],
+      ["de wrong key", "Wie viel ist 3/4 von 20?", ["5", "15", "12", "16"], 0, "wrong"],
+      ["de two correct", "Welche Zahl ist durch 2 teilbar?", ["8", "9", "12", "15"], 0, "ambiguous"],
+    ] as [string, string, string[], number, string][]
+  ).map(([name, question, options, answer, want]) => ({
+    name,
+    run: async () => {
+      const m = await lib("quality/answerCheck.ts");
+      let verdict = "";
+      let err = "";
+      try {
+        verdict = await m.checkChoice(m.makeSolver(gen), { question, options, answer });
+      } catch (e) {
+        err = String(e);
+      }
+      const out = cur().at(-1)?.output ?? "";
+      return {
+        output: out || err,
+        expect: `The solver's verdict is "${want}" (ok = agrees with the key, wrong = picks another option, ambiguous = lists two or more correct options).`,
+        checks: [
+          check("ran", !!verdict, err),
+          check("verdict", verdict === want, verdict),
+          check("ends with JSON", /\{\s*"correct"\s*:\s*\[[^\]]*\]\s*\}\s*$/.test(out)),
+        ],
+      };
+    },
+  })),
+};
+
+const TASKS: Task[] = [tutor, voiceTutor, buddy, micro, quiz, practice, grade, classify, cards, selfcheck, stepcheck, researchQuery, researchPlan, researchRank, summary, curriculum, examTask, answerCheckEval, essayTaskEval, essayGradeEval, studioOutputs];
 
 // ---------- judge ----------
 async function judge(task: Task, caseName: string, r: CaseResult, prompt: string): Promise<Record<string, number> & { rationale?: unknown }> {

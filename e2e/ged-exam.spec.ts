@@ -51,6 +51,19 @@ async function script(app: Page, opts: { badKey?: boolean } = {}) {
         const line = p.split("\n").find((l) => /^[A-D]: /.test(l) && l.slice(3) === want)!;
         return { content: `Working…\n{"correct": ["${line[0]}"]}` };
       }
+      if (p.startsWith("Write the reading material for a GED-style")) {
+        const passage = "Evidence and claims about the issue. ".repeat(40);
+        return {
+          content: JSON.stringify({
+            issue: "Daylight saving time",
+            prompt: "Analyze both positions.",
+            passages: [
+              { title: "For", text: passage },
+              { title: "Against", text: passage },
+            ],
+          }),
+        };
+      }
       return { content: "ok" };
     });
   }, !!opts.badKey);
@@ -104,9 +117,9 @@ test("math exam: no-calculator part, then calculator; replaced questions in the 
   await expect(runner.getByTestId("exam-finish")).toBeVisible();
   await expect(runner.getByTestId("exam-next-part")).toHaveCount(0);
 
-  const saved = await app.evaluate(() => Object.values((window as any).__mock.db().exams)[0] as any);
-  expect(saved.data.partStarts).toHaveLength(1);
-  expect(saved.data.replaced).toBe(1);
+  const saved = () => app.evaluate(() => Object.values((window as any).__mock.db().exams)[0] as any);
+  await expect.poll(async () => (await saved()).data.partStarts?.length, { timeout: 12_000 }).toBe(1);
+  expect((await saved()).data.replaced).toBe(1);
 });
 
 test("math exam: formula sheet opens and closes", async ({ app }) => {
