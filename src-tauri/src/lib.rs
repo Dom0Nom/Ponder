@@ -73,7 +73,7 @@ pub fn run() {
             secrets::default_store(),
         )))
         .setup(|app| {
-            let data_dir = app.path().app_data_dir()?;
+            let data_dir = paths::dev_data_dir_override().unwrap_or(app.path().app_data_dir()?);
             std::fs::create_dir_all(&data_dir)?;
             secrets::init(&data_dir);
             match backup::apply_pending_restore(&data_dir) {

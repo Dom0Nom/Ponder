@@ -21,6 +21,17 @@ pub fn default_data_dir() -> Option<PathBuf> {
     Some(base.join(IDENTIFIER))
 }
 
+/// Debug builds only: `PONDER_DATA_DIR` points the app at another data folder (a copy of the real
+/// database for tests, or an empty folder for a fresh install). Release builds ignore it.
+pub fn dev_data_dir_override() -> Option<PathBuf> {
+    if !cfg!(debug_assertions) {
+        return None;
+    }
+    std::env::var_os("PONDER_DATA_DIR")
+        .filter(|v| !v.is_empty())
+        .map(PathBuf::from)
+}
+
 /// `--db` wins, then `PONDER_DB`, then the app's own database.
 pub fn resolve_db(flag: Option<&str>) -> AppResult<PathBuf> {
     let p = match flag
