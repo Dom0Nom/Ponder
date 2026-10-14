@@ -186,7 +186,8 @@ mod tests {
                 space_id: b.id.clone(),
                 topic_key: "t".into(),
                 correct: true,
-                created_at: 250
+                created_at: 250,
+                confidence: None
             }]
         );
 
