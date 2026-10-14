@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { create } from "zustand";
 import { api } from "../../lib/ipc";
+import { qk, queryClient } from "../../lib/queries";
 import type { FocusState, FocusTransition } from "../../lib/types";
 
 interface FocusStore {
@@ -14,6 +15,12 @@ interface FocusStore {
   setState: (s: FocusState | null) => void;
   setParkingOpen: (o: boolean) => void;
 }
+
+/** "Forced breaks" setting; on unless switched off in Settings or during setup. */
+export const forcedBreaks = () => {
+  const v = queryClient.getQueryData<Record<string, unknown>>(qk.settings)?.["focus.forcedBreaks"] as { enabled?: boolean } | undefined;
+  return v?.enabled !== false;
+};
 
 export const isBreakPhase = (s: FocusState | null) => !!s && (s.phase === "break" || s.phase === "longBreak");
 
@@ -29,7 +36,7 @@ export const useFocusStore = create<FocusStore>((set) => ({
       state: active,
       loaded: true,
       loadError: null,
-      breakLocked: isBreakPhase(active) && active!.pauseReason !== "needApp",
+      breakLocked: isBreakPhase(active) && active!.pauseReason !== "needApp" && forcedBreaks(),
     });
   },
   setParkingOpen: (parkingOpen) => set({ parkingOpen }),

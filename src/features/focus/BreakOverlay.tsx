@@ -12,7 +12,7 @@ import { qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { FocusState } from "../../lib/types";
 import { ParkingList } from "./controls";
-import { isBreakPhase, useFocusStore } from "./focusStore";
+import { forcedBreaks, isBreakPhase, useFocusStore } from "./focusStore";
 import { clockText, popKeyOf } from "./timer";
 import { NumberPop } from "../../components/motion/NumberPop";
 import { useStayMounted } from "../../components/motion/useStayMounted";
@@ -205,7 +205,8 @@ export function BreakOverlay() {
   const state = useFocusStore((st) => st.state);
   const locked = useFocusStore((st) => st.breakLocked);
   const onBreak = !!state && isBreakPhase(state);
-  const banner = onBreak && !locked;
+  const optional = onBreak && !locked && !!state && state.pauseReason !== "needApp" && !forcedBreaks();
+  const banner = onBreak && !locked && !optional;
   const mounted = useStayMounted(banner, 250);
   const last = useRef(state);
   if (state && isBreakPhase(state)) last.current = state;

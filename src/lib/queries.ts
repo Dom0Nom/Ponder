@@ -20,6 +20,7 @@ export const qk = {
   sources: (spaceId: string) => ["sources", spaceId] as const,
   sourceText: (id: string) => ["sourceText", id] as const,
   annotations: (sourceId: string) => ["annotations", sourceId] as const,
+  thread: (id: string) => ["thread", id] as const,
   threads: (spaceId: string) => ["threads", spaceId] as const,
   messages: (threadId: string) => ["messages", threadId] as const,
   journal: (spaceId: string) => ["journal", spaceId] as const,
@@ -95,6 +96,13 @@ export function usePinThread(spaceId: string) {
     mutationFn: ({ id, pinned }: { id: string; pinned: boolean }) => api.pinThread(id, pinned),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.threads(spaceId) }),
   });
+}
+
+/** One settings key as [value, save]. */
+export function useSetting<T>(key: string) {
+  const { data } = useSettings();
+  const set = useSetSetting();
+  return [data?.[key] as T | undefined, (value: T | null) => set.mutateAsync({ key, value })] as const;
 }
 
 export function useSetSetting() {

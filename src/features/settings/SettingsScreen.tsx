@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { s } from "../../lib/strings";
 import { useUi, type FontPref, type ThemePref } from "../../stores/ui";
+import { Button } from "../../components/ui/button";
+import { startTour } from "../onboarding/startTour";
 import { Segmented, Switch } from "../../components/ui/misc";
 import { Slider } from "../../components/ui/slider";
 import { motionReduced, useIsDark, useReducedMotion } from "../../app/useTheme";
@@ -189,6 +191,20 @@ export function SettingsScreen() {
         </SettingsSection>
         <SettingsSection id="settings-integrations" title={s.integrations.title} body={s.integrations.body}>
           <IntegrationsSection />
+        </SettingsSection>
+        <SettingsSection id="settings-setup" title={s.onboarding.settings.title} body={s.onboarding.settings.body}>
+          <SettingsGroup>
+            <SettingsRow title={s.onboarding.settings.run}>
+              <Button variant="secondary" size="sm" onClick={() => ui.setOnboardingOpen(true)}>
+                {s.onboarding.settings.run}
+              </Button>
+            </SettingsRow>
+            <SettingsRow title={s.onboarding.tour.open} description={s.onboarding.tour.openBody}>
+              <Button variant="secondary" size="sm" onClick={() => void startTour()}>
+                {s.onboarding.tour.open}
+              </Button>
+            </SettingsRow>
+          </SettingsGroup>
         </SettingsSection>
         <About />
       </div>

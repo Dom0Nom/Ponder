@@ -10,6 +10,7 @@ import { toastError } from "../../components/ui/toast";
 import { useFocusPrefs } from "../../lib/focusPrefs";
 import { useGenerateMicroSteps } from "../../lib/focus/useGenerateMicroSteps";
 import { api } from "../../lib/ipc";
+import { qk, queryClient } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Energy, FocusConfig, FocusTechnique } from "../../lib/types";
 import { cn } from "../../lib/utils";
@@ -100,6 +101,8 @@ export function FocusStartDialog() {
       setEnergy("normal");
       setStepsReady(null);
       setNeedGoal(false);
+      const saved = queryClient.getQueryData<Record<string, unknown>>(qk.settings)?.["focus.technique"];
+      if (typeof saved === "string" && saved in FIELDS) pick(saved as FocusTechnique);
     }
   }, [open]);
 

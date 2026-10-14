@@ -22,6 +22,8 @@ import { NotesScreen } from "../features/notes/NotesScreen";
 import { CommandPalette } from "../features/palette/CommandPalette";
 import { FocusLayer } from "../features/focus/FocusLayer";
 import { QuizLayer } from "../features/placement/QuizDialog";
+import { OnboardingHost } from "../features/onboarding/Onboarding";
+import { TourHost } from "../features/onboarding/Tour";
 import { QuickCaptureDialog } from "../features/capture/QuickCaptureDialog";
 import { useGlobalShortcuts } from "./useGlobalShortcuts";
 import { useBackgroundSync } from "./useBackgroundSync";
@@ -119,6 +121,8 @@ function Shell() {
       <QuizLayer />
       <QuickCaptureDialog />
       <SpaceDialogHost />
+      <OnboardingHost />
+      <TourHost />
     </div>
   );
 }

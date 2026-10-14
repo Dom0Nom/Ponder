@@ -65,6 +65,7 @@ function SearchButton() {
   return (
     <button
       onClick={() => setPaletteOpen(true)}
+      data-tour="search"
       className="mb-2 flex h-[34px] shrink-0 cursor-text items-center gap-2 whitespace-nowrap rounded-btn border border-field bg-surface ps-2.5 pe-1.5 text-muted"
     >
       <Search size={14} className="text-fg" />
