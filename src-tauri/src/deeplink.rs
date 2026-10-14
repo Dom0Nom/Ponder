@@ -16,7 +16,11 @@ impl DeepLinks {
         let mut q = self.0.lock().unwrap_or_else(|e| e.into_inner());
         let before = q.len();
         for u in urls {
-            if u.len() <= 8192 && u.get(..SCHEME.len()).is_some_and(|p| p.eq_ignore_ascii_case(SCHEME)) && q.len() < MAX_PENDING {
+            if u.len() <= 8192
+                && u.get(..SCHEME.len())
+                    .is_some_and(|p| p.eq_ignore_ascii_case(SCHEME))
+                && q.len() < MAX_PENDING
+            {
                 q.push(u);
             }
         }
@@ -46,7 +50,8 @@ fn deliver<R: Runtime>(app: &AppHandle<R>, urls: Vec<String>) {
 pub fn init(app: &AppHandle) {
     let dl = app.deep_link();
     if let Ok(Some(urls)) = dl.get_current() {
-        app.state::<DeepLinks>().push(urls.into_iter().map(String::from));
+        app.state::<DeepLinks>()
+            .push(urls.into_iter().map(String::from));
     }
     let handle = app.clone();
     dl.on_open_url(move |e| deliver(&handle, e.urls().into_iter().map(String::from).collect()));
@@ -69,8 +74,14 @@ mod tests {
     #[test]
     fn keeps_only_ponder_links() {
         let q = DeepLinks::default();
-        assert!(!q.push(["https://example.com".to_string(), "file:///etc/passwd".to_string()]));
-        assert!(q.push(["ponder://space/abc".to_string(), "PONDER://ask?q=hi".to_string()]));
+        assert!(!q.push([
+            "https://example.com".to_string(),
+            "file:///etc/passwd".to_string()
+        ]));
+        assert!(q.push([
+            "ponder://space/abc".to_string(),
+            "PONDER://ask?q=hi".to_string()
+        ]));
         assert_eq!(q.take(), vec!["ponder://space/abc", "PONDER://ask?q=hi"]);
         assert!(q.take().is_empty());
     }

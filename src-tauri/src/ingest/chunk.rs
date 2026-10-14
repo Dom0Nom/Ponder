@@ -77,7 +77,11 @@ fn blocks(text: &str) -> Vec<Block> {
         let trimmed = line.trim();
         if trimmed.is_empty() {
             if let Some((s, e)) = cur.take() {
-                out.push(Block { start: s, end: e, heading: false });
+                out.push(Block {
+                    start: s,
+                    end: e,
+                    heading: false,
+                });
             }
             continue;
         }
@@ -86,9 +90,17 @@ fn blocks(text: &str) -> Vec<Block> {
         let e = s + trimmed.len();
         if heading_level(trimmed).is_some() {
             if let Some((cs, ce)) = cur.take() {
-                out.push(Block { start: cs, end: ce, heading: false });
+                out.push(Block {
+                    start: cs,
+                    end: ce,
+                    heading: false,
+                });
             }
-            out.push(Block { start: s, end: e, heading: true });
+            out.push(Block {
+                start: s,
+                end: e,
+                heading: true,
+            });
             continue;
         }
         cur = Some(match cur {
@@ -97,7 +109,11 @@ fn blocks(text: &str) -> Vec<Block> {
         });
     }
     if let Some((s, e)) = cur {
-        out.push(Block { start: s, end: e, heading: false });
+        out.push(Block {
+            start: s,
+            end: e,
+            heading: false,
+        });
     }
     out
 }
@@ -177,7 +193,11 @@ fn overlap_start(text: &str, floor: usize, pos: usize) -> usize {
         return pos;
     }
     // move to the start of the next word so chunks don't begin mid-word
-    let prev_is_space = text[..p].chars().next_back().map(char::is_whitespace).unwrap_or(true);
+    let prev_is_space = text[..p]
+        .chars()
+        .next_back()
+        .map(char::is_whitespace)
+        .unwrap_or(true);
     if !prev_is_space {
         if let Some(off) = text[p..pos].find(char::is_whitespace) {
             p += off;
@@ -248,7 +268,9 @@ pub fn chunk_text(text: &str, pages: Option<&[(i64, i64)]>) -> Vec<Chunk> {
     let mut last_heading: Option<usize> = None;
     let mut cur_heading: Option<usize> = None;
 
-    let flush = |cur: &mut Option<(usize, usize, usize)>, h: Option<usize>, ranges: &mut Vec<(usize, usize, Option<usize>)>| {
+    let flush = |cur: &mut Option<(usize, usize, usize)>,
+                 h: Option<usize>,
+                 ranges: &mut Vec<(usize, usize, Option<usize>)>| {
         if let Some((s, e, _)) = cur.take() {
             ranges.push((s, e, h));
         }
@@ -312,7 +334,9 @@ pub fn chunk_text(text: &str, pages: Option<&[(i64, i64)]>) -> Vec<Chunk> {
                 start,
                 end: u16[i * 2 + 1] as i64,
                 page: pages.and_then(|p| page_at(p, start)),
-                heading: h.map(|bi| heading_text(text, blocks[bi])).filter(|h| !h.is_empty()),
+                heading: h
+                    .map(|bi| heading_text(text, blocks[bi]))
+                    .filter(|h| !h.is_empty()),
             }
         })
         .collect()
@@ -335,7 +359,11 @@ mod tests {
         for c in chunks {
             assert_eq!(utf16_slice(text, c.start as usize, c.end as usize), c.text);
             assert!(!c.text.trim().is_empty());
-            assert!(c.text.chars().count() <= MAX_CHARS, "chunk too long: {}", c.text.chars().count());
+            assert!(
+                c.text.chars().count() <= MAX_CHARS,
+                "chunk too long: {}",
+                c.text.chars().count()
+            );
         }
     }
 
@@ -391,7 +419,10 @@ mod tests {
         let z = chunks.iter().find(|c| c.text.contains("zeta")).unwrap();
         assert_eq!(z.heading.as_deref(), Some("Ende"));
         for w in chunks.windows(2) {
-            assert!(w[0].end <= w[1].start, "no overlap across paragraph boundaries");
+            assert!(
+                w[0].end <= w[1].start,
+                "no overlap across paragraph boundaries"
+            );
         }
     }
 
@@ -399,7 +430,9 @@ mod tests {
     fn long_paragraph_splits_on_sentences_with_overlap() {
         let mut text = String::from("Kurz.\n\n");
         for i in 0..80 {
-            text.push_str(&format!("Satz Nummer {i} erklärt Photosynthese 🌱 ausführlich. "));
+            text.push_str(&format!(
+                "Satz Nummer {i} erklärt Photosynthese 🌱 ausführlich. "
+            ));
         }
         let text = text.trim_end().to_string();
         let chunks = chunk_text(&text, None);

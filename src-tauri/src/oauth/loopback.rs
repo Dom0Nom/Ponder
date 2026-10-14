@@ -80,7 +80,10 @@ async fn read_request_target(sock: &mut TcpStream) -> Option<String> {
     let mut buf = Vec::with_capacity(2048);
     let mut tmp = [0u8; 2048];
     loop {
-        let n = tokio::time::timeout(Duration::from_secs(10), sock.read(&mut tmp)).await.ok()?.ok()?;
+        let n = tokio::time::timeout(Duration::from_secs(10), sock.read(&mut tmp))
+            .await
+            .ok()?
+            .ok()?;
         if n == 0 {
             break;
         }
@@ -129,7 +132,9 @@ pub fn parse_callback(target: &str, expected_state: &str) -> Parsed {
     }
     let params: HashMap<String, String> = url.query_pairs().into_owned().collect();
     if params.get("state").map(String::as_str) != Some(expected_state) {
-        return Parsed::Err(AppError::Other("Sign-in response didn't match this request (state mismatch).".into()));
+        return Parsed::Err(AppError::Other(
+            "Sign-in response didn't match this request (state mismatch).".into(),
+        ));
     }
     if let Some(err) = params.get("error") {
         let msg = if err == "access_denied" {
@@ -141,8 +146,13 @@ pub fn parse_callback(target: &str, expected_state: &str) -> Parsed {
         return Parsed::Err(AppError::Other(msg));
     }
     match params.get("code") {
-        Some(code) if !code.is_empty() => Parsed::Ok(Callback { code: code.clone(), params }),
-        _ => Parsed::Err(AppError::Other("Sign-in response had no authorization code.".into())),
+        Some(code) if !code.is_empty() => Parsed::Ok(Callback {
+            code: code.clone(),
+            params,
+        }),
+        _ => Parsed::Err(AppError::Other(
+            "Sign-in response had no authorization code.".into(),
+        )),
     }
 }
 
@@ -163,10 +173,22 @@ mod tests {
 
     #[test]
     fn rejects_state_mismatch_and_errors() {
-        assert!(matches!(parse_callback("/auth/callback?code=a&state=bad", "s1"), Parsed::Err(_)));
-        assert!(matches!(parse_callback("/auth/callback?error=access_denied&state=s1", "s1"), Parsed::Err(_)));
-        assert!(matches!(parse_callback("/favicon.ico", "s1"), Parsed::NotCallback));
-        assert!(matches!(parse_callback("/callback?code=a&state=s1", "s1"), Parsed::NotCallback));
+        assert!(matches!(
+            parse_callback("/auth/callback?code=a&state=bad", "s1"),
+            Parsed::Err(_)
+        ));
+        assert!(matches!(
+            parse_callback("/auth/callback?error=access_denied&state=s1", "s1"),
+            Parsed::Err(_)
+        ));
+        assert!(matches!(
+            parse_callback("/favicon.ico", "s1"),
+            Parsed::NotCallback
+        ));
+        assert!(matches!(
+            parse_callback("/callback?code=a&state=s1", "s1"),
+            Parsed::NotCallback
+        ));
     }
 
     #[tokio::test]
@@ -176,11 +198,23 @@ mod tests {
         assert!(uri.starts_with("http://127.0.0.1:"));
         let task = tokio::spawn(async move { lb.wait("st", Duration::from_secs(5)).await });
         let client = reqwest::Client::new();
-        let miss = client.get(uri.replace("/auth/callback", "/favicon.ico")).send().await.unwrap();
+        let miss = client
+            .get(uri.replace("/auth/callback", "/favicon.ico"))
+            .send()
+            .await
+            .unwrap();
         assert_eq!(miss.status(), 404);
-        let resp = client.get(format!("{uri}?code=c0de&state=st")).send().await.unwrap();
+        let resp = client
+            .get(format!("{uri}?code=c0de&state=st"))
+            .send()
+            .await
+            .unwrap();
         assert_eq!(resp.status(), 200);
-        assert!(resp.text().await.unwrap().contains("You can close this window"));
+        assert!(resp
+            .text()
+            .await
+            .unwrap()
+            .contains("You can close this window"));
         assert_eq!(task.await.unwrap().unwrap().code, "c0de");
     }
 

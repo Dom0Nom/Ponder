@@ -17,7 +17,13 @@ pub struct TrayMenu {
 }
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
-    let start = MenuItem::with_id(app, "focus-start", "Start focus session", true, None::<&str>)?;
+    let start = MenuItem::with_id(
+        app,
+        "focus-start",
+        "Start focus session",
+        true,
+        None::<&str>,
+    )?;
     let pause = MenuItem::with_id(app, "focus-pause", "Pause", false, None::<&str>)?;
     let end = MenuItem::with_id(app, "focus-end", "End session", false, None::<&str>)?;
     let capture = MenuItem::with_id(app, "capture-open", "Quick capture", true, None::<&str>)?;
@@ -25,7 +31,10 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     let quit = MenuItem::with_id(app, "focus-quit", "Quit", true, None::<&str>)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
-    let menu = Menu::with_items(app, &[&start, &pause, &end, &sep1, &capture, &show, &sep2, &quit])?;
+    let menu = Menu::with_items(
+        app,
+        &[&start, &pause, &end, &sep1, &capture, &show, &sep2, &quit],
+    )?;
 
     let mut builder = TrayIconBuilder::with_id(TRAY_ID)
         .menu(&menu)
@@ -47,7 +56,12 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         }
     }
     builder.build(app)?;
-    app.manage(TrayMenu { start, pause, end, key: Mutex::new(String::new()) });
+    app.manage(TrayMenu {
+        start,
+        pause,
+        end,
+        key: Mutex::new(String::new()),
+    });
     Ok(())
 }
 
@@ -95,12 +109,16 @@ fn on_menu(app: &AppHandle, id: &str) {
 }
 
 pub fn update(app: &AppHandle, state: Option<&FocusState>) {
-    let Some(tray) = app.tray_by_id(TRAY_ID) else { return };
+    let Some(tray) = app.tray_by_id(TRAY_ID) else {
+        return;
+    };
     let title = tray_title(state);
     if set_tray_title(app, title.clone()) {
         let _ = tray.set_title(if title.is_empty() { None } else { Some(title) });
     }
-    let Some(menu) = app.try_state::<TrayMenu>() else { return };
+    let Some(menu) = app.try_state::<TrayMenu>() else {
+        return;
+    };
     let (pause_text, pause_enabled) = match state {
         None => ("Pause", false),
         Some(s) if s.pause_reason == Some(PauseReason::NeedApp) => ("Resume break", true),

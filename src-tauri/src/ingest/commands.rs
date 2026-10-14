@@ -6,7 +6,11 @@ use crate::retrieval::SearchHit;
 use tauri::State;
 
 #[tauri::command]
-pub async fn import_file(state: State<'_, Ingest>, space_id: String, path: String) -> AppResult<Source> {
+pub async fn import_file(
+    state: State<'_, Ingest>,
+    space_id: String,
+    path: String,
+) -> AppResult<Source> {
     state.import_file(&space_id, &path)
 }
 
@@ -51,6 +55,48 @@ pub async fn embedder_status(state: State<'_, Ingest>) -> AppResult<EmbedderStat
 #[tauri::command]
 pub async fn embedding_models() -> AppResult<Vec<super::embed::ModelSpec>> {
     Ok(super::embed::MODELS.to_vec())
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteEmbeddingModel {
+    pub id: String,
+    pub name: String,
+    /// USD per million input tokens.
+    pub price: Option<f64>,
+}
+
+/// Embedding models OpenRouter offers (public list, no key needed), cheapest first.
+#[tauri::command]
+pub async fn openrouter_embedding_models() -> AppResult<Vec<RemoteEmbeddingModel>> {
+    let v: serde_json::Value = reqwest::Client::new()
+        .get("https://openrouter.ai/api/v1/embeddings/models")
+        .timeout(std::time::Duration::from_secs(20))
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    let mut out: Vec<RemoteEmbeddingModel> = v["data"]
+        .as_array()
+        .map(|a| a.as_slice())
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|m| {
+            let id = m["id"].as_str()?.to_string();
+            let price = m["pricing"]["prompt"]
+                .as_str()
+                .and_then(|p| p.parse::<f64>().ok())
+                .map(|p| p * 1e6);
+            Some(RemoteEmbeddingModel {
+                name: m["name"].as_str().unwrap_or(&id).to_string(),
+                id,
+                price,
+            })
+        })
+        .collect();
+    out.sort_by_key(|m| m.name.to_lowercase());
+    Ok(out)
 }
 
 #[tauri::command]

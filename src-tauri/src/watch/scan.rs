@@ -27,7 +27,15 @@ pub struct Plan {
     pub pending: HashMap<String, Stamp>,
 }
 
-const TEMP_SUFFIXES: &[&str] = &[".tmp", ".temp", ".part", ".partial", ".crdownload", ".download", ".swp"];
+const TEMP_SUFFIXES: &[&str] = &[
+    ".tmp",
+    ".temp",
+    ".part",
+    ".partial",
+    ".crdownload",
+    ".download",
+    ".swp",
+];
 
 /// Hidden files, Office lock files (`~$x.docx`, `.~lock.x#`), editor backups and partial downloads.
 pub fn is_ignored(name: &str) -> bool {
@@ -44,13 +52,22 @@ pub fn is_ignored(name: &str) -> bool {
 pub fn scan_dir(root: &Path, recursive: bool) -> std::io::Result<BTreeMap<String, Stamp>> {
     let mut out = BTreeMap::new();
     if !std::fs::metadata(root)?.is_dir() {
-        return Err(std::io::Error::new(std::io::ErrorKind::NotFound, "not a folder"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "not a folder",
+        ));
     }
     walk(root, "", recursive, &mut out, true)?;
     Ok(out)
 }
 
-fn walk(dir: &Path, prefix: &str, recursive: bool, out: &mut BTreeMap<String, Stamp>, top: bool) -> std::io::Result<()> {
+fn walk(
+    dir: &Path,
+    prefix: &str,
+    recursive: bool,
+    out: &mut BTreeMap<String, Stamp>,
+    top: bool,
+) -> std::io::Result<()> {
     let entries = match std::fs::read_dir(dir) {
         Ok(e) => e,
         Err(e) if top => return Err(e),
@@ -65,7 +82,11 @@ fn walk(dir: &Path, prefix: &str, recursive: bool, out: &mut BTreeMap<String, St
             continue;
         }
         let Ok(ft) = entry.file_type() else { continue };
-        let rel = if prefix.is_empty() { name.clone() } else { format!("{prefix}/{name}") };
+        let rel = if prefix.is_empty() {
+            name.clone()
+        } else {
+            format!("{prefix}/{name}")
+        };
         if ft.is_dir() {
             if recursive {
                 walk(&entry.path(), &rel, true, out, false)?;
@@ -78,7 +99,13 @@ fn walk(dir: &Path, prefix: &str, recursive: bool, out: &mut BTreeMap<String, St
                 .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
                 .map(|d| d.as_millis() as i64)
                 .unwrap_or(0);
-            out.insert(rel, Stamp { size: meta.len(), mtime });
+            out.insert(
+                rel,
+                Stamp {
+                    size: meta.len(),
+                    mtime,
+                },
+            );
         }
     }
     Ok(())
@@ -112,8 +139,11 @@ pub fn reconcile(
             None => plan.import.push((rel.clone(), *st)),
         }
     }
-    let mut removed: Vec<String> =
-        known.iter().filter(|(rel, k)| !k.removed && !scanned.contains_key(*rel)).map(|(r, _)| r.clone()).collect();
+    let mut removed: Vec<String> = known
+        .iter()
+        .filter(|(rel, k)| !k.removed && !scanned.contains_key(*rel))
+        .map(|(r, _)| r.clone())
+        .collect();
     removed.sort();
     plan.removed = removed;
     plan
@@ -128,12 +158,24 @@ mod tests {
     }
 
     fn known(stamp: Stamp, source: Option<&str>, removed: bool) -> Known {
-        Known { stamp, source_id: source.map(String::from), removed }
+        Known {
+            stamp,
+            source_id: source.map(String::from),
+            removed,
+        }
     }
 
     #[test]
     fn ignores_temp_and_hidden_files() {
-        for n in [".DS_Store", ".~lock.notes.docx#", "~$report.docx", "draft.md~", "a.pdf.part", "x.crdownload", ".hidden.md"] {
+        for n in [
+            ".DS_Store",
+            ".~lock.notes.docx#",
+            "~$report.docx",
+            "draft.md~",
+            "a.pdf.part",
+            "x.crdownload",
+            ".hidden.md",
+        ] {
             assert!(is_ignored(n), "{n}");
         }
         for n in ["notes.md", "Report 2024.pdf", "a~b.txt"] {
@@ -168,7 +210,10 @@ mod tests {
         let changed = BTreeMap::from([("a.md".to_string(), st(12, 5))]);
         let prev = HashMap::from([("a.md".to_string(), st(12, 5))]);
         let p = reconcile(&k, &changed, &prev);
-        assert_eq!(p.reimport, vec![("a.md".to_string(), st(12, 5), "s1".to_string())]);
+        assert_eq!(
+            p.reimport,
+            vec![("a.md".to_string(), st(12, 5), "s1".to_string())]
+        );
 
         // the user deleted the source: a later change imports it again
         let k = HashMap::from([("a.md".to_string(), known(st(10, 1), None, false))]);
@@ -181,9 +226,15 @@ mod tests {
         let k = HashMap::from([
             ("gone.md".to_string(), known(st(10, 1), Some("s1"), false)),
             ("back.md".to_string(), known(st(5, 1), Some("s2"), true)),
-            ("still-gone.md".to_string(), known(st(5, 1), Some("s3"), true)),
+            (
+                "still-gone.md".to_string(),
+                known(st(5, 1), Some("s3"), true),
+            ),
         ]);
-        let scanned = BTreeMap::from([("back.md".to_string(), st(5, 1)), ("empty.txt".to_string(), st(0, 9))]);
+        let scanned = BTreeMap::from([
+            ("back.md".to_string(), st(5, 1)),
+            ("empty.txt".to_string(), st(0, 9)),
+        ]);
         let p = reconcile(&k, &scanned, &HashMap::new());
         assert_eq!(p.removed, vec!["gone.md".to_string()]);
         assert_eq!(p.restored, vec!["back.md".to_string()]);

@@ -76,4 +76,15 @@ test("settings: switching the search model re-indexes", async ({ app }) => {
   await expect(section).toContainText("488 MB");
   await expect(section.getByTestId("search-model-status")).toHaveText("Ready", { timeout: 5000 });
   await expect(select).toHaveValue("multilingual-e5-small");
+  await section.getByLabel("Runs on").selectOption("openrouter");
+  await expect(select).toHaveValue("qwen/qwen3-embedding-8b");
+  await expect(section).toContainText("Qwen: Qwen3 Embedding 8B");
+  await expect(section).toContainText("sent to OpenRouter");
+  await expect(section).toContainText("$0.01 per million tokens");
+  await expect(section.getByTestId("search-model-status")).toHaveText("Ready", { timeout: 5000 });
+  await select.selectOption("openai/text-embedding-3-small");
+  await expect(section).toContainText("OpenAI: Text Embedding 3 Small");
+  await section.getByLabel("Runs on").selectOption("local");
+  await expect(select).toHaveValue("all-MiniLM-L6-v2");
+  await expect(section).toContainText("91 MB");
 });

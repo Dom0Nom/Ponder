@@ -49,7 +49,13 @@ pub fn activity(c: &Connection, space_id: Option<&str>, since: i64) -> AppResult
     )?;
     let reviews = st
         .query_map(rusqlite::params![space_id, since], |r| {
-            Ok(ReviewRow { card_id: r.get(0)?, space_id: r.get(1)?, source_id: r.get(2)?, rating: r.get(3)?, reviewed_at: r.get(4)? })
+            Ok(ReviewRow {
+                card_id: r.get(0)?,
+                space_id: r.get(1)?,
+                source_id: r.get(2)?,
+                rating: r.get(3)?,
+                reviewed_at: r.get(4)?,
+            })
         })?
         .collect::<Result<_, _>>()?;
     let mut st = c.prepare(
@@ -57,7 +63,13 @@ pub fn activity(c: &Connection, space_id: Option<&str>, since: i64) -> AppResult
          WHERE (?1 IS NULL OR space_id = ?1) AND started_at >= ?2 AND focus_ms > 0 ORDER BY started_at",
     )?;
     let focus = st
-        .query_map(rusqlite::params![space_id, since], |r| Ok(FocusRow { space_id: r.get(0)?, started_at: r.get(1)?, focus_ms: r.get(2)? }))?
+        .query_map(rusqlite::params![space_id, since], |r| {
+            Ok(FocusRow {
+                space_id: r.get(0)?,
+                started_at: r.get(1)?,
+                focus_ms: r.get(2)?,
+            })
+        })?
         .collect::<Result<_, _>>()?;
     let mut st = c.prepare(
         "SELECT space_id, topic_key, correct, created_at FROM practice_attempts
@@ -65,14 +77,27 @@ pub fn activity(c: &Connection, space_id: Option<&str>, since: i64) -> AppResult
     )?;
     let attempts = st
         .query_map(rusqlite::params![space_id, since], |r| {
-            Ok(AttemptRow { space_id: r.get(0)?, topic_key: r.get(1)?, correct: r.get::<_, i64>(2)? != 0, created_at: r.get(3)? })
+            Ok(AttemptRow {
+                space_id: r.get(0)?,
+                topic_key: r.get(1)?,
+                correct: r.get::<_, i64>(2)? != 0,
+                created_at: r.get(3)?,
+            })
         })?
         .collect::<Result<_, _>>()?;
-    Ok(Activity { reviews, focus, attempts })
+    Ok(Activity {
+        reviews,
+        focus,
+        attempts,
+    })
 }
 
 #[tauri::command]
-pub async fn insights_activity(state: State<'_, AppState>, space_id: Option<String>, since: i64) -> AppResult<Activity> {
+pub async fn insights_activity(
+    state: State<'_, AppState>,
+    space_id: Option<String>,
+    since: i64,
+) -> AppResult<Activity> {
     activity(&state.db.conn()?, space_id.as_deref(), since)
 }
 
@@ -86,13 +111,45 @@ mod tests {
     fn activity_filters_by_space_and_time() {
         let (db, _d) = test_db();
         let c = db.conn().unwrap();
-        let a = models::create_space(&c, models::SpacePatch { name: Some("A".into()), ..Default::default() }).unwrap();
-        let b = models::create_space(&c, models::SpacePatch { name: Some("B".into()), ..Default::default() }).unwrap();
-        let card = |f: &str| NewCard { kind: "basic".into(), front: f.into(), back: "x".into(), data: None, source_id: None, chunk_start: None, chunk_end: None, origin: None };
+        let a = models::create_space(
+            &c,
+            models::SpacePatch {
+                name: Some("A".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let b = models::create_space(
+            &c,
+            models::SpacePatch {
+                name: Some("B".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let card = |f: &str| NewCard {
+            kind: "basic".into(),
+            front: f.into(),
+            back: "x".into(),
+            data: None,
+            source_id: None,
+            chunk_start: None,
+            chunk_end: None,
+            origin: None,
+        };
         let ca = add_cards(&c, &a.id, &[card("Q1")]).unwrap();
         let cb = add_cards(&c, &b.id, &[card("Q2")]).unwrap();
-        for (id, rating, at) in [(&ca[0].id, 3, 100), (&ca[0].id, 1, 300), (&cb[0].id, 4, 200), (&ca[0].id, 3, 10)] {
-            c.execute("INSERT INTO review_logs (card_id, rating, reviewed_at) VALUES (?1, ?2, ?3)", rusqlite::params![id, rating, at]).unwrap();
+        for (id, rating, at) in [
+            (&ca[0].id, 3, 100),
+            (&ca[0].id, 1, 300),
+            (&cb[0].id, 4, 200),
+            (&ca[0].id, 3, 10),
+        ] {
+            c.execute(
+                "INSERT INTO review_logs (card_id, rating, reviewed_at) VALUES (?1, ?2, ?3)",
+                rusqlite::params![id, rating, at],
+            )
+            .unwrap();
         }
         c.execute(
             "INSERT INTO focus_sessions (id, space_id, technique, config, state, started_at, focus_ms) VALUES ('f1', ?1, 'pomodoro', '{}', 'done', 150, 1500000), ('f2', ?1, 'pomodoro', '{}', 'done', 160, 0)",
@@ -107,9 +164,27 @@ mod tests {
         .unwrap();
 
         let all = activity(&c, None, 50).unwrap();
-        assert_eq!(all.reviews.iter().map(|r| r.reviewed_at).collect::<Vec<_>>(), vec![100, 200, 300]);
-        assert_eq!(all.focus.len(), 1, "sessions without focus time are left out");
-        assert_eq!(all.attempts, vec![AttemptRow { space_id: b.id.clone(), topic_key: "t".into(), correct: true, created_at: 250 }]);
+        assert_eq!(
+            all.reviews
+                .iter()
+                .map(|r| r.reviewed_at)
+                .collect::<Vec<_>>(),
+            vec![100, 200, 300]
+        );
+        assert_eq!(
+            all.focus.len(),
+            1,
+            "sessions without focus time are left out"
+        );
+        assert_eq!(
+            all.attempts,
+            vec![AttemptRow {
+                space_id: b.id.clone(),
+                topic_key: "t".into(),
+                correct: true,
+                created_at: 250
+            }]
+        );
 
         let only_a = activity(&c, Some(&a.id), 0).unwrap();
         assert_eq!(only_a.reviews.len(), 3);

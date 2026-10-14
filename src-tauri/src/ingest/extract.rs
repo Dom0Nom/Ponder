@@ -63,9 +63,18 @@ fn kind_label(kind: &str) -> &'static str {
 pub fn extract_bytes(bytes: &[u8], kind: &str) -> ExtractResult<Extracted> {
     match kind {
         "pdf" => extract_pdf(bytes),
-        "docx" => Ok(Extracted { text: extract_docx(bytes)?, pages: None }),
-        "epub" => Ok(Extracted { text: extract_epub(bytes)?, pages: None }),
-        _ => Ok(Extracted { text: normalize_newlines(&String::from_utf8_lossy(bytes)), pages: None }),
+        "docx" => Ok(Extracted {
+            text: extract_docx(bytes)?,
+            pages: None,
+        }),
+        "epub" => Ok(Extracted {
+            text: extract_epub(bytes)?,
+            pages: None,
+        }),
+        _ => Ok(Extracted {
+            text: normalize_newlines(&String::from_utf8_lossy(bytes)),
+            pages: None,
+        }),
     }
 }
 
@@ -79,7 +88,8 @@ pub fn normalize_newlines(s: &str) -> String {
 // ---------- PDF ----------
 
 pub fn extract_pdf(bytes: &[u8]) -> ExtractResult<Extracted> {
-    let mut doc = pdf_extract::Document::load_mem(bytes).map_err(|e| format!("Couldn't read this PDF: {e}"))?;
+    let mut doc = pdf_extract::Document::load_mem(bytes)
+        .map_err(|e| format!("Couldn't read this PDF: {e}"))?;
     if doc.is_encrypted() && doc.decrypt("").is_err() {
         return Err("This PDF is password-protected.".into());
     }
@@ -110,11 +120,20 @@ pub fn extract_pdf(bytes: &[u8]) -> ExtractResult<Extracted> {
         text.push_str(&page);
     }
     if failed == page_nums.len() {
-        return Err("Couldn't read this PDF. The file may be damaged or use an unsupported format.".into());
+        return Err(
+            "Couldn't read this PDF. The file may be damaged or use an unsupported format.".into(),
+        );
     }
     let u16 = bytes_to_utf16(&text, &byte_starts);
-    let pages = page_nums.iter().zip(u16).map(|(&n, o)| (n as i64, o as i64)).collect();
-    Ok(Extracted { text, pages: Some(pages) })
+    let pages = page_nums
+        .iter()
+        .zip(u16)
+        .map(|(&n, o)| (n as i64, o as i64))
+        .collect();
+    Ok(Extracted {
+        text,
+        pages: Some(pages),
+    })
 }
 
 /// Collapses runs of spaces, trims lines, joins obvious hyphenated line breaks and limits blank lines.
@@ -229,7 +248,10 @@ pub fn extract_docx(bytes: &[u8]) -> ExtractResult<String> {
                 _ => {}
             },
             Ok(Event::Text(t)) if in_t => {
-                cur.push_str(&t.unescape().map_err(|e| format!("Couldn't read this Word document: {e}"))?);
+                cur.push_str(
+                    &t.unescape()
+                        .map_err(|e| format!("Couldn't read this Word document: {e}"))?,
+                );
             }
             Ok(Event::End(e)) => match e.local_name().as_ref() {
                 b"t" => in_t = false,
@@ -274,7 +296,11 @@ fn percent_decode(s: &str) -> String {
     let mut out = Vec::with_capacity(b.len());
     let mut i = 0;
     while i < b.len() {
-        if b[i] == b'%' && i + 2 < b.len() && b[i + 1].is_ascii_hexdigit() && b[i + 2].is_ascii_hexdigit() {
+        if b[i] == b'%'
+            && i + 2 < b.len()
+            && b[i + 1].is_ascii_hexdigit()
+            && b[i + 2].is_ascii_hexdigit()
+        {
             if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
                 out.push(v);
                 i += 3;
@@ -289,7 +315,11 @@ fn percent_decode(s: &str) -> String {
 
 fn resolve_path(base_dir: &str, href: &str) -> String {
     let href = percent_decode(href.split('#').next().unwrap_or(""));
-    let mut parts: Vec<&str> = if base_dir.is_empty() { vec![] } else { base_dir.split('/').collect() };
+    let mut parts: Vec<&str> = if base_dir.is_empty() {
+        vec![]
+    } else {
+        base_dir.split('/').collect()
+    };
     for seg in href.split('/') {
         match seg {
             "" | "." => {}
@@ -304,8 +334,10 @@ fn resolve_path(base_dir: &str, href: &str) -> String {
 
 pub fn extract_epub(bytes: &[u8]) -> ExtractResult<String> {
     let err = |m: &str| format!("Couldn't read this EPUB: {m}");
-    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| err(&e.to_string()))?;
-    let container = zip_read(&mut archive, "META-INF/container.xml").ok_or_else(|| err("container.xml is missing"))?;
+    let mut archive =
+        zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| err(&e.to_string()))?;
+    let container = zip_read(&mut archive, "META-INF/container.xml")
+        .ok_or_else(|| err("container.xml is missing"))?;
     let mut opf_path = None;
     let mut r = Reader::from_str(&container);
     loop {
@@ -348,9 +380,13 @@ pub fn extract_epub(bytes: &[u8]) -> ExtractResult<String> {
     }
     let mut parts = Vec::new();
     for id in spine {
-        let Some(href) = manifest.get(&id) else { continue };
+        let Some(href) = manifest.get(&id) else {
+            continue;
+        };
         let path = resolve_path(opf_dir, href);
-        let Some(html) = zip_read(&mut archive, &path) else { continue };
+        let Some(html) = zip_read(&mut archive, &path) else {
+            continue;
+        };
         let t = html_to_text(&html);
         if !t.is_empty() {
             parts.push(t);
@@ -372,7 +408,11 @@ impl HtmlText {
     fn flush(&mut self) {
         let t = self.cur.trim();
         if !t.is_empty() {
-            let p = format!("{}{}", self.prefix, t.replace(" \n", "\n").replace("\n ", "\n"));
+            let p = format!(
+                "{}{}",
+                self.prefix,
+                t.replace(" \n", "\n").replace("\n ", "\n")
+            );
             self.paras.push(p);
         }
         self.cur.clear();
@@ -392,8 +432,28 @@ impl HtmlText {
 }
 
 const BLOCKS: &[&str] = &[
-    "p", "div", "section", "article", "blockquote", "pre", "ul", "ol", "li", "table", "tr", "dl", "dt", "dd",
-    "figure", "figcaption", "header", "footer", "aside", "nav", "hr", "body",
+    "p",
+    "div",
+    "section",
+    "article",
+    "blockquote",
+    "pre",
+    "ul",
+    "ol",
+    "li",
+    "table",
+    "tr",
+    "dl",
+    "dt",
+    "dd",
+    "figure",
+    "figcaption",
+    "header",
+    "footer",
+    "aside",
+    "nav",
+    "hr",
+    "body",
 ];
 
 fn walk(el: ElementRef, out: &mut HtmlText) {
@@ -448,7 +508,11 @@ fn walk(el: ElementRef, out: &mut HtmlText) {
 
 pub fn html_to_text(html: &str) -> String {
     let doc = Html::parse_document(html);
-    let mut out = HtmlText { paras: Vec::new(), cur: String::new(), prefix: String::new() };
+    let mut out = HtmlText {
+        paras: Vec::new(),
+        cur: String::new(),
+        prefix: String::new(),
+    };
     walk(doc.root_element(), &mut out);
     out.flush();
     out.paras.join("\n\n")
@@ -557,7 +621,10 @@ pub mod tests {
             "Font" => dictionary! { "F1" => font_id },
         });
         let texts = [
-            vec!["Photosynthesis happens in the chloro-", "plasts of plant cells."],
+            vec![
+                "Photosynthesis happens in the chloro-",
+                "plasts of plant cells.",
+            ],
             vec![],
             vec!["Page three talks about taxes."],
         ];
@@ -594,7 +661,11 @@ pub mod tests {
     #[test]
     fn pdf_pages_and_hyphen_join() {
         let ex = extract_pdf(&sample_pdf()).unwrap();
-        assert!(ex.text.contains("chloroplasts of plant cells"), "{:?}", ex.text);
+        assert!(
+            ex.text.contains("chloroplasts of plant cells"),
+            "{:?}",
+            ex.text
+        );
         let pages = ex.pages.unwrap();
         assert_eq!(pages.len(), 3);
         assert_eq!(pages[0], (1, 0));

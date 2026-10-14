@@ -919,6 +919,10 @@ const EMBEDDING_MODELS: T.EmbeddingModel[] = [
   { id: "all-MiniLM-L6-v2", sizeMb: 91, multilingual: false },
   { id: "multilingual-e5-small", sizeMb: 488, multilingual: true },
 ];
+const REMOTE_EMBEDDING_MODELS: T.RemoteEmbeddingModel[] = [
+  { id: "openai/text-embedding-3-small", name: "OpenAI: Text Embedding 3 Small", price: 0.02 },
+  { id: "qwen/qwen3-embedding-8b", name: "Qwen: Qwen3 Embedding 8B", price: 0.01 },
+];
 const embeddingModel = () => (db.settings.embeddingModel as string | undefined) ?? EMBEDDING_MODELS[0].id;
 const embedderStatus = (state: T.EmbedderStatus["state"], progress: number): T.EmbedderStatus => ({
   state,
@@ -1271,9 +1275,11 @@ const handlers: Record<string, (a: Args) => unknown> = {
     search(a.spaceId as string, a.query as string, (a.limit as number) ?? 8, (a.sourceIds as string[]) ?? null),
   embedder_status: () => embedderStatus("ready", 1),
   embedding_models: () => EMBEDDING_MODELS,
+  openrouter_embedding_models: () => REMOTE_EMBEDDING_MODELS,
   set_embedding_model: (a) => {
     const model = a.model as string;
-    if (!EMBEDDING_MODELS.some((m) => m.id === model)) throw err("invalid", `Unknown embedding model: ${model}`);
+    if (!EMBEDDING_MODELS.some((m) => m.id === model) && !/^openrouter:\S/.test(model))
+      throw err("invalid", `Unknown embedding model: ${model}`);
     if (embeddingModel() === model) return null;
     db.settings.embeddingModel = model;
     emit("embedder://status", embedderStatus("downloading", 0));

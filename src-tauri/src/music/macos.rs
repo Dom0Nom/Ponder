@@ -11,7 +11,9 @@ fn osascript(script: &str) -> AppResult<String> {
     if out.status.success() {
         Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
     } else {
-        Err(AppError::Other(explain(&String::from_utf8_lossy(&out.stderr))))
+        Err(AppError::Other(explain(&String::from_utf8_lossy(
+            &out.stderr,
+        ))))
     }
 }
 
@@ -87,7 +89,10 @@ mod tests {
 
     #[test]
     fn explains_permission_denied() {
-        assert!(explain("execution error: Not authorized to send Apple events to Spotify. (-1743)").contains("Automation"));
+        assert!(explain(
+            "execution error: Not authorized to send Apple events to Spotify. (-1743)"
+        )
+        .contains("Automation"));
         assert!(explain("weird").contains("weird"));
     }
 }

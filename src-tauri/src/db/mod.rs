@@ -52,7 +52,9 @@ impl Db {
         if let Some(dir) = path.as_ref().parent() {
             std::fs::create_dir_all(dir)?;
         }
-        let db = Db { path: path.as_ref().to_path_buf() };
+        let db = Db {
+            path: path.as_ref().to_path_buf(),
+        };
         let conn = db.conn()?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
         migrate(&conn)?;
@@ -75,18 +77,38 @@ impl Db {
 /// Migrations 010–015 were merged in more than one order during development, so a database's
 /// user_version doesn't say which of them ran; each is detected by what it creates.
 const DETECTED: &[(usize, &str)] = &[
-    (9, "SELECT 1 FROM pragma_table_info('sources') WHERE name = 'local_path'"),
-    (10, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'study_plans'"),
-    (11, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'exam_attempts'"),
-    (12, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'studio_outputs'"),
-    (13, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'notes'"),
-    (14, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'annotations'"),
+    (
+        9,
+        "SELECT 1 FROM pragma_table_info('sources') WHERE name = 'local_path'",
+    ),
+    (
+        10,
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'study_plans'",
+    ),
+    (
+        11,
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'exam_attempts'",
+    ),
+    (
+        12,
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'studio_outputs'",
+    ),
+    (
+        13,
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'notes'",
+    ),
+    (
+        14,
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'annotations'",
+    ),
 ];
 
 fn migrate(conn: &Connection) -> AppResult<()> {
     let mut version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
     if version as usize > MIGRATIONS.len() {
-        return Err(AppError::Other("This data was written by a newer version of Ponder. Update the app to open it.".into()));
+        return Err(AppError::Other(
+            "This data was written by a newer version of Ponder. Update the app to open it.".into(),
+        ));
     }
     for (i, sql) in MIGRATIONS.iter().enumerate() {
         let applied = match DETECTED.iter().find(|(n, _)| *n == i) {
@@ -131,9 +153,13 @@ mod tests {
     fn migrates_and_has_extensions() {
         let (db, _dir) = test_db();
         let conn = db.conn().unwrap();
-        let v: String = conn.query_row("select vec_version()", [], |r| r.get(0)).unwrap();
+        let v: String = conn
+            .query_row("select vec_version()", [], |r| r.get(0))
+            .unwrap();
         assert!(v.starts_with('v'));
-        let uv: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+        let uv: i64 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(uv as usize, MIGRATIONS.len());
         // reopening must not re-run migrations
         Db::open(db.path()).unwrap();
@@ -142,7 +168,10 @@ mod tests {
     #[test]
     fn refuses_a_database_from_a_newer_version() {
         let (db, _dir) = test_db();
-        db.conn().unwrap().pragma_update(None, "user_version", MIGRATIONS.len() as i64 + 1).unwrap();
+        db.conn()
+            .unwrap()
+            .pragma_update(None, "user_version", MIGRATIONS.len() as i64 + 1)
+            .unwrap();
         assert!(Db::open(db.path()).is_err());
     }
 
@@ -152,7 +181,10 @@ mod tests {
         let path = dir.path().join("old.db");
         register_sqlite_vec();
         let conn = Connection::open(&path).unwrap();
-        for sql in MIGRATIONS[..10].iter().chain([MIGRATIONS[11], MIGRATIONS[12]].iter()) {
+        for sql in MIGRATIONS[..10]
+            .iter()
+            .chain([MIGRATIONS[11], MIGRATIONS[12]].iter())
+        {
             conn.execute_batch(sql).unwrap();
         }
         conn.pragma_update(None, "user_version", 12).unwrap();
@@ -160,10 +192,25 @@ mod tests {
 
         let db = Db::open(&path).unwrap();
         let c = db.conn().unwrap();
-        let uv: i64 = c.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+        let uv: i64 = c
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(uv as usize, MIGRATIONS.len());
-        for table in ["study_plans", "plan_tasks", "exam_attempts", "studio_outputs", "notes", "annotations"] {
-            let n: i64 = c.query_row("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?1", [table], |r| r.get(0)).unwrap();
+        for table in [
+            "study_plans",
+            "plan_tasks",
+            "exam_attempts",
+            "studio_outputs",
+            "notes",
+            "annotations",
+        ] {
+            let n: i64 = c
+                .query_row(
+                    "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?1",
+                    [table],
+                    |r| r.get(0),
+                )
+                .unwrap();
             assert_eq!(n, 1, "{table}");
         }
     }

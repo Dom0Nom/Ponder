@@ -1,6 +1,9 @@
 //! Google Drive: OAuth for installed apps (loopback + PKCE, offline access) and Drive v3.
 
-use super::{check, safe_file_name, stream_to_file, too_large, AuthRequest, ClientConfig, CloudItem, CloudPage, Service};
+use super::{
+    check, safe_file_name, stream_to_file, too_large, AuthRequest, ClientConfig, CloudItem,
+    CloudPage, Service,
+};
 use crate::error::{invalid, AppError, AppResult};
 use crate::ingest::extract::kind_for_path;
 use crate::oauth::pkce;
@@ -99,10 +102,18 @@ pub fn build_authorize(ep: &Endpoints, client_id: &str, redirect_uri: &str) -> A
         .append_pair("code_challenge_method", "S256")
         .append_pair("access_type", "offline")
         .append_pair("prompt", "consent");
-    AuthRequest { url: url.into(), state, verifier, redirect_uri: redirect_uri.into() }
+    AuthRequest {
+        url: url.into(),
+        state,
+        verifier,
+        redirect_uri: redirect_uri.into(),
+    }
 }
 
-fn with_secret<'a>(mut form: Vec<(&'a str, &'a str)>, client: &'a ClientConfig) -> Vec<(&'a str, &'a str)> {
+fn with_secret<'a>(
+    mut form: Vec<(&'a str, &'a str)>,
+    client: &'a ClientConfig,
+) -> Vec<(&'a str, &'a str)> {
     if let Some(s) = client.client_secret.as_deref() {
         form.push(("client_secret", s));
     }
@@ -127,18 +138,34 @@ pub async fn exchange_code(
         ],
         client,
     );
-    let v = post_form(http, &ep.token, &form).await.map_err(|(s, b)| AppError::Other(oauth_error_message(s, &b)))?;
+    let v = post_form(http, &ep.token, &form)
+        .await
+        .map_err(|(s, b)| AppError::Other(oauth_error_message(s, &b)))?;
     let mut ts = TokenSet::from_response(&v, now_ms(), None)?;
     if ts.refresh.is_none() {
-        return Err(AppError::Other("Google didn't return a refresh token. Try connecting again.".into()));
+        return Err(AppError::Other(
+            "Google didn't return a refresh token. Try connecting again.".into(),
+        ));
     }
     ts.client_id = Some(client.client_id.clone());
     Ok(ts)
 }
 
-pub async fn refresh(http: &reqwest::Client, ep: &Endpoints, client: &ClientConfig, ts: &TokenSet) -> AppResult<TokenSet> {
+pub async fn refresh(
+    http: &reqwest::Client,
+    ep: &Endpoints,
+    client: &ClientConfig,
+    ts: &TokenSet,
+) -> AppResult<TokenSet> {
     let refresh = ts.refresh.as_deref().unwrap_or_default();
-    let form = with_secret(vec![("grant_type", "refresh_token"), ("refresh_token", refresh), ("client_id", &client.client_id)], client);
+    let form = with_secret(
+        vec![
+            ("grant_type", "refresh_token"),
+            ("refresh_token", refresh),
+            ("client_id", &client.client_id),
+        ],
+        client,
+    );
     let v = post_form(http, &ep.token, &form).await.map_err(|(s, b)| {
         if s == 400 || s == 401 {
             AppError::Other("Your Google Drive session expired. Connect again in Settings.".into())
@@ -158,11 +185,17 @@ pub async fn account(http: &reqwest::Client, ep: &Endpoints, token: &str) -> Opt
         .await
         .ok()?;
     let v: Value = resp.error_for_status().ok()?.json().await.ok()?;
-    v.pointer("/user/emailAddress").or_else(|| v.pointer("/user/displayName")).and_then(Value::as_str).map(str::to_string)
+    v.pointer("/user/emailAddress")
+        .or_else(|| v.pointer("/user/displayName"))
+        .and_then(Value::as_str)
+        .map(str::to_string)
 }
 
 pub async fn revoke(http: &reqwest::Client, ep: &Endpoints, token: &str) -> AppResult<()> {
-    http.post(&ep.revoke).form(&[("token", token)]).send().await?;
+    http.post(&ep.revoke)
+        .form(&[("token", token)])
+        .send()
+        .await?;
     Ok(())
 }
 
@@ -212,29 +245,64 @@ pub async fn list(
 ) -> AppResult<CloudPage> {
     let q = match query {
         Some(text) => format!("name contains '{}' and trashed = false", quote(text)),
-        None => format!("'{}' in parents and trashed = false", quote(folder.unwrap_or("root"))),
+        None => format!(
+            "'{}' in parents and trashed = false",
+            quote(folder.unwrap_or("root"))
+        ),
     };
-    let mut params = vec![("q", q.as_str()), ("pageSize", PAGE_SIZE), ("fields", LIST_FIELDS), ("orderBy", "folder,name")];
+    let mut params = vec![
+        ("q", q.as_str()),
+        ("pageSize", PAGE_SIZE),
+        ("fields", LIST_FIELDS),
+        ("orderBy", "folder,name"),
+    ];
     if let Some(p) = page_token {
         params.push(("pageToken", p));
     }
-    let resp = http.get(format!("{}/files", ep.api)).query(&params).bearer_auth(token).send().await?;
+    let resp = http
+        .get(format!("{}/files", ep.api))
+        .query(&params)
+        .bearer_auth(token)
+        .send()
+        .await?;
     let list: FileList = check(Service::Google, resp).await?.json().await?;
-    Ok(CloudPage { items: list.files.into_iter().map(to_item).collect(), next_page_token: list.next_page_token })
+    Ok(CloudPage {
+        items: list.files.into_iter().map(to_item).collect(),
+        next_page_token: list.next_page_token,
+    })
 }
 
 /// Google Docs/Slides/Sheets go through `files.export`; everything else is `alt=media`.
-pub async fn download(http: &reqwest::Client, ep: &Endpoints, token: &str, item: &CloudItem, dir: &Path, cap: u64) -> AppResult<PathBuf> {
+pub async fn download(
+    http: &reqwest::Client,
+    ep: &Endpoints,
+    token: &str,
+    item: &CloudItem,
+    dir: &Path,
+    cap: u64,
+) -> AppResult<PathBuf> {
     let mime = item.mime_type.as_deref().unwrap_or_default();
-    let name = local_name(&item.name, mime).ok_or_else(|| invalid(format!("{} can't be imported (unsupported file type).", item.name)))?;
+    let name = local_name(&item.name, mime).ok_or_else(|| {
+        invalid(format!(
+            "{} can't be imported (unsupported file type).",
+            item.name
+        ))
+    })?;
     if item.id.is_empty() {
         return Err(invalid("Missing file id"));
     }
-    let mut url = url::Url::parse(&format!("{}/", ep.api)).map_err(|e| AppError::Other(e.to_string()))?;
-    url.path_segments_mut().map_err(|_| AppError::Other("bad API url".into()))?.pop_if_empty().push("files").push(&item.id);
+    let mut url =
+        url::Url::parse(&format!("{}/", ep.api)).map_err(|e| AppError::Other(e.to_string()))?;
+    url.path_segments_mut()
+        .map_err(|_| AppError::Other("bad API url".into()))?
+        .pop_if_empty()
+        .push("files")
+        .push(&item.id);
     let req = match export_for(mime) {
         Some((export_mime, _)) => {
-            url.path_segments_mut().map_err(|_| AppError::Other("bad API url".into()))?.push("export");
+            url.path_segments_mut()
+                .map_err(|_| AppError::Other("bad API url".into()))?
+                .push("export");
             http.get(url).query(&[("mimeType", export_mime)])
         }
         None => {
@@ -262,7 +330,11 @@ mod tests {
     #[test]
     fn authorize_url() {
         let ep = Endpoints::default();
-        let req = build_authorize(&ep, "cid.apps.googleusercontent.com", "http://127.0.0.1:49152/auth/callback");
+        let req = build_authorize(
+            &ep,
+            "cid.apps.googleusercontent.com",
+            "http://127.0.0.1:49152/auth/callback",
+        );
         let url = url::Url::parse(&req.url).unwrap();
         assert_eq!(url.host_str(), Some("accounts.google.com"));
         assert_eq!(url.path(), "/o/oauth2/v2/auth");
@@ -285,8 +357,14 @@ mod tests {
         assert_eq!(local_name("Deck", SLIDES).as_deref(), Some("Deck.txt"));
         assert_eq!(local_name("Sheet", SHEET).as_deref(), Some("Sheet.txt"));
         assert_eq!(local_name("Form", "application/vnd.google-apps.form"), None);
-        assert_eq!(local_name("paper.PDF", "application/pdf").as_deref(), Some("paper.PDF"));
-        assert_eq!(local_name("scan", "application/pdf").as_deref(), Some("scan.pdf"));
+        assert_eq!(
+            local_name("paper.PDF", "application/pdf").as_deref(),
+            Some("paper.PDF")
+        );
+        assert_eq!(
+            local_name("scan", "application/pdf").as_deref(),
+            Some("scan.pdf")
+        );
         assert_eq!(local_name("photo.jpg", "image/jpeg"), None);
         assert_eq!(quote("it's a\\b"), "it\\'s a\\\\b");
     }
@@ -311,7 +389,10 @@ mod tests {
         Mock::given(method("GET"))
             .and(path("/drive/v3/about"))
             .and(bearer_token("a1"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({"user": {"emailAddress": "me@gmail.com"}})))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(json!({"user": {"emailAddress": "me@gmail.com"}})),
+            )
             .mount(&server)
             .await;
         Mock::given(method("POST"))
@@ -319,7 +400,10 @@ mod tests {
             .and(body_string_contains("grant_type=refresh_token"))
             .and(body_string_contains("refresh_token=r1"))
             .and(body_string_contains("client_secret=shh"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({"access_token": "a2", "expires_in": 3600})))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(json!({"access_token": "a2", "expires_in": 3600})),
+            )
             .expect(1)
             .mount(&server)
             .await;
@@ -327,11 +411,22 @@ mod tests {
         let s = services(&server.uri(), "http://unused");
         s.set_client(Service::Google, "cid", Some("shh")).unwrap();
         let client = s.require_client(Service::Google).unwrap();
-        let req = AuthRequest { url: String::new(), state: "st".into(), verifier: "ver".into(), redirect_uri: "http://127.0.0.1:9/auth/callback".into() };
-        let ts = s.finish_sign_in(Service::Google, &client, &req, "the-code").await.unwrap();
+        let req = AuthRequest {
+            url: String::new(),
+            state: "st".into(),
+            verifier: "ver".into(),
+            redirect_uri: "http://127.0.0.1:9/auth/callback".into(),
+        };
+        let ts = s
+            .finish_sign_in(Service::Google, &client, &req, "the-code")
+            .await
+            .unwrap();
         assert_eq!(ts.account.as_deref(), Some("me@gmail.com"));
         let st = s.status(Service::Google).unwrap();
-        assert_eq!((st.state, st.account.as_deref()), ("signedIn", Some("me@gmail.com")));
+        assert_eq!(
+            (st.state, st.account.as_deref()),
+            ("signedIn", Some("me@gmail.com"))
+        );
 
         // expires_in=1 is inside the refresh skew, so this refreshes once and keeps the refresh token
         assert_eq!(s.token(Service::Google).await.unwrap(), "a2");
@@ -346,12 +441,27 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/token"))
-            .respond_with(ResponseTemplate::new(400).set_body_json(json!({"error": "invalid_grant"})))
+            .respond_with(
+                ResponseTemplate::new(400).set_body_json(json!({"error": "invalid_grant"})),
+            )
             .mount(&server)
             .await;
         let s = services(&server.uri(), "http://unused");
         s.set_client(Service::Google, "cid", Some("shh")).unwrap();
-        s.oauth.tokens.save("cloud:google", &TokenSet { access: "old".into(), refresh: Some("r".into()), expires_at: 1, account: None, client_id: None, obtained_at: None }).unwrap();
+        s.oauth
+            .tokens
+            .save(
+                "cloud:google",
+                &TokenSet {
+                    access: "old".into(),
+                    refresh: Some("r".into()),
+                    expires_at: 1,
+                    account: None,
+                    client_id: None,
+                    obtained_at: None,
+                },
+            )
+            .unwrap();
         let e = s.token(Service::Google).await.unwrap_err();
         assert!(e.to_string().contains("session expired"));
         assert_eq!(s.status(Service::Google).unwrap().state, "error");
@@ -362,7 +472,17 @@ mod tests {
         s.set_client(Service::Google, "cid", Some("shh")).unwrap();
         s.oauth
             .tokens
-            .save("cloud:google", &TokenSet { access: "tok".into(), refresh: Some("r".into()), expires_at: now_ms() + 3_600_000, account: None, client_id: None, obtained_at: None })
+            .save(
+                "cloud:google",
+                &TokenSet {
+                    access: "tok".into(),
+                    refresh: Some("r".into()),
+                    expires_at: now_ms() + 3_600_000,
+                    account: None,
+                    client_id: None,
+                    obtained_at: None,
+                },
+            )
             .unwrap();
         s
     }
@@ -399,8 +519,13 @@ mod tests {
             .await;
         Mock::given(method("GET"))
             .and(path("/drive/v3/files"))
-            .and(query_param("q", "name contains 'cell\\'s' and trashed = false"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({"files": [{"id": "x", "name": "cell's.txt", "mimeType": "text/plain"}]})))
+            .and(query_param(
+                "q",
+                "name contains 'cell\\'s' and trashed = false",
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_json(
+                json!({"files": [{"id": "x", "name": "cell's.txt", "mimeType": "text/plain"}]}),
+            ))
             .expect(1)
             .mount(&server)
             .await;
@@ -408,11 +533,34 @@ mod tests {
         let s = signed_in(&server).await;
         let page = s.list(Service::Google, None, None, None).await.unwrap();
         assert_eq!(page.next_page_token.as_deref(), Some("p2"));
-        let v: Vec<(&str, bool, bool, Option<u64>)> = page.items.iter().map(|i| (i.id.as_str(), i.folder, i.supported, i.size)).collect();
-        assert_eq!(v, vec![("f1", true, false, None), ("d1", false, true, None), ("b1", false, true, Some(1234)), ("i1", false, false, Some(99))]);
-        assert_eq!(page.items[0].modified.as_deref(), Some("2026-01-02T10:00:00.000Z"));
-        assert!(s.list(Service::Google, Some("f1"), None, Some("p2")).await.unwrap().items.is_empty());
-        let found = s.list(Service::Google, Some("f1"), Some(" cell's "), None).await.unwrap();
+        let v: Vec<(&str, bool, bool, Option<u64>)> = page
+            .items
+            .iter()
+            .map(|i| (i.id.as_str(), i.folder, i.supported, i.size))
+            .collect();
+        assert_eq!(
+            v,
+            vec![
+                ("f1", true, false, None),
+                ("d1", false, true, None),
+                ("b1", false, true, Some(1234)),
+                ("i1", false, false, Some(99))
+            ]
+        );
+        assert_eq!(
+            page.items[0].modified.as_deref(),
+            Some("2026-01-02T10:00:00.000Z")
+        );
+        assert!(s
+            .list(Service::Google, Some("f1"), None, Some("p2"))
+            .await
+            .unwrap()
+            .items
+            .is_empty());
+        let found = s
+            .list(Service::Google, Some("f1"), Some(" cell's "), None)
+            .await
+            .unwrap();
         assert_eq!(found.items[0].name, "cell's.txt");
     }
 
@@ -442,33 +590,96 @@ mod tests {
             .await;
         Mock::given(method("GET"))
             .and(path("/drive/v3/files/gone"))
-            .respond_with(ResponseTemplate::new(404).set_body_json(json!({"error": {"code": 404, "message": "File not found: gone."}})))
+            .respond_with(
+                ResponseTemplate::new(404).set_body_json(
+                    json!({"error": {"code": 404, "message": "File not found: gone."}}),
+                ),
+            )
             .mount(&server)
             .await;
 
         let s = signed_in(&server).await;
         let dir = tempfile::tempdir().unwrap();
-        let doc = CloudItem { id: "doc1".into(), name: "My Notes".into(), folder: false, mime_type: Some(DOC.into()), size: None, modified: None, supported: true };
-        let p = s.download(Service::Google, &doc, dir.path(), 1024).await.unwrap();
+        let doc = CloudItem {
+            id: "doc1".into(),
+            name: "My Notes".into(),
+            folder: false,
+            mime_type: Some(DOC.into()),
+            size: None,
+            modified: None,
+            supported: true,
+        };
+        let p = s
+            .download(Service::Google, &doc, dir.path(), 1024)
+            .await
+            .unwrap();
         assert_eq!(p.file_name().unwrap(), "My Notes.md");
-        assert_eq!(std::fs::read_to_string(&p).unwrap(), "# Notes\n\nCells divide.");
+        assert_eq!(
+            std::fs::read_to_string(&p).unwrap(),
+            "# Notes\n\nCells divide."
+        );
 
-        let bin = CloudItem { id: "bin1".into(), name: "paper.pdf".into(), folder: false, mime_type: Some("application/pdf".into()), size: Some(4096), modified: None, supported: true };
-        let p = s.download(Service::Google, &bin, dir.path(), 1 << 20).await.unwrap();
+        let bin = CloudItem {
+            id: "bin1".into(),
+            name: "paper.pdf".into(),
+            folder: false,
+            mime_type: Some("application/pdf".into()),
+            size: Some(4096),
+            modified: None,
+            supported: true,
+        };
+        let p = s
+            .download(Service::Google, &bin, dir.path(), 1 << 20)
+            .await
+            .unwrap();
         assert_eq!(std::fs::read(&p).unwrap().len(), 4096);
 
         // size cap: declared size, then actual body size (metadata can lie or be missing)
-        let mut big = CloudItem { id: "big".into(), name: "big.pdf".into(), size: Some(10 << 20), ..bin.clone() };
-        assert!(s.download(Service::Google, &big, dir.path(), 1024).await.unwrap_err().to_string().contains("larger than"));
+        let mut big = CloudItem {
+            id: "big".into(),
+            name: "big.pdf".into(),
+            size: Some(10 << 20),
+            ..bin.clone()
+        };
+        assert!(s
+            .download(Service::Google, &big, dir.path(), 1024)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("larger than"));
         big.size = None;
-        assert!(s.download(Service::Google, &big, dir.path(), 1024).await.unwrap_err().to_string().contains("larger than"));
+        assert!(s
+            .download(Service::Google, &big, dir.path(), 1024)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("larger than"));
         assert!(!dir.path().join("big.pdf").exists());
 
-        let gone = CloudItem { id: "gone".into(), name: "gone.pdf".into(), size: None, ..bin.clone() };
-        let e = s.download(Service::Google, &gone, dir.path(), 1024).await.unwrap_err().to_string();
+        let gone = CloudItem {
+            id: "gone".into(),
+            name: "gone.pdf".into(),
+            size: None,
+            ..bin.clone()
+        };
+        let e = s
+            .download(Service::Google, &gone, dir.path(), 1024)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("404") && e.contains("File not found"), "{e}");
 
-        let img = CloudItem { id: "i".into(), name: "photo.jpg".into(), mime_type: Some("image/jpeg".into()), ..bin };
-        assert!(s.download(Service::Google, &img, dir.path(), 1024).await.unwrap_err().to_string().contains("unsupported"));
+        let img = CloudItem {
+            id: "i".into(),
+            name: "photo.jpg".into(),
+            mime_type: Some("image/jpeg".into()),
+            ..bin
+        };
+        assert!(s
+            .download(Service::Google, &img, dir.path(), 1024)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("unsupported"));
     }
 }

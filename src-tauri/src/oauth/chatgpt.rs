@@ -7,7 +7,8 @@ use crate::error::{AppError, AppResult};
 
 pub const AUTH_BASE: &str = "https://auth.openai.com";
 pub const RESOURCE: &str = "https://api.openai.com/v1";
-pub const SCOPE: &str = "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct";
+pub const SCOPE: &str =
+    "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct";
 pub const DYNAMIC_CLIENT: &str = "dynamic_agent_client";
 pub const AGENT_NAME: &str = "Ponder";
 pub const REFRESH_SKEW_MS: i64 = 5 * 60 * 1000;
@@ -21,7 +22,10 @@ pub struct Endpoints {
 impl Endpoints {
     pub fn with_base(base: &str) -> Self {
         let b = base.trim_end_matches('/');
-        Self { authorize: format!("{b}/api/accounts/authorize"), token: format!("{b}/api/accounts/oauth/token") }
+        Self {
+            authorize: format!("{b}/api/accounts/authorize"),
+            token: format!("{b}/api/accounts/oauth/token"),
+        }
     }
 }
 
@@ -40,7 +44,12 @@ pub struct AuthRequest {
 }
 
 /// `client_id` is the previously issued `oaiapp_…` id, or None for first-time dynamic registration.
-pub fn build_authorize(ep: &Endpoints, client_id: Option<&str>, host_id: &str, redirect_uri: &str) -> AuthRequest {
+pub fn build_authorize(
+    ep: &Endpoints,
+    client_id: Option<&str>,
+    host_id: &str,
+    redirect_uri: &str,
+) -> AuthRequest {
     let verifier = pkce::verifier();
     let state = pkce::random_token(24);
     let nonce = pkce::random_token(24);
@@ -61,7 +70,12 @@ pub fn build_authorize(ep: &Endpoints, client_id: Option<&str>, host_id: &str, r
         q.append_pair("code_challenge_method", "S256");
         q.append_pair("code_challenge", &pkce::challenge(&verifier));
     }
-    AuthRequest { url: url.into(), state, verifier, redirect_uri: redirect_uri.to_string() }
+    AuthRequest {
+        url: url.into(),
+        state,
+        verifier,
+        redirect_uri: redirect_uri.to_string(),
+    }
 }
 
 pub async fn exchange_code(
@@ -85,7 +99,9 @@ pub async fn exchange_code(
         .map_err(|(s, b)| AppError::Other(oauth_error_message(s, &b)))?;
     let mut ts = TokenSet::from_response(&v, now_ms(), None)?;
     if ts.refresh.is_none() {
-        return Err(AppError::Other("ChatGPT sign-in returned no refresh token".into()));
+        return Err(AppError::Other(
+            "ChatGPT sign-in returned no refresh token".into(),
+        ));
     }
     ts.client_id = Some(client_id.to_string());
     Ok(ts)
@@ -97,7 +113,12 @@ pub async fn refresh(http: &reqwest::Client, ep: &Endpoints, ts: &TokenSet) -> A
         .client_id
         .as_deref()
         .ok_or_else(|| AppError::Other("ChatGPT sign-in is incomplete. Sign in again.".into()))?;
-    let form = [("grant_type", "refresh_token"), ("refresh_token", refresh), ("client_id", client_id), ("resource", RESOURCE)];
+    let form = [
+        ("grant_type", "refresh_token"),
+        ("refresh_token", refresh),
+        ("client_id", client_id),
+        ("resource", RESOURCE),
+    ];
     let v = post_form(http, &ep.token, &form).await.map_err(|(s, b)| {
         if s == 400 || s == 401 {
             AppError::Other("Your ChatGPT session expired. Sign in again in Settings.".into())
@@ -135,8 +156,17 @@ mod tests {
         assert_eq!(q["state"], req.state);
         assert!(q.contains_key("nonce"));
 
-        let again = build_authorize(&ep, Some("oaiapp_1"), "host-1", "http://127.0.0.1:1/auth/callback");
-        let q: HashMap<_, _> = url::Url::parse(&again.url).unwrap().query_pairs().into_owned().collect();
+        let again = build_authorize(
+            &ep,
+            Some("oaiapp_1"),
+            "host-1",
+            "http://127.0.0.1:1/auth/callback",
+        );
+        let q: HashMap<_, _> = url::Url::parse(&again.url)
+            .unwrap()
+            .query_pairs()
+            .into_owned()
+            .collect();
         assert_eq!(q["client_id"], "oaiapp_1");
         assert!(!q.contains_key("agent_name_hint"));
     }
@@ -158,9 +188,16 @@ mod tests {
             .mount(&server)
             .await;
         let ep = Endpoints::with_base(&server.uri());
-        let ts = exchange_code(&reqwest::Client::new(), &ep, "oaiapp_abc", "the-code", "ver", "http://127.0.0.1:9/auth/callback")
-            .await
-            .unwrap();
+        let ts = exchange_code(
+            &reqwest::Client::new(),
+            &ep,
+            "oaiapp_abc",
+            "the-code",
+            "ver",
+            "http://127.0.0.1:9/auth/callback",
+        )
+        .await
+        .unwrap();
         assert_eq!(ts.access, "at");
         assert_eq!(ts.refresh.as_deref(), Some("rt"));
         assert_eq!(ts.client_id.as_deref(), Some("oaiapp_abc"));
@@ -184,18 +221,42 @@ mod tests {
             .mount(&server)
             .await;
         let tm = TokenManager::new(Arc::new(MemoryStore::default()));
-        tm.save("p", &TokenSet { access: "a1".into(), refresh: Some("r1".into()), expires_at: 1, account: Some("me@x.com".into()), client_id: Some("oaiapp_1".into()), obtained_at: None })
-            .unwrap();
+        tm.save(
+            "p",
+            &TokenSet {
+                access: "a1".into(),
+                refresh: Some("r1".into()),
+                expires_at: 1,
+                account: Some("me@x.com".into()),
+                client_id: Some("oaiapp_1".into()),
+                obtained_at: None,
+            },
+        )
+        .unwrap();
         let ep = Endpoints::with_base(&server.uri());
         let http = reqwest::Client::new();
-        let ts = tm.valid("p", |_| REFRESH_SKEW_MS, |old| async move { refresh(&http, &ep, &old).await }).await.unwrap();
+        let ts = tm
+            .valid(
+                "p",
+                |_| REFRESH_SKEW_MS,
+                |old| async move { refresh(&http, &ep, &old).await },
+            )
+            .await
+            .unwrap();
         assert_eq!(ts.access, "a2");
         let stored = tm.load("p").unwrap().unwrap();
         assert_eq!(stored.refresh.as_deref(), Some("r2"));
         assert_eq!(stored.client_id.as_deref(), Some("oaiapp_1"));
         assert_eq!(stored.account.as_deref(), Some("me@x.com"));
         // second call uses the stored token without another refresh (expect(1) above)
-        let again = tm.valid("p", |_| REFRESH_SKEW_MS, |_| async { Err(AppError::Other("no".into())) }).await.unwrap();
+        let again = tm
+            .valid(
+                "p",
+                |_| REFRESH_SKEW_MS,
+                |_| async { Err(AppError::Other("no".into())) },
+            )
+            .await
+            .unwrap();
         assert_eq!(again.access, "a2");
     }
 }

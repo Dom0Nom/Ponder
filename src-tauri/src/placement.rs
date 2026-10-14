@@ -84,19 +84,29 @@ fn json(r: &Row, col: &str) -> rusqlite::Result<Option<Value>> {
 }
 
 pub fn get_curriculum(c: &Connection, space_id: &str) -> AppResult<Option<SpaceCurriculum>> {
-    Ok(c.query_row("SELECT * FROM space_curricula WHERE space_id=?1", [space_id], |r| {
-        Ok(SpaceCurriculum {
-            space_id: r.get("space_id")?,
-            curriculum_id: r.get("curriculum_id")?,
-            title: r.get("title")?,
-            topics: json(r, "topics")?.unwrap_or(Value::Array(vec![])),
-            updated_at: r.get("updated_at")?,
-        })
-    })
+    Ok(c.query_row(
+        "SELECT * FROM space_curricula WHERE space_id=?1",
+        [space_id],
+        |r| {
+            Ok(SpaceCurriculum {
+                space_id: r.get("space_id")?,
+                curriculum_id: r.get("curriculum_id")?,
+                title: r.get("title")?,
+                topics: json(r, "topics")?.unwrap_or(Value::Array(vec![])),
+                updated_at: r.get("updated_at")?,
+            })
+        },
+    )
     .optional()?)
 }
 
-pub fn set_curriculum(c: &Connection, space_id: &str, curriculum_id: &str, title: &str, topics: &Value) -> AppResult<SpaceCurriculum> {
+pub fn set_curriculum(
+    c: &Connection,
+    space_id: &str,
+    curriculum_id: &str,
+    title: &str,
+    topics: &Value,
+) -> AppResult<SpaceCurriculum> {
     if !topics.is_array() || topics.as_array().map(|a| a.is_empty()).unwrap_or(true) {
         return Err(invalid("A curriculum needs at least one topic"));
     }
@@ -108,8 +118,14 @@ pub fn set_curriculum(c: &Connection, space_id: &str, curriculum_id: &str, title
     };
     if changed {
         c.execute("DELETE FROM topic_levels WHERE space_id=?1", [space_id])?;
-        c.execute("DELETE FROM abilities WHERE space_id=?1 AND topic_key NOT LIKE 'free:%'", [space_id])?;
-        c.execute("DELETE FROM plan_tasks WHERE space_id=?1 AND topic_id IS NOT NULL AND done_at IS NULL", [space_id])?;
+        c.execute(
+            "DELETE FROM abilities WHERE space_id=?1 AND topic_key NOT LIKE 'free:%'",
+            [space_id],
+        )?;
+        c.execute(
+            "DELETE FROM plan_tasks WHERE space_id=?1 AND topic_id IS NOT NULL AND done_at IS NULL",
+            [space_id],
+        )?;
     }
     c.execute(
         "INSERT INTO space_curricula (space_id, curriculum_id, title, topics, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)
@@ -127,14 +143,27 @@ pub fn clear_curriculum(c: &Connection, space_id: &str) -> AppResult<()> {
 }
 
 pub fn list_levels(c: &Connection, space_id: &str) -> AppResult<Vec<TopicLevel>> {
-    let mut st = c.prepare("SELECT topic_id, level, evidence, updated_at FROM topic_levels WHERE space_id=?1")?;
+    let mut st = c.prepare(
+        "SELECT topic_id, level, evidence, updated_at FROM topic_levels WHERE space_id=?1",
+    )?;
     let rows = st.query_map([space_id], |r| {
-        Ok(TopicLevel { topic_id: r.get(0)?, level: r.get(1)?, evidence: r.get(2)?, updated_at: r.get(3)? })
+        Ok(TopicLevel {
+            topic_id: r.get(0)?,
+            level: r.get(1)?,
+            evidence: r.get(2)?,
+            updated_at: r.get(3)?,
+        })
     })?;
     Ok(rows.collect::<Result<_, _>>()?)
 }
 
-pub fn set_level(c: &Connection, space_id: &str, topic_id: &str, level: &str, evidence: Option<&str>) -> AppResult<()> {
+pub fn set_level(
+    c: &Connection,
+    space_id: &str,
+    topic_id: &str,
+    level: &str,
+    evidence: Option<&str>,
+) -> AppResult<()> {
     if !LEVELS.contains(&level) {
         return Err(invalid(format!("Unknown level: {level}")));
     }
@@ -180,10 +209,19 @@ pub fn create_assessment(
         "INSERT INTO assessments (id, space_id, kind, topic_id, title, questions, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         params![id, space_id, kind, topic_id, title, questions.to_string(), now_ms()],
     )?;
-    Ok(c.query_row("SELECT * FROM assessments WHERE id=?1", [&id], assessment_from_row)?)
+    Ok(c.query_row(
+        "SELECT * FROM assessments WHERE id=?1",
+        [&id],
+        assessment_from_row,
+    )?)
 }
 
-pub fn complete_assessment(c: &Connection, id: &str, answers: &Value, score: f64) -> AppResult<Assessment> {
+pub fn complete_assessment(
+    c: &Connection,
+    id: &str,
+    answers: &Value,
+    score: f64,
+) -> AppResult<Assessment> {
     if !(0.0..=1.0).contains(&score) {
         return Err(invalid("Score must be between 0 and 1"));
     }
@@ -194,11 +232,16 @@ pub fn complete_assessment(c: &Connection, id: &str, answers: &Value, score: f64
     if n == 0 {
         return Err(AppError::NotFound("assessment".into()));
     }
-    Ok(c.query_row("SELECT * FROM assessments WHERE id=?1", [id], assessment_from_row)?)
+    Ok(c.query_row(
+        "SELECT * FROM assessments WHERE id=?1",
+        [id],
+        assessment_from_row,
+    )?)
 }
 
 pub fn list_assessments(c: &Connection, space_id: &str) -> AppResult<Vec<Assessment>> {
-    let mut st = c.prepare("SELECT * FROM assessments WHERE space_id=?1 ORDER BY created_at DESC")?;
+    let mut st =
+        c.prepare("SELECT * FROM assessments WHERE space_id=?1 ORDER BY created_at DESC")?;
     let rows = st.query_map([space_id], assessment_from_row)?;
     Ok(rows.collect::<Result<_, _>>()?)
 }
@@ -224,17 +267,32 @@ fn lessons(c: &Connection, course_id: &str) -> AppResult<Vec<Lesson>> {
 pub fn list_courses(c: &Connection, space_id: &str) -> AppResult<Vec<Course>> {
     let mut st = c.prepare("SELECT id, space_id, source_id, title, created_at FROM courses WHERE space_id=?1 ORDER BY created_at")?;
     let rows: Vec<(String, String, String, String, i64)> = st
-        .query_map([space_id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)))?
+        .query_map([space_id], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
+        })?
         .collect::<Result<_, _>>()?;
     rows.into_iter()
         .map(|(id, space_id, source_id, title, created_at)| {
             let lessons = lessons(c, &id)?;
-            Ok(Course { id, space_id, source_id, title, created_at, lessons })
+            Ok(Course {
+                id,
+                space_id,
+                source_id,
+                title,
+                created_at,
+                lessons,
+            })
         })
         .collect()
 }
 
-pub fn create_course(c: &Connection, space_id: &str, source_id: &str, title: &str, items: &[NewLesson]) -> AppResult<Course> {
+pub fn create_course(
+    c: &Connection,
+    space_id: &str,
+    source_id: &str,
+    title: &str,
+    items: &[NewLesson],
+) -> AppResult<Course> {
     if items.is_empty() {
         return Err(invalid("No chapters found in this source"));
     }
@@ -254,10 +312,18 @@ pub fn create_course(c: &Connection, space_id: &str, source_id: &str, title: &st
         )?;
     }
     tx.commit()?;
-    list_courses(c, space_id)?.into_iter().find(|x| x.id == id).ok_or_else(|| AppError::NotFound("course".into()))
+    list_courses(c, space_id)?
+        .into_iter()
+        .find(|x| x.id == id)
+        .ok_or_else(|| AppError::NotFound("course".into()))
 }
 
-pub fn set_lesson_status(c: &Connection, id: &str, status: &str, score: Option<f64>) -> AppResult<()> {
+pub fn set_lesson_status(
+    c: &Connection,
+    id: &str,
+    status: &str,
+    score: Option<f64>,
+) -> AppResult<()> {
     if !["todo", "doing", "done"].contains(&status) {
         return Err(invalid(format!("Unknown lesson status: {status}")));
     }
@@ -280,7 +346,10 @@ pub fn delete_course(c: &Connection, id: &str) -> AppResult<()> {
 // ---------- commands ----------
 
 #[tauri::command]
-pub async fn curriculum_get(state: State<'_, AppState>, space_id: String) -> AppResult<Option<SpaceCurriculum>> {
+pub async fn curriculum_get(
+    state: State<'_, AppState>,
+    space_id: String,
+) -> AppResult<Option<SpaceCurriculum>> {
     get_curriculum(&state.db.conn()?, &space_id)
 }
 
@@ -292,7 +361,13 @@ pub async fn curriculum_set(
     title: String,
     topics: Value,
 ) -> AppResult<SpaceCurriculum> {
-    set_curriculum(&state.db.conn()?, &space_id, &curriculum_id, &title, &topics)
+    set_curriculum(
+        &state.db.conn()?,
+        &space_id,
+        &curriculum_id,
+        &title,
+        &topics,
+    )
 }
 
 #[tauri::command]
@@ -301,7 +376,10 @@ pub async fn curriculum_clear(state: State<'_, AppState>, space_id: String) -> A
 }
 
 #[tauri::command]
-pub async fn topic_levels(state: State<'_, AppState>, space_id: String) -> AppResult<Vec<TopicLevel>> {
+pub async fn topic_levels(
+    state: State<'_, AppState>,
+    space_id: String,
+) -> AppResult<Vec<TopicLevel>> {
     list_levels(&state.db.conn()?, &space_id)
 }
 
@@ -313,7 +391,13 @@ pub async fn topic_level_set(
     level: String,
     evidence: Option<String>,
 ) -> AppResult<()> {
-    set_level(&state.db.conn()?, &space_id, &topic_id, &level, evidence.as_deref())
+    set_level(
+        &state.db.conn()?,
+        &space_id,
+        &topic_id,
+        &level,
+        evidence.as_deref(),
+    )
 }
 
 #[tauri::command]
@@ -325,16 +409,31 @@ pub async fn assessment_create(
     title: String,
     questions: Value,
 ) -> AppResult<Assessment> {
-    create_assessment(&state.db.conn()?, &space_id, &kind, topic_id.as_deref(), &title, &questions)
+    create_assessment(
+        &state.db.conn()?,
+        &space_id,
+        &kind,
+        topic_id.as_deref(),
+        &title,
+        &questions,
+    )
 }
 
 #[tauri::command]
-pub async fn assessment_complete(state: State<'_, AppState>, id: String, answers: Value, score: f64) -> AppResult<Assessment> {
+pub async fn assessment_complete(
+    state: State<'_, AppState>,
+    id: String,
+    answers: Value,
+    score: f64,
+) -> AppResult<Assessment> {
     complete_assessment(&state.db.conn()?, &id, &answers, score)
 }
 
 #[tauri::command]
-pub async fn assessments_list(state: State<'_, AppState>, space_id: String) -> AppResult<Vec<Assessment>> {
+pub async fn assessments_list(
+    state: State<'_, AppState>,
+    space_id: String,
+) -> AppResult<Vec<Assessment>> {
     list_assessments(&state.db.conn()?, &space_id)
 }
 
@@ -360,7 +459,12 @@ pub async fn course_delete(state: State<'_, AppState>, id: String) -> AppResult<
 }
 
 #[tauri::command]
-pub async fn lesson_set_status(state: State<'_, AppState>, id: String, status: String, score: Option<f64>) -> AppResult<()> {
+pub async fn lesson_set_status(
+    state: State<'_, AppState>,
+    id: String,
+    status: String,
+    score: Option<f64>,
+) -> AppResult<()> {
     set_lesson_status(&state.db.conn()?, &id, &status, score)
 }
 
@@ -374,10 +478,24 @@ mod tests {
     fn placement_data_roundtrip() {
         let (db, _d) = test_db();
         let c = db.conn().unwrap();
-        let sp = models::create_space(&c, models::SpacePatch { name: Some("GED".into()), ..Default::default() }).unwrap();
+        let sp = models::create_space(
+            &c,
+            models::SpacePatch {
+                name: Some("GED".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
         assert!(get_curriculum(&c, &sp.id).unwrap().is_none());
         assert!(set_curriculum(&c, &sp.id, "ged", "GED", &json!([])).is_err());
-        let cur = set_curriculum(&c, &sp.id, "ged", "GED", &json!([{"id": "math.algebra", "title": "Algebra"}])).unwrap();
+        let cur = set_curriculum(
+            &c,
+            &sp.id,
+            "ged",
+            "GED",
+            &json!([{"id": "math.algebra", "title": "Algebra"}]),
+        )
+        .unwrap();
         assert_eq!(cur.curriculum_id, "ged");
 
         set_level(&c, &sp.id, "math.algebra", "weak", Some("1/3 correct")).unwrap();
@@ -385,7 +503,15 @@ mod tests {
         assert!(set_level(&c, &sp.id, "x", "genius", None).is_err());
         assert_eq!(list_levels(&c, &sp.id).unwrap()[0].level, "ok");
 
-        let a = create_assessment(&c, &sp.id, "placement", None, "Placement", &json!([{"q": "2+2?"}])).unwrap();
+        let a = create_assessment(
+            &c,
+            &sp.id,
+            "placement",
+            None,
+            "Placement",
+            &json!([{"q": "2+2?"}]),
+        )
+        .unwrap();
         assert!(complete_assessment(&c, &a.id, &json!([1]), 1.5).is_err());
         let done = complete_assessment(&c, &a.id, &json!([1]), 0.5).unwrap();
         assert_eq!(done.score, Some(0.5));
@@ -399,8 +525,16 @@ mod tests {
             &src.id,
             "Book",
             &[
-                NewLesson { title: "Ch 1".into(), start_offset: 0, end_offset: 100 },
-                NewLesson { title: "Ch 2".into(), start_offset: 100, end_offset: 250 },
+                NewLesson {
+                    title: "Ch 1".into(),
+                    start_offset: 0,
+                    end_offset: 100,
+                },
+                NewLesson {
+                    title: "Ch 2".into(),
+                    start_offset: 100,
+                    end_offset: 250,
+                },
             ],
         )
         .unwrap();
@@ -418,8 +552,16 @@ mod tests {
     fn replacing_curriculum_clears_topic_state() {
         let (db, _d) = test_db();
         let c = db.conn().unwrap();
-        let sp = models::create_space(&c, models::SpacePatch { name: Some("X".into()), ..Default::default() }).unwrap();
-        let first = json!([{"id": "custom.1", "title": "Old"}, {"id": "custom.2", "title": "Old 2"}]);
+        let sp = models::create_space(
+            &c,
+            models::SpacePatch {
+                name: Some("X".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let first =
+            json!([{"id": "custom.1", "title": "Old"}, {"id": "custom.2", "title": "Old 2"}]);
         set_curriculum(&c, &sp.id, "custom", "A", &first).unwrap();
         set_level(&c, &sp.id, "custom.1", "strong", None).unwrap();
         c.execute(
@@ -436,11 +578,30 @@ mod tests {
         set_curriculum(&c, &sp.id, "custom", "A", &first).unwrap();
         assert_eq!(list_levels(&c, &sp.id).unwrap().len(), 1);
 
-        set_curriculum(&c, &sp.id, "custom", "B", &json!([{"id": "custom.1", "title": "New"}, {"id": "custom.2", "title": "New 2"}])).unwrap();
+        set_curriculum(
+            &c,
+            &sp.id,
+            "custom",
+            "B",
+            &json!([{"id": "custom.1", "title": "New"}, {"id": "custom.2", "title": "New 2"}]),
+        )
+        .unwrap();
         assert!(list_levels(&c, &sp.id).unwrap().is_empty());
-        let keys: Vec<String> = c.prepare("SELECT topic_key FROM abilities WHERE space_id=?1").unwrap().query_map([&sp.id], |r| r.get(0)).unwrap().map(|r| r.unwrap()).collect();
+        let keys: Vec<String> = c
+            .prepare("SELECT topic_key FROM abilities WHERE space_id=?1")
+            .unwrap()
+            .query_map([&sp.id], |r| r.get(0))
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
         assert_eq!(keys, vec!["free:x".to_string()]);
-        let n: i64 = c.query_row("SELECT count(*) FROM plan_tasks WHERE space_id=?1", [&sp.id], |r| r.get(0)).unwrap();
+        let n: i64 = c
+            .query_row(
+                "SELECT count(*) FROM plan_tasks WHERE space_id=?1",
+                [&sp.id],
+                |r| r.get(0),
+            )
+            .unwrap();
         assert_eq!(n, 0);
     }
 }

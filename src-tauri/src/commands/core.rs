@@ -23,7 +23,11 @@ pub async fn create_space(state: State<'_, AppState>, input: SpacePatch) -> AppR
 }
 
 #[tauri::command]
-pub async fn update_space(state: State<'_, AppState>, id: String, patch: SpacePatch) -> AppResult<Space> {
+pub async fn update_space(
+    state: State<'_, AppState>,
+    id: String,
+    patch: SpacePatch,
+) -> AppResult<Space> {
     m::update_space(&state.db.conn()?, &id, patch)
 }
 
@@ -48,7 +52,11 @@ pub async fn get_source(state: State<'_, AppState>, id: String) -> AppResult<Sou
 }
 
 #[tauri::command]
-pub async fn update_source(state: State<'_, AppState>, id: String, patch: SourcePatch) -> AppResult<Source> {
+pub async fn update_source(
+    state: State<'_, AppState>,
+    id: String,
+    patch: SourcePatch,
+) -> AppResult<Source> {
     m::update_source(&state.db.conn()?, &id, patch)
 }
 
@@ -56,11 +64,16 @@ pub async fn update_source(state: State<'_, AppState>, id: String, patch: Source
 pub async fn delete_source(state: State<'_, AppState>, id: String) -> AppResult<()> {
     let c = state.db.conn()?;
     let local: Option<String> = c
-        .query_row("SELECT local_path FROM sources WHERE id=?1", [&id], |r| r.get(0))
+        .query_row("SELECT local_path FROM sources WHERE id=?1", [&id], |r| {
+            r.get(0)
+        })
         .optional()?
         .flatten();
     m::delete_source(&c, &id)?;
-    if let Some(dir) = local.as_deref().and_then(|p| std::path::Path::new(p).parent()) {
+    if let Some(dir) = local
+        .as_deref()
+        .and_then(|p| std::path::Path::new(p).parent())
+    {
         // cloud downloads live in <data>/imports/<uuid>/; never touch anything else
         if dir.parent() == Some(state.data_dir.join("imports").as_path()) {
             let _ = std::fs::remove_dir_all(dir);
@@ -76,10 +89,14 @@ pub async fn get_source_text(state: State<'_, AppState>, id: String) -> AppResul
 
 /// Where the original PDF of a source is on disk: the kept copy, else the imported file if it's still there.
 pub fn original_pdf(c: &rusqlite::Connection, id: &str) -> AppResult<std::path::PathBuf> {
-    let (kind, origin, local): (String, Option<String>, Option<String>) =
-        c.query_row("SELECT kind, origin, local_path FROM sources WHERE id=?1", [id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
-            .optional()?
-            .ok_or_else(|| crate::error::AppError::NotFound("Source".into()))?;
+    let (kind, origin, local): (String, Option<String>, Option<String>) = c
+        .query_row(
+            "SELECT kind, origin, local_path FROM sources WHERE id=?1",
+            [id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .optional()?
+        .ok_or_else(|| crate::error::AppError::NotFound("Source".into()))?;
     if kind != "pdf" {
         return Err(crate::error::invalid("Only PDFs have a page view."));
     }
@@ -87,7 +104,11 @@ pub fn original_pdf(c: &rusqlite::Connection, id: &str) -> AppResult<std::path::
         .into_iter()
         .flatten()
         .map(std::path::PathBuf::from)
-        .find(|p| p.is_absolute() && p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")) && p.is_file())
+        .find(|p| {
+            p.is_absolute()
+                && p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf"))
+                && p.is_file()
+        })
         .ok_or_else(|| crate::error::AppError::NotFound("The original PDF".into()))
 }
 
@@ -104,12 +125,20 @@ pub async fn list_threads(state: State<'_, AppState>, space_id: String) -> AppRe
 }
 
 #[tauri::command]
-pub async fn create_thread(state: State<'_, AppState>, space_id: String, title: Option<String>) -> AppResult<Thread> {
+pub async fn create_thread(
+    state: State<'_, AppState>,
+    space_id: String,
+    title: Option<String>,
+) -> AppResult<Thread> {
     m::create_thread(&state.db.conn()?, &space_id, title)
 }
 
 #[tauri::command]
-pub async fn rename_thread(state: State<'_, AppState>, id: String, title: String) -> AppResult<Thread> {
+pub async fn rename_thread(
+    state: State<'_, AppState>,
+    id: String,
+    title: String,
+) -> AppResult<Thread> {
     m::rename_thread(&state.db.conn()?, &id, &title)
 }
 
@@ -124,7 +153,10 @@ pub async fn delete_thread(state: State<'_, AppState>, id: String) -> AppResult<
 }
 
 #[tauri::command]
-pub async fn list_messages(state: State<'_, AppState>, thread_id: String) -> AppResult<Vec<Message>> {
+pub async fn list_messages(
+    state: State<'_, AppState>,
+    thread_id: String,
+) -> AppResult<Vec<Message>> {
     m::list_messages(&state.db.conn()?, &thread_id)
 }
 
@@ -134,7 +166,11 @@ pub async fn add_message(state: State<'_, AppState>, message: NewMessage) -> App
 }
 
 #[tauri::command]
-pub async fn update_message(state: State<'_, AppState>, id: String, patch: MessagePatch) -> AppResult<Message> {
+pub async fn update_message(
+    state: State<'_, AppState>,
+    id: String,
+    patch: MessagePatch,
+) -> AppResult<Message> {
     m::update_message(&state.db.conn()?, &id, patch)
 }
 
@@ -144,7 +180,10 @@ pub async fn delete_message(state: State<'_, AppState>, id: String) -> AppResult
 }
 
 #[tauri::command]
-pub async fn list_journal(state: State<'_, AppState>, space_id: String) -> AppResult<Vec<JournalEntry>> {
+pub async fn list_journal(
+    state: State<'_, AppState>,
+    space_id: String,
+) -> AppResult<Vec<JournalEntry>> {
     m::list_journal(&state.db.conn()?, &space_id)
 }
 
@@ -167,7 +206,9 @@ pub async fn get_settings(state: State<'_, AppState>) -> AppResult<serde_json::M
 #[tauri::command]
 pub async fn set_setting(state: State<'_, AppState>, key: String, value: Value) -> AppResult<()> {
     if key.starts_with("backup.") {
-        return Err(crate::error::invalid("Backup settings change through the Backups section."));
+        return Err(crate::error::invalid(
+            "Backup settings change through the Backups section.",
+        ));
     }
     m::set_setting(&state.db.conn()?, &key, &value)
 }
@@ -188,7 +229,11 @@ pub async fn add_memory(
 }
 
 #[tauri::command]
-pub async fn update_memory(state: State<'_, AppState>, id: String, text: String) -> AppResult<MemoryItem> {
+pub async fn update_memory(
+    state: State<'_, AppState>,
+    id: String,
+    text: String,
+) -> AppResult<MemoryItem> {
     m::update_memory(&state.db.conn()?, &id, &text)
 }
 
@@ -206,7 +251,14 @@ mod tests {
     fn finds_the_original_pdf() {
         let (db, dir) = test_db();
         let c = db.conn().unwrap();
-        let sp = m::create_space(&c, SpacePatch { name: Some("S".into()), ..Default::default() }).unwrap();
+        let sp = m::create_space(
+            &c,
+            SpacePatch {
+                name: Some("S".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
         let file = dir.path().join("a.pdf");
         std::fs::write(&file, b"%PDF-1.4").unwrap();
         let pdf = m::insert_source(&c, &sp.id, "A", "pdf", Some(file.to_str().unwrap())).unwrap();

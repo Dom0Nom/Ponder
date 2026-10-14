@@ -1,4 +1,7 @@
-use super::{dropbox, CloudImportResult, CloudItem, CloudPage, CloudServices, CloudStatus, Service, MAX_DOWNLOAD_BYTES};
+use super::{
+    dropbox, CloudImportResult, CloudItem, CloudPage, CloudServices, CloudStatus, Service,
+    MAX_DOWNLOAD_BYTES,
+};
 use crate::error::{AppError, AppResult};
 use crate::ingest::Ingest;
 use crate::oauth::loopback::Loopback;
@@ -28,7 +31,9 @@ fn emit(app: &AppHandle, cloud: &CloudServices, svc: Service) -> AppResult<Cloud
 #[tauri::command]
 pub async fn cloud_status(cloud: State<'_, Cloud>, service: Service) -> AppResult<CloudStatus> {
     let c = cloud.inner().clone();
-    tokio::task::spawn_blocking(move || c.status(service)).await.map_err(|e| AppError::Other(e.to_string()))?
+    tokio::task::spawn_blocking(move || c.status(service))
+        .await
+        .map_err(|e| AppError::Other(e.to_string()))?
 }
 
 #[tauri::command]
@@ -49,7 +54,11 @@ pub async fn cloud_set_client(
 }
 
 #[tauri::command]
-pub async fn cloud_connect(app: AppHandle, cloud: State<'_, Cloud>, service: Service) -> AppResult<CloudAuthStart> {
+pub async fn cloud_connect(
+    app: AppHandle,
+    cloud: State<'_, Cloud>,
+    service: Service,
+) -> AppResult<CloudAuthStart> {
     let cloud = cloud.inner().clone();
     let client = cloud.require_client(service)?;
     let lb = match service {
@@ -67,14 +76,18 @@ pub async fn cloud_connect(app: AppHandle, cloud: State<'_, Cloud>, service: Ser
     let task = tokio::spawn(async move {
         let result = async {
             let cb = lb.wait(&req.state, SIGN_IN_TIMEOUT).await?;
-            task_cloud.finish_sign_in(service, &client, &req, &cb.code).await
+            task_cloud
+                .finish_sign_in(service, &client, &req, &cb.code)
+                .await
         }
         .await;
         match result {
             Ok(_) => task_cloud.oauth.clear_transient(pid),
             Err(e) => {
                 log::warn!("{} sign-in failed: {e}", service.label());
-                task_cloud.oauth.set_transient(task_cloud.oauth.error_status(pid, e.to_string()));
+                task_cloud
+                    .oauth
+                    .set_transient(task_cloud.oauth.error_status(pid, e.to_string()));
             }
         }
         let _ = emit(&task_app, &task_cloud, service);
@@ -88,7 +101,11 @@ pub async fn cloud_connect(app: AppHandle, cloud: State<'_, Cloud>, service: Ser
 }
 
 #[tauri::command]
-pub async fn cloud_disconnect(app: AppHandle, cloud: State<'_, Cloud>, service: Service) -> AppResult<CloudStatus> {
+pub async fn cloud_disconnect(
+    app: AppHandle,
+    cloud: State<'_, Cloud>,
+    service: Service,
+) -> AppResult<CloudStatus> {
     let cloud = cloud.inner().clone();
     cloud.disconnect(service).await?;
     emit(&app, &cloud, service)
@@ -104,9 +121,26 @@ pub async fn cloud_list(
     page_token: Option<String>,
 ) -> AppResult<CloudPage> {
     let cloud = cloud.inner().clone();
-    let before = cloud.oauth.status(service.account()).map(|s| s.state).unwrap_or("signedOut");
-    let result = cloud.list(service, folder.as_deref(), query.as_deref(), page_token.as_deref()).await;
-    if cloud.oauth.status(service.account()).map(|s| s.state).unwrap_or("signedOut") != before {
+    let before = cloud
+        .oauth
+        .status(service.account())
+        .map(|s| s.state)
+        .unwrap_or("signedOut");
+    let result = cloud
+        .list(
+            service,
+            folder.as_deref(),
+            query.as_deref(),
+            page_token.as_deref(),
+        )
+        .await;
+    if cloud
+        .oauth
+        .status(service.account())
+        .map(|s| s.state)
+        .unwrap_or("signedOut")
+        != before
+    {
         let _ = emit(&app, &cloud, service);
     }
     result
@@ -125,7 +159,18 @@ pub async fn cloud_import(
     let ingest = ingest.inner().clone();
     let imports = state.data_dir.join("imports");
     // a separate task keeps the downloads off the IPC handler
-    tokio::spawn(async move { cloud.import(&ingest, service, &space_id, &items, &imports, MAX_DOWNLOAD_BYTES).await })
-        .await
-        .map_err(|e| AppError::Other(e.to_string()))
+    tokio::spawn(async move {
+        cloud
+            .import(
+                &ingest,
+                service,
+                &space_id,
+                &items,
+                &imports,
+                MAX_DOWNLOAD_BYTES,
+            )
+            .await
+    })
+    .await
+    .map_err(|e| AppError::Other(e.to_string()))
 }

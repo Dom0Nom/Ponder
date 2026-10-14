@@ -51,19 +51,29 @@ impl OAuth {
     }
 
     /// A valid access token for an OAuth provider, refreshed (and persisted) when needed.
-    pub async fn access_token(&self, provider_type: &str, provider_id: &str) -> AppResult<TokenSet> {
+    pub async fn access_token(
+        &self,
+        provider_type: &str,
+        provider_id: &str,
+    ) -> AppResult<TokenSet> {
         let http = &self.http;
         let result = match provider_type {
             "chatgpt-oauth" => {
                 let ep = &self.chatgpt;
                 self.tokens
-                    .valid(provider_id, |_| chatgpt::REFRESH_SKEW_MS, |old| async move { chatgpt::refresh(http, ep, &old).await })
+                    .valid(
+                        provider_id,
+                        |_| chatgpt::REFRESH_SKEW_MS,
+                        |old| async move { chatgpt::refresh(http, ep, &old).await },
+                    )
                     .await
             }
             "xai-oauth" => {
                 let ep = &self.xai;
                 self.tokens
-                    .valid(provider_id, xai::refresh_skew_ms, |old| async move { xai::refresh(http, ep, &old).await })
+                    .valid(provider_id, xai::refresh_skew_ms, |old| async move {
+                        xai::refresh(http, ep, &old).await
+                    })
                     .await
             }
             other => return Err(invalid(format!("{other} isn't an OAuth provider"))),
@@ -92,20 +102,41 @@ impl OAuth {
                 error: None,
                 expires_at: Some(ts.expires_at),
             },
-            None => OAuthStatus { provider_id: provider_id.into(), state: "signedOut", account: None, error: None, expires_at: None },
+            None => OAuthStatus {
+                provider_id: provider_id.into(),
+                state: "signedOut",
+                account: None,
+                error: None,
+                expires_at: None,
+            },
         })
     }
 
     pub fn pending_status(&self, provider_id: &str) -> OAuthStatus {
-        OAuthStatus { provider_id: provider_id.into(), state: "pending", account: None, error: None, expires_at: None }
+        OAuthStatus {
+            provider_id: provider_id.into(),
+            state: "pending",
+            account: None,
+            error: None,
+            expires_at: None,
+        }
     }
 
     pub fn error_status(&self, provider_id: &str, msg: String) -> OAuthStatus {
-        OAuthStatus { provider_id: provider_id.into(), state: "error", account: None, error: Some(msg), expires_at: None }
+        OAuthStatus {
+            provider_id: provider_id.into(),
+            state: "error",
+            account: None,
+            error: Some(msg),
+            expires_at: None,
+        }
     }
 
     pub fn set_transient(&self, s: OAuthStatus) {
-        self.transient.lock().unwrap().insert(s.provider_id.clone(), s);
+        self.transient
+            .lock()
+            .unwrap()
+            .insert(s.provider_id.clone(), s);
     }
 
     pub fn clear_transient(&self, provider_id: &str) {
@@ -114,7 +145,12 @@ impl OAuth {
 
     /// Registers a running sign-in flow, cancelling any earlier one for the same provider.
     pub fn track_flow(&self, provider_id: &str, handle: tokio::task::AbortHandle) {
-        if let Some(old) = self.flows.lock().unwrap().insert(provider_id.into(), handle) {
+        if let Some(old) = self
+            .flows
+            .lock()
+            .unwrap()
+            .insert(provider_id.into(), handle)
+        {
             old.abort();
         }
     }

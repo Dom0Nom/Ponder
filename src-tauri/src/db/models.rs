@@ -87,9 +87,13 @@ pub fn list_spaces(c: &Connection) -> AppResult<Vec<Space>> {
 }
 
 pub fn get_space(c: &Connection, id: &str) -> AppResult<Space> {
-    c.query_row(&format!("{SPACE_SELECT} WHERE s.id = ?1"), [id], space_from_row)
-        .optional()?
-        .ok_or_else(|| AppError::NotFound("space".into()))
+    c.query_row(
+        &format!("{SPACE_SELECT} WHERE s.id = ?1"),
+        [id],
+        space_from_row,
+    )
+    .optional()?
+    .ok_or_else(|| AppError::NotFound("space".into()))
 }
 
 pub fn create_space(c: &Connection, p: SpacePatch) -> AppResult<Space> {
@@ -148,7 +152,10 @@ pub fn update_space(c: &Connection, id: &str, p: SpacePatch) -> AppResult<Space>
 }
 
 pub fn touch_space(c: &Connection, id: &str) -> AppResult<()> {
-    c.execute("UPDATE spaces SET last_opened_at=?2 WHERE id=?1", params![id, now_ms()])?;
+    c.execute(
+        "UPDATE spaces SET last_opened_at=?2 WHERE id=?1",
+        params![id, now_ms()],
+    )?;
     Ok(())
 }
 
@@ -280,9 +287,16 @@ pub struct SourceText {
 }
 
 pub fn get_source_text(c: &Connection, id: &str) -> AppResult<SourceText> {
-    c.query_row("SELECT text, pages FROM source_texts WHERE source_id=?1", [id], |r| {
-        Ok(SourceText { text: r.get(0)?, pages: json_col(r, "pages")? })
-    })
+    c.query_row(
+        "SELECT text, pages FROM source_texts WHERE source_id=?1",
+        [id],
+        |r| {
+            Ok(SourceText {
+                text: r.get(0)?,
+                pages: json_col(r, "pages")?,
+            })
+        },
+    )
     .optional()?
     .ok_or_else(|| AppError::NotFound("source text".into()))
 }
@@ -312,7 +326,8 @@ fn thread_from_row(r: &Row) -> rusqlite::Result<Thread> {
 }
 
 pub fn list_threads(c: &Connection, space_id: &str) -> AppResult<Vec<Thread>> {
-    let mut st = c.prepare("SELECT * FROM threads WHERE space_id=?1 ORDER BY pinned DESC, updated_at DESC")?;
+    let mut st =
+        c.prepare("SELECT * FROM threads WHERE space_id=?1 ORDER BY pinned DESC, updated_at DESC")?;
     let rows = st.query_map([space_id], thread_from_row)?;
     Ok(rows.collect::<Result<_, _>>()?)
 }
@@ -338,12 +353,18 @@ pub fn rename_thread(c: &Connection, id: &str, title: &str) -> AppResult<Thread>
     if t.is_empty() {
         return Err(invalid("Title can't be empty"));
     }
-    c.execute("UPDATE threads SET title=?2, updated_at=?3 WHERE id=?1", params![id, t, now_ms()])?;
+    c.execute(
+        "UPDATE threads SET title=?2, updated_at=?3 WHERE id=?1",
+        params![id, t, now_ms()],
+    )?;
     get_thread(c, id)
 }
 
 pub fn set_thread_pinned(c: &Connection, id: &str, pinned: bool) -> AppResult<Thread> {
-    c.execute("UPDATE threads SET pinned=?2 WHERE id=?1", params![id, pinned as i64])?;
+    c.execute(
+        "UPDATE threads SET pinned=?2 WHERE id=?1",
+        params![id, pinned as i64],
+    )?;
     get_thread(c, id)
 }
 
@@ -442,7 +463,10 @@ pub fn add_message(c: &Connection, m: NewMessage) -> AppResult<Message> {
             now
         ],
     )?;
-    c.execute("UPDATE threads SET updated_at=?2 WHERE id=?1", params![m.thread_id, now])?;
+    c.execute(
+        "UPDATE threads SET updated_at=?2 WHERE id=?1",
+        params![m.thread_id, now],
+    )?;
     get_message(c, &id)
 }
 
@@ -617,7 +641,12 @@ pub fn list_memory(c: &Connection) -> AppResult<Vec<MemoryItem>> {
     Ok(rows.collect::<Result<_, _>>()?)
 }
 
-pub fn add_memory(c: &Connection, text: &str, origin: &str, space_id: Option<&str>) -> AppResult<MemoryItem> {
+pub fn add_memory(
+    c: &Connection,
+    text: &str,
+    origin: &str,
+    space_id: Option<&str>,
+) -> AppResult<MemoryItem> {
     let text = text.trim();
     if text.is_empty() {
         return Err(invalid("Memory text can't be empty"));
@@ -629,11 +658,19 @@ pub fn add_memory(c: &Connection, text: &str, origin: &str, space_id: Option<&st
         return Err(invalid(format!("Unknown memory origin: {origin}")));
     }
     let existing: Option<String> = c
-        .query_row("SELECT id FROM learner_memory WHERE lower(text) = lower(?1)", [text], |r| r.get(0))
+        .query_row(
+            "SELECT id FROM learner_memory WHERE lower(text) = lower(?1)",
+            [text],
+            |r| r.get(0),
+        )
         .optional()?;
     if let Some(id) = existing {
         return c
-            .query_row("SELECT * FROM learner_memory WHERE id=?1", [id], memory_from_row)
+            .query_row(
+                "SELECT * FROM learner_memory WHERE id=?1",
+                [id],
+                memory_from_row,
+            )
             .map_err(Into::into);
     }
     let id = new_id();
@@ -642,7 +679,11 @@ pub fn add_memory(c: &Connection, text: &str, origin: &str, space_id: Option<&st
         "INSERT INTO learner_memory (id, text, origin, space_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
         params![id, text, origin, space_id, now],
     )?;
-    Ok(c.query_row("SELECT * FROM learner_memory WHERE id=?1", [id], memory_from_row)?)
+    Ok(c.query_row(
+        "SELECT * FROM learner_memory WHERE id=?1",
+        [id],
+        memory_from_row,
+    )?)
 }
 
 pub fn update_memory(c: &Connection, id: &str, text: &str) -> AppResult<MemoryItem> {
@@ -657,7 +698,11 @@ pub fn update_memory(c: &Connection, id: &str, text: &str) -> AppResult<MemoryIt
     if n == 0 {
         return Err(AppError::NotFound("memory".into()));
     }
-    Ok(c.query_row("SELECT * FROM learner_memory WHERE id=?1", [id], memory_from_row)?)
+    Ok(c.query_row(
+        "SELECT * FROM learner_memory WHERE id=?1",
+        [id],
+        memory_from_row,
+    )?)
 }
 
 pub fn delete_memory(c: &Connection, id: &str) -> AppResult<()> {
@@ -680,7 +725,9 @@ pub fn get_settings(c: &Connection) -> AppResult<serde_json::Map<String, Value>>
 
 pub fn get_setting(c: &Connection, key: &str) -> AppResult<Option<Value>> {
     let v: Option<String> = c
-        .query_row("SELECT value FROM settings WHERE key=?1", [key], |r| r.get(0))
+        .query_row("SELECT value FROM settings WHERE key=?1", [key], |r| {
+            r.get(0)
+        })
         .optional()?;
     Ok(v.and_then(|s| serde_json::from_str(&s).ok()))
 }
@@ -708,7 +755,10 @@ mod tests {
         let c = db.conn().unwrap();
         let s = create_space(
             &c,
-            SpacePatch { name: Some("  GED Math ".into()), ..Default::default() },
+            SpacePatch {
+                name: Some("  GED Math ".into()),
+                ..Default::default()
+            },
         )
         .unwrap();
         assert_eq!(s.name, "GED Math");
@@ -723,13 +773,30 @@ mod tests {
         .unwrap();
         assert_eq!(s2.tutor_style, "socratic");
         assert!(s2.model_override.is_some());
-        let s3 = update_space(&c, &s.id, serde_json::from_value(serde_json::json!({"modelOverride": null})).unwrap()).unwrap();
+        let s3 = update_space(
+            &c,
+            &s.id,
+            serde_json::from_value(serde_json::json!({"modelOverride": null})).unwrap(),
+        )
+        .unwrap();
         assert!(s3.model_override.is_none());
-        assert!(update_space(&c, &s.id, SpacePatch { tutor_style: Some("yelling".into()), ..Default::default() }).is_err());
+        assert!(update_space(
+            &c,
+            &s.id,
+            SpacePatch {
+                tutor_style: Some("yelling".into()),
+                ..Default::default()
+            }
+        )
+        .is_err());
 
         let t = create_thread(&c, &s.id, None).unwrap();
         assert!(!t.pinned);
-        c.execute("UPDATE threads SET updated_at=updated_at-1000 WHERE id=?1", [&t.id]).unwrap();
+        c.execute(
+            "UPDATE threads SET updated_at=updated_at-1000 WHERE id=?1",
+            [&t.id],
+        )
+        .unwrap();
         let t = get_thread(&c, &t.id).unwrap();
         let t_new = create_thread(&c, &s.id, Some("Newer".into())).unwrap();
         assert_eq!(list_threads(&c, &s.id).unwrap()[0].id, t_new.id);
@@ -767,7 +834,15 @@ mod tests {
         .unwrap();
         assert_eq!(practice.role, "practice");
         delete_message(&c, &practice.id).unwrap();
-        let m2 = update_message(&c, &m.id, MessagePatch { content: Some("hello".into()), ..Default::default() }).unwrap();
+        let m2 = update_message(
+            &c,
+            &m.id,
+            MessagePatch {
+                content: Some("hello".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
         assert_eq!(m2.content, "hello");
         let src = insert_source(&c, &s.id, "Doc", "text", None).unwrap();
         assert_eq!(src.status, "processing");
@@ -800,7 +875,10 @@ mod tests {
         let (db, _d) = test_db();
         let c = db.conn().unwrap();
         set_setting(&c, "theme", &serde_json::json!("dark")).unwrap();
-        assert_eq!(get_setting(&c, "theme").unwrap(), Some(serde_json::json!("dark")));
+        assert_eq!(
+            get_setting(&c, "theme").unwrap(),
+            Some(serde_json::json!("dark"))
+        );
         set_setting(&c, "theme", &Value::Null).unwrap();
         assert!(get_settings(&c).unwrap().is_empty());
     }

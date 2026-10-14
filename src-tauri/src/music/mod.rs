@@ -61,7 +61,12 @@ pub struct MusicService {
 
 impl MusicService {
     pub fn new(backend: Arc<dyn MusicBackend>) -> Self {
-        MusicService { backend, tracker: Mutex::new(None), last_error: Mutex::new(None), exec: Mutex::new(()) }
+        MusicService {
+            backend,
+            tracker: Mutex::new(None),
+            last_error: Mutex::new(None),
+            exec: Mutex::new(()),
+        }
     }
 
     fn set_error(&self, app: &AppHandle, err: Option<String>) {
@@ -90,7 +95,9 @@ fn read_prefs(app: &AppHandle) -> Option<MusicPrefs> {
 /// Called after every focus outcome. The first call only records the current state (a restored
 /// session must not start or stop music); later calls act on changes of the desired state.
 pub fn sync(app: &AppHandle, state: Option<&FocusState>) {
-    let Some(svc) = app.try_state::<MusicService>() else { return };
+    let Some(svc) = app.try_state::<MusicService>() else {
+        return;
+    };
     let mut guard = svc.tracker.lock().unwrap_or_else(|e| e.into_inner());
     let Some(prev) = guard.as_ref() else {
         *guard = Some(transition::initial(state));
@@ -102,7 +109,9 @@ pub fn sync(app: &AppHandle, state: Option<&FocusState>) {
         return;
     };
     let prefs = read_prefs(app).filter(|p| p.enabled);
-    let uri = prefs.as_ref().and_then(|p| uri::parse_playlist(&p.playlist).ok());
+    let uri = prefs
+        .as_ref()
+        .and_then(|p| uri::parse_playlist(&p.playlist).ok());
     if uri.is_none() {
         if action != Action::Pause {
             next.started = prev.started.clone();
@@ -136,12 +145,20 @@ pub async fn music_status(svc: State<'_, MusicService>) -> AppResult<MusicStatus
     let mut st = tauri::async_runtime::spawn_blocking(move || backend_status(backend.as_ref()))
         .await
         .map_err(|e| AppError::Other(e.to_string()))?;
-    st.last_error = svc.last_error.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    st.last_error = svc
+        .last_error
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
     Ok(st)
 }
 
 #[tauri::command]
-pub async fn music_test(app: AppHandle, svc: State<'_, MusicService>, playlist: String) -> AppResult<()> {
+pub async fn music_test(
+    app: AppHandle,
+    svc: State<'_, MusicService>,
+    playlist: String,
+) -> AppResult<()> {
     let uri = uri::parse_playlist(&playlist)?;
     let backend = svc.backend.clone();
     let res = tauri::async_runtime::spawn_blocking(move || {
@@ -150,8 +167,8 @@ pub async fn music_test(app: AppHandle, svc: State<'_, MusicService>, playlist: 
         }
         backend.play_playlist(&uri)
     })
-        .await
-        .map_err(|e| AppError::Other(e.to_string()))?;
+    .await
+    .map_err(|e| AppError::Other(e.to_string()))?;
     match &res {
         Ok(()) => svc.set_error(&app, None),
         Err(e) => {

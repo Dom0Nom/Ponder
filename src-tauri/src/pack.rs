@@ -81,7 +81,9 @@ fn dump(c: &Connection, sql: &str, id: &str) -> AppResult<Vec<Row>> {
                 ValueRef::Integer(n) => Value::from(n),
                 ValueRef::Real(f) => Value::from(f),
                 ValueRef::Text(t) => Value::from(String::from_utf8_lossy(t).into_owned()),
-                ValueRef::Blob(_) => return Err(AppError::Other(format!("Column {n} holds binary data."))),
+                ValueRef::Blob(_) => {
+                    return Err(AppError::Other(format!("Column {n} holds binary data.")))
+                }
             };
             m.insert(n.clone(), v);
         }
@@ -95,7 +97,16 @@ fn str_of<'a>(r: &'a Row, k: &str) -> Option<&'a str> {
 }
 
 fn safe_file_name(name: &str) -> String {
-    let s: String = name.chars().map(|c| if c.is_alphanumeric() || " .-_()".contains(c) { c } else { '-' }).collect();
+    let s: String = name
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || " .-_()".contains(c) {
+                c
+            } else {
+                '-'
+            }
+        })
+        .collect();
     let s = s.trim().trim_start_matches('.').to_string();
     if s.is_empty() {
         "file".into()
@@ -107,7 +118,11 @@ fn safe_file_name(name: &str) -> String {
 /// Retrying a source re-reads a local `origin`, so a pack must not bring its own paths.
 fn local_path_like(o: &str) -> bool {
     let b = o.as_bytes();
-    o.starts_with('/') || o.starts_with('~') || o.starts_with('\\') || o.starts_with("file:") || (b.len() > 2 && b[1] == b':' && (b[2] == b'\\' || b[2] == b'/'))
+    o.starts_with('/')
+        || o.starts_with('~')
+        || o.starts_with('\\')
+        || o.starts_with("file:")
+        || (b.len() > 2 && b[1] == b':' && (b[2] == b'\\' || b[2] == b'/'))
 }
 
 fn plain_name(n: &str) -> bool {
@@ -115,14 +130,18 @@ fn plain_name(n: &str) -> bool {
 }
 
 fn put_json(zip: &mut zip::ZipWriter<File>, name: &str, v: &impl Serialize) -> AppResult<()> {
-    let opts = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated).large_file(true);
+    let opts = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated)
+        .large_file(true);
     zip.start_file(name, opts).map_err(zip_err)?;
     zip.write_all(&serde_json::to_vec(v)?)?;
     Ok(())
 }
 
 fn put_file(zip: &mut zip::ZipWriter<File>, name: &str, path: &Path) -> AppResult<()> {
-    let opts = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored).large_file(true);
+    let opts = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Stored)
+        .large_file(true);
     zip.start_file(name, opts).map_err(zip_err)?;
     std::io::copy(&mut File::open(path)?, zip)?;
     Ok(())
@@ -132,11 +151,14 @@ fn put_file(zip: &mut zip::ZipWriter<File>, name: &str, path: &Path) -> AppResul
 fn source_file(src: &Row) -> Option<PathBuf> {
     let kind = str_of(src, "kind")?;
     let local = str_of(src, "local_path").map(PathBuf::from);
-    let origin = str_of(src, "origin").map(PathBuf::from).filter(|p| FILE_KINDS.contains(&kind) && p.is_absolute());
-    local
-        .into_iter()
-        .chain(origin)
-        .find(|p| fs::metadata(p).map(|m| m.is_file() && m.len() <= MAX_FILE_BYTES).unwrap_or(false))
+    let origin = str_of(src, "origin")
+        .map(PathBuf::from)
+        .filter(|p| FILE_KINDS.contains(&kind) && p.is_absolute());
+    local.into_iter().chain(origin).find(|p| {
+        fs::metadata(p)
+            .map(|m| m.is_file() && m.len() <= MAX_FILE_BYTES)
+            .unwrap_or(false)
+    })
 }
 
 fn image_names(cards: &[Row]) -> Vec<String> {
@@ -151,14 +173,42 @@ fn image_names(cards: &[Row]) -> Vec<String> {
 }
 
 /// Writes `dest` (a `.ponderpack` file) for one space. Written under a temp name and renamed when complete.
-pub fn export_pack(c: &Connection, data_dir: &Path, space_id: &str, dest: &Path, app_version: &str) -> AppResult<PackCounts> {
-    let space = dump(c, "SELECT * FROM spaces WHERE id=?1", space_id)?.pop().ok_or_else(|| AppError::NotFound("Space".into()))?;
-    let sources = dump(c, "SELECT * FROM sources WHERE space_id=?1 ORDER BY created_at, id", space_id)?;
+pub fn export_pack(
+    c: &Connection,
+    data_dir: &Path,
+    space_id: &str,
+    dest: &Path,
+    app_version: &str,
+) -> AppResult<PackCounts> {
+    let space = dump(c, "SELECT * FROM spaces WHERE id=?1", space_id)?
+        .pop()
+        .ok_or_else(|| AppError::NotFound("Space".into()))?;
+    let sources = dump(
+        c,
+        "SELECT * FROM sources WHERE space_id=?1 ORDER BY created_at, id",
+        space_id,
+    )?;
     let texts = dump(c, "SELECT t.* FROM source_texts t JOIN sources s ON s.id=t.source_id WHERE s.space_id=?1 ORDER BY t.source_id", space_id)?;
-    let chunks = dump(c, "SELECT * FROM chunks WHERE space_id=?1 ORDER BY source_id, ord", space_id)?;
-    let notes = dump(c, "SELECT * FROM notes WHERE space_id=?1 ORDER BY created_at, id", space_id)?;
-    let cards = dump(c, "SELECT * FROM cards WHERE space_id=?1 ORDER BY created_at, id", space_id)?;
-    let outputs = dump(c, "SELECT * FROM studio_outputs WHERE space_id=?1 ORDER BY created_at, id", space_id)?;
+    let chunks = dump(
+        c,
+        "SELECT * FROM chunks WHERE space_id=?1 ORDER BY source_id, ord",
+        space_id,
+    )?;
+    let notes = dump(
+        c,
+        "SELECT * FROM notes WHERE space_id=?1 ORDER BY created_at, id",
+        space_id,
+    )?;
+    let cards = dump(
+        c,
+        "SELECT * FROM cards WHERE space_id=?1 ORDER BY created_at, id",
+        space_id,
+    )?;
+    let outputs = dump(
+        c,
+        "SELECT * FROM studio_outputs WHERE space_id=?1 ORDER BY created_at, id",
+        space_id,
+    )?;
     let schema_version: i64 = c.query_row("PRAGMA user_version", [], |r| r.get(0))?;
 
     let tmp = dest.with_extension(format!("{EXTENSION}.tmp"));
@@ -166,8 +216,15 @@ pub fn export_pack(c: &Connection, data_dir: &Path, space_id: &str, dest: &Path,
         let mut zip = zip::ZipWriter::new(File::create(&tmp)?);
         let mut files = 0;
         for s in &sources {
-            let (Some(id), Some(path)) = (str_of(s, "id"), source_file(s)) else { continue };
-            let name = safe_file_name(&path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default());
+            let (Some(id), Some(path)) = (str_of(s, "id"), source_file(s)) else {
+                continue;
+            };
+            let name = safe_file_name(
+                &path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default(),
+            );
             put_file(&mut zip, &format!("files/sources/{id}/{name}"), &path)?;
             files += 1;
         }
@@ -223,9 +280,14 @@ fn read_limited(r: &mut impl Read, limit: u64, what: &str) -> AppResult<Vec<u8>>
 }
 
 fn read_rows(zip: &mut zip::ZipArchive<File>, name: &str) -> AppResult<Vec<Row>> {
-    let mut f = zip.by_name(name).map_err(|_| invalid(format!("This isn't a valid study pack ({name} is missing).")))?;
+    let mut f = zip.by_name(name).map_err(|_| {
+        invalid(format!(
+            "This isn't a valid study pack ({name} is missing)."
+        ))
+    })?;
     let bytes = read_limited(&mut f, MAX_JSON_BYTES, name)?;
-    serde_json::from_slice(&bytes).map_err(|e| invalid(format!("This study pack is damaged ({name}: {e}).")))
+    serde_json::from_slice(&bytes)
+        .map_err(|e| invalid(format!("This study pack is damaged ({name}: {e}).")))
 }
 
 fn table_columns(c: &Connection, table: &str) -> AppResult<HashSet<String>> {
@@ -238,7 +300,10 @@ fn sql_value(v: &Value) -> Option<Sql> {
     Some(match v {
         Value::Null => Sql::Null,
         Value::Bool(b) => Sql::Integer(*b as i64),
-        Value::Number(n) => n.as_i64().map(Sql::Integer).or_else(|| n.as_f64().map(Sql::Real))?,
+        Value::Number(n) => n
+            .as_i64()
+            .map(Sql::Integer)
+            .or_else(|| n.as_f64().map(Sql::Real))?,
         Value::String(s) => Sql::Text(s.clone()),
         _ => return None,
     })
@@ -252,11 +317,15 @@ fn insert_row(tx: &Transaction, table: &str, cols: &HashSet<String>, row: &Row) 
         if !cols.contains(k) {
             continue;
         }
-        let sv = sql_value(v).ok_or_else(|| invalid(format!("This study pack is damaged ({table}.{k}).")))?;
+        let sv = sql_value(v)
+            .ok_or_else(|| invalid(format!("This study pack is damaged ({table}.{k}).")))?;
         names.push(k.as_str());
         values.push(sv);
     }
-    let marks = (1..=names.len()).map(|i| format!("?{i}")).collect::<Vec<_>>().join(",");
+    let marks = (1..=names.len())
+        .map(|i| format!("?{i}"))
+        .collect::<Vec<_>>()
+        .join(",");
     tx.execute(
         &format!("INSERT INTO {table} ({}) VALUES ({marks})", names.join(",")),
         rusqlite::params_from_iter(values),
@@ -269,8 +338,15 @@ fn set(row: &mut Row, k: &str, v: impl Into<Value>) {
 }
 
 fn unique_name(c: &Connection, base: &str) -> AppResult<String> {
-    let taken: HashSet<String> = models::list_spaces(c)?.into_iter().map(|s| s.name.to_lowercase()).collect();
-    let base = if base.trim().is_empty() { "Study pack" } else { base.trim() };
+    let taken: HashSet<String> = models::list_spaces(c)?
+        .into_iter()
+        .map(|s| s.name.to_lowercase())
+        .collect();
+    let base = if base.trim().is_empty() {
+        "Study pack"
+    } else {
+        base.trim()
+    };
     if !taken.contains(&base.to_lowercase()) {
         return Ok(base.to_string());
     }
@@ -278,14 +354,20 @@ fn unique_name(c: &Connection, base: &str) -> AppResult<String> {
     if !taken.contains(&first.to_lowercase()) {
         return Ok(first);
     }
-    Ok((2..).map(|n| format!("{base} (imported {n})")).find(|n| !taken.contains(&n.to_lowercase())).unwrap_or(first))
+    Ok((2..)
+        .map(|n| format!("{base} (imported {n})"))
+        .find(|n| !taken.contains(&n.to_lowercase()))
+        .unwrap_or(first))
 }
 
 /// Creates a new space from the pack. Sources come in as `processing`; the caller enqueues them for indexing.
 pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResult<PackImport> {
-    let mut zip = zip::ZipArchive::new(File::open(pack)?).map_err(|_| invalid("This isn't a Ponder study pack."))?;
+    let mut zip = zip::ZipArchive::new(File::open(pack)?)
+        .map_err(|_| invalid("This isn't a Ponder study pack."))?;
     let manifest: Manifest = {
-        let mut f = zip.by_name(MANIFEST).map_err(|_| invalid("This isn't a Ponder study pack."))?;
+        let mut f = zip
+            .by_name(MANIFEST)
+            .map_err(|_| invalid("This isn't a Ponder study pack."))?;
         serde_json::from_slice(&read_limited(&mut f, 1 << 20, "The manifest")?)
             .map_err(|_| invalid("This isn't a Ponder study pack."))?
     };
@@ -293,10 +375,14 @@ pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResul
         return Err(invalid("This isn't a Ponder study pack."));
     }
     if manifest.format > FORMAT {
-        return Err(invalid("This study pack was made by a newer version of Ponder. Update the app to open it."));
+        return Err(invalid(
+            "This study pack was made by a newer version of Ponder. Update the app to open it.",
+        ));
     }
     let mut space: Row = {
-        let mut f = zip.by_name("data/space.json").map_err(|_| invalid("This isn't a valid study pack (data/space.json is missing)."))?;
+        let mut f = zip
+            .by_name("data/space.json")
+            .map_err(|_| invalid("This isn't a valid study pack (data/space.json is missing)."))?;
         serde_json::from_slice(&read_limited(&mut f, MAX_JSON_BYTES, "data/space.json")?)
             .map_err(|_| invalid("This study pack is damaged (data/space.json)."))?
     };
@@ -327,8 +413,15 @@ pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResul
     let result = (|| -> AppResult<PackCounts> {
         let tx = c.transaction()?;
         let cols = |t: &str| table_columns(&tx, t);
-        let (c_space, c_src, c_txt, c_chunk, c_note, c_card, c_out) =
-            (cols("spaces")?, cols("sources")?, cols("source_texts")?, cols("chunks")?, cols("notes")?, cols("cards")?, cols("studio_outputs")?);
+        let (c_space, c_src, c_txt, c_chunk, c_note, c_card, c_out) = (
+            cols("spaces")?,
+            cols("sources")?,
+            cols("source_texts")?,
+            cols("chunks")?,
+            cols("notes")?,
+            cols("cards")?,
+            cols("studio_outputs")?,
+        );
         insert_row(&tx, "spaces", &c_space, &space)?;
 
         let mut counts = PackCounts::default();
@@ -343,7 +436,10 @@ pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResul
             let Some(old) = str_of(s, "id") else { continue };
             let new = source_map[old].clone();
             let prefix = format!("files/sources/{old}/");
-            let entry = zip.file_names().find(|n| n.starts_with(&prefix) && plain_name(&n[prefix.len()..])).map(String::from);
+            let entry = zip
+                .file_names()
+                .find(|n| n.starts_with(&prefix) && plain_name(&n[prefix.len()..]))
+                .map(String::from);
             let mut s = s.clone();
             set(&mut s, "id", new.clone());
             set(&mut s, "space_id", new_space.clone());
@@ -362,13 +458,19 @@ pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResul
                 set(&mut s, "error", Value::Null);
             } else {
                 set(&mut s, "status", "error");
-                set(&mut s, "error", "The original text of this source is missing from the study pack.");
+                set(
+                    &mut s,
+                    "error",
+                    "The original text of this source is missing from the study pack.",
+                );
             }
             insert_row(&tx, "sources", &c_src, &s)?;
             counts.sources += 1;
         }
         for t in &texts {
-            let Some(new) = str_of(t, "source_id").and_then(|o| source_map.get(o)) else { continue };
+            let Some(new) = str_of(t, "source_id").and_then(|o| source_map.get(o)) else {
+                continue;
+            };
             let mut t = t.clone();
             set(&mut t, "source_id", new.clone());
             insert_row(&tx, "source_texts", &c_txt, &t)?;
@@ -379,11 +481,16 @@ pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResul
             let bytes = read_limited(&mut f, MAX_FILE_BYTES, &file)?;
             fs::write(&dest, bytes)?;
             written.push(dest.clone());
-            tx.execute("UPDATE sources SET local_path=?2 WHERE id=?1", params![new, dest.to_string_lossy()])?;
+            tx.execute(
+                "UPDATE sources SET local_path=?2 WHERE id=?1",
+                params![new, dest.to_string_lossy()],
+            )?;
             counts.files += 1;
         }
         for ch in &chunks {
-            let Some(new) = str_of(ch, "source_id").and_then(|o| source_map.get(o)) else { continue };
+            let Some(new) = str_of(ch, "source_id").and_then(|o| source_map.get(o)) else {
+                continue;
+            };
             let mut ch = ch.clone();
             ch.remove("id");
             set(&mut ch, "source_id", new.clone());
@@ -392,8 +499,14 @@ pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResul
             counts.chunks += 1;
         }
         let remap_source = |r: &mut Row| {
-            let mapped = str_of(r, "source_id").and_then(|o| source_map.get(o)).cloned();
-            set(r, "source_id", mapped.map(Value::from).unwrap_or(Value::Null));
+            let mapped = str_of(r, "source_id")
+                .and_then(|o| source_map.get(o))
+                .cloned();
+            set(
+                r,
+                "source_id",
+                mapped.map(Value::from).unwrap_or(Value::Null),
+            );
         };
         for n in &notes {
             let mut n = n.clone();
@@ -410,7 +523,10 @@ pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResul
             set(&mut card, "space_id", new_space.clone());
             remap_source(&mut card);
             insert_row(&tx, "cards", &c_card, &card)?;
-            tx.execute("INSERT INTO card_state (card_id, due, state) VALUES (?1, ?2, 0)", params![id, now])?;
+            tx.execute(
+                "INSERT INTO card_state (card_id, due, state) VALUES (?1, ?2, 0)",
+                params![id, now],
+            )?;
             counts.cards += 1;
         }
         for o in &outputs {
@@ -425,7 +541,9 @@ pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResul
             if dest.exists() {
                 continue;
             }
-            let Ok(mut f) = zip.by_name(&format!("files/images/{name}")) else { continue };
+            let Ok(mut f) = zip.by_name(&format!("files/images/{name}")) else {
+                continue;
+            };
             let bytes = read_limited(&mut f, MAX_FILE_BYTES, &name)?;
             fs::create_dir_all(data_dir.join("images"))?;
             fs::write(&dest, bytes)?;
@@ -439,12 +557,20 @@ pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResul
         Ok(counts) => {
             let mut source_ids: Vec<String> = source_map.into_values().collect();
             source_ids.sort();
-            Ok(PackImport { space_id: new_space, name, counts, source_ids })
+            Ok(PackImport {
+                space_id: new_space,
+                name,
+                counts,
+                source_ids,
+            })
         }
         Err(e) => {
             for p in written {
                 let _ = fs::remove_file(&p);
-                if let Some(dir) = p.parent().filter(|d| d.parent() == Some(data_dir.join("imports").as_path())) {
+                if let Some(dir) = p
+                    .parent()
+                    .filter(|d| d.parent() == Some(data_dir.join("imports").as_path()))
+                {
                     let _ = fs::remove_dir(dir);
                 }
             }
@@ -457,7 +583,16 @@ pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResul
 }
 
 fn file_stem(name: &str) -> String {
-    let s: String = name.chars().map(|c| if c.is_alphanumeric() || " .-_()".contains(c) { c } else { '-' }).collect();
+    let s: String = name
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || " .-_()".contains(c) {
+                c
+            } else {
+                '-'
+            }
+        })
+        .collect();
     let s = s.trim().trim_start_matches('.').to_string();
     if s.is_empty() {
         "study-pack".into()
@@ -483,20 +618,36 @@ pub async fn pack_export(
         .add_filter("Ponder study pack", &[EXTENSION])
         .blocking_save_file();
     let Some(path) = picked else { return Ok(None) };
-    let mut path = path.into_path().map_err(|e| AppError::Other(e.to_string()))?;
+    let mut path = path
+        .into_path()
+        .map_err(|e| AppError::Other(e.to_string()))?;
     if path.extension().and_then(|e| e.to_str()) != Some(EXTENSION) {
         path.set_extension(EXTENSION);
     }
-    let (db, dir, version, dest) = (state.db.clone(), state.data_dir.clone(), app.package_info().version.to_string(), path.clone());
-    let counts = tauri::async_runtime::spawn_blocking(move || export_pack(&db.conn()?, &dir, &space_id, &dest, &version))
-        .await
-        .map_err(|e| AppError::Other(e.to_string()))??;
-    Ok(Some(PackExport { path: path.to_string_lossy().into_owned(), counts }))
+    let (db, dir, version, dest) = (
+        state.db.clone(),
+        state.data_dir.clone(),
+        app.package_info().version.to_string(),
+        path.clone(),
+    );
+    let counts = tauri::async_runtime::spawn_blocking(move || {
+        export_pack(&db.conn()?, &dir, &space_id, &dest, &version)
+    })
+    .await
+    .map_err(|e| AppError::Other(e.to_string()))??;
+    Ok(Some(PackExport {
+        path: path.to_string_lossy().into_owned(),
+        counts,
+    }))
 }
 
 /// Asks which pack to open, creates a new space from it and queues its sources for indexing. None when cancelled.
 #[tauri::command]
-pub async fn pack_import(window: WebviewWindow, state: State<'_, AppState>, ingest: State<'_, Ingest>) -> AppResult<Option<PackImport>> {
+pub async fn pack_import(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    ingest: State<'_, Ingest>,
+) -> AppResult<Option<PackImport>> {
     let picked = window
         .dialog()
         .file()
@@ -504,14 +655,18 @@ pub async fn pack_import(window: WebviewWindow, state: State<'_, AppState>, inge
         .add_filter("Ponder study pack", &[EXTENSION])
         .blocking_pick_file();
     let Some(path) = picked else { return Ok(None) };
-    let path = path.into_path().map_err(|e| AppError::Other(e.to_string()))?;
+    let path = path
+        .into_path()
+        .map_err(|e| AppError::Other(e.to_string()))?;
     let (db, dir) = (state.db.clone(), state.data_dir.clone());
-    let res = tauri::async_runtime::spawn_blocking(move || import_pack(&mut db.conn()?, &dir, &path))
-        .await
-        .map_err(|e| AppError::Other(e.to_string()))??;
+    let res =
+        tauri::async_runtime::spawn_blocking(move || import_pack(&mut db.conn()?, &dir, &path))
+            .await
+            .map_err(|e| AppError::Other(e.to_string()))??;
     for id in &res.source_ids {
         let c = state.db.conn()?;
-        let status: String = c.query_row("SELECT status FROM sources WHERE id=?1", [id], |r| r.get(0))?;
+        let status: String =
+            c.query_row("SELECT status FROM sources WHERE id=?1", [id], |r| r.get(0))?;
         if status == "processing" {
             ingest.reindex(id)?;
         }
@@ -526,10 +681,23 @@ mod tests {
 
     #[test]
     fn local_origins_are_recognised() {
-        for o in ["/Users/x/.ssh/id_rsa", "~/notes.txt", "C:\\Users\\x\\a.pdf", "c:/a.pdf", "file:///etc/passwd", "\\\\server\\share"] {
+        for o in [
+            "/Users/x/.ssh/id_rsa",
+            "~/notes.txt",
+            "C:\\Users\\x\\a.pdf",
+            "c:/a.pdf",
+            "file:///etc/passwd",
+            "\\\\server\\share",
+        ] {
             assert!(local_path_like(o), "{o}");
         }
-        for o in ["https://example.com/a", "note:abc", "screen-snip", "paste", ""] {
+        for o in [
+            "https://example.com/a",
+            "note:abc",
+            "screen-snip",
+            "paste",
+            "",
+        ] {
             assert!(!local_path_like(o), "{o}");
         }
     }
@@ -539,20 +707,38 @@ mod tests {
     }
 
     fn seed(c: &Connection, data: &Path) -> String {
-        let sp = models::create_space(c, models::SpacePatch { name: Some("Biology".into()), ..Default::default() }).unwrap();
+        let sp = models::create_space(
+            c,
+            models::SpacePatch {
+                name: Some("Biology".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
         let id = sp.id;
         c.execute("INSERT INTO sources (id,space_id,title,kind,origin,status,summary,char_count,chunk_count,created_at,updated_at) VALUES ('s1',?1,'Cells','text','paste','ready','About cells',20,2,1,1)", [&id]).unwrap();
         c.execute("INSERT INTO sources (id,space_id,title,kind,origin,status,created_at,updated_at) VALUES ('s2',?1,'Paper','pdf',?2,'ready',2,2)", params![id, data.join("paper.pdf").to_string_lossy()]).unwrap();
         c.execute("INSERT INTO sources (id,space_id,title,kind,status,created_at,updated_at) VALUES ('s3',?1,'Lost','pdf','error',3,3)", [&id]).unwrap();
         c.execute("INSERT INTO source_texts (source_id,text,pages) VALUES ('s1','Cells divide. Mitochondria make energy.','[[1,0]]')", []).unwrap();
-        c.execute("INSERT INTO source_texts (source_id,text) VALUES ('s2','Paper text about enzymes')", []).unwrap();
-        for (i, t) in ["Cells divide.", "Mitochondria make energy."].iter().enumerate() {
+        c.execute(
+            "INSERT INTO source_texts (source_id,text) VALUES ('s2','Paper text about enzymes')",
+            [],
+        )
+        .unwrap();
+        for (i, t) in ["Cells divide.", "Mitochondria make energy."]
+            .iter()
+            .enumerate()
+        {
             c.execute("INSERT INTO chunks (source_id,space_id,ord,text,start_offset,end_offset,page) VALUES ('s1',?1,?2,?3,0,5,1)", params![id, i as i64, t]).unwrap();
         }
         c.execute("INSERT INTO notes (id,space_id,title,body,use_as_source,source_id,created_at,updated_at) VALUES ('n1',?1,'Osmosis','Water moves.',1,'s1',1,1)", [&id]).unwrap();
         c.execute("INSERT INTO cards (id,space_id,kind,front,back,data,source_id,created_at,updated_at) VALUES ('c1',?1,'basic','Q','A',NULL,'s1',1,1)", [&id]).unwrap();
         c.execute("INSERT INTO cards (id,space_id,kind,front,back,data,created_at,updated_at) VALUES ('c2',?1,'occlusion','img','',?2,1,1)", params![id, r#"{"image":"pic.png","masks":[]}"#]).unwrap();
-        c.execute("INSERT INTO card_state (card_id,due,state,fsrs) VALUES ('c1',999,2,'{\"s\":1}')", []).unwrap();
+        c.execute(
+            "INSERT INTO card_state (card_id,due,state,fsrs) VALUES ('c1',999,2,'{\"s\":1}')",
+            [],
+        )
+        .unwrap();
         c.execute("INSERT INTO studio_outputs (id,space_id,kind,title,data,created_at,updated_at) VALUES ('o1',?1,'timeline','Cells','{\"events\":[]}',1,1)", [&id]).unwrap();
         c.execute("INSERT INTO study_plans (space_id,goal,exam_date,weekly_minutes,study_days,created_at,updated_at) VALUES (?1,'pass','2030-01-01',60,'[1]',1,1)", [&id]).unwrap();
         fs::create_dir_all(data.join("images")).unwrap();
@@ -572,7 +758,17 @@ mod tests {
         let out = tempfile::tempdir().unwrap();
         let pack = out.path().join("bio.ponderpack");
         let counts = export_pack(&db.conn().unwrap(), src_dir.path(), &id, &pack, "9.9.9").unwrap();
-        assert_eq!(counts, PackCounts { sources: 3, chunks: 2, notes: 1, cards: 2, outputs: 1, files: 2 });
+        assert_eq!(
+            counts,
+            PackCounts {
+                sources: 3,
+                chunks: 2,
+                notes: 1,
+                cards: 2,
+                outputs: 1,
+                files: 2
+            }
+        );
         assert!(!out.path().join("bio.ponderpack.tmp").exists());
 
         let target = tempfile::tempdir().unwrap();
@@ -580,16 +776,62 @@ mod tests {
         let res = import_pack(&mut c, target.path(), &pack).unwrap();
         assert_ne!(res.space_id, id);
         assert_eq!(res.name, "Biology (imported)");
-        assert_eq!(res.counts, PackCounts { sources: 3, chunks: 2, notes: 1, cards: 2, outputs: 1, files: 2 });
+        assert_eq!(
+            res.counts,
+            PackCounts {
+                sources: 3,
+                chunks: 2,
+                notes: 1,
+                cards: 2,
+                outputs: 1,
+                files: 2
+            }
+        );
         assert_eq!(res.source_ids.len(), 3);
 
         let sp = &res.space_id;
-        assert_eq!(count(&c, &format!("SELECT count(*) FROM sources WHERE space_id='{sp}'")), 3);
-        assert_eq!(count(&c, &format!("SELECT count(*) FROM chunks WHERE space_id='{sp}'")), 2);
-        assert_eq!(count(&c, &format!("SELECT count(*) FROM notes WHERE space_id='{sp}'")), 1);
-        assert_eq!(count(&c, &format!("SELECT count(*) FROM cards WHERE space_id='{sp}'")), 2);
-        assert_eq!(count(&c, &format!("SELECT count(*) FROM studio_outputs WHERE space_id='{sp}'")), 1);
-        assert_eq!(count(&c, &format!("SELECT count(*) FROM study_plans WHERE space_id='{sp}'")), 0);
+        assert_eq!(
+            count(
+                &c,
+                &format!("SELECT count(*) FROM sources WHERE space_id='{sp}'")
+            ),
+            3
+        );
+        assert_eq!(
+            count(
+                &c,
+                &format!("SELECT count(*) FROM chunks WHERE space_id='{sp}'")
+            ),
+            2
+        );
+        assert_eq!(
+            count(
+                &c,
+                &format!("SELECT count(*) FROM notes WHERE space_id='{sp}'")
+            ),
+            1
+        );
+        assert_eq!(
+            count(
+                &c,
+                &format!("SELECT count(*) FROM cards WHERE space_id='{sp}'")
+            ),
+            2
+        );
+        assert_eq!(
+            count(
+                &c,
+                &format!("SELECT count(*) FROM studio_outputs WHERE space_id='{sp}'")
+            ),
+            1
+        );
+        assert_eq!(
+            count(
+                &c,
+                &format!("SELECT count(*) FROM study_plans WHERE space_id='{sp}'")
+            ),
+            0
+        );
         assert_eq!(count(&c, "SELECT count(*) FROM spaces"), 2);
         assert_eq!(count(&c, "SELECT count(*) FROM sources"), 6);
         assert_eq!(count(&c, &format!("SELECT count(*) FROM chunks_fts WHERE chunks_fts MATCH 'mitochondria' AND rowid IN (SELECT id FROM chunks WHERE space_id='{sp}')")), 1);
@@ -599,37 +841,84 @@ mod tests {
         let pages: String = c.query_row(&format!("SELECT t.pages FROM source_texts t JOIN sources s ON s.id=t.source_id WHERE s.space_id='{sp}' AND s.title='Cells'"), [], |r| r.get(0)).unwrap();
         assert_eq!(pages, "[[1,0]]");
 
-        let old: Vec<String> = ["s1", "s2", "s3", "n1", "c1", "c2", "o1"].iter().map(|s| s.to_string()).collect();
+        let old: Vec<String> = ["s1", "s2", "s3", "n1", "c1", "c2", "o1"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
         for table in ["sources", "notes", "cards", "studio_outputs"] {
-            let mut st = c.prepare(&format!("SELECT id FROM {table} WHERE space_id='{sp}'")).unwrap();
-            let ids: Vec<String> = st.query_map([], |r| r.get(0)).unwrap().map(|r| r.unwrap()).collect();
-            assert!(ids.iter().all(|i| !old.contains(i)), "{table} kept an old id");
+            let mut st = c
+                .prepare(&format!("SELECT id FROM {table} WHERE space_id='{sp}'"))
+                .unwrap();
+            let ids: Vec<String> = st
+                .query_map([], |r| r.get(0))
+                .unwrap()
+                .map(|r| r.unwrap())
+                .collect();
+            assert!(
+                ids.iter().all(|i| !old.contains(i)),
+                "{table} kept an old id"
+            );
         }
 
         let (note_src, src_space): (String, String) = c.query_row(&format!("SELECT n.source_id, s.space_id FROM notes n JOIN sources s ON s.id=n.source_id WHERE n.space_id='{sp}'"), [], |r| Ok((r.get(0)?, r.get(1)?))).unwrap();
         assert_eq!(src_space, *sp);
         assert!(res.source_ids.contains(&note_src));
-        let basic_src: Option<String> = c.query_row(&format!("SELECT source_id FROM cards WHERE space_id='{sp}' AND kind='basic'"), [], |r| r.get(0)).unwrap();
+        let basic_src: Option<String> = c
+            .query_row(
+                &format!("SELECT source_id FROM cards WHERE space_id='{sp}' AND kind='basic'"),
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
         assert!(res.source_ids.contains(&basic_src.unwrap()));
 
         let (due, state, fsrs): (i64, i64, Option<String>) = c.query_row(&format!("SELECT st.due, st.state, st.fsrs FROM card_state st JOIN cards c ON c.id=st.card_id WHERE c.space_id='{sp}' AND c.kind='basic'"), [], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?))).unwrap();
         assert!(due > 999 && state == 0 && fsrs.is_none());
 
         let statuses: Vec<(String, String)> = {
-            let mut st = c.prepare(&format!("SELECT title, status FROM sources WHERE space_id='{sp}' ORDER BY title")).unwrap();
-            st.query_map([], |r| Ok((r.get(0)?, r.get(1)?))).unwrap().map(|r| r.unwrap()).collect()
+            let mut st = c
+                .prepare(&format!(
+                    "SELECT title, status FROM sources WHERE space_id='{sp}' ORDER BY title"
+                ))
+                .unwrap();
+            st.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+                .unwrap()
+                .map(|r| r.unwrap())
+                .collect()
         };
-        assert_eq!(statuses, [("Cells".into(), "processing".into()), ("Lost".into(), "error".into()), ("Paper".into(), "processing".into())]);
+        assert_eq!(
+            statuses,
+            [
+                ("Cells".into(), "processing".into()),
+                ("Lost".into(), "error".into()),
+                ("Paper".into(), "processing".into())
+            ]
+        );
 
-        let local: String = c.query_row(&format!("SELECT local_path FROM sources WHERE space_id='{sp}' AND title='Paper'"), [], |r| r.get(0)).unwrap();
+        let local: String = c
+            .query_row(
+                &format!("SELECT local_path FROM sources WHERE space_id='{sp}' AND title='Paper'"),
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
         assert!(local.starts_with(target.path().join("imports").to_string_lossy().as_ref()));
         assert_eq!(fs::read(&local).unwrap(), b"%PDF-fake");
-        assert_eq!(fs::read(target.path().join("images/pic.png")).unwrap(), b"png");
+        assert_eq!(
+            fs::read(target.path().join("images/pic.png")).unwrap(),
+            b"png"
+        );
 
         let again = import_pack(&mut c, target.path(), &pack).unwrap();
         assert_eq!(again.name, "Biology (imported 2)");
         assert_eq!(count(&c, "SELECT count(*) FROM spaces"), 3);
-        assert_eq!(count(&c, &format!("SELECT count(*) FROM sources WHERE space_id='{id}'")), 3);
+        assert_eq!(
+            count(
+                &c,
+                &format!("SELECT count(*) FROM sources WHERE space_id='{id}'")
+            ),
+            3
+        );
     }
 
     #[test]
@@ -640,7 +929,10 @@ mod tests {
 
         let junk = dir.path().join("junk.ponderpack");
         fs::write(&junk, b"not a zip").unwrap();
-        assert!(import_pack(&mut c, dir.path(), &junk).unwrap_err().to_string().contains("isn't a Ponder study pack"));
+        assert!(import_pack(&mut c, dir.path(), &junk)
+            .unwrap_err()
+            .to_string()
+            .contains("isn't a Ponder study pack"));
 
         let make = |name: &str, manifest: &str, data: bool, space: &str| {
             let p = dir.path().join(name);
@@ -651,7 +943,14 @@ mod tests {
             if data {
                 zip.start_file("data/space.json", o).unwrap();
                 zip.write_all(space.as_bytes()).unwrap();
-                for t in ["sources", "source_texts", "chunks", "notes", "cards", "studio_outputs"] {
+                for t in [
+                    "sources",
+                    "source_texts",
+                    "chunks",
+                    "notes",
+                    "cards",
+                    "studio_outputs",
+                ] {
                     zip.start_file(format!("data/{t}.json"), o).unwrap();
                     zip.write_all(b"[]").unwrap();
                 }
@@ -659,17 +958,35 @@ mod tests {
             zip.finish().unwrap();
             p
         };
-        let head = |format: i64, app: &str| format!(r#"{{"format":{format},"app":"{app}","appVersion":"1","schemaVersion":1,"createdAt":1,"spaceName":"X","counts":{{"sources":0,"chunks":0,"notes":0,"cards":0,"outputs":0,"files":0}}}}"#);
+        let head = |format: i64, app: &str| {
+            format!(
+                r#"{{"format":{format},"app":"{app}","appVersion":"1","schemaVersion":1,"createdAt":1,"spaceName":"X","counts":{{"sources":0,"chunks":0,"notes":0,"cards":0,"outputs":0,"files":0}}}}"#
+            )
+        };
         let newer = make("newer.ponderpack", &head(2, "ponder"), true, "{}");
-        assert!(import_pack(&mut c, dir.path(), &newer).unwrap_err().to_string().contains("newer version"));
+        assert!(import_pack(&mut c, dir.path(), &newer)
+            .unwrap_err()
+            .to_string()
+            .contains("newer version"));
         let other = make("other.ponderpack", &head(1, "other"), true, "{}");
         assert!(import_pack(&mut c, dir.path(), &other).is_err());
         let nodata = make("nodata.ponderpack", &head(1, "ponder"), false, "{}");
-        assert!(import_pack(&mut c, dir.path(), &nodata).unwrap_err().to_string().contains("missing"));
+        assert!(import_pack(&mut c, dir.path(), &nodata)
+            .unwrap_err()
+            .to_string()
+            .contains("missing"));
         assert_eq!(count(&c, "SELECT count(*) FROM spaces"), 0);
 
-        let damaged = make("damaged.ponderpack", &head(1, "ponder"), true, r#"{"name":"X","icon":[1]}"#);
-        assert!(import_pack(&mut c, dir.path(), &damaged).unwrap_err().to_string().contains("damaged"));
+        let damaged = make(
+            "damaged.ponderpack",
+            &head(1, "ponder"),
+            true,
+            r#"{"name":"X","icon":[1]}"#,
+        );
+        assert!(import_pack(&mut c, dir.path(), &damaged)
+            .unwrap_err()
+            .to_string()
+            .contains("damaged"));
         assert_eq!(count(&c, "SELECT count(*) FROM spaces"), 0);
         let ok = make("ok.ponderpack", &head(1, "ponder"), true, r#"{"name":"X"}"#);
         assert_eq!(import_pack(&mut c, dir.path(), &ok).unwrap().name, "X");
@@ -680,7 +997,13 @@ mod tests {
     fn exporting_a_missing_space_fails() {
         let (db, _d) = test_db();
         let dir = tempfile::tempdir().unwrap();
-        let r = export_pack(&db.conn().unwrap(), dir.path(), "nope", &dir.path().join("x.ponderpack"), "1");
+        let r = export_pack(
+            &db.conn().unwrap(),
+            dir.path(),
+            "nope",
+            &dir.path().join("x.ponderpack"),
+            "1",
+        );
         assert!(r.is_err());
         assert!(!dir.path().join("x.ponderpack").exists());
     }

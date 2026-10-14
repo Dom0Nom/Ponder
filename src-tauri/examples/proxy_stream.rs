@@ -10,7 +10,11 @@ async fn main() {
     let v: serde_json::Value = serde_json::from_str(&input).unwrap();
     let headers = v["headers"]
         .as_object()
-        .map(|m| m.iter().map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string())).collect())
+        .map(|m| {
+            m.iter()
+                .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
+                .collect()
+        })
         .unwrap_or_default();
     let prepared = Prepared {
         url: v["url"].as_str().unwrap().to_string(),

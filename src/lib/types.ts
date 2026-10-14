@@ -442,6 +442,14 @@ export interface EmbeddingModel {
   multilingual: boolean;
 }
 
+/** An embedding model on OpenRouter; picked as `openrouter:<id>`. */
+export interface RemoteEmbeddingModel {
+  id: string;
+  name: string;
+  /** USD per million input tokens */
+  price: number | null;
+}
+
 export interface AppError {
   code: string;
   message: string;

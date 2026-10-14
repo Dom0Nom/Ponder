@@ -1,5 +1,7 @@
 //! Owns the active focus machine: persistence, event log, tick thread, window + tray sync.
-use super::machine::{FocusConfig, FocusMachine, FocusState, Phase, PauseReason, Technique, Transition};
+use super::machine::{
+    FocusConfig, FocusMachine, FocusState, PauseReason, Phase, Technique, Transition,
+};
 use crate::db::{new_id, now_ms, Db};
 use crate::error::{invalid, AppResult};
 use rusqlite::{params, Connection, OptionalExtension, Row};
@@ -62,7 +64,13 @@ fn no_session() -> crate::error::AppError {
     invalid("No focus session is running")
 }
 
-fn log_event(c: &Connection, session_id: &str, kind: &str, at: i64, data: Option<Value>) -> AppResult<()> {
+fn log_event(
+    c: &Connection,
+    session_id: &str,
+    kind: &str,
+    at: i64,
+    data: Option<Value>,
+) -> AppResult<()> {
     c.execute(
         "INSERT INTO focus_events (session_id, kind, at, data) VALUES (?1, ?2, ?3, ?4)",
         params![session_id, kind, at, data.map(|d| d.to_string())],
@@ -79,7 +87,12 @@ fn persist(c: &Connection, m: &FocusMachine, now: i64) -> AppResult<()> {
     Ok(())
 }
 
-fn log_transitions(c: &Connection, m: &FocusMachine, trans: &[Transition], now: i64) -> AppResult<()> {
+fn log_transitions(
+    c: &Connection,
+    m: &FocusMachine,
+    trans: &[Transition],
+    now: i64,
+) -> AppResult<()> {
     for t in trans {
         log_event(
             c,
@@ -89,7 +102,13 @@ fn log_transitions(c: &Connection, m: &FocusMachine, trans: &[Transition], now: 
             Some(json!({ "from": t.from, "to": t.to, "block": t.state.block })),
         )?;
         if t.auto_paused {
-            log_event(c, &m.session_id, "auto_pause_sleep", t.at, Some(json!({ "gapMs": now - t.at })))?;
+            log_event(
+                c,
+                &m.session_id,
+                "auto_pause_sleep",
+                t.at,
+                Some(json!({ "gapMs": now - t.at })),
+            )?;
         }
     }
     Ok(())
@@ -122,9 +141,13 @@ fn summary_from_row(r: &Row) -> rusqlite::Result<FocusSessionSummary> {
 }
 
 fn get_summary(c: &Connection, id: &str) -> AppResult<FocusSessionSummary> {
-    c.query_row("SELECT * FROM focus_sessions WHERE id = ?1", [id], summary_from_row)
-        .optional()?
-        .ok_or_else(|| crate::error::AppError::NotFound("focus session".into()))
+    c.query_row(
+        "SELECT * FROM focus_sessions WHERE id = ?1",
+        [id],
+        summary_from_row,
+    )
+    .optional()?
+    .ok_or_else(|| crate::error::AppError::NotFound("focus session".into()))
 }
 
 fn parking_from_row(r: &Row) -> rusqlite::Result<ParkingItem> {
@@ -140,7 +163,10 @@ fn parking_from_row(r: &Row) -> rusqlite::Result<ParkingItem> {
 
 impl FocusService {
     pub fn new(db: Db) -> Self {
-        FocusService { db, machine: Mutex::new(None) }
+        FocusService {
+            db,
+            machine: Mutex::new(None),
+        }
     }
 
     fn lock(&self) -> MutexGuard<'_, Option<FocusMachine>> {
@@ -160,16 +186,24 @@ impl FocusService {
         {
             let c = self.db.conn()?;
             let mut st = c.prepare("SELECT id, state FROM focus_sessions WHERE ended_at IS NULL ORDER BY started_at DESC")?;
-            let rows: Vec<(String, String)> =
-                st.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?.collect::<Result<_, _>>()?;
+            let rows: Vec<(String, String)> = st
+                .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+                .collect::<Result<_, _>>()?;
             let mut guard = self.lock();
             for (i, (id, state)) in rows.iter().enumerate() {
-                let parsed = if i == 0 { serde_json::from_str::<FocusMachine>(state).ok() } else { None };
+                let parsed = if i == 0 {
+                    serde_json::from_str::<FocusMachine>(state).ok()
+                } else {
+                    None
+                };
                 match parsed {
                     Some(m) => *guard = Some(m),
                     None => {
                         log::warn!("closing stale focus session {id}");
-                        c.execute("UPDATE focus_sessions SET ended_at = ?1 WHERE id = ?2", params![now, id])?;
+                        c.execute(
+                            "UPDATE focus_sessions SET ended_at = ?1 WHERE id = ?2",
+                            params![now, id],
+                        )?;
                     }
                 }
             }
@@ -200,7 +234,10 @@ impl FocusService {
         }
         tx.commit()?;
         *guard = (m.phase != Phase::Done).then_some(m);
-        Ok(Outcome { state: guard.as_ref().map(|m| m.snapshot(now)), transitions: trans })
+        Ok(Outcome {
+            state: guard.as_ref().map(|m| m.snapshot(now)),
+            transitions: trans,
+        })
     }
 
     pub fn tick(&self, now: i64) -> AppResult<Outcome> {
@@ -211,7 +248,10 @@ impl FocusService {
                 Some(m) => {
                     let mut probe = m.clone();
                     if probe.tick(now).is_empty() && m.phase != Phase::Done {
-                        return Ok(Outcome { state: Some(m.snapshot(now)), transitions: vec![] });
+                        return Ok(Outcome {
+                            state: Some(m.snapshot(now)),
+                            transitions: vec![],
+                        });
                     }
                 }
             }
@@ -240,20 +280,38 @@ impl FocusService {
                 now
             ],
         )?;
-        log_event(&tx, &m.session_id, "start", now, Some(json!({ "technique": m.technique, "goal": m.goal })))?;
+        log_event(
+            &tx,
+            &m.session_id,
+            "start",
+            now,
+            Some(json!({ "technique": m.technique, "goal": m.goal })),
+        )?;
         tx.commit()?;
         let state = m.snapshot(now);
         *guard = Some(m);
         Ok(Outcome {
             state: Some(state.clone()),
-            transitions: vec![Transition { from: Phase::Done, to: Phase::Work, state, at: now, auto_paused: false }],
+            transitions: vec![Transition {
+                from: Phase::Done,
+                to: Phase::Work,
+                state,
+                at: now,
+                auto_paused: false,
+            }],
         })
     }
 
     pub fn pause(&self, now: i64) -> AppResult<Outcome> {
         self.with_active(now, |c, m, _| {
             if m.pause(now)? {
-                log_event(c, &m.session_id, "pause", now, Some(json!({ "reason": "user" })))?;
+                log_event(
+                    c,
+                    &m.session_id,
+                    "pause",
+                    now,
+                    Some(json!({ "reason": "user" })),
+                )?;
             }
             Ok(())
         })
@@ -271,7 +329,13 @@ impl FocusService {
     pub fn need_app(&self, now: i64, reason: Option<String>) -> AppResult<Outcome> {
         self.with_active(now, |c, m, _| {
             if m.need_app(now)? {
-                log_event(c, &m.session_id, "need_app_pause", now, Some(json!({ "reason": reason })))?;
+                log_event(
+                    c,
+                    &m.session_id,
+                    "need_app_pause",
+                    now,
+                    Some(json!({ "reason": reason })),
+                )?;
             }
             Ok(())
         })
@@ -296,18 +360,31 @@ impl FocusService {
         let from = m.phase;
         finalize(&tx, &mut m, now)?;
         if from != Phase::Done {
-            trans.push(Transition { from, to: Phase::Done, state: m.snapshot(now), at: now, auto_paused: false });
+            trans.push(Transition {
+                from,
+                to: Phase::Done,
+                state: m.snapshot(now),
+                at: now,
+                auto_paused: false,
+            });
         }
         let summary = get_summary(&tx, &m.session_id)?;
         tx.commit()?;
         *guard = None;
-        Ok((summary, Outcome { state: None, transitions: trans }))
+        Ok((
+            summary,
+            Outcome {
+                state: None,
+                transitions: trans,
+            },
+        ))
     }
 
     pub fn set_summary(&self, session_id: &str, summary: &str) -> AppResult<()> {
-        self.db
-            .conn()?
-            .execute("UPDATE focus_sessions SET summary = ?1 WHERE id = ?2", params![summary, session_id])?;
+        self.db.conn()?.execute(
+            "UPDATE focus_sessions SET summary = ?1 WHERE id = ?2",
+            params![summary, session_id],
+        )?;
         Ok(())
     }
 
@@ -362,7 +439,13 @@ impl FocusService {
     }
 
     pub fn log_distraction(&self, session_id: &str, app_name: &str, at: i64) -> AppResult<()> {
-        log_event(&self.db.conn()?, session_id, "distraction", at, Some(json!({ "app": app_name })))
+        log_event(
+            &self.db.conn()?,
+            session_id,
+            "distraction",
+            at,
+            Some(json!({ "app": app_name })),
+        )
     }
 
     pub fn parking_list(&self, session_id: Option<&str>) -> AppResult<Vec<ParkingItem>> {
@@ -375,7 +458,9 @@ impl FocusService {
     }
 
     pub fn parking_resolve(&self, id: &str) -> AppResult<()> {
-        self.db.conn()?.execute("UPDATE parking_items SET resolved = 1 WHERE id = ?1", [id])?;
+        self.db
+            .conn()?
+            .execute("UPDATE parking_items SET resolved = 1 WHERE id = ?1", [id])?;
         Ok(())
     }
 }
@@ -406,10 +491,14 @@ fn locked(state: Option<&FocusState>) -> bool {
 }
 
 fn sync_window(app: &AppHandle, state: Option<&FocusState>) {
-    let Some(ui) = app.try_state::<UiSync>() else { return };
+    let Some(ui) = app.try_state::<UiSync>() else {
+        return;
+    };
     let now_locked = locked(state);
     let was = ui.locked.swap(now_locked, Ordering::SeqCst);
-    let Some(w) = app.get_webview_window("main") else { return };
+    let Some(w) = app.get_webview_window("main") else {
+        return;
+    };
     if now_locked && !was {
         let _ = w.show();
         let _ = w.unminimize();
@@ -424,7 +513,9 @@ fn sync_window(app: &AppHandle, state: Option<&FocusState>) {
 /// Re-enters fullscreen if the user left it during a locked break. Debounced so it doesn't fight the
 /// macOS fullscreen animation.
 pub fn enforce_fullscreen(app: &AppHandle) {
-    let Some(ui) = app.try_state::<UiSync>() else { return };
+    let Some(ui) = app.try_state::<UiSync>() else {
+        return;
+    };
     if !ui.locked.load(Ordering::SeqCst) {
         return;
     }
@@ -432,7 +523,9 @@ pub fn enforce_fullscreen(app: &AppHandle) {
     if now - ui.last_fullscreen_at.load(Ordering::SeqCst) < 2000 {
         return;
     }
-    let Some(w) = app.get_webview_window("main") else { return };
+    let Some(w) = app.get_webview_window("main") else {
+        return;
+    };
     if w.is_minimized().unwrap_or(false) {
         let _ = w.unminimize();
     }
@@ -462,7 +555,9 @@ pub fn tray_title(state: Option<&FocusState>) -> String {
 }
 
 pub fn set_tray_title(app: &AppHandle, title: String) -> bool {
-    let Some(ui) = app.try_state::<UiSync>() else { return false };
+    let Some(ui) = app.try_state::<UiSync>() else {
+        return false;
+    };
     let mut cur = ui.tray_title.lock().unwrap_or_else(|e| e.into_inner());
     if *cur == title {
         return false;
@@ -496,11 +591,19 @@ mod tests {
     const MIN: i64 = 60_000;
 
     fn custom(work: f64, brk: f64) -> FocusConfig {
-        FocusConfig { work_mins: Some(work), break_mins: Some(brk), ..FocusConfig::new(Technique::Custom) }
+        FocusConfig {
+            work_mins: Some(work),
+            break_mins: Some(brk),
+            ..FocusConfig::new(Technique::Custom)
+        }
     }
 
     fn kinds(svc: &FocusService, id: &str) -> Vec<String> {
-        svc.events(id).unwrap().into_iter().map(|e| e.kind).collect()
+        svc.events(id)
+            .unwrap()
+            .into_iter()
+            .map(|e| e.kind)
+            .collect()
     }
 
     #[test]
@@ -509,11 +612,15 @@ mod tests {
         let svc = FocusService::new(db.clone());
         let out = svc.start(custom(1.0, 2.0), T0).unwrap();
         let id = out.state.unwrap().session_id;
-        assert!(svc.start(custom(1.0, 1.0), T0).is_err(), "only one session at a time");
+        assert!(
+            svc.start(custom(1.0, 1.0), T0).is_err(),
+            "only one session at a time"
+        );
         svc.parking_add("buy milk", T0 + 1000).unwrap();
         let out = svc.tick(T0 + MIN + 500).unwrap();
         assert_eq!(out.transitions.len(), 1);
-        svc.need_app(T0 + MIN + 2000, Some("look up notes".into())).unwrap();
+        svc.need_app(T0 + MIN + 2000, Some("look up notes".into()))
+            .unwrap();
 
         // app restarts
         let svc2 = FocusService::new(db.clone());
@@ -529,7 +636,10 @@ mod tests {
         let events = svc2.events(&id).unwrap();
         let need = events.iter().find(|e| e.kind == "need_app_pause").unwrap();
         assert_eq!(need.data.as_ref().unwrap()["reason"], "look up notes");
-        assert_eq!(kinds(&svc2, &id), vec!["start", "parking", "phase", "need_app_pause"]);
+        assert_eq!(
+            kinds(&svc2, &id),
+            vec!["start", "parking", "phase", "need_app_pause"]
+        );
 
         let items = svc2.parking_list(Some(&id)).unwrap();
         assert_eq!(items.len(), 1);
@@ -560,7 +670,12 @@ mod tests {
     fn restore_after_long_quit_pauses_at_block_start() {
         let (db, _dir) = test_db();
         let svc = FocusService::new(db.clone());
-        let id = svc.start(custom(10.0, 5.0), T0).unwrap().state.unwrap().session_id;
+        let id = svc
+            .start(custom(10.0, 5.0), T0)
+            .unwrap()
+            .state
+            .unwrap()
+            .session_id;
         drop(svc);
         let svc = FocusService::new(db);
         let out = svc.restore(T0 + 60 * MIN).unwrap();
@@ -569,7 +684,10 @@ mod tests {
         assert!(st.paused);
         assert_eq!(st.phase_started_at, T0 + 15 * MIN);
         assert_eq!(st.total_focus_ms, 10 * MIN);
-        assert_eq!(kinds(&svc, &id), vec!["start", "phase", "phase", "auto_pause_sleep"]);
+        assert_eq!(
+            kinds(&svc, &id),
+            vec!["start", "phase", "phase", "auto_pause_sleep"]
+        );
         const { assert!(60 * MIN - 15 * MIN > SLEEP_GRACE_MS) };
     }
 
@@ -577,8 +695,16 @@ mod tests {
     fn failed_command_leaves_machine_untouched() {
         let (db, _dir) = test_db();
         let svc = FocusService::new(db);
-        let id = svc.start(custom(1.0, 1.0), T0).unwrap().state.unwrap().session_id;
-        assert!(svc.pause(T0 + MIN + 500).is_err(), "the block just ended; breaks can't be paused");
+        let id = svc
+            .start(custom(1.0, 1.0), T0)
+            .unwrap()
+            .state
+            .unwrap()
+            .session_id;
+        assert!(
+            svc.pause(T0 + MIN + 500).is_err(),
+            "the block just ended; breaks can't be paused"
+        );
         assert_eq!(svc.snapshot(T0 + MIN + 500).unwrap().phase, Phase::Work);
         let out = svc.tick(T0 + MIN + 600).unwrap();
         assert_eq!(out.transitions.len(), 1);
@@ -589,7 +715,11 @@ mod tests {
     fn timebox_finalizes_session_when_done() {
         let (db, _dir) = test_db();
         let svc = FocusService::new(db);
-        let cfg = FocusConfig { work_mins: Some(2.0), break_mins: Some(1.0), ..FocusConfig::new(Technique::Timebox) };
+        let cfg = FocusConfig {
+            work_mins: Some(2.0),
+            break_mins: Some(1.0),
+            ..FocusConfig::new(Technique::Timebox)
+        };
         let id = svc.start(cfg, T0).unwrap().state.unwrap().session_id;
         let out = svc.end_work(T0 + MIN).unwrap();
         assert_eq!(out.transitions[0].to, Phase::Break);
@@ -597,7 +727,10 @@ mod tests {
         assert_eq!(out.transitions.last().unwrap().to, Phase::Done);
         assert!(out.state.is_none());
         let s = &svc.history(None).unwrap()[0];
-        assert_eq!((s.id.as_str(), s.ended_at, s.focus_ms, s.break_ms), (id.as_str(), Some(T0 + 2 * MIN), MIN, MIN));
+        assert_eq!(
+            (s.id.as_str(), s.ended_at, s.focus_ms, s.break_ms),
+            (id.as_str(), Some(T0 + 2 * MIN), MIN, MIN)
+        );
         assert!(svc.pause(T0 + 3 * MIN).is_err());
     }
 }

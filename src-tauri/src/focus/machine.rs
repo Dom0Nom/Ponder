@@ -179,11 +179,15 @@ pub struct FocusMachine {
 fn mins_to_ms(v: Option<f64>, default: f64, what: &str) -> AppResult<i64> {
     let m = v.unwrap_or(default);
     if !m.is_finite() || m <= 0.0 || m > 24.0 * 60.0 {
-        return Err(invalid(format!("{what} must be between 1 second and 24 hours")));
+        return Err(invalid(format!(
+            "{what} must be between 1 second and 24 hours"
+        )));
     }
     let ms = (m * MIN as f64).round() as i64;
     if ms < 1000 {
-        return Err(invalid(format!("{what} must be between 1 second and 24 hours")));
+        return Err(invalid(format!(
+            "{what} must be between 1 second and 24 hours"
+        )));
     }
     Ok(ms)
 }
@@ -204,14 +208,30 @@ impl FocusMachine {
                     Some(_) => mins_to_ms(cfg.long_break_mins, 5.0, "Long break length")?,
                     None => brk,
                 };
-                (Some(mins_to_ms(cfg.work_mins, 30.0, "Focus length")?), brk, long)
+                (
+                    Some(mins_to_ms(cfg.work_mins, 30.0, "Focus length")?),
+                    brk,
+                    long,
+                )
             }
         };
         let cycles = cfg.cycles_before_long.unwrap_or(4.0);
-        let cycles = if cycles.is_finite() { cycles.round().clamp(1.0, 100.0) as u32 } else { 4 };
+        let cycles = if cycles.is_finite() {
+            cycles.round().clamp(1.0, 100.0) as u32
+        } else {
+            4
+        };
         let check_in = cfg.check_in_mins.unwrap_or(0.0);
-        let check_in = if check_in.is_finite() { check_in.round().clamp(0.0, 600.0) as u32 } else { 0 };
-        let clean = |s: &Option<String>| s.as_ref().map(|x| x.trim().to_string()).filter(|x| !x.is_empty());
+        let check_in = if check_in.is_finite() {
+            check_in.round().clamp(0.0, 600.0) as u32
+        } else {
+            0
+        };
+        let clean = |s: &Option<String>| {
+            s.as_ref()
+                .map(|x| x.trim().to_string())
+                .filter(|x| !x.is_empty())
+        };
         Ok(FocusMachine {
             session_id,
             space_id: clean(&cfg.space_id),
@@ -274,8 +294,13 @@ impl FocusMachine {
 
     fn next_break(&self, worked_ms: i64) -> (Phase, i64) {
         match self.technique {
-            Technique::Flowtime => (Phase::Break, (((worked_ms as f64) / 5.0).round() as i64).max(MIN)),
-            Technique::Pomodoro | Technique::Custom if self.block.is_multiple_of(self.cycles_before_long) => {
+            Technique::Flowtime => (
+                Phase::Break,
+                (((worked_ms as f64) / 5.0).round() as i64).max(MIN),
+            ),
+            Technique::Pomodoro | Technique::Custom
+                if self.block.is_multiple_of(self.cycles_before_long) =>
+            {
                 (Phase::LongBreak, self.long_break_ms)
             }
             _ => (Phase::Break, self.break_ms),
@@ -307,7 +332,9 @@ impl FocusMachine {
             if self.is_paused() || self.phase == Phase::Done {
                 break;
             }
-            let Some(dur) = self.phase_duration_ms else { break };
+            let Some(dur) = self.phase_duration_ms else {
+                break;
+            };
             let boundary = self.phase_started_at + self.paused_total_ms + dur;
             if now < boundary {
                 break;
@@ -320,7 +347,13 @@ impl FocusMachine {
                 self.pause_reason = Some(PauseReason::User);
                 auto_paused = true;
             }
-            out.push(Transition { from, to: self.phase, state: self.snapshot(boundary), at: boundary, auto_paused });
+            out.push(Transition {
+                from,
+                to: self.phase,
+                state: self.snapshot(boundary),
+                at: boundary,
+                auto_paused,
+            });
         }
         if let Some(last) = out.last_mut() {
             last.state = self.snapshot(now);
@@ -351,7 +384,9 @@ impl FocusMachine {
 
     pub fn resume(&mut self, now: i64) -> AppResult<bool> {
         self.require_active()?;
-        let Some(p) = self.paused_at else { return Ok(false) };
+        let Some(p) = self.paused_at else {
+            return Ok(false);
+        };
         self.paused_total_ms += (now - p).max(0);
         self.paused_at = None;
         self.pause_reason = None;
@@ -386,7 +421,13 @@ impl FocusMachine {
         }
         let worked = self.elapsed(now);
         self.complete_phase(now, worked);
-        Ok(Transition { from: Phase::Work, to: self.phase, state: self.snapshot(now), at: now, auto_paused: false })
+        Ok(Transition {
+            from: Phase::Work,
+            to: self.phase,
+            state: self.snapshot(now),
+            at: now,
+            auto_paused: false,
+        })
     }
 
     pub fn stop(&mut self, now: i64) -> Totals {
@@ -394,12 +435,20 @@ impl FocusMachine {
         self.focus_done_ms = st.total_focus_ms;
         self.break_done_ms = st.total_break_ms;
         self.enter(Phase::Done, now, None);
-        Totals { focus_ms: st.total_focus_ms, break_ms: st.total_break_ms, pauses: self.pause_count }
+        Totals {
+            focus_ms: st.total_focus_ms,
+            break_ms: st.total_break_ms,
+            pauses: self.pause_count,
+        }
     }
 
     pub fn totals(&self, now: i64) -> Totals {
         let st = self.snapshot(now);
-        Totals { focus_ms: st.total_focus_ms, break_ms: st.total_break_ms, pauses: self.pause_count }
+        Totals {
+            focus_ms: st.total_focus_ms,
+            break_ms: st.total_break_ms,
+            pauses: self.pause_count,
+        }
     }
 
     pub fn snapshot(&self, now: i64) -> FocusState {
@@ -440,7 +489,11 @@ mod tests {
     }
 
     fn custom(work: f64, brk: f64) -> FocusConfig {
-        FocusConfig { work_mins: Some(work), break_mins: Some(brk), ..FocusConfig::new(Technique::Custom) }
+        FocusConfig {
+            work_mins: Some(work),
+            break_mins: Some(brk),
+            ..FocusConfig::new(Technique::Custom)
+        }
     }
 
     /// ticks once a second from `from` to `to` (inclusive), collecting transitions
@@ -496,7 +549,10 @@ mod tests {
         };
         let mut m = machine(cfg);
         let tr = run(&mut m, T0, T0 + 24 * MIN);
-        assert_eq!(tr.iter().map(|t| t.to).collect::<Vec<_>>(), vec![Phase::Break, Phase::Work, Phase::LongBreak]);
+        assert_eq!(
+            tr.iter().map(|t| t.to).collect::<Vec<_>>(),
+            vec![Phase::Break, Phase::Work, Phase::LongBreak]
+        );
         assert_eq!(m.phase_duration_ms, Some(7 * MIN));
     }
 
@@ -526,7 +582,10 @@ mod tests {
         m.tick(T0 + MIN);
         assert_eq!(m.phase, Phase::Break);
         assert!(m.is_break_locked());
-        assert!(m.pause(T0 + MIN).is_err(), "breaks can't be paused normally");
+        assert!(
+            m.pause(T0 + MIN).is_err(),
+            "breaks can't be paused normally"
+        );
         assert!(m.need_app(T0 + 2 * MIN).unwrap());
         assert!(!m.is_break_locked());
         assert!(!m.need_app(T0 + 3 * MIN).unwrap());
@@ -545,7 +604,10 @@ mod tests {
     fn flowtime_break_is_a_fifth_with_one_minute_minimum() {
         let mut m = machine(FocusConfig::new(Technique::Flowtime));
         assert_eq!(m.snapshot(T0).remaining_ms, None);
-        assert!(m.tick(T0 + 300 * MIN).is_empty(), "flowtime work is open-ended");
+        assert!(
+            m.tick(T0 + 300 * MIN).is_empty(),
+            "flowtime work is open-ended"
+        );
         let t = m.end_work(T0 + 50 * MIN).unwrap();
         assert_eq!((t.from, t.to), (Phase::Work, Phase::Break));
         assert_eq!(m.phase_duration_ms, Some(10 * MIN));
@@ -561,10 +623,17 @@ mod tests {
 
     #[test]
     fn timebox_ends_after_its_break() {
-        let cfg = FocusConfig { work_mins: Some(20.0), break_mins: Some(5.0), ..FocusConfig::new(Technique::Timebox) };
+        let cfg = FocusConfig {
+            work_mins: Some(20.0),
+            break_mins: Some(5.0),
+            ..FocusConfig::new(Technique::Timebox)
+        };
         let mut m = machine(cfg);
         let tr = run(&mut m, T0, T0 + 30 * MIN);
-        assert_eq!(tr.iter().map(|t| t.to).collect::<Vec<_>>(), vec![Phase::Break, Phase::Done]);
+        assert_eq!(
+            tr.iter().map(|t| t.to).collect::<Vec<_>>(),
+            vec![Phase::Break, Phase::Done]
+        );
         assert_eq!(tr[1].at, T0 + 25 * MIN);
         assert_eq!(m.phase, Phase::Done);
         assert!(m.pause(T0 + 30 * MIN).is_err());
@@ -580,15 +649,25 @@ mod tests {
         let wake = T0 + 180 * MIN;
         let tr = m.tick(wake);
         assert_eq!(tr.len(), 2);
-        assert_eq!((tr[0].to, tr[0].at, tr[0].auto_paused), (Phase::Break, T0 + 25 * MIN, false));
-        assert_eq!((tr[1].to, tr[1].at, tr[1].auto_paused), (Phase::Work, T0 + 30 * MIN, true));
+        assert_eq!(
+            (tr[0].to, tr[0].at, tr[0].auto_paused),
+            (Phase::Break, T0 + 25 * MIN, false)
+        );
+        assert_eq!(
+            (tr[1].to, tr[1].at, tr[1].auto_paused),
+            (Phase::Work, T0 + 30 * MIN, true)
+        );
         let st = m.snapshot(wake);
         assert!(st.paused);
         assert_eq!(st.pause_reason, Some(PauseReason::User));
         assert_eq!(st.phase_started_at, T0 + 30 * MIN);
         assert_eq!(st.elapsed_ms, 0);
         assert_eq!(st.remaining_ms, Some(25 * MIN));
-        assert_eq!(st.total_focus_ms, 25 * MIN, "no focus credited while asleep");
+        assert_eq!(
+            st.total_focus_ms,
+            25 * MIN,
+            "no focus credited while asleep"
+        );
         assert_eq!(st.total_break_ms, 5 * MIN);
         assert_eq!(tr[1].state, st);
         // resume picks up the full block
@@ -616,7 +695,14 @@ mod tests {
         m.pause(T0 + MIN).unwrap();
         m.resume(T0 + 4 * MIN).unwrap();
         let tot = m.stop(T0 + 6 * MIN);
-        assert_eq!(tot, Totals { focus_ms: 3 * MIN, break_ms: 0, pauses: 1 });
+        assert_eq!(
+            tot,
+            Totals {
+                focus_ms: 3 * MIN,
+                break_ms: 0,
+                pauses: 1
+            }
+        );
         assert_eq!(m.phase, Phase::Done);
     }
 
@@ -632,9 +718,25 @@ mod tests {
         assert_eq!(back.snapshot(now), m.snapshot(now));
         let st = serde_json::to_value(m.snapshot(now)).unwrap();
         for key in [
-            "sessionId", "spaceId", "technique", "goal", "phase", "block", "phaseStartedAt", "phaseDurationMs",
-            "elapsedMs", "remainingMs", "paused", "pauseReason", "pauseCount", "needAppCount", "totalFocusMs",
-            "totalBreakMs", "checkInMins", "energy", "now",
+            "sessionId",
+            "spaceId",
+            "technique",
+            "goal",
+            "phase",
+            "block",
+            "phaseStartedAt",
+            "phaseDurationMs",
+            "elapsedMs",
+            "remainingMs",
+            "paused",
+            "pauseReason",
+            "pauseCount",
+            "needAppCount",
+            "totalFocusMs",
+            "totalBreakMs",
+            "checkInMins",
+            "energy",
+            "now",
         ] {
             assert!(st.get(key).is_some(), "missing {key}");
         }
@@ -647,12 +749,20 @@ mod tests {
     #[test]
     fn energy_round_trips_from_config_to_state() {
         let cfg: FocusConfig =
-            serde_json::from_value(serde_json::json!({ "technique": "flowtime", "energy": "low" })).unwrap();
+            serde_json::from_value(serde_json::json!({ "technique": "flowtime", "energy": "low" }))
+                .unwrap();
         let m = FocusMachine::start("x".into(), &cfg, T0).unwrap();
         assert_eq!(m.energy, Energy::Low);
-        assert_eq!(serde_json::to_value(m.snapshot(T0)).unwrap()["energy"], "low");
-        let dflt: FocusConfig = serde_json::from_value(serde_json::json!({ "technique": "flowtime" })).unwrap();
-        assert_eq!(FocusMachine::start("y".into(), &dflt, T0).unwrap().energy, Energy::Normal);
+        assert_eq!(
+            serde_json::to_value(m.snapshot(T0)).unwrap()["energy"],
+            "low"
+        );
+        let dflt: FocusConfig =
+            serde_json::from_value(serde_json::json!({ "technique": "flowtime" })).unwrap();
+        assert_eq!(
+            FocusMachine::start("y".into(), &dflt, T0).unwrap().energy,
+            Energy::Normal
+        );
     }
 
     #[test]
@@ -675,7 +785,10 @@ mod tests {
         assert_eq!(m.work_ms, Some(52 * MIN));
         assert_eq!(m.goal.as_deref(), Some("ch 3"));
         assert_eq!(m.check_in_mins, 15);
-        let bad = FocusConfig { work_mins: Some(0.0), ..FocusConfig::new(Technique::Custom) };
+        let bad = FocusConfig {
+            work_mins: Some(0.0),
+            ..FocusConfig::new(Technique::Custom)
+        };
         assert!(FocusMachine::start("x".into(), &bad, T0).is_err());
     }
 }

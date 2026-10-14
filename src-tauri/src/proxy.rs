@@ -27,10 +27,17 @@ pub struct ProxyRequest {
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum ProxyEvent {
-    Head { status: u16, headers: BTreeMap<String, String> },
-    Chunk { data: String },
+    Head {
+        status: u16,
+        headers: BTreeMap<String, String>,
+    },
+    Chunk {
+        data: String,
+    },
     End,
-    Error { message: String },
+    Error {
+        message: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -55,7 +62,13 @@ pub struct Prepared {
 
 // ---------- auth injection rules ----------
 
-const AUTH_HEADERS: &[&str] = &["authorization", "x-api-key", "x-goog-api-key", "x-subscription-token", "xi-api-key"];
+const AUTH_HEADERS: &[&str] = &[
+    "authorization",
+    "x-api-key",
+    "x-goog-api-key",
+    "x-subscription-token",
+    "xi-api-key",
+];
 
 /// Web search and speech APIs whose keys live in the secret store under `search:<engine>` / `tts:<service>`.
 pub const SEARCH_ENGINES: &[(&str, &str)] = &[
@@ -179,11 +192,20 @@ pub async fn prepare(
             } else if let Some(key) = secrets.get(&p.id)? {
                 headers.push(auth_header(t, &key));
             } else if p.kind == "apiKey" {
-                return Err(AppError::Other(format!("No API key saved for {}. Add one in Settings.", p.name)));
+                return Err(AppError::Other(format!(
+                    "No API key saved for {}. Add one in Settings.",
+                    p.name
+                )));
             }
         }
     }
-    Ok(Prepared { url: req.url.clone(), method: req.method.clone(), headers, body: req.body.clone(), forbidden_message })
+    Ok(Prepared {
+        url: req.url.clone(),
+        method: req.method.clone(),
+        headers,
+        body: req.body.clone(),
+        forbidden_message,
+    })
 }
 
 // ---------- streaming ----------
@@ -232,7 +254,10 @@ impl Utf8Decoder {
 
 pub fn stream_client() -> reqwest::Client {
     let same_host = reqwest::redirect::Policy::custom(|a| {
-        let first = a.previous().first().and_then(|u| u.host_str().map(str::to_owned));
+        let first = a
+            .previous()
+            .first()
+            .and_then(|u| u.host_str().map(str::to_owned));
         if a.previous().len() > 5 || first.as_deref() != a.url().host_str() {
             a.stop()
         } else {
@@ -250,24 +275,37 @@ fn header_map(h: &reqwest::header::HeaderMap) -> BTreeMap<String, String> {
     let mut out: BTreeMap<String, String> = BTreeMap::new();
     for (k, v) in h {
         let name = k.as_str().to_ascii_lowercase();
-        if matches!(name.as_str(), "content-length" | "content-encoding" | "transfer-encoding" | "set-cookie") {
+        if matches!(
+            name.as_str(),
+            "content-length" | "content-encoding" | "transfer-encoding" | "set-cookie"
+        ) {
             continue;
         }
         let val = String::from_utf8_lossy(v.as_bytes()).into_owned();
-        out.entry(name).and_modify(|e| {
-            e.push_str(", ");
-            e.push_str(&val);
-        })
-        .or_insert(val);
+        out.entry(name)
+            .and_modify(|e| {
+                e.push_str(", ");
+                e.push_str(&val);
+            })
+            .or_insert(val);
     }
     out
 }
 
 /// Sends the request and streams `head`, `chunk`…, then `end` (or `error`) to `emit`.
-pub async fn run(http: &reqwest::Client, req: Prepared, mut cancel: oneshot::Receiver<()>, mut emit: impl FnMut(ProxyEvent)) {
+pub async fn run(
+    http: &reqwest::Client,
+    req: Prepared,
+    mut cancel: oneshot::Receiver<()>,
+    mut emit: impl FnMut(ProxyEvent),
+) {
     let method = match reqwest::Method::from_bytes(req.method.to_ascii_uppercase().as_bytes()) {
         Ok(m) => m,
-        Err(_) => return emit(ProxyEvent::Error { message: format!("Invalid method {}", req.method) }),
+        Err(_) => {
+            return emit(ProxyEvent::Error {
+                message: format!("Invalid method {}", req.method),
+            })
+        }
     };
     let mut rb = http.request(method, &req.url);
     for (k, v) in &req.headers {
@@ -282,7 +320,11 @@ pub async fn run(http: &reqwest::Client, req: Prepared, mut cancel: oneshot::Rec
     };
     let mut resp = match resp {
         Ok(r) => r,
-        Err(e) => return emit(ProxyEvent::Error { message: describe_reqwest(&e, &req.url) }),
+        Err(e) => {
+            return emit(ProxyEvent::Error {
+                message: describe_reqwest(&e, &req.url),
+            })
+        }
     };
     let status = resp.status().as_u16();
     if status == 403 {
@@ -295,7 +337,10 @@ pub async fn run(http: &reqwest::Client, req: Prepared, mut cancel: oneshot::Rec
         .get(reqwest::header::CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())
         .is_some_and(|v| v.contains("text/event-stream"));
-    emit(ProxyEvent::Head { status, headers: header_map(resp.headers()) });
+    emit(ProxyEvent::Head {
+        status,
+        headers: header_map(resp.headers()),
+    });
     let mut dec = Utf8Decoder::default();
     let mut received = 0usize;
     let mut tail = String::new();
@@ -325,7 +370,10 @@ pub async fn run(http: &reqwest::Client, req: Prepared, mut cancel: oneshot::Rec
                 }
                 let host = host_of(&req.url);
                 let message = if received > 0 {
-                    format!("The connection to {host} closed before the answer finished ({})", root_cause(&e))
+                    format!(
+                        "The connection to {host} closed before the answer finished ({})",
+                        root_cause(&e)
+                    )
                 } else {
                     describe_reqwest(&e, &req.url)
                 };
@@ -334,9 +382,15 @@ pub async fn run(http: &reqwest::Client, req: Prepared, mut cancel: oneshot::Rec
             }
             Err(_) => {
                 let host = host_of(&req.url);
-                log::warn!("stream idle for {}s after {received} bytes", STREAM_IDLE_TIMEOUT.as_secs());
+                log::warn!(
+                    "stream idle for {}s after {received} bytes",
+                    STREAM_IDLE_TIMEOUT.as_secs()
+                );
                 return emit(ProxyEvent::Error {
-                    message: format!("{host} stopped sending data for {} seconds", STREAM_IDLE_TIMEOUT.as_secs()),
+                    message: format!(
+                        "{host} stopped sending data for {} seconds",
+                        STREAM_IDLE_TIMEOUT.as_secs()
+                    ),
                 });
             }
         }
@@ -351,7 +405,8 @@ pub async fn run(http: &reqwest::Client, req: Prepared, mut cancel: oneshot::Rec
 /// Sends a request and returns the whole body as bytes (audio). Non-2xx answers become errors with
 /// the start of the server's message.
 pub async fn fetch_bytes(http: &reqwest::Client, req: Prepared) -> AppResult<Vec<u8>> {
-    let method = reqwest::Method::from_bytes(req.method.to_ascii_uppercase().as_bytes()).map_err(|_| invalid("Invalid method"))?;
+    let method = reqwest::Method::from_bytes(req.method.to_ascii_uppercase().as_bytes())
+        .map_err(|_| invalid("Invalid method"))?;
     let mut rb = http.request(method, &req.url).timeout(BYTES_TIMEOUT);
     for (k, v) in &req.headers {
         rb = rb.header(k, v);
@@ -359,16 +414,26 @@ pub async fn fetch_bytes(http: &reqwest::Client, req: Prepared) -> AppResult<Vec
     if let Some(b) = req.body {
         rb = rb.body(b);
     }
-    let resp = rb.send().await.map_err(|e| AppError::Other(describe_reqwest(&e, &req.url)))?;
+    let resp = rb
+        .send()
+        .await
+        .map_err(|e| AppError::Other(describe_reqwest(&e, &req.url)))?;
     let status = resp.status().as_u16();
     if status == 403 {
         if let Some(m) = req.forbidden_message {
             return Err(AppError::Other(m));
         }
     }
-    let bytes = resp.bytes().await.map_err(|e| AppError::Other(describe_reqwest(&e, &req.url)))?;
+    let bytes = resp
+        .bytes()
+        .await
+        .map_err(|e| AppError::Other(describe_reqwest(&e, &req.url)))?;
     if !(200..300).contains(&status) {
-        return Err(AppError::Other(http_error_message(status, &host_of(&req.url), &bytes)));
+        return Err(AppError::Other(http_error_message(
+            status,
+            &host_of(&req.url),
+            &bytes,
+        )));
     }
     Ok(bytes.to_vec())
 }
@@ -429,7 +494,10 @@ pub fn sse_finished(tail: &str) -> bool {
 }
 
 fn host_of(url: &str) -> String {
-    url::Url::parse(url).ok().and_then(|u| u.host_str().map(str::to_string)).unwrap_or_default()
+    url::Url::parse(url)
+        .ok()
+        .and_then(|u| u.host_str().map(str::to_string))
+        .unwrap_or_default()
 }
 
 fn root_cause(e: &reqwest::Error) -> String {
@@ -494,18 +562,29 @@ pub fn page_client() -> reqwest::Client {
         .expect("http client")
 }
 
-pub async fn get_text(http: &reqwest::Client, url: &str, headers: Option<HashMap<String, String>>) -> AppResult<FetchedPage> {
-    let parsed = url::Url::parse(url).map_err(|_| invalid("That doesn't look like a web address"))?;
+pub async fn get_text(
+    http: &reqwest::Client,
+    url: &str,
+    headers: Option<HashMap<String, String>>,
+) -> AppResult<FetchedPage> {
+    let parsed =
+        url::Url::parse(url).map_err(|_| invalid("That doesn't look like a web address"))?;
     if !matches!(parsed.scheme(), "http" | "https") {
         return Err(invalid("Only http and https pages can be fetched"));
     }
-    let mut rb = http.get(parsed).header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+    let mut rb = http.get(parsed).header(
+        "Accept",
+        "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    );
     if let Some(h) = &headers {
         for (k, v) in strip_auth(h) {
             rb = rb.header(k, v);
         }
     }
-    let mut resp = rb.send().await.map_err(|e| AppError::Other(describe_reqwest(&e, url)))?;
+    let mut resp = rb
+        .send()
+        .await
+        .map_err(|e| AppError::Other(describe_reqwest(&e, url)))?;
     let status = resp.status().as_u16();
     let final_url = resp.url().to_string();
     let content_type = resp
@@ -514,13 +593,22 @@ pub async fn get_text(http: &reqwest::Client, url: &str, headers: Option<HashMap
         .and_then(|v| v.to_str().ok())
         .map(str::to_string);
     let mut buf: Vec<u8> = Vec::new();
-    while let Some(chunk) = resp.chunk().await.map_err(|e| AppError::Other(describe_reqwest(&e, url)))? {
+    while let Some(chunk) = resp
+        .chunk()
+        .await
+        .map_err(|e| AppError::Other(describe_reqwest(&e, url)))?
+    {
         if buf.len() + chunk.len() > PAGE_LIMIT {
             return Err(AppError::Other("The page is larger than 15 MB".into()));
         }
         buf.extend_from_slice(&chunk);
     }
-    Ok(FetchedPage { status, url: final_url, content_type, body: String::from_utf8_lossy(&buf).into_owned() })
+    Ok(FetchedPage {
+        status,
+        url: final_url,
+        content_type,
+        body: String::from_utf8_lossy(&buf).into_owned(),
+    })
 }
 
 #[cfg(test)]
@@ -548,62 +636,169 @@ mod tests {
             id: "r".into(),
             url: url.into(),
             method: "POST".into(),
-            headers: headers.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
+            headers: headers
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
             body: Some("{}".into()),
             provider_id: Some("p1".into()),
         }
     }
 
     fn find<'a>(h: &'a [(String, String)], name: &str) -> Option<&'a str> {
-        h.iter().find(|(k, _)| k.eq_ignore_ascii_case(name)).map(|(_, v)| v.as_str())
+        h.iter()
+            .find(|(k, _)| k.eq_ignore_ascii_case(name))
+            .map(|(_, v)| v.as_str())
     }
 
     #[test]
     fn url_matching() {
-        assert!(url_under("http://localhost:1234/v1", "http://localhost:1234/v1/chat/completions"));
-        assert!(url_under("http://LOCALHOST:1234/v1/", "http://localhost:1234/v1/models"));
-        assert!(url_under("https://api.openai.com", "https://api.openai.com:443/v1/responses"));
-        assert!(!url_under("http://localhost:1234/v1", "http://localhost:1234/v10/models"));
-        assert!(!url_under("http://localhost:1234/v1", "http://localhost:1235/v1/models"));
-        assert!(!url_under("http://localhost:1234/v1", "https://localhost:1234/v1/models"));
-        assert!(!url_under("https://api.openai.com", "https://api.openai.com.evil.com/v1"));
-        assert!(!url_under("https://api.openai.com", "https://user@api.openai.com/v1"));
+        assert!(url_under(
+            "http://localhost:1234/v1",
+            "http://localhost:1234/v1/chat/completions"
+        ));
+        assert!(url_under(
+            "http://LOCALHOST:1234/v1/",
+            "http://localhost:1234/v1/models"
+        ));
+        assert!(url_under(
+            "https://api.openai.com",
+            "https://api.openai.com:443/v1/responses"
+        ));
+        assert!(!url_under(
+            "http://localhost:1234/v1",
+            "http://localhost:1234/v10/models"
+        ));
+        assert!(!url_under(
+            "http://localhost:1234/v1",
+            "http://localhost:1235/v1/models"
+        ));
+        assert!(!url_under(
+            "http://localhost:1234/v1",
+            "https://localhost:1234/v1/models"
+        ));
+        assert!(!url_under(
+            "https://api.openai.com",
+            "https://api.openai.com.evil.com/v1"
+        ));
+        assert!(!url_under(
+            "https://api.openai.com",
+            "https://user@api.openai.com/v1"
+        ));
         assert!(!url_under("http://a.com/v1", "http://b.com/v1/x"));
         assert!(!url_under("not a url", "http://b.com/v1/x"));
     }
 
     #[test]
     fn injection_scope() {
-        assert!(may_inject("openai", None, "https://api.openai.com/v1/chat/completions"));
-        assert!(!may_inject("openai", None, "https://example.com/v1/chat/completions"));
-        assert!(may_inject("openai-compatible", Some("https://my.host/api"), "https://my.host/api/chat"));
-        assert!(!may_inject("openai-compatible", None, "https://my.host/api/chat"));
-        assert!(!may_inject("anthropic", None, "https://api.openai.com/v1/x"));
-        assert!(may_inject("xai-oauth", None, "https://api.x.ai/v1/responses"));
-        assert!(!may_inject("xai-oauth", None, "https://api.x.ai/v2/responses"));
-        assert!(may_inject("google", None, "https://generativelanguage.googleapis.com/v1beta/models"));
+        assert!(may_inject(
+            "openai",
+            None,
+            "https://api.openai.com/v1/chat/completions"
+        ));
+        assert!(!may_inject(
+            "openai",
+            None,
+            "https://example.com/v1/chat/completions"
+        ));
+        assert!(may_inject(
+            "openai-compatible",
+            Some("https://my.host/api"),
+            "https://my.host/api/chat"
+        ));
+        assert!(!may_inject(
+            "openai-compatible",
+            None,
+            "https://my.host/api/chat"
+        ));
+        assert!(!may_inject(
+            "anthropic",
+            None,
+            "https://api.openai.com/v1/x"
+        ));
+        assert!(may_inject(
+            "xai-oauth",
+            None,
+            "https://api.x.ai/v1/responses"
+        ));
+        assert!(!may_inject(
+            "xai-oauth",
+            None,
+            "https://api.x.ai/v2/responses"
+        ));
+        assert!(may_inject(
+            "google",
+            None,
+            "https://generativelanguage.googleapis.com/v1beta/models"
+        ));
     }
 
     #[test]
     fn header_shapes() {
-        assert_eq!(auth_header("anthropic", "k"), ("x-api-key".into(), "k".into()));
-        assert_eq!(auth_header("google", "k"), ("x-goog-api-key".into(), "k".into()));
-        assert_eq!(auth_header("groq", "k"), ("Authorization".into(), "Bearer k".into()));
-        assert_eq!(auth_header("search:brave", "k"), ("X-Subscription-Token".into(), "k".into()));
-        assert_eq!(auth_header("search:exa", "k"), ("x-api-key".into(), "k".into()));
-        assert_eq!(auth_header("search:tavily", "k"), ("Authorization".into(), "Bearer k".into()));
+        assert_eq!(
+            auth_header("anthropic", "k"),
+            ("x-api-key".into(), "k".into())
+        );
+        assert_eq!(
+            auth_header("google", "k"),
+            ("x-goog-api-key".into(), "k".into())
+        );
+        assert_eq!(
+            auth_header("groq", "k"),
+            ("Authorization".into(), "Bearer k".into())
+        );
+        assert_eq!(
+            auth_header("search:brave", "k"),
+            ("X-Subscription-Token".into(), "k".into())
+        );
+        assert_eq!(
+            auth_header("search:exa", "k"),
+            ("x-api-key".into(), "k".into())
+        );
+        assert_eq!(
+            auth_header("search:tavily", "k"),
+            ("Authorization".into(), "Bearer k".into())
+        );
     }
 
     #[test]
     fn search_injection_scope() {
-        assert!(may_inject("search:brave", None, "https://api.search.brave.com/res/v1/web/search?q=a"));
-        assert!(!may_inject("search:brave", None, "https://api.tavily.com/search"));
-        assert!(!may_inject("search:brave", None, "https://api.search.brave.com.evil.com/res/v1"));
-        assert!(!may_inject("search:brave", None, "http://api.search.brave.com/res/v1"));
-        assert!(may_inject("search:tavily", None, "https://api.tavily.com/search"));
-        assert!(!may_inject("search:tavily", None, "https://example.com/search"));
+        assert!(may_inject(
+            "search:brave",
+            None,
+            "https://api.search.brave.com/res/v1/web/search?q=a"
+        ));
+        assert!(!may_inject(
+            "search:brave",
+            None,
+            "https://api.tavily.com/search"
+        ));
+        assert!(!may_inject(
+            "search:brave",
+            None,
+            "https://api.search.brave.com.evil.com/res/v1"
+        ));
+        assert!(!may_inject(
+            "search:brave",
+            None,
+            "http://api.search.brave.com/res/v1"
+        ));
+        assert!(may_inject(
+            "search:tavily",
+            None,
+            "https://api.tavily.com/search"
+        ));
+        assert!(!may_inject(
+            "search:tavily",
+            None,
+            "https://example.com/search"
+        ));
         assert!(may_inject("search:exa", None, "https://api.exa.ai/search"));
-        assert!(!may_inject("search:exa", None, "https://api.exa.ai.evil.com/search"));
+        assert!(!may_inject(
+            "search:exa",
+            None,
+            "https://api.exa.ai.evil.com/search"
+        ));
         assert!(search_provider("search:exa").is_some());
         assert!(search_provider("search:other").is_none());
         assert!(search_provider("p1").is_none());
@@ -616,23 +811,65 @@ mod tests {
         store.set("tts:fish", "fish-real").unwrap();
         let oauth = OAuth::new(Arc::new(MemoryStore::default()));
         let el = search_provider("tts:elevenlabs").unwrap();
-        let r = req("https://api.elevenlabs.io/v1/text-to-speech/abc", &[("xi-api-key", "dummy")]);
+        let r = req(
+            "https://api.elevenlabs.io/v1/text-to-speech/abc",
+            &[("xi-api-key", "dummy")],
+        );
         let out = prepare(&r, Some(&el), &store, &oauth).await.unwrap();
         assert_eq!(find(&out.headers, "xi-api-key"), Some("el-real"));
-        let out = prepare(&req("https://api.fish.audio/v1/tts", &[("xi-api-key", "dummy")]), Some(&el), &store, &oauth).await.unwrap();
+        let out = prepare(
+            &req("https://api.fish.audio/v1/tts", &[("xi-api-key", "dummy")]),
+            Some(&el),
+            &store,
+            &oauth,
+        )
+        .await
+        .unwrap();
         assert!(out.headers.is_empty());
         let fish = search_provider("tts:fish").unwrap();
-        let out = prepare(&req("https://api.fish.audio/v1/tts", &[]), Some(&fish), &store, &oauth).await.unwrap();
-        assert_eq!(find(&out.headers, "authorization"), Some("Bearer fish-real"));
+        let out = prepare(
+            &req("https://api.fish.audio/v1/tts", &[]),
+            Some(&fish),
+            &store,
+            &oauth,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            find(&out.headers, "authorization"),
+            Some("Bearer fish-real")
+        );
     }
 
     #[test]
     fn http_errors_name_the_host_and_the_servers_message() {
-        assert_eq!(http_error_message(400, "openrouter.ai", br#"{"error":{"message":"Voice not found","code":400}}"#), "openrouter.ai answered 400: Voice not found");
-        assert_eq!(http_error_message(401, "api.elevenlabs.io", br#"{"detail":{"status":"invalid_api_key","message":"Invalid API key"}}"#), "api.elevenlabs.io answered 401: Invalid API key");
-        assert_eq!(http_error_message(500, "api.fish.audio", b"  upstream down "), "api.fish.audio answered 500: upstream down");
+        assert_eq!(
+            http_error_message(
+                400,
+                "openrouter.ai",
+                br#"{"error":{"message":"Voice not found","code":400}}"#
+            ),
+            "openrouter.ai answered 400: Voice not found"
+        );
+        assert_eq!(
+            http_error_message(
+                401,
+                "api.elevenlabs.io",
+                br#"{"detail":{"status":"invalid_api_key","message":"Invalid API key"}}"#
+            ),
+            "api.elevenlabs.io answered 401: Invalid API key"
+        );
+        assert_eq!(
+            http_error_message(500, "api.fish.audio", b"  upstream down "),
+            "api.fish.audio answered 500: upstream down"
+        );
         assert_eq!(http_error_message(502, "x.ai", b""), "x.ai answered 502");
-        assert_eq!(http_error_message(400, "h", "é".repeat(400).as_bytes()).chars().count(), "h answered 400: ".len() + 300);
+        assert_eq!(
+            http_error_message(400, "h", "é".repeat(400).as_bytes())
+                .chars()
+                .count(),
+            "h answered 400: ".len() + 300
+        );
     }
 
     #[tokio::test]
@@ -642,16 +879,35 @@ mod tests {
         store.set("search:tavily", "tvly-real").unwrap();
         let oauth = OAuth::new(Arc::new(MemoryStore::default()));
         let brave = search_provider("search:brave").unwrap();
-        let mut r = req("https://api.search.brave.com/res/v1/web/search?q=cells", &[("X-Subscription-Token", "dummy"), ("authorization", "Bearer dummy"), ("accept", "application/json")]);
+        let mut r = req(
+            "https://api.search.brave.com/res/v1/web/search?q=cells",
+            &[
+                ("X-Subscription-Token", "dummy"),
+                ("authorization", "Bearer dummy"),
+                ("accept", "application/json"),
+            ],
+        );
         r.provider_id = Some("search:brave".into());
         let out = prepare(&r, Some(&brave), &store, &oauth).await.unwrap();
         assert_eq!(find(&out.headers, "x-subscription-token"), Some("BSA-real"));
         assert_eq!(find(&out.headers, "authorization"), None);
         assert_eq!(find(&out.headers, "accept"), Some("application/json"));
-        assert_eq!(out.headers.iter().filter(|(k, _)| k.eq_ignore_ascii_case("x-subscription-token")).count(), 1);
+        assert_eq!(
+            out.headers
+                .iter()
+                .filter(|(k, _)| k.eq_ignore_ascii_case("x-subscription-token"))
+                .count(),
+            1
+        );
 
         // other host: JS-supplied headers stripped, nothing injected
-        let r = req("https://evil.example/res/v1/web/search", &[("X-Subscription-Token", "dummy"), ("Authorization", "Bearer dummy")]);
+        let r = req(
+            "https://evil.example/res/v1/web/search",
+            &[
+                ("X-Subscription-Token", "dummy"),
+                ("Authorization", "Bearer dummy"),
+            ],
+        );
         let out = prepare(&r, Some(&brave), &store, &oauth).await.unwrap();
         assert!(out.headers.is_empty());
 
@@ -661,13 +917,26 @@ mod tests {
         assert!(out.headers.is_empty());
 
         let tavily = search_provider("search:tavily").unwrap();
-        let r = req("https://api.tavily.com/search", &[("Authorization", "Bearer dummy")]);
+        let r = req(
+            "https://api.tavily.com/search",
+            &[("Authorization", "Bearer dummy")],
+        );
         let out = prepare(&r, Some(&tavily), &store, &oauth).await.unwrap();
-        assert_eq!(find(&out.headers, "authorization"), Some("Bearer tvly-real"));
+        assert_eq!(
+            find(&out.headers, "authorization"),
+            Some("Bearer tvly-real")
+        );
 
         // no key saved: clear error
         let exa = search_provider("search:exa").unwrap();
-        let e = prepare(&req("https://api.exa.ai/search", &[]), Some(&exa), &store, &oauth).await.unwrap_err();
+        let e = prepare(
+            &req("https://api.exa.ai/search", &[]),
+            Some(&exa),
+            &store,
+            &oauth,
+        )
+        .await
+        .unwrap_err();
         assert!(e.to_string().contains("No API key saved for Exa"));
     }
 
@@ -679,18 +948,35 @@ mod tests {
         let p = provider("anthropic", "apiKey", None);
         let r = req(
             "https://api.anthropic.com/v1/messages",
-            &[("x-api-key", "dummy"), ("Authorization", "Bearer dummy"), ("anthropic-version", "2023-06-01"), ("content-type", "application/json")],
+            &[
+                ("x-api-key", "dummy"),
+                ("Authorization", "Bearer dummy"),
+                ("anthropic-version", "2023-06-01"),
+                ("content-type", "application/json"),
+            ],
         );
         let out = prepare(&r, Some(&p), &store, &oauth).await.unwrap();
         assert_eq!(find(&out.headers, "x-api-key"), Some("sk-real"));
         assert_eq!(find(&out.headers, "authorization"), None);
         assert_eq!(find(&out.headers, "anthropic-version"), Some("2023-06-01"));
-        assert_eq!(out.headers.iter().filter(|(k, _)| k.eq_ignore_ascii_case("x-api-key")).count(), 1);
+        assert_eq!(
+            out.headers
+                .iter()
+                .filter(|(k, _)| k.eq_ignore_ascii_case("x-api-key"))
+                .count(),
+            1
+        );
 
         // foreign URL: stripped, nothing injected
-        let r = req("https://evil.example/v1/messages", &[("x-api-key", "dummy")]);
+        let r = req(
+            "https://evil.example/v1/messages",
+            &[("x-api-key", "dummy")],
+        );
         let out = prepare(&r, Some(&p), &store, &oauth).await.unwrap();
-        assert!(out.headers.iter().all(|(k, _)| !k.eq_ignore_ascii_case("x-api-key")));
+        assert!(out
+            .headers
+            .iter()
+            .all(|(k, _)| !k.eq_ignore_ascii_case("x-api-key")));
 
         // no provider: never auth
         let out = prepare(&r, None, &store, &oauth).await.unwrap();
@@ -698,12 +984,26 @@ mod tests {
 
         // local without key: no auth, no error
         let lm = provider("lmstudio", "local", Some("http://localhost:1234/v1"));
-        let out = prepare(&req("http://localhost:1234/v1/models", &[]), Some(&lm), &MemoryStore::default(), &oauth).await.unwrap();
+        let out = prepare(
+            &req("http://localhost:1234/v1/models", &[]),
+            Some(&lm),
+            &MemoryStore::default(),
+            &oauth,
+        )
+        .await
+        .unwrap();
         assert!(out.headers.is_empty());
 
         // api-key provider without key: clear error
         let oa = provider("openai", "apiKey", None);
-        let e = prepare(&req("https://api.openai.com/v1/models", &[]), Some(&oa), &MemoryStore::default(), &oauth).await.unwrap_err();
+        let e = prepare(
+            &req("https://api.openai.com/v1/models", &[]),
+            Some(&oa),
+            &MemoryStore::default(),
+            &oauth,
+        )
+        .await
+        .unwrap_err();
         assert!(e.to_string().contains("No API key"));
 
         // OAuth provider uses the stored access token
@@ -711,10 +1011,30 @@ mod tests {
         let oauth = OAuth::new(ostore.clone());
         oauth
             .tokens
-            .save("p1", &crate::oauth::tokens::TokenSet { access: "tok".into(), refresh: Some("r".into()), expires_at: crate::db::now_ms() + 3_600_000 * 5, account: None, client_id: Some("oaiapp_x".into()), obtained_at: None })
+            .save(
+                "p1",
+                &crate::oauth::tokens::TokenSet {
+                    access: "tok".into(),
+                    refresh: Some("r".into()),
+                    expires_at: crate::db::now_ms() + 3_600_000 * 5,
+                    account: None,
+                    client_id: Some("oaiapp_x".into()),
+                    obtained_at: None,
+                },
+            )
             .unwrap();
         let cg = provider("chatgpt-oauth", "oauth", None);
-        let out = prepare(&req("https://api.openai.com/v1/responses", &[("authorization", "Bearer dummy")]), Some(&cg), &store, &oauth).await.unwrap();
+        let out = prepare(
+            &req(
+                "https://api.openai.com/v1/responses",
+                &[("authorization", "Bearer dummy")],
+            ),
+            Some(&cg),
+            &store,
+            &oauth,
+        )
+        .await
+        .unwrap();
         assert_eq!(find(&out.headers, "authorization"), Some("Bearer tok"));
     }
 
@@ -745,7 +1065,10 @@ mod tests {
         Mock::given(method("POST"))
             .and(path("/v1/chat/completions"))
             .and(header("authorization", "Bearer sk-live"))
-            .respond_with(ResponseTemplate::new(200).set_body_raw("data: {\"x\":\"ü\"}\n\ndata: [DONE]\n\n", "text/event-stream"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(
+                "data: {\"x\":\"ü\"}\n\ndata: [DONE]\n\n",
+                "text/event-stream",
+            ))
             .mount(&server)
             .await;
         let base = format!("{}/v1", server.uri());
@@ -753,16 +1076,27 @@ mod tests {
         let store = MemoryStore::default();
         store.set("p1", "sk-live").unwrap();
         let oauth = OAuth::new(Arc::new(MemoryStore::default()));
-        let prepared = prepare(&req(&format!("{base}/chat/completions"), &[("Authorization", "Bearer dummy")]), Some(&p), &store, &oauth)
-            .await
-            .unwrap();
+        let prepared = prepare(
+            &req(
+                &format!("{base}/chat/completions"),
+                &[("Authorization", "Bearer dummy")],
+            ),
+            Some(&p),
+            &store,
+            &oauth,
+        )
+        .await
+        .unwrap();
         let (_tx, rx) = oneshot::channel();
         let mut events = vec![];
         run(&stream_client(), prepared, rx, |e| events.push(e)).await;
         match &events[0] {
             ProxyEvent::Head { status, headers } => {
                 assert_eq!(*status, 200);
-                assert_eq!(headers.get("content-type").map(String::as_str), Some("text/event-stream"));
+                assert_eq!(
+                    headers.get("content-type").map(String::as_str),
+                    Some("text/event-stream")
+                );
             }
             e => panic!("{e:?}"),
         }
@@ -784,7 +1118,13 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(5)))
             .mount(&server)
             .await;
-        let prepared = Prepared { url: server.uri(), method: "GET".into(), headers: vec![], body: None, forbidden_message: None };
+        let prepared = Prepared {
+            url: server.uri(),
+            method: "GET".into(),
+            headers: vec![],
+            body: None,
+            forbidden_message: None,
+        };
         let inflight = Inflight::default();
         let rx = inflight.register("a");
         let started = std::time::Instant::now();
@@ -796,25 +1136,52 @@ mod tests {
         tokio::time::sleep(Duration::from_millis(50)).await;
         assert!(inflight.abort("a"));
         let ev = handle.await.unwrap();
-        assert_eq!(ev, vec![ProxyEvent::Error { message: "aborted".into() }]);
+        assert_eq!(
+            ev,
+            vec![ProxyEvent::Error {
+                message: "aborted".into()
+            }]
+        );
         assert!(started.elapsed() < Duration::from_secs(2));
 
-        let prepared = Prepared { url: "http://127.0.0.1:9/x".into(), method: "GET".into(), headers: vec![], body: None, forbidden_message: None };
+        let prepared = Prepared {
+            url: "http://127.0.0.1:9/x".into(),
+            method: "GET".into(),
+            headers: vec![],
+            body: None,
+            forbidden_message: None,
+        };
         let (_tx, rx) = oneshot::channel();
         let mut ev = vec![];
         run(&stream_client(), prepared, rx, |e| ev.push(e)).await;
-        assert!(matches!(&ev[..], [ProxyEvent::Error { message }] if message.contains("Couldn't connect")));
+        assert!(
+            matches!(&ev[..], [ProxyEvent::Error { message }] if message.contains("Couldn't connect"))
+        );
     }
 
     #[tokio::test]
     async fn forbidden_maps_for_xai_oauth() {
         let server = MockServer::start().await;
-        Mock::given(method("POST")).respond_with(ResponseTemplate::new(403)).mount(&server).await;
-        let prepared = Prepared { url: server.uri(), method: "POST".into(), headers: vec![], body: None, forbidden_message: Some("plan".into()) };
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(403))
+            .mount(&server)
+            .await;
+        let prepared = Prepared {
+            url: server.uri(),
+            method: "POST".into(),
+            headers: vec![],
+            body: None,
+            forbidden_message: Some("plan".into()),
+        };
         let (_tx, rx) = oneshot::channel();
         let mut ev = vec![];
         run(&stream_client(), prepared, rx, |e| ev.push(e)).await;
-        assert_eq!(ev, vec![ProxyEvent::Error { message: "plan".into() }]);
+        assert_eq!(
+            ev,
+            vec![ProxyEvent::Error {
+                message: "plan".into()
+            }]
+        );
     }
 
     #[tokio::test]
@@ -827,7 +1194,11 @@ mod tests {
             .await;
         Mock::given(method("GET"))
             .and(path("/new"))
-            .respond_with(ResponseTemplate::new(200).insert_header("content-type", "text/html").set_body_bytes(b"<p>caf\xc3\xa9 \xff</p>".to_vec()))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("content-type", "text/html")
+                    .set_body_bytes(b"<p>caf\xc3\xa9 \xff</p>".to_vec()),
+            )
             .mount(&server)
             .await;
         Mock::given(method("GET"))
@@ -835,13 +1206,21 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_bytes(vec![b'a'; PAGE_LIMIT + 1]))
             .mount(&server)
             .await;
-        let page = get_text(&page_client(), &format!("{}/old", server.uri()), None).await.unwrap();
+        let page = get_text(&page_client(), &format!("{}/old", server.uri()), None)
+            .await
+            .unwrap();
         assert_eq!(page.status, 200);
         assert!(page.url.ends_with("/new"));
         assert_eq!(page.content_type.as_deref(), Some("text/html"));
         assert_eq!(page.body, "<p>café \u{FFFD}</p>");
-        assert!(get_text(&page_client(), &format!("{}/big", server.uri()), None).await.is_err());
-        assert!(get_text(&page_client(), "file:///etc/passwd", None).await.is_err());
+        assert!(
+            get_text(&page_client(), &format!("{}/big", server.uri()), None)
+                .await
+                .is_err()
+        );
+        assert!(get_text(&page_client(), "file:///etc/passwd", None)
+            .await
+            .is_err());
     }
 
     /// Streams a real chat completion from the dev LM Studio server with thinking off.
@@ -856,9 +1235,19 @@ mod tests {
             "reasoning_effort": "none",
             "messages": [{"role": "user", "content": "Say hi in three words."}],
         });
-        let mut r = req(&format!("{base}/chat/completions"), &[("content-type", "application/json")]);
+        let mut r = req(
+            &format!("{base}/chat/completions"),
+            &[("content-type", "application/json")],
+        );
         r.body = Some(body.to_string());
-        let prepared = prepare(&r, Some(&p), &MemoryStore::default(), &OAuth::new(Arc::new(MemoryStore::default()))).await.unwrap();
+        let prepared = prepare(
+            &r,
+            Some(&p),
+            &MemoryStore::default(),
+            &OAuth::new(Arc::new(MemoryStore::default())),
+        )
+        .await
+        .unwrap();
         let (_tx, rx) = oneshot::channel();
         let mut events = vec![];
         run(&stream_client(), prepared, rx, |e| events.push(e)).await;
@@ -878,7 +1267,11 @@ mod tests {
                 reasoning.push_str(d["reasoning_content"].as_str().unwrap_or(""));
             }
         }
-        println!("events: {}, content: {content:?}, reasoning chars: {}", events.len(), reasoning.len());
+        println!(
+            "events: {}, content: {content:?}, reasoning chars: {}",
+            events.len(),
+            reasoning.len()
+        );
         assert!(matches!(events[0], ProxyEvent::Head { status: 200, .. }));
         assert_eq!(events.last(), Some(&ProxyEvent::End));
         assert!(!content.trim().is_empty());
@@ -889,7 +1282,7 @@ mod tests {
     /// side's fake Authorization header is dropped. Needs OPENROUTER_API_KEY.
     #[tokio::test]
     #[ignore]
-async fn live_openrouter_long_stream() {
+    async fn live_openrouter_long_stream() {
         let Ok(key) = std::env::var("OPENROUTER_API_KEY") else {
             eprintln!("OPENROUTER_API_KEY not set");
             return;
@@ -906,10 +1299,20 @@ async fn live_openrouter_long_stream() {
             });
             let mut r = req(
                 "https://openrouter.ai/api/v1/chat/completions",
-                &[("content-type", "application/json"), ("authorization", "Bearer managed-by-backend")],
+                &[
+                    ("content-type", "application/json"),
+                    ("authorization", "Bearer managed-by-backend"),
+                ],
             );
             r.body = Some(body.to_string());
-            let prepared = prepare(&r, Some(&p), &secrets, &OAuth::new(Arc::new(MemoryStore::default()))).await.unwrap();
+            let prepared = prepare(
+                &r,
+                Some(&p),
+                &secrets,
+                &OAuth::new(Arc::new(MemoryStore::default())),
+            )
+            .await
+            .unwrap();
             let (_tx, rx) = oneshot::channel();
             let mut events = vec![];
             let start = std::time::Instant::now();
@@ -922,7 +1325,12 @@ async fn live_openrouter_long_stream() {
             })
             .await;
             let max_gap = gaps.iter().copied().max().unwrap_or(0);
-            println!("round {round}: {} events in {:?}, max gap {max_gap} ms, last {:?}", events.len(), start.elapsed(), events.last());
+            println!(
+                "round {round}: {} events in {:?}, max gap {max_gap} ms, last {:?}",
+                events.len(),
+                start.elapsed(),
+                events.last()
+            );
             assert_eq!(events.last(), Some(&ProxyEvent::End));
         }
     }
@@ -947,10 +1355,20 @@ async fn live_openrouter_long_stream() {
         });
         let mut r = req(
             "https://openrouter.ai/api/v1/chat/completions",
-            &[("content-type", "application/json"), ("authorization", "Bearer managed-by-backend")],
+            &[
+                ("content-type", "application/json"),
+                ("authorization", "Bearer managed-by-backend"),
+            ],
         );
         r.body = Some(body.to_string());
-        let prepared = prepare(&r, Some(&p), &secrets, &OAuth::new(Arc::new(MemoryStore::default()))).await.unwrap();
+        let prepared = prepare(
+            &r,
+            Some(&p),
+            &secrets,
+            &OAuth::new(Arc::new(MemoryStore::default())),
+        )
+        .await
+        .unwrap();
         let (_tx, rx) = oneshot::channel();
         let mut events = vec![];
         run(&stream_client(), prepared, rx, |e| events.push(e)).await;
@@ -965,10 +1383,18 @@ async fn live_openrouter_long_stream() {
             .lines()
             .filter_map(|l| l.strip_prefix("data: "))
             .filter_map(|l| serde_json::from_str::<serde_json::Value>(l).ok())
-            .filter_map(|v| v["choices"][0]["delta"]["content"].as_str().map(str::to_string))
+            .filter_map(|v| {
+                v["choices"][0]["delta"]["content"]
+                    .as_str()
+                    .map(str::to_string)
+            })
             .collect();
         println!("events: {}, content: {content:?}", events.len());
-        assert!(matches!(events[0], ProxyEvent::Head { status: 200, .. }), "{:?}", events.first());
+        assert!(
+            matches!(events[0], ProxyEvent::Head { status: 200, .. }),
+            "{:?}",
+            events.first()
+        );
         assert_eq!(events.last(), Some(&ProxyEvent::End));
         assert!(!content.trim().is_empty());
     }
@@ -985,7 +1411,9 @@ async fn live_openrouter_long_stream() {
             sock.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nTransfer-Encoding: chunked\r\n\r\n").await.unwrap();
             for (delay, bytes) in pieces {
                 tokio::time::sleep(Duration::from_millis(delay)).await;
-                sock.write_all(format!("{:x}\r\n", bytes.len()).as_bytes()).await.unwrap();
+                sock.write_all(format!("{:x}\r\n", bytes.len()).as_bytes())
+                    .await
+                    .unwrap();
                 sock.write_all(&bytes).await.unwrap();
                 sock.write_all(b"\r\n").await.unwrap();
                 sock.flush().await.unwrap();
@@ -999,15 +1427,27 @@ async fn live_openrouter_long_stream() {
     }
 
     fn sse_event(content: &str) -> String {
-        format!("data: {}\n\n", serde_json::json!({"choices": [{"delta": {"content": content}}]}))
+        format!(
+            "data: {}\n\n",
+            serde_json::json!({"choices": [{"delta": {"content": content}}]})
+        )
     }
 
     async fn run_raw(url: String) -> (Vec<(Duration, ProxyEvent)>, String) {
-        let prepared = Prepared { url, method: "POST".into(), headers: vec![], body: Some("{}".into()), forbidden_message: None };
+        let prepared = Prepared {
+            url,
+            method: "POST".into(),
+            headers: vec![],
+            body: Some("{}".into()),
+            forbidden_message: None,
+        };
         let (_tx, rx) = oneshot::channel();
         let start = std::time::Instant::now();
         let mut events = vec![];
-        run(&stream_client(), prepared, rx, |e| events.push((start.elapsed(), e))).await;
+        run(&stream_client(), prepared, rx, |e| {
+            events.push((start.elapsed(), e))
+        })
+        .await;
         let body = events
             .iter()
             .filter_map(|(_, e)| match e {
@@ -1020,17 +1460,32 @@ async fn live_openrouter_long_stream() {
 
     #[tokio::test]
     async fn chunks_arrive_before_a_pause_ends() {
-        let pieces = vec![(0, sse_event("Hallo ").into_bytes()), (1500, sse_event("Welt").into_bytes()), (0, b"data: [DONE]\n\n".to_vec())];
+        let pieces = vec![
+            (0, sse_event("Hallo ").into_bytes()),
+            (1500, sse_event("Welt").into_bytes()),
+            (0, b"data: [DONE]\n\n".to_vec()),
+        ];
         let (events, body) = run_raw(raw_sse(pieces, true).await).await;
-        let first = events.iter().find(|(_, e)| matches!(e, ProxyEvent::Chunk { data } if data.contains("Hallo"))).unwrap();
-        assert!(first.0 < Duration::from_millis(1000), "first chunk held back until {:?}", first.0);
+        let first = events
+            .iter()
+            .find(|(_, e)| matches!(e, ProxyEvent::Chunk { data } if data.contains("Hallo")))
+            .unwrap();
+        assert!(
+            first.0 < Duration::from_millis(1000),
+            "first chunk held back until {:?}",
+            first.0
+        );
         assert!(body.contains("Welt"));
         assert_eq!(events.last().unwrap().1, ProxyEvent::End);
     }
 
     #[tokio::test]
     async fn split_utf8_and_json_reassemble() {
-        let full = format!("{}{}data: [DONE]\n\n", sse_event("Lichtenergie — Grüße 🌱"), sse_event("O₂"));
+        let full = format!(
+            "{}{}data: [DONE]\n\n",
+            sse_event("Lichtenergie — Grüße 🌱"),
+            sse_event("O₂")
+        );
         let bytes = full.as_bytes();
         let pieces = bytes.chunks(3).map(|c| (1, c.to_vec())).collect();
         let (events, body) = run_raw(raw_sse(pieces, true).await).await;
@@ -1041,7 +1496,10 @@ async fn live_openrouter_long_stream() {
 
     #[tokio::test]
     async fn drop_after_final_event_is_not_an_error() {
-        let pieces = vec![(0, sse_event("done").into_bytes()), (0, b"data: [DONE]\n\n".to_vec())];
+        let pieces = vec![
+            (0, sse_event("done").into_bytes()),
+            (0, b"data: [DONE]\n\n".to_vec()),
+        ];
         let (events, _) = run_raw(raw_sse(pieces, false).await).await;
         assert_eq!(events.last().unwrap().1, ProxyEvent::End);
     }
@@ -1052,7 +1510,10 @@ async fn live_openrouter_long_stream() {
         let (events, body) = run_raw(raw_sse(pieces, false).await).await;
         assert!(body.contains("half an"));
         match &events.last().unwrap().1 {
-            ProxyEvent::Error { message } => assert!(message.contains("closed before the answer finished"), "{message}"),
+            ProxyEvent::Error { message } => assert!(
+                message.contains("closed before the answer finished"),
+                "{message}"
+            ),
             e => panic!("{e:?}"),
         }
     }
@@ -1060,8 +1521,12 @@ async fn live_openrouter_long_stream() {
     #[test]
     fn sse_end_markers() {
         assert!(sse_finished("data: {}\n\ndata: [DONE]\n\n"));
-        assert!(sse_finished("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"));
-        assert!(sse_finished("data: {\"candidates\":[{\"finishReason\":\"STOP\"}]}\r\n\r\n"));
+        assert!(sse_finished(
+            "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+        ));
+        assert!(sse_finished(
+            "data: {\"candidates\":[{\"finishReason\":\"STOP\"}]}\r\n\r\n"
+        ));
         assert!(!sse_finished("data: {\"choices\":[]}\n\n"));
         assert!(!sse_finished("data: [DO"));
     }
@@ -1070,21 +1535,44 @@ async fn live_openrouter_long_stream() {
     #[tokio::test]
     #[ignore]
     async fn probe_mock_sse() {
-        let Ok(base) = std::env::var("MOCK_SSE") else { return };
-        let models = std::env::var("MOCK_MODELS").unwrap_or_else(|_| "plain,split,pause-5,close-early,close-after-done,gzip".into());
+        let Ok(base) = std::env::var("MOCK_SSE") else {
+            return;
+        };
+        let models = std::env::var("MOCK_MODELS")
+            .unwrap_or_else(|_| "plain,split,pause-5,close-early,close-after-done,gzip".into());
         for model in models.split(',') {
             let body = serde_json::json!({"model": model, "stream": true, "messages": []});
-            let prepared = Prepared { url: format!("{base}/chat/completions"), method: "POST".into(), headers: vec![("content-type".into(), "application/json".into())], body: Some(body.to_string()), forbidden_message: None };
+            let prepared = Prepared {
+                url: format!("{base}/chat/completions"),
+                method: "POST".into(),
+                headers: vec![("content-type".into(), "application/json".into())],
+                body: Some(body.to_string()),
+                forbidden_message: None,
+            };
             let (_tx, rx) = oneshot::channel();
             let start = std::time::Instant::now();
             let mut log = vec![];
             let mut bytes = 0usize;
             run(&stream_client(), prepared, rx, |e| {
-                if let ProxyEvent::Chunk { data } = &e { bytes += data.len(); }
-                log.push((start.elapsed().as_millis(), match &e { ProxyEvent::Chunk { .. } => "chunk".to_string(), other => format!("{other:?}") }));
-            }).await;
+                if let ProxyEvent::Chunk { data } = &e {
+                    bytes += data.len();
+                }
+                log.push((
+                    start.elapsed().as_millis(),
+                    match &e {
+                        ProxyEvent::Chunk { .. } => "chunk".to_string(),
+                        other => format!("{other:?}"),
+                    },
+                ));
+            })
+            .await;
             let max_gap = log.windows(2).map(|w| w[1].0 - w[0].0).max().unwrap_or(0);
-            println!("{model}: {} events, {bytes} bytes, {} ms, max gap {max_gap} ms, last {:?}", log.len(), start.elapsed().as_millis(), log.last());
+            println!(
+                "{model}: {} events, {bytes} bytes, {} ms, max gap {max_gap} ms, last {:?}",
+                log.len(),
+                start.elapsed().as_millis(),
+                log.last()
+            );
         }
     }
 }

@@ -39,16 +39,32 @@ fn row(r: &rusqlite::Row) -> rusqlite::Result<Annotation> {
 }
 
 pub fn list(c: &Connection, source_id: &str) -> AppResult<Vec<Annotation>> {
-    let mut st = c.prepare(&format!("SELECT {COLS} FROM annotations WHERE source_id = ?1 ORDER BY start_offset, created_at"))?;
-    let rows = st.query_map([source_id], row)?.collect::<Result<Vec<_>, _>>()?;
+    let mut st = c.prepare(&format!(
+        "SELECT {COLS} FROM annotations WHERE source_id = ?1 ORDER BY start_offset, created_at"
+    ))?;
+    let rows = st
+        .query_map([source_id], row)?
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(rows)
 }
 
 fn get(c: &Connection, id: &str) -> AppResult<Option<Annotation>> {
-    Ok(c.query_row(&format!("SELECT {COLS} FROM annotations WHERE id = ?1"), [id], row).optional()?)
+    Ok(c.query_row(
+        &format!("SELECT {COLS} FROM annotations WHERE id = ?1"),
+        [id],
+        row,
+    )
+    .optional()?)
 }
 
-pub fn add(c: &Connection, source_id: &str, start: i64, end: i64, quote: &str, note: &str) -> AppResult<Annotation> {
+pub fn add(
+    c: &Connection,
+    source_id: &str,
+    start: i64,
+    end: i64,
+    quote: &str,
+    note: &str,
+) -> AppResult<Annotation> {
     if start < 0 || end <= start {
         return Err(invalid("Select some text to highlight."));
     }
@@ -80,7 +96,9 @@ pub fn update(c: &Connection, id: &str, start: i64, end: i64, note: &str) -> App
         params![id, start, end, note, now_ms()],
     )?;
     if n == 0 {
-        return Err(crate::error::AppError::NotFound("This highlight no longer exists.".into()));
+        return Err(crate::error::AppError::NotFound(
+            "This highlight no longer exists.".into(),
+        ));
     }
     Ok(get(c, id)?.expect("just updated"))
 }
@@ -91,17 +109,40 @@ pub fn delete(c: &Connection, id: &str) -> AppResult<()> {
 }
 
 #[tauri::command]
-pub async fn annotations_list(state: State<'_, AppState>, source_id: String) -> AppResult<Vec<Annotation>> {
+pub async fn annotations_list(
+    state: State<'_, AppState>,
+    source_id: String,
+) -> AppResult<Vec<Annotation>> {
     list(&state.db.conn()?, &source_id)
 }
 
 #[tauri::command]
-pub async fn annotation_add(state: State<'_, AppState>, source_id: String, start: i64, end: i64, quote: String, note: Option<String>) -> AppResult<Annotation> {
-    add(&state.db.conn()?, &source_id, start, end, &quote, note.as_deref().unwrap_or(""))
+pub async fn annotation_add(
+    state: State<'_, AppState>,
+    source_id: String,
+    start: i64,
+    end: i64,
+    quote: String,
+    note: Option<String>,
+) -> AppResult<Annotation> {
+    add(
+        &state.db.conn()?,
+        &source_id,
+        start,
+        end,
+        &quote,
+        note.as_deref().unwrap_or(""),
+    )
 }
 
 #[tauri::command]
-pub async fn annotation_update(state: State<'_, AppState>, id: String, start: i64, end: i64, note: String) -> AppResult<Annotation> {
+pub async fn annotation_update(
+    state: State<'_, AppState>,
+    id: String,
+    start: i64,
+    end: i64,
+    note: String,
+) -> AppResult<Annotation> {
     update(&state.db.conn()?, &id, start, end, &note)
 }
 
@@ -119,13 +160,27 @@ mod tests {
     fn add_update_list_and_cascade() {
         let (db, _d) = test_db();
         let c = db.conn().unwrap();
-        let space = crate::db::models::create_space(&c, crate::db::models::SpacePatch { name: Some("S".into()), ..Default::default() }).unwrap();
+        let space = crate::db::models::create_space(
+            &c,
+            crate::db::models::SpacePatch {
+                name: Some("S".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
         let src = crate::db::models::insert_source(&c, &space.id, "Doc", "text", None).unwrap();
         assert!(add(&c, &src.id, 5, 5, "x", "").is_err());
         assert!(add(&c, "missing", 0, 4, "abcd", "").is_err());
         let b = add(&c, &src.id, 10, 20, "second one", "").unwrap();
         let a = add(&c, &src.id, 0, 4, "abcd", "why").unwrap();
-        assert_eq!(list(&c, &src.id).unwrap().iter().map(|x| x.id.clone()).collect::<Vec<_>>(), vec![a.id.clone(), b.id.clone()]);
+        assert_eq!(
+            list(&c, &src.id)
+                .unwrap()
+                .iter()
+                .map(|x| x.id.clone())
+                .collect::<Vec<_>>(),
+            vec![a.id.clone(), b.id.clone()]
+        );
         let u = update(&c, &a.id, 1, 5, "because").unwrap();
         assert_eq!((u.start, u.end, u.note.as_str()), (1, 5, "because"));
         assert!(update(&c, "nope", 0, 1, "").is_err());

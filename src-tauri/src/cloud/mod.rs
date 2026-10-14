@@ -123,23 +123,38 @@ pub struct AuthRequest {
 }
 
 pub fn too_large(cap: u64) -> AppError {
-    let limit = if cap >= 1024 * 1024 { format!("{} MB", cap / (1024 * 1024)) } else { format!("{cap} bytes") };
+    let limit = if cap >= 1024 * 1024 {
+        format!("{} MB", cap / (1024 * 1024))
+    } else {
+        format!("{cap} bytes")
+    };
     AppError::Other(format!("The file is larger than {limit}."))
 }
 
 /// Readable error for a failed API call.
 pub fn api_error(service: Service, status: u16, body: &str) -> AppError {
     if status == 401 {
-        return AppError::Other(format!("Your {} session expired. Connect again in Settings.", service.label()));
+        return AppError::Other(format!(
+            "Your {} session expired. Connect again in Settings.",
+            service.label()
+        ));
     }
     let v: Option<Value> = serde_json::from_str(body).ok();
     let detail = v
         .as_ref()
-        .and_then(|v| v.pointer("/error/message").or_else(|| v.get("error_summary")).or_else(|| v.get("error")))
+        .and_then(|v| {
+            v.pointer("/error/message")
+                .or_else(|| v.get("error_summary"))
+                .or_else(|| v.get("error"))
+        })
         .and_then(Value::as_str)
         .map(str::to_string)
         .unwrap_or_else(|| body.chars().take(200).collect());
-    AppError::Other(format!("{} returned HTTP {status}: {}", service.label(), detail.trim()))
+    AppError::Other(format!(
+        "{} returned HTTP {status}: {}",
+        service.label(),
+        detail.trim()
+    ))
 }
 
 pub async fn check(service: Service, resp: reqwest::Response) -> AppResult<reqwest::Response> {
@@ -182,12 +197,24 @@ pub async fn stream_to_file(resp: reqwest::Response, dest: &Path, cap: u64) -> A
 pub fn safe_file_name(name: &str) -> String {
     let cleaned: String = name
         .chars()
-        .map(|c| if matches!(c, '/' | '\\' | ':' | '\0') || c.is_control() { '_' } else { c })
+        .map(|c| {
+            if matches!(c, '/' | '\\' | ':' | '\0') || c.is_control() {
+                '_'
+            } else {
+                c
+            }
+        })
         .collect();
     let trimmed = cleaned.trim().trim_start_matches('.').to_string();
-    let mut out = if trimmed.is_empty() { "file".to_string() } else { trimmed };
+    let mut out = if trimmed.is_empty() {
+        "file".to_string()
+    } else {
+        trimmed
+    };
     if out.len() > 180 {
-        let ext = Path::new(&out).extension().map(|e| e.to_string_lossy().into_owned());
+        let ext = Path::new(&out)
+            .extension()
+            .map(|e| e.to_string_lossy().into_owned());
         let mut cut = 160;
         while !out.is_char_boundary(cut) {
             cut -= 1;
@@ -232,11 +259,19 @@ impl CloudServices {
     }
 
     pub fn client(&self, svc: Service) -> AppResult<Option<ClientConfig>> {
-        Ok(self.secrets.get(svc.account())?.and_then(|s| serde_json::from_str(&s).ok()))
+        Ok(self
+            .secrets
+            .get(svc.account())?
+            .and_then(|s| serde_json::from_str(&s).ok()))
     }
 
     /// Saves the app registration. An empty client id removes it. A changed id signs out.
-    pub fn set_client(&self, svc: Service, client_id: &str, client_secret: Option<&str>) -> AppResult<()> {
+    pub fn set_client(
+        &self,
+        svc: Service,
+        client_id: &str,
+        client_secret: Option<&str>,
+    ) -> AppResult<()> {
         let id = client_id.trim();
         let secret = client_secret.map(str::trim).filter(|s| !s.is_empty());
         let old = self.client(svc)?;
@@ -247,9 +282,17 @@ impl CloudServices {
         if id.chars().any(char::is_whitespace) {
             return Err(crate::error::invalid("The client ID can't contain spaces"));
         }
-        let secret = secret.map(str::to_string).or_else(|| old.as_ref().filter(|o| o.client_id == id).and_then(|o| o.client_secret.clone()));
-        let cfg = ClientConfig { client_id: id.to_string(), client_secret: if svc == Service::Google { secret } else { None } };
-        self.secrets.set(svc.account(), &serde_json::to_string(&cfg)?)?;
+        let secret = secret.map(str::to_string).or_else(|| {
+            old.as_ref()
+                .filter(|o| o.client_id == id)
+                .and_then(|o| o.client_secret.clone())
+        });
+        let cfg = ClientConfig {
+            client_id: id.to_string(),
+            client_secret: if svc == Service::Google { secret } else { None },
+        };
+        self.secrets
+            .set(svc.account(), &serde_json::to_string(&cfg)?)?;
         if old.map(|o| o.client_id) != Some(cfg.client_id) {
             self.oauth.sign_out(svc.account())?;
         }
@@ -279,24 +322,61 @@ impl CloudServices {
             })
         })?;
         if svc == Service::Google && c.client_secret.is_none() {
-            return Err(crate::error::invalid("Add the Google client secret in Settings first."));
+            return Err(crate::error::invalid(
+                "Add the Google client secret in Settings first.",
+            ));
         }
         Ok(c)
     }
 
-    pub fn build_authorize(&self, svc: Service, client: &ClientConfig, redirect_uri: &str) -> AuthRequest {
+    pub fn build_authorize(
+        &self,
+        svc: Service,
+        client: &ClientConfig,
+        redirect_uri: &str,
+    ) -> AuthRequest {
         match svc {
-            Service::Google => google::build_authorize(&self.google, &client.client_id, redirect_uri),
-            Service::Dropbox => dropbox::build_authorize(&self.dropbox, &client.client_id, redirect_uri),
+            Service::Google => {
+                google::build_authorize(&self.google, &client.client_id, redirect_uri)
+            }
+            Service::Dropbox => {
+                dropbox::build_authorize(&self.dropbox, &client.client_id, redirect_uri)
+            }
         }
     }
 
     /// Exchanges the code, looks up the account name and stores the tokens.
-    pub async fn finish_sign_in(&self, svc: Service, client: &ClientConfig, req: &AuthRequest, code: &str) -> AppResult<TokenSet> {
+    pub async fn finish_sign_in(
+        &self,
+        svc: Service,
+        client: &ClientConfig,
+        req: &AuthRequest,
+        code: &str,
+    ) -> AppResult<TokenSet> {
         let http = &self.oauth.http;
         let mut ts = match svc {
-            Service::Google => google::exchange_code(http, &self.google, client, code, &req.verifier, &req.redirect_uri).await?,
-            Service::Dropbox => dropbox::exchange_code(http, &self.dropbox, client, code, &req.verifier, &req.redirect_uri).await?,
+            Service::Google => {
+                google::exchange_code(
+                    http,
+                    &self.google,
+                    client,
+                    code,
+                    &req.verifier,
+                    &req.redirect_uri,
+                )
+                .await?
+            }
+            Service::Dropbox => {
+                dropbox::exchange_code(
+                    http,
+                    &self.dropbox,
+                    client,
+                    code,
+                    &req.verifier,
+                    &req.redirect_uri,
+                )
+                .await?
+            }
         };
         let account = match svc {
             Service::Google => google::account(http, &self.google, &ts.access).await,
@@ -319,7 +399,11 @@ impl CloudServices {
                 let c = &client;
                 self.oauth
                     .tokens
-                    .valid(svc.account(), |_| REFRESH_SKEW_MS, |old| async move { google::refresh(http, ep, c, &old).await })
+                    .valid(
+                        svc.account(),
+                        |_| REFRESH_SKEW_MS,
+                        |old| async move { google::refresh(http, ep, c, &old).await },
+                    )
                     .await
             }
             Service::Dropbox => {
@@ -327,67 +411,150 @@ impl CloudServices {
                 let c = &client;
                 self.oauth
                     .tokens
-                    .valid(svc.account(), |_| REFRESH_SKEW_MS, |old| async move { dropbox::refresh(http, ep, c, &old).await })
+                    .valid(
+                        svc.account(),
+                        |_| REFRESH_SKEW_MS,
+                        |old| async move { dropbox::refresh(http, ep, c, &old).await },
+                    )
                     .await
             }
         };
         match result {
             Ok(ts) => {
-                if self.oauth.status(svc.account()).is_ok_and(|s| s.state == "error") {
+                if self
+                    .oauth
+                    .status(svc.account())
+                    .is_ok_and(|s| s.state == "error")
+                {
                     self.oauth.clear_transient(svc.account());
                 }
                 Ok(ts.access)
             }
             Err(e) => {
-                if self.oauth.tokens.load(svc.account()).ok().flatten().is_some() {
-                    self.oauth.set_transient(self.oauth.error_status(svc.account(), e.to_string()));
+                if self
+                    .oauth
+                    .tokens
+                    .load(svc.account())
+                    .ok()
+                    .flatten()
+                    .is_some()
+                {
+                    self.oauth
+                        .set_transient(self.oauth.error_status(svc.account(), e.to_string()));
                 }
                 Err(e)
             }
         }
     }
 
-    pub async fn list(&self, svc: Service, folder: Option<&str>, query: Option<&str>, page_token: Option<&str>) -> AppResult<CloudPage> {
+    pub async fn list(
+        &self,
+        svc: Service,
+        folder: Option<&str>,
+        query: Option<&str>,
+        page_token: Option<&str>,
+    ) -> AppResult<CloudPage> {
         let token = self.token(svc).await?;
         let query = query.map(str::trim).filter(|q| !q.is_empty());
         let folder = folder.filter(|f| !f.is_empty());
         let page_token = page_token.filter(|p| !p.is_empty());
         match svc {
-            Service::Google => google::list(&self.oauth.http, &self.google, &token, folder, query, page_token).await,
-            Service::Dropbox => dropbox::list(&self.oauth.http, &self.dropbox, &token, folder, query, page_token).await,
+            Service::Google => {
+                google::list(
+                    &self.oauth.http,
+                    &self.google,
+                    &token,
+                    folder,
+                    query,
+                    page_token,
+                )
+                .await
+            }
+            Service::Dropbox => {
+                dropbox::list(
+                    &self.oauth.http,
+                    &self.dropbox,
+                    &token,
+                    folder,
+                    query,
+                    page_token,
+                )
+                .await
+            }
         }
     }
 
-    pub async fn download(&self, svc: Service, item: &CloudItem, dir: &Path, cap: u64) -> AppResult<PathBuf> {
+    pub async fn download(
+        &self,
+        svc: Service,
+        item: &CloudItem,
+        dir: &Path,
+        cap: u64,
+    ) -> AppResult<PathBuf> {
         let token = self.token(svc).await?;
         match svc {
-            Service::Google => google::download(&self.dl, &self.google, &token, item, dir, cap).await,
-            Service::Dropbox => dropbox::download(&self.dl, &self.dropbox, &token, item, dir, cap).await,
+            Service::Google => {
+                google::download(&self.dl, &self.google, &token, item, dir, cap).await
+            }
+            Service::Dropbox => {
+                dropbox::download(&self.dl, &self.dropbox, &token, item, dir, cap).await
+            }
         }
     }
 
     /// Downloads each item to `<imports_dir>/<uuid>/<name>` and imports it. One failure doesn't stop the rest.
-    pub async fn import(&self, ingest: &Ingest, svc: Service, space_id: &str, items: &[CloudItem], imports_dir: &Path, cap: u64) -> CloudImportResult {
+    pub async fn import(
+        &self,
+        ingest: &Ingest,
+        svc: Service,
+        space_id: &str,
+        items: &[CloudItem],
+        imports_dir: &Path,
+        cap: u64,
+    ) -> CloudImportResult {
         let mut sources = Vec::new();
         let mut failures = Vec::new();
         for item in items {
-            match self.import_one(ingest, svc, space_id, item, imports_dir, cap).await {
+            match self
+                .import_one(ingest, svc, space_id, item, imports_dir, cap)
+                .await
+            {
                 Ok(src) => sources.push(src),
                 Err(e) => {
                     log::warn!("{} import of one file failed: {e}", svc.label());
-                    failures.push(ImportFailure { name: item.name.clone(), error: e.to_string() });
+                    failures.push(ImportFailure {
+                        name: item.name.clone(),
+                        error: e.to_string(),
+                    });
                 }
             }
         }
         CloudImportResult { sources, failures }
     }
 
-    async fn import_one(&self, ingest: &Ingest, svc: Service, space_id: &str, item: &CloudItem, imports_dir: &Path, cap: u64) -> AppResult<crate::db::models::Source> {
+    async fn import_one(
+        &self,
+        ingest: &Ingest,
+        svc: Service,
+        space_id: &str,
+        item: &CloudItem,
+        imports_dir: &Path,
+        cap: u64,
+    ) -> AppResult<crate::db::models::Source> {
         if item.folder {
-            return Err(crate::error::invalid("Folders can't be imported. Open the folder and pick files."));
+            return Err(crate::error::invalid(
+                "Folders can't be imported. Open the folder and pick files.",
+            ));
         }
         let title = match svc {
-            Service::Google if item.mime_type.as_deref().is_some_and(|m| google::export_for(m).is_some()) => item.name.trim().to_string(),
+            Service::Google
+                if item
+                    .mime_type
+                    .as_deref()
+                    .is_some_and(|m| google::export_for(m).is_some()) =>
+            {
+                item.name.trim().to_string()
+            }
             _ => title_for(&item.name),
         };
         let dir = imports_dir.join(uuid::Uuid::new_v4().to_string());
@@ -402,9 +569,11 @@ impl CloudServices {
         let ingest = ingest.clone();
         let space_id = space_id.to_string();
         let origin = svc.origin(&item.id);
-        tokio::task::spawn_blocking(move || ingest.import_file_as(&space_id, &path.to_string_lossy(), &title, &origin))
-            .await
-            .map_err(|e| AppError::Other(e.to_string()))?
+        tokio::task::spawn_blocking(move || {
+            ingest.import_file_as(&space_id, &path.to_string_lossy(), &title, &origin)
+        })
+        .await
+        .map_err(|e| AppError::Other(e.to_string()))?
     }
 
     /// Best-effort token revocation, then forgets the tokens.
@@ -414,7 +583,14 @@ impl CloudServices {
             let http = &self.oauth.http;
             let revoke = async {
                 match svc {
-                    Service::Google => google::revoke(http, &self.google, ts.refresh.as_deref().unwrap_or(&ts.access)).await,
+                    Service::Google => {
+                        google::revoke(
+                            http,
+                            &self.google,
+                            ts.refresh.as_deref().unwrap_or(&ts.access),
+                        )
+                        .await
+                    }
                     Service::Dropbox => dropbox::revoke(http, &self.dropbox, &ts.access).await,
                 }
             };
@@ -454,33 +630,81 @@ pub mod tests {
         let st = s.status(Service::Google).unwrap();
         assert!(!st.configured);
         assert_eq!(st.state, "signedOut");
-        assert!(s.require_client(Service::Google).unwrap_err().to_string().contains("Add a Google client ID"));
+        assert!(s
+            .require_client(Service::Google)
+            .unwrap_err()
+            .to_string()
+            .contains("Add a Google client ID"));
 
-        s.set_client(Service::Google, " id.apps.googleusercontent.com ", None).unwrap();
-        assert!(s.require_client(Service::Google).unwrap_err().to_string().contains("client secret"));
-        s.set_client(Service::Google, "id.apps.googleusercontent.com", Some("sec")).unwrap();
+        s.set_client(Service::Google, " id.apps.googleusercontent.com ", None)
+            .unwrap();
+        assert!(s
+            .require_client(Service::Google)
+            .unwrap_err()
+            .to_string()
+            .contains("client secret"));
+        s.set_client(
+            Service::Google,
+            "id.apps.googleusercontent.com",
+            Some("sec"),
+        )
+        .unwrap();
         s.oauth
             .tokens
-            .save("cloud:google", &TokenSet { access: "a".into(), refresh: Some("r".into()), expires_at: 0, account: Some("me@x.com".into()), client_id: None, obtained_at: None })
+            .save(
+                "cloud:google",
+                &TokenSet {
+                    access: "a".into(),
+                    refresh: Some("r".into()),
+                    expires_at: 0,
+                    account: Some("me@x.com".into()),
+                    client_id: None,
+                    obtained_at: None,
+                },
+            )
             .unwrap();
         let st = s.status(Service::Google).unwrap();
         assert!(st.configured && st.has_secret);
-        assert_eq!(st.client_id.as_deref(), Some("id.apps.googleusercontent.com"));
-        assert_eq!((st.state, st.account.as_deref()), ("signedIn", Some("me@x.com")));
+        assert_eq!(
+            st.client_id.as_deref(),
+            Some("id.apps.googleusercontent.com")
+        );
+        assert_eq!(
+            (st.state, st.account.as_deref()),
+            ("signedIn", Some("me@x.com"))
+        );
         // tokens are stored under oauth:cloud:google; the registration under cloud:google
         assert!(s.secrets.get("oauth:cloud:google").unwrap().is_some());
-        assert!(!s.secrets.get("cloud:google").unwrap().unwrap().contains("\"access\""));
+        assert!(!s
+            .secrets
+            .get("cloud:google")
+            .unwrap()
+            .unwrap()
+            .contains("\"access\""));
 
         // same id keeps the secret and the session
-        s.set_client(Service::Google, "id.apps.googleusercontent.com", None).unwrap();
-        assert_eq!(s.client(Service::Google).unwrap().unwrap().client_secret.as_deref(), Some("sec"));
+        s.set_client(Service::Google, "id.apps.googleusercontent.com", None)
+            .unwrap();
+        assert_eq!(
+            s.client(Service::Google)
+                .unwrap()
+                .unwrap()
+                .client_secret
+                .as_deref(),
+            Some("sec")
+        );
         assert_eq!(s.status(Service::Google).unwrap().state, "signedIn");
         // a different id signs out
-        s.set_client(Service::Google, "other", Some("sec2")).unwrap();
+        s.set_client(Service::Google, "other", Some("sec2"))
+            .unwrap();
         assert_eq!(s.status(Service::Google).unwrap().state, "signedOut");
         // dropbox never stores a secret
-        s.set_client(Service::Dropbox, "appkey", Some("ignored")).unwrap();
-        assert_eq!(s.client(Service::Dropbox).unwrap().unwrap().client_secret, None);
+        s.set_client(Service::Dropbox, "appkey", Some("ignored"))
+            .unwrap();
+        assert_eq!(
+            s.client(Service::Dropbox).unwrap().unwrap().client_secret,
+            None
+        );
         s.set_client(Service::Dropbox, "", None).unwrap();
         assert!(!s.status(Service::Dropbox).unwrap().configured);
     }
@@ -496,19 +720,29 @@ pub mod tests {
         Mock::given(method("GET"))
             .and(path("/drive/v3/files/doc1/export"))
             .and(query_param("mimeType", "text/markdown"))
-            .respond_with(ResponseTemplate::new(200).set_body_string("# Cells\n\nMitochondria make ATP."))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_string("# Cells\n\nMitochondria make ATP."),
+            )
             .mount(&server)
             .await;
         Mock::given(method("GET"))
             .and(path("/drive/v3/files/pdf1"))
             .and(query_param("alt", "media"))
-            .respond_with(ResponseTemplate::new(200).set_body_bytes(crate::ingest::extract::tests::sample_pdf()))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_bytes(crate::ingest::extract::tests::sample_pdf()),
+            )
             .mount(&server)
             .await;
         Mock::given(method("POST"))
             .and(path("/content/2/files/download"))
-            .and(header("Dropbox-API-Arg", r#"{"path":"/Notes/Genetics.md"}"#))
-            .respond_with(ResponseTemplate::new(200).set_body_string("DNA is copied before division."))
+            .and(header(
+                "Dropbox-API-Arg",
+                r#"{"path":"/Notes/Genetics.md"}"#,
+            ))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_string("DNA is copied before division."),
+            )
             .mount(&server)
             .await;
 
@@ -516,32 +750,106 @@ pub mod tests {
         let far = crate::oauth::tokens::now_ms() + 3_600_000;
         for svc in [Service::Google, Service::Dropbox] {
             s.set_client(svc, "cid", Some("sec")).unwrap();
-            s.oauth.tokens.save(svc.account(), &TokenSet { access: "tok".into(), refresh: Some("r".into()), expires_at: far, account: None, client_id: None, obtained_at: None }).unwrap();
+            s.oauth
+                .tokens
+                .save(
+                    svc.account(),
+                    &TokenSet {
+                        access: "tok".into(),
+                        refresh: Some("r".into()),
+                        expires_at: far,
+                        account: None,
+                        client_id: None,
+                        obtained_at: None,
+                    },
+                )
+                .unwrap();
         }
         let (ing, db, dir, _events, space) = setup(Some(Arc::new(FakeEmbedder)));
         let imports = dir.path().join("imports");
 
-        let doc = CloudItem { id: "doc1".into(), name: "Biology 101".into(), folder: false, mime_type: Some(google::DOC.into()), size: None, modified: None, supported: true };
-        let pdf = CloudItem { id: "pdf1".into(), name: "paper.pdf".into(), mime_type: Some("application/pdf".into()), size: Some(100), ..doc.clone() };
-        let img = CloudItem { id: "img".into(), name: "photo.jpg".into(), mime_type: Some("image/jpeg".into()), ..doc.clone() };
-        let out = s.import(&ing, Service::Google, &space, &[doc, pdf, img], &imports, MAX_DOWNLOAD_BYTES).await;
+        let doc = CloudItem {
+            id: "doc1".into(),
+            name: "Biology 101".into(),
+            folder: false,
+            mime_type: Some(google::DOC.into()),
+            size: None,
+            modified: None,
+            supported: true,
+        };
+        let pdf = CloudItem {
+            id: "pdf1".into(),
+            name: "paper.pdf".into(),
+            mime_type: Some("application/pdf".into()),
+            size: Some(100),
+            ..doc.clone()
+        };
+        let img = CloudItem {
+            id: "img".into(),
+            name: "photo.jpg".into(),
+            mime_type: Some("image/jpeg".into()),
+            ..doc.clone()
+        };
+        let out = s
+            .import(
+                &ing,
+                Service::Google,
+                &space,
+                &[doc, pdf, img],
+                &imports,
+                MAX_DOWNLOAD_BYTES,
+            )
+            .await;
         assert_eq!(out.sources.len(), 2);
         assert_eq!(out.failures.len(), 1);
         assert_eq!(out.failures[0].name, "photo.jpg");
         let doc_src = wait_status(&db, &out.sources[0].id, "ready");
-        assert_eq!((doc_src.title.as_str(), doc_src.kind.as_str(), doc_src.origin.as_deref()), ("Biology 101", "markdown", Some("gdrive://doc1")));
+        assert_eq!(
+            (
+                doc_src.title.as_str(),
+                doc_src.kind.as_str(),
+                doc_src.origin.as_deref()
+            ),
+            ("Biology 101", "markdown", Some("gdrive://doc1"))
+        );
         let pdf_src = wait_status(&db, &out.sources[1].id, "ready");
-        assert_eq!((pdf_src.title.as_str(), pdf_src.kind.as_str(), pdf_src.origin.as_deref()), ("paper", "pdf", Some("gdrive://pdf1")));
+        assert_eq!(
+            (
+                pdf_src.title.as_str(),
+                pdf_src.kind.as_str(),
+                pdf_src.origin.as_deref()
+            ),
+            ("paper", "pdf", Some("gdrive://pdf1"))
+        );
 
-        let md = CloudItem { id: "/Notes/Genetics.md".into(), name: "Genetics.md".into(), folder: false, mime_type: None, size: Some(30), modified: None, supported: true };
-        let out = s.import(&ing, Service::Dropbox, &space, &[md], &imports, MAX_DOWNLOAD_BYTES).await;
+        let md = CloudItem {
+            id: "/Notes/Genetics.md".into(),
+            name: "Genetics.md".into(),
+            folder: false,
+            mime_type: None,
+            size: Some(30),
+            modified: None,
+            supported: true,
+        };
+        let out = s
+            .import(
+                &ing,
+                Service::Dropbox,
+                &space,
+                &[md],
+                &imports,
+                MAX_DOWNLOAD_BYTES,
+            )
+            .await;
         assert!(out.failures.is_empty());
         let src = wait_status(&db, &out.sources[0].id, "ready");
-        assert_eq!((src.title.as_str(), src.origin.as_deref()), ("Genetics", Some("dropbox:///Notes/Genetics.md")));
+        assert_eq!(
+            (src.title.as_str(), src.origin.as_deref()),
+            ("Genetics", Some("dropbox:///Notes/Genetics.md"))
+        );
         let text = crate::db::models::get_source_text(&db.conn().unwrap(), &src.id).unwrap();
         assert!(text.text.contains("DNA is copied"));
         // each download gets its own folder; the failed one leaves nothing behind
         assert_eq!(std::fs::read_dir(&imports).unwrap().count(), 3);
     }
 }
-

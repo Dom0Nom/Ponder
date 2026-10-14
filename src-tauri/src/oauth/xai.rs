@@ -21,7 +21,10 @@ pub struct Endpoints {
 
 impl Default for Endpoints {
     fn default() -> Self {
-        Self { discovery: DISCOVERY_URL.into(), enforce_origin: true }
+        Self {
+            discovery: DISCOVERY_URL.into(),
+            enforce_origin: true,
+        }
     }
 }
 
@@ -56,31 +59,46 @@ fn on_xai_origin(u: &str) -> bool {
 }
 
 pub async fn discover(http: &reqwest::Client, ep: &Endpoints) -> AppResult<Discovery> {
-    let resp = http.get(&ep.discovery).header("Accept", "application/json").send().await?;
+    let resp = http
+        .get(&ep.discovery)
+        .header("Accept", "application/json")
+        .send()
+        .await?;
     if !resp.status().is_success() {
-        return Err(AppError::Other(format!("xAI sign-in discovery failed (HTTP {})", resp.status().as_u16())));
+        return Err(AppError::Other(format!(
+            "xAI sign-in discovery failed (HTTP {})",
+            resp.status().as_u16()
+        )));
     }
-    let d: Discovery = resp
-        .json()
-        .await
-        .map_err(|_| AppError::Other("xAI sign-in discovery returned an unexpected document".into()))?;
-    if ep.enforce_origin && !(on_xai_origin(&d.device_authorization_endpoint) && on_xai_origin(&d.token_endpoint)) {
-        return Err(AppError::Other("xAI sign-in discovery pointed outside x.ai; refusing".into()));
+    let d: Discovery = resp.json().await.map_err(|_| {
+        AppError::Other("xAI sign-in discovery returned an unexpected document".into())
+    })?;
+    if ep.enforce_origin
+        && !(on_xai_origin(&d.device_authorization_endpoint) && on_xai_origin(&d.token_endpoint))
+    {
+        return Err(AppError::Other(
+            "xAI sign-in discovery pointed outside x.ai; refusing".into(),
+        ));
     }
     Ok(d)
 }
 
 pub async fn request_device_code(http: &reqwest::Client, d: &Discovery) -> AppResult<DeviceStart> {
-    let v = post_form(http, &d.device_authorization_endpoint, &[("client_id", CLIENT_ID), ("scope", SCOPE)])
-        .await
-        .map_err(|(s, b)| {
-            if s == 403 {
-                AppError::Other(PLAN_ERROR.into())
-            } else {
-                AppError::Other(oauth_error_message(s, &b))
-            }
-        })?;
-    serde_json::from_value(v).map_err(|_| AppError::Other("xAI device-code response was missing fields".into()))
+    let v = post_form(
+        http,
+        &d.device_authorization_endpoint,
+        &[("client_id", CLIENT_ID), ("scope", SCOPE)],
+    )
+    .await
+    .map_err(|(s, b)| {
+        if s == 403 {
+            AppError::Other(PLAN_ERROR.into())
+        } else {
+            AppError::Other(oauth_error_message(s, &b))
+        }
+    })?;
+    serde_json::from_value(v)
+        .map_err(|_| AppError::Other("xAI device-code response was missing fields".into()))
 }
 
 pub fn poll_config(start: &DeviceStart) -> PollConfig {
@@ -91,17 +109,32 @@ pub fn poll_config(start: &DeviceStart) -> PollConfig {
     }
 }
 
-pub async fn poll_token(http: &reqwest::Client, d: &Discovery, device_code: &str, cfg: PollConfig) -> AppResult<TokenSet> {
-    let form = [("grant_type", device::GRANT_TYPE), ("client_id", CLIENT_ID), ("device_code", device_code)];
-    let v: Value = device::poll(http, &d.token_endpoint, &form, cfg).await.map_err(|e| match e {
-        DeviceError::Denied => AppError::Other("Sign-in was declined.".into()),
-        DeviceError::Expired => AppError::Other("The code expired before it was approved. Try again.".into()),
-        DeviceError::Forbidden(_) => AppError::Other(PLAN_ERROR.into()),
-        DeviceError::Other(m) => AppError::Other(format!("xAI sign-in failed: {m}")),
-    })?;
+pub async fn poll_token(
+    http: &reqwest::Client,
+    d: &Discovery,
+    device_code: &str,
+    cfg: PollConfig,
+) -> AppResult<TokenSet> {
+    let form = [
+        ("grant_type", device::GRANT_TYPE),
+        ("client_id", CLIENT_ID),
+        ("device_code", device_code),
+    ];
+    let v: Value = device::poll(http, &d.token_endpoint, &form, cfg)
+        .await
+        .map_err(|e| match e {
+            DeviceError::Denied => AppError::Other("Sign-in was declined.".into()),
+            DeviceError::Expired => {
+                AppError::Other("The code expired before it was approved. Try again.".into())
+            }
+            DeviceError::Forbidden(_) => AppError::Other(PLAN_ERROR.into()),
+            DeviceError::Other(m) => AppError::Other(format!("xAI sign-in failed: {m}")),
+        })?;
     let ts = TokenSet::from_response(&v, now_ms(), None)?;
     if ts.refresh.is_none() {
-        return Err(AppError::Other("xAI sign-in returned no refresh token".into()));
+        return Err(AppError::Other(
+            "xAI sign-in returned no refresh token".into(),
+        ));
     }
     Ok(ts)
 }
@@ -109,12 +142,20 @@ pub async fn poll_token(http: &reqwest::Client, d: &Discovery, device_code: &str
 pub async fn refresh(http: &reqwest::Client, ep: &Endpoints, ts: &TokenSet) -> AppResult<TokenSet> {
     let d = discover(http, ep).await?;
     let refresh = ts.refresh.as_deref().unwrap_or_default();
-    let form = [("grant_type", "refresh_token"), ("client_id", CLIENT_ID), ("refresh_token", refresh)];
-    let v = post_form(http, &d.token_endpoint, &form).await.map_err(|(s, b)| match s {
-        403 => AppError::Other(PLAN_ERROR.into()),
-        400 | 401 => AppError::Other("Your xAI session expired. Sign in again in Settings.".into()),
-        _ => AppError::Other(oauth_error_message(s, &b)),
-    })?;
+    let form = [
+        ("grant_type", "refresh_token"),
+        ("client_id", CLIENT_ID),
+        ("refresh_token", refresh),
+    ];
+    let v = post_form(http, &d.token_endpoint, &form)
+        .await
+        .map_err(|(s, b)| match s {
+            403 => AppError::Other(PLAN_ERROR.into()),
+            400 | 401 => {
+                AppError::Other("Your xAI session expired. Sign in again in Settings.".into())
+            }
+            _ => AppError::Other(oauth_error_message(s, &b)),
+        })?;
     TokenSet::from_response(&v, now_ms(), Some(ts))
 }
 
@@ -149,7 +190,10 @@ mod tests {
             })))
             .mount(&server)
             .await;
-        let ep = Endpoints { discovery: format!("{}/.well-known/openid-configuration", server.uri()), enforce_origin: false };
+        let ep = Endpoints {
+            discovery: format!("{}/.well-known/openid-configuration", server.uri()),
+            enforce_origin: false,
+        };
         (server, ep)
     }
 
@@ -162,7 +206,11 @@ mod tests {
     }
 
     fn fast(start: &DeviceStart) -> PollConfig {
-        PollConfig { interval: Duration::from_millis(10), slow_down_step: Duration::from_millis(40), expires_in: Duration::from_secs(start.expires_in) }
+        PollConfig {
+            interval: Duration::from_millis(10),
+            slow_down_step: Duration::from_millis(40),
+            expires_in: Duration::from_secs(start.expires_in),
+        }
     }
 
     #[tokio::test]
@@ -180,13 +228,18 @@ mod tests {
         Mock::given(method("POST"))
             .and(path("/oauth2/token"))
             .and(body_string_contains("device_code=dc"))
-            .and(body_string_contains("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"))
+            .and(body_string_contains(
+                "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code",
+            ))
             .respond_with(Sequence(
                 AtomicUsize::new(0),
                 vec![
-                    ResponseTemplate::new(400).set_body_json(json!({"error": "authorization_pending"})),
+                    ResponseTemplate::new(400)
+                        .set_body_json(json!({"error": "authorization_pending"})),
                     ResponseTemplate::new(400).set_body_json(json!({"error": "slow_down"})),
-                    ResponseTemplate::new(200).set_body_json(json!({"access_token": "at", "refresh_token": "rt", "expires_in": 21600})),
+                    ResponseTemplate::new(200).set_body_json(
+                        json!({"access_token": "at", "refresh_token": "rt", "expires_in": 21600}),
+                    ),
                 ],
             ))
             .expect(3)
@@ -198,7 +251,9 @@ mod tests {
         assert_eq!(start.user_code, "ABCD-EFGH");
         assert_eq!(poll_config(&start).interval, Duration::from_secs(5));
         let t0 = std::time::Instant::now();
-        let ts = poll_token(&http, &d, &start.device_code, fast(&start)).await.unwrap();
+        let ts = poll_token(&http, &d, &start.device_code, fast(&start))
+            .await
+            .unwrap();
         // 10ms + 10ms + (10+40)ms: the slow_down bumped the interval
         assert!(t0.elapsed() >= Duration::from_millis(70));
         assert_eq!(ts.access, "at");
@@ -212,25 +267,47 @@ mod tests {
         Mock::given(method("POST"))
             .and(path("/oauth2/token"))
             .and(body_string_contains("device_code=expired"))
-            .respond_with(ResponseTemplate::new(400).set_body_json(json!({"error": "expired_token"})))
+            .respond_with(
+                ResponseTemplate::new(400).set_body_json(json!({"error": "expired_token"})),
+            )
             .mount(&server)
             .await;
         Mock::given(method("POST"))
             .and(path("/oauth2/token"))
             .and(body_string_contains("device_code=denied"))
-            .respond_with(ResponseTemplate::new(400).set_body_json(json!({"error": "access_denied"})))
+            .respond_with(
+                ResponseTemplate::new(400).set_body_json(json!({"error": "access_denied"})),
+            )
             .mount(&server)
             .await;
         let http = reqwest::Client::new();
         let d = discover(&http, &ep).await.unwrap();
-        let cfg = PollConfig { interval: Duration::from_millis(5), slow_down_step: Duration::from_millis(5), expires_in: Duration::from_secs(5) };
-        let e = poll_token(&http, &d, "expired", cfg.clone()).await.unwrap_err().to_string();
+        let cfg = PollConfig {
+            interval: Duration::from_millis(5),
+            slow_down_step: Duration::from_millis(5),
+            expires_in: Duration::from_secs(5),
+        };
+        let e = poll_token(&http, &d, "expired", cfg.clone())
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("expired"), "{e}");
-        let e = poll_token(&http, &d, "denied", cfg.clone()).await.unwrap_err().to_string();
+        let e = poll_token(&http, &d, "denied", cfg.clone())
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("declined"), "{e}");
         // local deadline also ends polling
-        let short = PollConfig { interval: Duration::from_millis(50), slow_down_step: Duration::ZERO, expires_in: Duration::from_millis(10) };
-        assert!(poll_token(&http, &d, "x", short).await.unwrap_err().to_string().contains("expired"));
+        let short = PollConfig {
+            interval: Duration::from_millis(50),
+            slow_down_step: Duration::ZERO,
+            expires_in: Duration::from_millis(10),
+        };
+        assert!(poll_token(&http, &d, "x", short)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("expired"));
     }
 
     #[tokio::test]
@@ -242,12 +319,26 @@ mod tests {
             .mount(&server)
             .await;
         let http = reqwest::Client::new();
-        let ts = TokenSet { access: "a".into(), refresh: Some("r".into()), expires_at: 1, account: None, client_id: None, obtained_at: None };
+        let ts = TokenSet {
+            access: "a".into(),
+            refresh: Some("r".into()),
+            expires_at: 1,
+            account: None,
+            client_id: None,
+            obtained_at: None,
+        };
         let e = refresh(&http, &ep, &ts).await.unwrap_err().to_string();
         assert!(e.contains("plan doesn't include API access"), "{e}");
         let d = discover(&http, &ep).await.unwrap();
-        let cfg = PollConfig { interval: Duration::from_millis(5), slow_down_step: Duration::ZERO, expires_in: Duration::from_secs(5) };
-        let e = poll_token(&http, &d, "dc", cfg).await.unwrap_err().to_string();
+        let cfg = PollConfig {
+            interval: Duration::from_millis(5),
+            slow_down_step: Duration::ZERO,
+            expires_in: Duration::from_secs(5),
+        };
+        let e = poll_token(&http, &d, "dc", cfg)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("plan doesn't include API access"), "{e}");
     }
 
@@ -258,24 +349,51 @@ mod tests {
             .and(path("/oauth2/token"))
             .and(body_string_contains("grant_type=refresh_token"))
             .and(body_string_contains("refresh_token=r1"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({"access_token": "a2", "refresh_token": "r2", "expires_in": 21600})))
+            .respond_with(ResponseTemplate::new(200).set_body_json(
+                json!({"access_token": "a2", "refresh_token": "r2", "expires_in": 21600}),
+            ))
             .expect(1)
             .mount(&server)
             .await;
         let tm = TokenManager::new(Arc::new(MemoryStore::default()));
         let now = now_ms();
         // 6h token obtained 5.5h ago: inside the 1h window
-        tm.save("x", &TokenSet { access: "a1".into(), refresh: Some("r1".into()), expires_at: now + 30 * 60_000, account: None, client_id: None, obtained_at: Some(now - 330 * 60_000) })
-            .unwrap();
+        tm.save(
+            "x",
+            &TokenSet {
+                access: "a1".into(),
+                refresh: Some("r1".into()),
+                expires_at: now + 30 * 60_000,
+                account: None,
+                client_id: None,
+                obtained_at: Some(now - 330 * 60_000),
+            },
+        )
+        .unwrap();
         let http = reqwest::Client::new();
-        let ts = tm.valid("x", refresh_skew_ms, |old| async move { refresh(&http, &ep, &old).await }).await.unwrap();
+        let ts = tm
+            .valid("x", refresh_skew_ms, |old| async move {
+                refresh(&http, &ep, &old).await
+            })
+            .await
+            .unwrap();
         assert_eq!(ts.access, "a2");
-        assert_eq!(tm.load("x").unwrap().unwrap().refresh.as_deref(), Some("r2"));
+        assert_eq!(
+            tm.load("x").unwrap().unwrap().refresh.as_deref(),
+            Some("r2")
+        );
     }
 
     #[test]
     fn short_tokens_use_small_skew() {
-        let ts = TokenSet { access: "a".into(), refresh: None, expires_at: 15 * 60_000, account: None, client_id: None, obtained_at: Some(0) };
+        let ts = TokenSet {
+            access: "a".into(),
+            refresh: None,
+            expires_at: 15 * 60_000,
+            account: None,
+            client_id: None,
+            obtained_at: Some(0),
+        };
         assert_eq!(refresh_skew_ms(&ts), 120_000);
     }
 

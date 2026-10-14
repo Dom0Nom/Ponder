@@ -53,7 +53,10 @@ impl TokenSet {
             .filter(|s| !s.is_empty())
             .map(str::to_string)
             .or_else(|| prev.and_then(|p| p.refresh.clone()));
-        let expires_at = match v.get("expires_in").and_then(|e| e.as_i64().or_else(|| e.as_str()?.parse().ok())) {
+        let expires_at = match v
+            .get("expires_in")
+            .and_then(|e| e.as_i64().or_else(|| e.as_str()?.parse().ok()))
+        {
             Some(secs) => now + secs * 1000,
             None => jwt_claims(&access)
                 .and_then(|c| c.get("exp").and_then(Value::as_i64))
@@ -88,7 +91,11 @@ impl TokenSet {
 }
 
 /// POSTs a form to a token endpoint. Err carries (status, body).
-pub async fn post_form(http: &reqwest::Client, url: &str, form: &[(&str, &str)]) -> Result<Value, (u16, String)> {
+pub async fn post_form(
+    http: &reqwest::Client,
+    url: &str,
+    form: &[(&str, &str)],
+) -> Result<Value, (u16, String)> {
     let resp = http
         .post(url)
         .header("Accept", "application/json")
@@ -101,7 +108,8 @@ pub async fn post_form(http: &reqwest::Client, url: &str, form: &[(&str, &str)])
     if !(200..300).contains(&status) {
         return Err((status, body));
     }
-    serde_json::from_str(&body).map_err(|_| (status, "Token endpoint returned invalid JSON".to_string()))
+    serde_json::from_str(&body)
+        .map_err(|_| (status, "Token endpoint returned invalid JSON".to_string()))
 }
 
 pub fn oauth_error_message(status: u16, body: &str) -> String {
@@ -126,7 +134,10 @@ pub struct TokenManager {
 
 impl TokenManager {
     pub fn new(store: Arc<dyn SecretStore>) -> Self {
-        Self { store, locks: Mutex::new(HashMap::new()) }
+        Self {
+            store,
+            locks: Mutex::new(HashMap::new()),
+        }
     }
 
     pub fn load(&self, provider_id: &str) -> AppResult<Option<TokenSet>> {
@@ -137,7 +148,8 @@ impl TokenManager {
     }
 
     pub fn save(&self, provider_id: &str, ts: &TokenSet) -> AppResult<()> {
-        self.store.set(&oauth_account(provider_id), &serde_json::to_string(ts)?)
+        self.store
+            .set(&oauth_account(provider_id), &serde_json::to_string(ts)?)
     }
 
     pub fn clear(&self, provider_id: &str) -> AppResult<()> {
@@ -145,14 +157,24 @@ impl TokenManager {
     }
 
     fn lock_for(&self, provider_id: &str) -> Arc<tokio::sync::Mutex<()>> {
-        self.locks.lock().unwrap().entry(provider_id.to_string()).or_default().clone()
+        self.locks
+            .lock()
+            .unwrap()
+            .entry(provider_id.to_string())
+            .or_default()
+            .clone()
     }
 
     /// Returns a valid token set, refreshing it first when it expires within `skew_ms(ts)`.
     /// Single-flight per provider: concurrent callers wait and then read the rotated set from the
     /// store, so a single-use refresh token is never sent twice. The new set is persisted before
     /// it's returned.
-    pub async fn valid<S, F, Fut>(&self, provider_id: &str, skew_ms: S, refresh: F) -> AppResult<TokenSet>
+    pub async fn valid<S, F, Fut>(
+        &self,
+        provider_id: &str,
+        skew_ms: S,
+        refresh: F,
+    ) -> AppResult<TokenSet>
     where
         S: Fn(&TokenSet) -> i64,
         F: FnOnce(TokenSet) -> Fut,
@@ -167,7 +189,9 @@ impl TokenManager {
             return Ok(ts);
         }
         if ts.refresh.is_none() {
-            return Err(AppError::Other("Session expired. Sign in again in Settings.".into()));
+            return Err(AppError::Other(
+                "Session expired. Sign in again in Settings.".into(),
+            ));
         }
         let mut fresh = refresh(ts.clone()).await?;
         if fresh.refresh.is_none() {
@@ -209,7 +233,14 @@ mod tests {
 
     #[test]
     fn keeps_previous_refresh_when_not_rotated() {
-        let prev = TokenSet { access: "o".into(), refresh: Some("r0".into()), expires_at: 0, account: Some("acc".into()), client_id: Some("c".into()), obtained_at: None };
+        let prev = TokenSet {
+            access: "o".into(),
+            refresh: Some("r0".into()),
+            expires_at: 0,
+            account: Some("acc".into()),
+            client_id: Some("c".into()),
+            obtained_at: None,
+        };
         let ts = TokenSet::from_response(&json!({"access_token": "n"}), 0, Some(&prev)).unwrap();
         assert_eq!(ts.refresh.as_deref(), Some("r0"));
         assert_eq!(ts.client_id.as_deref(), Some("c"));
@@ -217,7 +248,14 @@ mod tests {
     }
 
     fn expired(refresh: &str) -> TokenSet {
-        TokenSet { access: "old".into(), refresh: Some(refresh.into()), expires_at: 1, account: None, client_id: None, obtained_at: None }
+        TokenSet {
+            access: "old".into(),
+            refresh: Some(refresh.into()),
+            expires_at: 1,
+            account: None,
+            client_id: None,
+            obtained_at: None,
+        }
     }
 
     #[tokio::test]
@@ -231,12 +269,23 @@ mod tests {
             let tm = tm.clone();
             let calls = calls.clone();
             handles.push(tokio::spawn(async move {
-                tm.valid("p", |_| 60_000, |old| async move {
-                    calls.fetch_add(1, Ordering::SeqCst);
-                    assert_eq!(old.refresh.as_deref(), Some("r1"));
-                    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-                    Ok(TokenSet { access: "new".into(), refresh: Some("r2".into()), expires_at: now_ms() + 3_600_000, account: None, client_id: None, obtained_at: None })
-                })
+                tm.valid(
+                    "p",
+                    |_| 60_000,
+                    |old| async move {
+                        calls.fetch_add(1, Ordering::SeqCst);
+                        assert_eq!(old.refresh.as_deref(), Some("r1"));
+                        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+                        Ok(TokenSet {
+                            access: "new".into(),
+                            refresh: Some("r2".into()),
+                            expires_at: now_ms() + 3_600_000,
+                            account: None,
+                            client_id: None,
+                            obtained_at: None,
+                        })
+                    },
+                )
                 .await
                 .unwrap()
                 .access
@@ -246,6 +295,9 @@ mod tests {
             assert_eq!(h.await.unwrap(), "new");
         }
         assert_eq!(calls.load(Ordering::SeqCst), 1);
-        assert_eq!(tm.load("p").unwrap().unwrap().refresh.as_deref(), Some("r2"));
+        assert_eq!(
+            tm.load("p").unwrap().unwrap().refresh.as_deref(),
+            Some("r2")
+        );
     }
 }

@@ -68,7 +68,11 @@ pub struct Session<R, W> {
 
 impl<R: AsyncBufRead + Unpin, W: AsyncWrite + Unpin> Session<R, W> {
     pub fn new(reader: R, writer: W) -> Self {
-        Self { reader, writer, next_id: 0 }
+        Self {
+            reader,
+            writer,
+            next_id: 0,
+        }
     }
 
     async fn send(&mut self, msg: &Value) -> AppResult<()> {
@@ -83,14 +87,17 @@ impl<R: AsyncBufRead + Unpin, W: AsyncWrite + Unpin> Rpc for Session<R, W> {
     async fn request(&mut self, method: &str, params: Value) -> AppResult<Value> {
         self.next_id += 1;
         let id = self.next_id;
-        self.send(&json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params })).await?;
+        self.send(&json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params }))
+            .await?;
         loop {
             let mut line = String::new();
             if self.reader.read_line(&mut line).await? == 0 {
                 return Err(other("The MCP server stopped."));
             }
             // some servers print banners or logs on stdout; anything that isn't JSON-RPC is skipped
-            let Ok(msg) = serde_json::from_str::<Value>(line.trim()) else { continue };
+            let Ok(msg) = serde_json::from_str::<Value>(line.trim()) else {
+                continue;
+            };
             if let Some(m) = msg.get("method").and_then(Value::as_str) {
                 if let Some(rid) = msg.get("id") {
                     let reply = if m == "ping" {
@@ -109,7 +116,8 @@ impl<R: AsyncBufRead + Unpin, W: AsyncWrite + Unpin> Rpc for Session<R, W> {
     }
 
     async fn notify(&mut self, method: &str) -> AppResult<()> {
-        self.send(&json!({ "jsonrpc": "2.0", "method": method })).await
+        self.send(&json!({ "jsonrpc": "2.0", "method": method }))
+            .await
     }
 }
 
@@ -119,7 +127,10 @@ fn response_for(msg: &Value, id: i64) -> Option<AppResult<Value>> {
         return None;
     }
     if let Some(e) = msg.get("error") {
-        let text = e.get("message").and_then(Value::as_str).unwrap_or("unknown error");
+        let text = e
+            .get("message")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown error");
         return Some(Err(other(format!("MCP error: {text}"))));
     }
     Some(Ok(msg.get("result").cloned().unwrap_or(Value::Null)))
@@ -142,17 +153,36 @@ trait Rpc {
         let mut tools = Vec::new();
         let mut cursor: Option<String> = None;
         for _ in 0..20 {
-            let params = cursor.as_ref().map_or_else(|| json!({}), |c| json!({ "cursor": c }));
+            let params = cursor
+                .as_ref()
+                .map_or_else(|| json!({}), |c| json!({ "cursor": c }));
             let res = self.request("tools/list", params).await?;
-            for t in res.get("tools").and_then(Value::as_array).into_iter().flatten() {
-                let Some(name) = t.get("name").and_then(Value::as_str) else { continue };
+            for t in res
+                .get("tools")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
+                let Some(name) = t.get("name").and_then(Value::as_str) else {
+                    continue;
+                };
                 tools.push(ToolInfo {
                     name: name.to_string(),
-                    description: t.get("description").and_then(Value::as_str).unwrap_or("").to_string(),
-                    input_schema: t.get("inputSchema").cloned().unwrap_or_else(|| json!({ "type": "object", "properties": {} })),
+                    description: t
+                        .get("description")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string(),
+                    input_schema: t
+                        .get("inputSchema")
+                        .cloned()
+                        .unwrap_or_else(|| json!({ "type": "object", "properties": {} })),
                 });
             }
-            cursor = res.get("nextCursor").and_then(Value::as_str).map(str::to_string);
+            cursor = res
+                .get("nextCursor")
+                .and_then(Value::as_str)
+                .map(str::to_string);
             if cursor.is_none() {
                 break;
             }
@@ -161,8 +191,14 @@ trait Rpc {
     }
 
     async fn call_tool(&mut self, name: &str, arguments: Value) -> AppResult<CallResult> {
-        let args = if arguments.is_object() { arguments } else { json!({}) };
-        let res = self.request("tools/call", json!({ "name": name, "arguments": args })).await?;
+        let args = if arguments.is_object() {
+            arguments
+        } else {
+            json!({})
+        };
+        let res = self
+            .request("tools/call", json!({ "name": name, "arguments": args }))
+            .await?;
         Ok(result_text(&res))
     }
 }
@@ -179,23 +215,36 @@ pub struct HttpSession {
 
 impl HttpSession {
     pub fn new(url: &str, headers: Vec<(String, String)>) -> AppResult<Self> {
-        let parsed = reqwest::Url::parse(url).map_err(|_| invalid("Enter the server's full URL, starting with https://."))?;
+        let parsed = reqwest::Url::parse(url)
+            .map_err(|_| invalid("Enter the server's full URL, starting with https://."))?;
         if !matches!(parsed.scheme(), "http" | "https") {
-            return Err(invalid("Enter the server's full URL, starting with https://."));
+            return Err(invalid(
+                "Enter the server's full URL, starting with https://.",
+            ));
         }
         let client = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .connect_timeout(Duration::from_secs(15))
             .build()
             .map_err(|e| other(e.to_string()))?;
-        Ok(Self { client, url: url.to_string(), headers, session_id: None, initialized: false, next_id: 0 })
+        Ok(Self {
+            client,
+            url: url.to_string(),
+            headers,
+            session_id: None,
+            initialized: false,
+            next_id: 0,
+        })
     }
 
     async fn post(&mut self, msg: &Value) -> AppResult<reqwest::Response> {
         let mut req = self
             .client
             .post(&self.url)
-            .header(reqwest::header::ACCEPT, "application/json, text/event-stream")
+            .header(
+                reqwest::header::ACCEPT,
+                "application/json, text/event-stream",
+            )
             .header(reqwest::header::CONTENT_TYPE, "application/json");
         if self.initialized {
             req = req.header("MCP-Protocol-Version", PROTOCOL);
@@ -206,8 +255,16 @@ impl HttpSession {
         for (k, v) in &self.headers {
             req = req.header(k.as_str(), v.as_str());
         }
-        let res = req.body(serde_json::to_vec(msg)?).send().await.map_err(|e| other(format!("Couldn't reach the MCP server: {e}")))?;
-        if let Some(sid) = res.headers().get("mcp-session-id").and_then(|v| v.to_str().ok()) {
+        let res = req
+            .body(serde_json::to_vec(msg)?)
+            .send()
+            .await
+            .map_err(|e| other(format!("Couldn't reach the MCP server: {e}")))?;
+        if let Some(sid) = res
+            .headers()
+            .get("mcp-session-id")
+            .and_then(|v| v.to_str().ok())
+        {
             self.session_id = Some(sid.to_string());
         }
         let status = res.status();
@@ -219,11 +276,15 @@ impl HttpSession {
             return Err(other("The MCP server ended the session."));
         }
         if status == reqwest::StatusCode::UNAUTHORIZED {
-            return Err(AppError::Auth("This MCP server needs you to sign in.".into()));
+            return Err(AppError::Auth(
+                "This MCP server needs you to sign in.".into(),
+            ));
         }
         Err(other(match status.as_u16() {
             403 => format!("The MCP server refused the request ({status}). Check the headers."),
-            301..=308 => format!("The MCP server redirected the request ({status}). Use the final URL."),
+            301..=308 => {
+                format!("The MCP server redirected the request ({status}). Use the final URL.")
+            }
             _ => format!("The MCP server answered {status}."),
         }))
     }
@@ -236,12 +297,18 @@ impl HttpSession {
         let res = self
             .client
             .post(&self.url)
-            .header(reqwest::header::ACCEPT, "application/json, text/event-stream")
+            .header(
+                reqwest::header::ACCEPT,
+                "application/json, text/event-stream",
+            )
             .json(&body)
             .send()
             .await
             .ok()?;
-        res.headers().get(reqwest::header::WWW_AUTHENTICATE).and_then(|v| v.to_str().ok()).map(str::to_string)
+        res.headers()
+            .get(reqwest::header::WWW_AUTHENTICATE)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_string)
     }
 }
 
@@ -249,7 +316,9 @@ impl Rpc for HttpSession {
     async fn request(&mut self, method: &str, params: Value) -> AppResult<Value> {
         self.next_id += 1;
         let id = self.next_id;
-        let res = self.post(&json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params })).await?;
+        let res = self
+            .post(&json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params }))
+            .await?;
         let sse = res
             .headers()
             .get(reqwest::header::CONTENT_TYPE)
@@ -260,7 +329,9 @@ impl Rpc for HttpSession {
             let mut buf = String::new();
             let mut found = None;
             'read: while let Some(chunk) = futures_util::StreamExt::next(&mut stream).await {
-                buf.push_str(&String::from_utf8_lossy(&chunk.map_err(|e| other(format!("The MCP server's reply broke off: {e}")))?));
+                buf.push_str(&String::from_utf8_lossy(&chunk.map_err(|e| {
+                    other(format!("The MCP server's reply broke off: {e}"))
+                })?));
                 for data in sse_events(&mut buf) {
                     if let Ok(msg) = serde_json::from_str::<Value>(&data) {
                         if let Some(r) = messages(&msg).find_map(|m| response_for(m, id)) {
@@ -272,7 +343,10 @@ impl Rpc for HttpSession {
             }
             found
         } else {
-            let body: Value = res.json().await.map_err(|e| other(format!("The MCP server sent an unreadable reply: {e}")))?;
+            let body: Value = res
+                .json()
+                .await
+                .map_err(|e| other(format!("The MCP server sent an unreadable reply: {e}")))?;
             let found = messages(&body).find_map(|m| response_for(m, id));
             found
         };
@@ -283,7 +357,9 @@ impl Rpc for HttpSession {
     }
 
     async fn notify(&mut self, method: &str) -> AppResult<()> {
-        self.post(&json!({ "jsonrpc": "2.0", "method": method })).await.map(|_| ())
+        self.post(&json!({ "jsonrpc": "2.0", "method": method }))
+            .await
+            .map(|_| ())
     }
 }
 
@@ -304,7 +380,11 @@ pub fn sse_events(buf: &mut String) -> Vec<String> {
         }
         let Some(end) = buf.find("\n\n") else { break };
         let event: String = buf.drain(..end + 2).collect();
-        let data: Vec<&str> = event.lines().filter_map(|l| l.strip_prefix("data:")).map(|d| d.strip_prefix(' ').unwrap_or(d)).collect();
+        let data: Vec<&str> = event
+            .lines()
+            .filter_map(|l| l.strip_prefix("data:"))
+            .map(|d| d.strip_prefix(' ').unwrap_or(d))
+            .collect();
         if !data.is_empty() {
             out.push(data.join("\n"));
         }
@@ -315,17 +395,33 @@ pub fn sse_events(buf: &mut String) -> Vec<String> {
 /// Flattens a `tools/call` result to text the model can read.
 pub fn result_text(res: &Value) -> CallResult {
     let mut parts = Vec::new();
-    for c in res.get("content").and_then(Value::as_array).into_iter().flatten() {
+    for c in res
+        .get("content")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
         match c.get("type").and_then(Value::as_str) {
-            Some("text") => parts.push(c.get("text").and_then(Value::as_str).unwrap_or("").to_string()),
+            Some("text") => parts.push(
+                c.get("text")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string(),
+            ),
             Some("resource") => {
                 let r = c.get("resource").unwrap_or(&Value::Null);
                 match r.get("text").and_then(Value::as_str) {
                     Some(t) => parts.push(t.to_string()),
-                    None => parts.push(format!("[resource {}]", r.get("uri").and_then(Value::as_str).unwrap_or(""))),
+                    None => parts.push(format!(
+                        "[resource {}]",
+                        r.get("uri").and_then(Value::as_str).unwrap_or("")
+                    )),
                 }
             }
-            Some("resource_link") => parts.push(format!("[link {}]", c.get("uri").and_then(Value::as_str).unwrap_or(""))),
+            Some("resource_link") => parts.push(format!(
+                "[link {}]",
+                c.get("uri").and_then(Value::as_str).unwrap_or("")
+            )),
             Some(kind) => parts.push(format!("[{kind}]")),
             None => {}
         }
@@ -339,7 +435,10 @@ pub fn result_text(res: &Value) -> CallResult {
     if text.chars().count() > MAX_RESULT_CHARS {
         text = text.chars().take(MAX_RESULT_CHARS).collect::<String>() + "\n[truncated]";
     }
-    CallResult { text, is_error: res.get("isError").and_then(Value::as_bool).unwrap_or(false) }
+    CallResult {
+        text,
+        is_error: res.get("isError").and_then(Value::as_bool).unwrap_or(false),
+    }
 }
 
 /// `KEY=value` lines; blank lines and `#` comments are skipped.
@@ -378,7 +477,14 @@ async fn shell_path() -> Option<String> {
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".into());
         let out = tokio::time::timeout(
             Duration::from_secs(5),
-            Command::new(shell).args(["-ilc", "printf '\\n__PONDER_PATH__%s__PONDER_PATH__\\n' \"$PATH\""]).stdin(Stdio::null()).stderr(Stdio::null()).output(),
+            Command::new(shell)
+                .args([
+                    "-ilc",
+                    "printf '\\n__PONDER_PATH__%s__PONDER_PATH__\\n' \"$PATH\"",
+                ])
+                .stdin(Stdio::null())
+                .stderr(Stdio::null())
+                .output(),
         )
         .await
         .ok()?
@@ -393,7 +499,10 @@ async fn shell_path() -> Option<String> {
 }
 
 enum Conn {
-    Stdio { _child: Child, session: Session<BufReader<ChildStdout>, ChildStdin> },
+    Stdio {
+        _child: Child,
+        session: Session<BufReader<ChildStdout>, ChildStdin>,
+    },
     Http(HttpSession),
 }
 
@@ -414,7 +523,11 @@ impl Running {
     }
 }
 
-async fn start(config: &ServerConfig, secret: Option<&str>, bearer: Option<&str>) -> AppResult<Running> {
+async fn start(
+    config: &ServerConfig,
+    secret: Option<&str>,
+    bearer: Option<&str>,
+) -> AppResult<Running> {
     if let Some(url) = config.remote() {
         let mut headers = secret.map(parse_headers).unwrap_or_default();
         if let Some(token) = bearer {
@@ -431,7 +544,13 @@ async fn start(config: &ServerConfig, secret: Option<&str>, bearer: Option<&str>
             Ok(r) => r?,
             Err(_) => return Err(other("The MCP server didn't answer within a minute.")),
         };
-        return Ok(Running { config: config.clone(), secret: secret.map(str::to_string), bearer: bearer.map(str::to_string), conn: Conn::Http(session), tools });
+        return Ok(Running {
+            config: config.clone(),
+            secret: secret.map(str::to_string),
+            bearer: bearer.map(str::to_string),
+            conn: Conn::Http(session),
+            tools,
+        });
     }
     let env = secret.map(parse_env).unwrap_or_default();
     let command = config.command.trim();
@@ -453,8 +572,14 @@ async fn start(config: &ServerConfig, secret: Option<&str>, bearer: Option<&str>
         }
         c
     };
-    cmd.envs(env).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).kill_on_drop(true);
-    let mut child = cmd.spawn().map_err(|e| other(format!("Couldn't start {command}: {e}")))?;
+    cmd.envs(env)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .kill_on_drop(true);
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| other(format!("Couldn't start {command}: {e}")))?;
     let stdin = child.stdin.take().ok_or_else(|| other("no stdin"))?;
     let stdout = child.stdout.take().ok_or_else(|| other("no stdout"))?;
     let stderr_lines = Arc::new(std::sync::Mutex::new(VecDeque::new()));
@@ -481,7 +606,16 @@ async fn start(config: &ServerConfig, secret: Option<&str>, bearer: Option<&str>
     })
     .await;
     match init {
-        Ok(Ok(tools)) => Ok(Running { config: config.clone(), secret: secret.map(str::to_string), bearer: None, conn: Conn::Stdio { _child: child, session }, tools }),
+        Ok(Ok(tools)) => Ok(Running {
+            config: config.clone(),
+            secret: secret.map(str::to_string),
+            bearer: None,
+            conn: Conn::Stdio {
+                _child: child,
+                session,
+            },
+            tools,
+        }),
         Ok(Err(e)) => {
             // let the stderr reader catch up with a server that just exited
             tokio::time::sleep(Duration::from_millis(150)).await;
@@ -502,7 +636,12 @@ pub struct McpClients {
 
 impl McpClients {
     async fn slot(&self, id: &str) -> Arc<Mutex<Option<Running>>> {
-        self.running.lock().await.entry(id.to_string()).or_default().clone()
+        self.running
+            .lock()
+            .await
+            .entry(id.to_string())
+            .or_default()
+            .clone()
     }
 }
 
@@ -510,13 +649,17 @@ impl McpClients {
 async fn read_secret(svc: &ProviderServices, id: &str) -> AppResult<Option<String>> {
     let store = svc.secrets.clone();
     let account = env_account(id);
-    tokio::task::spawn_blocking(move || store.get(&account)).await.map_err(|e| other(e.to_string()))?
+    tokio::task::spawn_blocking(move || store.get(&account))
+        .await
+        .map_err(|e| other(e.to_string()))?
 }
 
 async fn read_auth(svc: &ProviderServices, id: &str) -> AppResult<Option<McpAuth>> {
     let store = svc.secrets.clone();
     let account = mcp_oauth::auth_account(id);
-    let text = tokio::task::spawn_blocking(move || store.get(&account)).await.map_err(|e| other(e.to_string()))??;
+    let text = tokio::task::spawn_blocking(move || store.get(&account))
+        .await
+        .map_err(|e| other(e.to_string()))??;
     Ok(text.and_then(|t| serde_json::from_str(&t).ok()))
 }
 
@@ -524,7 +667,9 @@ async fn save_auth(svc: &ProviderServices, id: &str, auth: &McpAuth) -> AppResul
     let store = svc.secrets.clone();
     let account = mcp_oauth::auth_account(id);
     let text = serde_json::to_string(auth)?;
-    tokio::task::spawn_blocking(move || store.set(&account, &text)).await.map_err(|e| other(e.to_string()))?
+    tokio::task::spawn_blocking(move || store.set(&account, &text))
+        .await
+        .map_err(|e| other(e.to_string()))?
 }
 
 /// The signed-in access token for a remote server, refreshed when it's about to expire.
@@ -532,20 +677,32 @@ async fn bearer(svc: &ProviderServices, config: &ServerConfig) -> AppResult<Opti
     if config.remote().is_none() {
         return Ok(None);
     }
-    let Some(auth) = read_auth(svc, &config.id).await? else { return Ok(None) };
-    if !auth.tokens.needs_refresh(crate::oauth::tokens::now_ms(), 60_000) {
+    let Some(auth) = read_auth(svc, &config.id).await? else {
+        return Ok(None);
+    };
+    if !auth
+        .tokens
+        .needs_refresh(crate::oauth::tokens::now_ms(), 60_000)
+    {
         return Ok(Some(auth.tokens.access));
     }
-    let fresh = mcp_oauth::refresh(&svc.page_http, &auth).await.map_err(|e| AppError::Auth(e.to_string()))?;
+    let fresh = mcp_oauth::refresh(&svc.page_http, &auth)
+        .await
+        .map_err(|e| AppError::Auth(e.to_string()))?;
     save_auth(svc, &config.id, &fresh).await?;
     Ok(Some(fresh.tokens.access))
 }
 
-async fn ensure(slot: &mut Option<Running>, svc: &ProviderServices, config: &ServerConfig) -> AppResult<()> {
+async fn ensure(
+    slot: &mut Option<Running>,
+    svc: &ProviderServices,
+    config: &ServerConfig,
+) -> AppResult<()> {
     // the slot lock is held, so a refresh here can't race another call to the same server
     let secret = read_secret(svc, &config.id).await?;
     let bearer = bearer(svc, config).await?;
-    let fresh = matches!(slot, Some(r) if r.config == *config && r.secret == secret && r.bearer == bearer);
+    let fresh =
+        matches!(slot, Some(r) if r.config == *config && r.secret == secret && r.bearer == bearer);
     if !fresh {
         *slot = None;
         *slot = Some(start(config, secret.as_deref(), bearer.as_deref()).await?);
@@ -554,7 +711,11 @@ async fn ensure(slot: &mut Option<Running>, svc: &ProviderServices, config: &Ser
 }
 
 #[tauri::command]
-pub async fn mcp_client_tools(clients: State<'_, McpClients>, svc: State<'_, ProviderServices>, server: ServerConfig) -> AppResult<Vec<ToolInfo>> {
+pub async fn mcp_client_tools(
+    clients: State<'_, McpClients>,
+    svc: State<'_, ProviderServices>,
+    server: ServerConfig,
+) -> AppResult<Vec<ToolInfo>> {
     let slot = clients.slot(&server.id).await;
     let mut guard = slot.lock().await;
     ensure(&mut guard, &svc, &server).await?;
@@ -562,16 +723,27 @@ pub async fn mcp_client_tools(clients: State<'_, McpClients>, svc: State<'_, Pro
 }
 
 #[tauri::command]
-pub async fn mcp_client_call(clients: State<'_, McpClients>, svc: State<'_, ProviderServices>, server: ServerConfig, tool: String, arguments: Value) -> AppResult<CallResult> {
+pub async fn mcp_client_call(
+    clients: State<'_, McpClients>,
+    svc: State<'_, ProviderServices>,
+    server: ServerConfig,
+    tool: String,
+    arguments: Value,
+) -> AppResult<CallResult> {
     let slot = clients.slot(&server.id).await;
     let mut guard = slot.lock().await;
     ensure(&mut guard, &svc, &server).await?;
-    let run = guard.as_mut().ok_or_else(|| other("The MCP server isn't running."))?;
+    let run = guard
+        .as_mut()
+        .ok_or_else(|| other("The MCP server isn't running."))?;
     match tokio::time::timeout(CALL_TIMEOUT, run.call_tool(&tool, arguments)).await {
         Ok(Ok(r)) => Ok(r),
         Ok(Err(e)) => {
             let msg = e.to_string();
-            if msg.contains("stopped") || msg.contains("ended the session") || matches!(e, AppError::Auth(_)) {
+            if msg.contains("stopped")
+                || msg.contains("ended the session")
+                || matches!(e, AppError::Auth(_))
+            {
                 *guard = None;
             }
             Err(e)
@@ -600,15 +772,28 @@ pub struct McpAuthStatus {
 }
 
 #[tauri::command]
-pub async fn mcp_client_auth_status(svc: State<'_, ProviderServices>, id: String) -> AppResult<McpAuthStatus> {
-    Ok(McpAuthStatus { signed_in: read_auth(&svc, &id).await?.is_some() })
+pub async fn mcp_client_auth_status(
+    svc: State<'_, ProviderServices>,
+    id: String,
+) -> AppResult<McpAuthStatus> {
+    Ok(McpAuthStatus {
+        signed_in: read_auth(&svc, &id).await?.is_some(),
+    })
 }
 
 /// Signs in to a remote server in the browser and waits for the redirect.
 #[tauri::command]
-pub async fn mcp_client_sign_in(app: tauri::AppHandle, clients: State<'_, McpClients>, svc: State<'_, ProviderServices>, server: ServerConfig) -> AppResult<()> {
+pub async fn mcp_client_sign_in(
+    app: tauri::AppHandle,
+    clients: State<'_, McpClients>,
+    svc: State<'_, ProviderServices>,
+    server: ServerConfig,
+) -> AppResult<()> {
     use tauri_plugin_opener::OpenerExt;
-    let url = server.remote().ok_or_else(|| invalid("Only servers added by URL can sign in."))?.to_string();
+    let url = server
+        .remote()
+        .ok_or_else(|| invalid("Only servers added by URL can sign in."))?
+        .to_string();
     let http = svc.page_http.clone();
     let challenge = HttpSession::new(&url, vec![])?.probe().await;
     let found = mcp_oauth::discover(&http, &url, challenge.as_deref()).await?;
@@ -625,7 +810,15 @@ pub async fn mcp_client_sign_in(app: tauri::AppHandle, clients: State<'_, McpCli
         return Err(other(format!("Couldn't open the browser: {e}")));
     }
     let cb = lb.wait(&state, SIGN_IN_TIMEOUT).await?;
-    let auth = mcp_oauth::exchange(&http, &found, (&client_id, client_secret.as_deref()), &cb.code, &verifier, &redirect).await?;
+    let auth = mcp_oauth::exchange(
+        &http,
+        &found,
+        (&client_id, client_secret.as_deref()),
+        &cb.code,
+        &verifier,
+        &redirect,
+    )
+    .await?;
     save_auth(&svc, &server.id, &auth).await?;
     if let Some(slot) = clients.running.lock().await.remove(&server.id) {
         *slot.lock().await = None;
@@ -634,10 +827,16 @@ pub async fn mcp_client_sign_in(app: tauri::AppHandle, clients: State<'_, McpCli
 }
 
 #[tauri::command]
-pub async fn mcp_client_sign_out(clients: State<'_, McpClients>, svc: State<'_, ProviderServices>, id: String) -> AppResult<()> {
+pub async fn mcp_client_sign_out(
+    clients: State<'_, McpClients>,
+    svc: State<'_, ProviderServices>,
+    id: String,
+) -> AppResult<()> {
     let store = svc.secrets.clone();
     let account = mcp_oauth::auth_account(&id);
-    tokio::task::spawn_blocking(move || store.delete(&account)).await.map_err(|e| other(e.to_string()))??;
+    tokio::task::spawn_blocking(move || store.delete(&account))
+        .await
+        .map_err(|e| other(e.to_string()))??;
     if let Some(slot) = clients.running.lock().await.remove(&id) {
         *slot.lock().await = None;
     }
@@ -655,17 +854,23 @@ mod tests {
         w.write_all(b"starting fake server\n").await.unwrap();
         while let Ok(Some(l)) = lines.next_line().await {
             let msg: Value = serde_json::from_str(&l).unwrap();
-            let Some(id) = msg.get("id").cloned() else { continue };
+            let Some(id) = msg.get("id").cloned() else {
+                continue;
+            };
             if msg.get("method").is_none() {
                 continue;
             }
             let reply = match msg["method"].as_str().unwrap() {
-                "initialize" => json!({ "protocolVersion": PROTOCOL, "capabilities": { "tools": {} }, "serverInfo": { "name": "fake" } }),
+                "initialize" => {
+                    json!({ "protocolVersion": PROTOCOL, "capabilities": { "tools": {} }, "serverInfo": { "name": "fake" } })
+                }
                 "tools/list" if msg["params"].get("cursor").is_none() => {
                     json!({ "tools": [{ "name": "echo", "description": "Echoes", "inputSchema": { "type": "object" } }], "nextCursor": "2" })
                 }
                 "tools/list" => json!({ "tools": [{ "name": "fail" }] }),
-                "tools/call" if msg["params"]["name"] == "fail" => json!({ "content": [{ "type": "text", "text": "nope" }], "isError": true }),
+                "tools/call" if msg["params"]["name"] == "fail" => {
+                    json!({ "content": [{ "type": "text", "text": "nope" }], "isError": true })
+                }
                 "tools/call" => {
                     // a server request and a notification arrive before the answer
                     w.write_all(b"{\"jsonrpc\":\"2.0\",\"id\":99,\"method\":\"ping\"}\n{\"jsonrpc\":\"2.0\",\"method\":\"notifications/progress\"}\n").await.unwrap();
@@ -678,7 +883,15 @@ mod tests {
                     continue;
                 }
             };
-            w.write_all(format!("{}\n", json!({ "jsonrpc": "2.0", "id": id, "result": reply })).as_bytes()).await.unwrap();
+            w.write_all(
+                format!(
+                    "{}\n",
+                    json!({ "jsonrpc": "2.0", "id": id, "result": reply })
+                )
+                .as_bytes(),
+            )
+            .await
+            .unwrap();
         }
     }
 
@@ -690,10 +903,22 @@ mod tests {
         let mut s = Session::new(BufReader::new(r), w);
         s.initialize().await.unwrap();
         let tools = s.list_tools().await.unwrap();
-        assert_eq!(tools.iter().map(|t| t.name.as_str()).collect::<Vec<_>>(), ["echo", "fail"]);
-        assert_eq!(tools[1].input_schema, json!({ "type": "object", "properties": {} }));
+        assert_eq!(
+            tools.iter().map(|t| t.name.as_str()).collect::<Vec<_>>(),
+            ["echo", "fail"]
+        );
+        assert_eq!(
+            tools[1].input_schema,
+            json!({ "type": "object", "properties": {} })
+        );
         let r = s.call_tool("echo", json!({ "text": "hi" })).await.unwrap();
-        assert_eq!(r, CallResult { text: "you said hi\n[image]".into(), is_error: false });
+        assert_eq!(
+            r,
+            CallResult {
+                text: "you said hi\n[image]".into(),
+                is_error: false
+            }
+        );
         assert!(s.call_tool("fail", Value::Null).await.unwrap().is_error);
         let e = s.request("resources/list", json!({})).await.unwrap_err();
         assert_eq!(e.to_string(), "MCP error: nope");
@@ -720,9 +945,14 @@ mod tests {
                         }
                         buf.extend_from_slice(&chunk[..n]);
                         let text = String::from_utf8_lossy(&buf).to_string();
-                        let Some(end) = text.find("\r\n\r\n") else { continue };
+                        let Some(end) = text.find("\r\n\r\n") else {
+                            continue;
+                        };
                         let head = text[..end].to_lowercase();
-                        let len: usize = head.lines().find_map(|l| l.strip_prefix("content-length:")).map_or(0, |v| v.trim().parse().unwrap());
+                        let len: usize = head
+                            .lines()
+                            .find_map(|l| l.strip_prefix("content-length:"))
+                            .map_or(0, |v| v.trim().parse().unwrap());
                         if buf.len() >= end + 4 + len {
                             break (head, text[end + 4..end + 4 + len].to_string());
                         }
@@ -739,11 +969,16 @@ mod tests {
                                 ("400 Bad Request", "text/plain", "no session".to_string())
                             } else {
                                 let result = match method {
-                                    "initialize" => json!({ "protocolVersion": PROTOCOL, "capabilities": { "tools": {} } }),
+                                    "initialize" => {
+                                        json!({ "protocolVersion": PROTOCOL, "capabilities": { "tools": {} } })
+                                    }
                                     "tools/list" => json!({ "tools": [{ "name": "echo" }] }),
-                                    _ => json!({ "content": [{ "type": "text", "text": msg["params"]["arguments"]["text"] }] }),
+                                    _ => {
+                                        json!({ "content": [{ "type": "text", "text": msg["params"]["arguments"]["text"] }] })
+                                    }
                                 };
-                                let reply = json!({ "jsonrpc": "2.0", "id": id, "result": result }).to_string();
+                                let reply = json!({ "jsonrpc": "2.0", "id": id, "result": result })
+                                    .to_string();
                                 if method == "initialize" {
                                     ("200 OK", "application/json", reply)
                                 } else {
@@ -764,16 +999,45 @@ mod tests {
     #[tokio::test]
     async fn talks_to_a_remote_server() {
         let (url, seen) = fake_http_server().await;
-        let cfg = ServerConfig { id: "r".into(), command: String::new(), args: vec![], url: Some(url.clone()) };
-        let mut run = start(&cfg, Some("# token\nAuthorization: Bearer wrong"), Some("secret")).await.unwrap();
-        assert_eq!(run.tools.iter().map(|t| t.name.as_str()).collect::<Vec<_>>(), ["echo"]);
-        assert_eq!(run.call_tool("echo", json!({ "text": "hi" })).await.unwrap().text, "hi");
+        let cfg = ServerConfig {
+            id: "r".into(),
+            command: String::new(),
+            args: vec![],
+            url: Some(url.clone()),
+        };
+        let mut run = start(
+            &cfg,
+            Some("# token\nAuthorization: Bearer wrong"),
+            Some("secret"),
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            run.tools
+                .iter()
+                .map(|t| t.name.as_str())
+                .collect::<Vec<_>>(),
+            ["echo"]
+        );
+        assert_eq!(
+            run.call_tool("echo", json!({ "text": "hi" }))
+                .await
+                .unwrap()
+                .text,
+            "hi"
+        );
         let heads = seen.lock().unwrap().clone();
         assert!(!heads[0].contains("mcp-protocol-version"));
-        assert!(heads.last().unwrap().contains(&format!("mcp-protocol-version: {PROTOCOL}").to_lowercase()));
+        assert!(heads
+            .last()
+            .unwrap()
+            .contains(&format!("mcp-protocol-version: {PROTOCOL}").to_lowercase()));
         let e = start(&cfg, None, None).await.err().unwrap().to_string();
         assert!(e.contains("sign in"), "{e}");
-        let bad = ServerConfig { url: Some("ftp://x".into()), ..cfg };
+        let bad = ServerConfig {
+            url: Some("ftp://x".into()),
+            ..cfg
+        };
         assert!(start(&bad, None, None).await.is_err());
     }
 
@@ -788,27 +1052,47 @@ mod tests {
     fn parses_header_lines() {
         assert_eq!(
             parse_headers("Authorization: Bearer a=b\nX-Key=1\n# c\nnothing"),
-            vec![("Authorization".into(), "Bearer a=b".into()), ("X-Key".into(), "1".into())]
+            vec![
+                ("Authorization".into(), "Bearer a=b".into()),
+                ("X-Key".into(), "1".into())
+            ]
         );
     }
 
     #[test]
     fn parses_env_lines() {
-        assert_eq!(parse_env("A=1\n# c\n\n B = x=y \nnoequals\n=v"), vec![("A".into(), "1".into()), ("B".into(), "x=y".into())]);
+        assert_eq!(
+            parse_env("A=1\n# c\n\n B = x=y \nnoequals\n=v"),
+            vec![("A".into(), "1".into()), ("B".into(), "x=y".into())]
+        );
     }
 
     #[test]
     fn flattens_results() {
-        let r = result_text(&json!({ "content": [{ "type": "resource", "resource": { "uri": "file:///a", "text": "body" } }, { "type": "resource_link", "uri": "file:///b" }] }));
+        let r = result_text(
+            &json!({ "content": [{ "type": "resource", "resource": { "uri": "file:///a", "text": "body" } }, { "type": "resource_link", "uri": "file:///b" }] }),
+        );
         assert_eq!(r.text, "body\n[link file:///b]");
-        assert_eq!(result_text(&json!({ "content": [], "structuredContent": { "n": 1 } })).text, "{\"n\":1}");
-        assert!(result_text(&json!({ "content": [{ "type": "text", "text": "x".repeat(MAX_RESULT_CHARS + 5) }] })).text.ends_with("[truncated]"));
+        assert_eq!(
+            result_text(&json!({ "content": [], "structuredContent": { "n": 1 } })).text,
+            "{\"n\":1}"
+        );
+        assert!(result_text(
+            &json!({ "content": [{ "type": "text", "text": "x".repeat(MAX_RESULT_CHARS + 5) }] })
+        )
+        .text
+        .ends_with("[truncated]"));
     }
 
     #[cfg(unix)]
     #[tokio::test]
     async fn reports_a_server_that_exits() {
-        let cfg = ServerConfig { id: "x".into(), command: "sh".into(), args: vec!["-c".into(), "echo boom >&2; exit 1".into()], url: None };
+        let cfg = ServerConfig {
+            id: "x".into(),
+            command: "sh".into(),
+            args: vec!["-c".into(), "echo boom >&2; exit 1".into()],
+            url: None,
+        };
         let e = start(&cfg, None, None).await.err().unwrap().to_string();
         assert!(e.contains("stopped") && e.contains("boom"), "{e}");
     }

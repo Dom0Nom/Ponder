@@ -63,7 +63,13 @@ impl Tracker {
     }
 
     /// `front` is the frontmost app, `None` when it can't be read.
-    pub fn observe(&mut self, now: i64, state: Option<&FocusState>, front: Option<&AppInfo>, prefs: &DistractionPrefs) -> Option<Nudge> {
+    pub fn observe(
+        &mut self,
+        now: i64,
+        state: Option<&FocusState>,
+        front: Option<&AppInfo>,
+        prefs: &DistractionPrefs,
+    ) -> Option<Nudge> {
         self.last_poll = now;
         let active = state.filter(|s| s.phase == Phase::Work && !s.paused);
         let Some(s) = active.filter(|_| prefs.enabled) else {
@@ -91,12 +97,22 @@ impl Tracker {
         if now - since < i64::from(prefs.grace_sec) * 1000 {
             return None;
         }
-        if self.last_nudge.get(&app.id).is_some_and(|t| now - t < COOLDOWN_MS) {
+        if self
+            .last_nudge
+            .get(&app.id)
+            .is_some_and(|t| now - t < COOLDOWN_MS)
+        {
             return None;
         }
         self.last_nudge.insert(app.id.clone(), now);
         self.count += 1;
-        Some(Nudge { app: app.clone(), session_id: s.session_id.clone(), remaining_ms: s.remaining_ms, count: self.count, at: now })
+        Some(Nudge {
+            app: app.clone(),
+            session_id: s.session_id.clone(),
+            remaining_ms: s.remaining_ms,
+            count: self.count,
+            at: now,
+        })
     }
 }
 
@@ -114,7 +130,9 @@ fn read_prefs(app: &AppHandle) -> Option<DistractionPrefs> {
 
 /// Called on every focus tick.
 pub fn sync(app: &AppHandle, state: Option<&FocusState>) {
-    let Some(svc) = app.try_state::<DistractionService>() else { return };
+    let Some(svc) = app.try_state::<DistractionService>() else {
+        return;
+    };
     let now = crate::db::now_ms();
     let mut t = svc.tracker.lock().unwrap_or_else(|e| e.into_inner());
     if !t.due(now) {
@@ -122,8 +140,20 @@ pub fn sync(app: &AppHandle, state: Option<&FocusState>) {
     }
     let working = state.is_some_and(|s| s.phase == Phase::Work && !s.paused);
     let prefs = if working { read_prefs(app) } else { None };
-    let front = prefs.as_ref().filter(|p| p.enabled && !p.apps.is_empty()).and_then(|_| platform::frontmost());
-    let nudge = t.observe(now, state, front.as_ref(), &prefs.unwrap_or(DistractionPrefs { enabled: false, apps: vec![], grace_sec: 15 }));
+    let front = prefs
+        .as_ref()
+        .filter(|p| p.enabled && !p.apps.is_empty())
+        .and_then(|_| platform::frontmost());
+    let nudge = t.observe(
+        now,
+        state,
+        front.as_ref(),
+        &prefs.unwrap_or(DistractionPrefs {
+            enabled: false,
+            apps: vec![],
+            grace_sec: 15,
+        }),
+    );
     drop(t);
     if let Some(n) = nudge {
         notify(app, &n);
@@ -139,11 +169,23 @@ fn notify(app: &AppHandle, n: &Nudge) {
     let _ = app.emit("focus://distraction", n);
     let mins = n.remaining_ms.map(|ms| (ms + 59_999) / 60_000);
     let body = match mins {
-        Some(m) if m > 0 => format!("{} is open during your focus block. {m} min left. Back to it?", n.app.name),
-        _ => format!("{} is open during your focus block. Back to it?", n.app.name),
+        Some(m) if m > 0 => format!(
+            "{} is open during your focus block. {m} min left. Back to it?",
+            n.app.name
+        ),
+        _ => format!(
+            "{} is open during your focus block. Back to it?",
+            n.app.name
+        ),
     };
     use tauri_plugin_notification::NotificationExt;
-    if let Err(e) = app.notification().builder().title("Ponder").body(body).show() {
+    if let Err(e) = app
+        .notification()
+        .builder()
+        .title("Ponder")
+        .body(body)
+        .show()
+    {
         log::warn!("distraction notification failed: {e}");
     }
 }
@@ -160,7 +202,10 @@ mod platform {
 
     fn info(app: &NSRunningApplication) -> Option<AppInfo> {
         let id = app.bundleIdentifier()?.to_string();
-        let name = app.localizedName().map(|n| n.to_string()).unwrap_or_else(|| id.clone());
+        let name = app
+            .localizedName()
+            .map(|n| n.to_string())
+            .unwrap_or_else(|| id.clone());
         Some(AppInfo { id, name })
     }
 
@@ -171,7 +216,9 @@ mod platform {
 
     pub fn running() -> Vec<AppInfo> {
         let ws = NSWorkspace::sharedWorkspace();
-        let own = NSRunningApplication::currentApplication().bundleIdentifier().map(|s| s.to_string());
+        let own = NSRunningApplication::currentApplication()
+            .bundleIdentifier()
+            .map(|s| s.to_string());
         let mut apps: Vec<AppInfo> = ws
             .runningApplications()
             .iter()
@@ -226,11 +273,18 @@ mod tests {
     }
 
     fn app(id: &str) -> AppInfo {
-        AppInfo { id: id.into(), name: id.to_uppercase() }
+        AppInfo {
+            id: id.into(),
+            name: id.to_uppercase(),
+        }
     }
 
     fn prefs() -> DistractionPrefs {
-        DistractionPrefs { enabled: true, apps: vec![app("com.game")], grace_sec: 10 }
+        DistractionPrefs {
+            enabled: true,
+            apps: vec![app("com.game")],
+            grace_sec: 10,
+        }
     }
 
     #[test]
@@ -240,11 +294,22 @@ mod tests {
         let g = app("com.game");
         assert!(t.observe(0, Some(&s), Some(&g), &prefs()).is_none());
         assert!(t.observe(9_000, Some(&s), Some(&g), &prefs()).is_none());
-        let n = t.observe(10_000, Some(&s), Some(&g), &prefs()).expect("nudge");
-        assert_eq!((n.app.id.as_str(), n.count, n.remaining_ms), ("com.game", 1, Some(600_000)));
+        let n = t
+            .observe(10_000, Some(&s), Some(&g), &prefs())
+            .expect("nudge");
+        assert_eq!(
+            (n.app.id.as_str(), n.count, n.remaining_ms),
+            ("com.game", 1, Some(600_000))
+        );
         assert!(t.observe(12_000, Some(&s), Some(&g), &prefs()).is_none());
-        assert!(t.observe(10_000 + COOLDOWN_MS - 1, Some(&s), Some(&g), &prefs()).is_none());
-        assert_eq!(t.observe(10_000 + COOLDOWN_MS, Some(&s), Some(&g), &prefs()).map(|n| n.count), Some(2));
+        assert!(t
+            .observe(10_000 + COOLDOWN_MS - 1, Some(&s), Some(&g), &prefs())
+            .is_none());
+        assert_eq!(
+            t.observe(10_000 + COOLDOWN_MS, Some(&s), Some(&g), &prefs())
+                .map(|n| n.count),
+            Some(2)
+        );
     }
 
     #[test]
@@ -266,8 +331,20 @@ mod tests {
             (Some(state(Phase::Break, false, "s1")), prefs()),
             (Some(state(Phase::Work, true, "s1")), prefs()),
             (None, prefs()),
-            (Some(state(Phase::Work, false, "s1")), DistractionPrefs { enabled: false, ..prefs() }),
-            (Some(state(Phase::Work, false, "s1")), DistractionPrefs { apps: vec![app("com.other")], ..prefs() }),
+            (
+                Some(state(Phase::Work, false, "s1")),
+                DistractionPrefs {
+                    enabled: false,
+                    ..prefs()
+                },
+            ),
+            (
+                Some(state(Phase::Work, false, "s1")),
+                DistractionPrefs {
+                    apps: vec![app("com.other")],
+                    ..prefs()
+                },
+            ),
         ] {
             let mut t = Tracker::default();
             assert!(t.observe(0, s.as_ref(), Some(&g), &p).is_none());
@@ -279,9 +356,37 @@ mod tests {
     fn a_new_session_resets_the_count() {
         let mut t = Tracker::default();
         let g = app("com.game");
-        t.observe(0, Some(&state(Phase::Work, false, "s1")), Some(&g), &prefs());
-        assert_eq!(t.observe(10_000, Some(&state(Phase::Work, false, "s1")), Some(&g), &prefs()).map(|n| n.count), Some(1));
-        t.observe(20_000, Some(&state(Phase::Work, false, "s2")), Some(&g), &prefs());
-        assert_eq!(t.observe(30_000, Some(&state(Phase::Work, false, "s2")), Some(&g), &prefs()).map(|n| n.count), Some(1));
+        t.observe(
+            0,
+            Some(&state(Phase::Work, false, "s1")),
+            Some(&g),
+            &prefs(),
+        );
+        assert_eq!(
+            t.observe(
+                10_000,
+                Some(&state(Phase::Work, false, "s1")),
+                Some(&g),
+                &prefs()
+            )
+            .map(|n| n.count),
+            Some(1)
+        );
+        t.observe(
+            20_000,
+            Some(&state(Phase::Work, false, "s2")),
+            Some(&g),
+            &prefs(),
+        );
+        assert_eq!(
+            t.observe(
+                30_000,
+                Some(&state(Phase::Work, false, "s2")),
+                Some(&g),
+                &prefs()
+            )
+            .map(|n| n.count),
+            Some(1)
+        );
     }
 }

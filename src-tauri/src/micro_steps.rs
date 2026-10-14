@@ -64,17 +64,23 @@ fn not_found() -> AppError {
 }
 
 pub fn list_steps(c: &Connection, space_id: Option<&str>) -> AppResult<Vec<MicroStep>> {
-    let mut st = c.prepare(&format!("SELECT {COLS} FROM micro_steps WHERE space_id IS ?1 ORDER BY position"))?;
+    let mut st = c.prepare(&format!(
+        "SELECT {COLS} FROM micro_steps WHERE space_id IS ?1 ORDER BY position"
+    ))?;
     let rows = st.query_map(params![space_id], row)?;
     Ok(rows.collect::<Result<Vec<_>, _>>()?)
 }
 
 fn get_step(c: &Connection, id: &str) -> AppResult<MicroStep> {
-    c.query_row(&format!("SELECT {COLS} FROM micro_steps WHERE id = ?1"), params![id], row)
-        .map_err(|e| match e {
-            rusqlite::Error::QueryReturnedNoRows => not_found(),
-            e => e.into(),
-        })
+    c.query_row(
+        &format!("SELECT {COLS} FROM micro_steps WHERE id = ?1"),
+        params![id],
+        row,
+    )
+    .map_err(|e| match e {
+        rusqlite::Error::QueryReturnedNoRows => not_found(),
+        e => e.into(),
+    })
 }
 
 pub fn replace_steps(
@@ -94,7 +100,10 @@ pub fn replace_steps(
     cleaned.truncate(MAX_STEPS);
     let goal = goal.map(str::trim).filter(|g| !g.is_empty());
     let tx = c.unchecked_transaction()?;
-    tx.execute("DELETE FROM micro_steps WHERE space_id IS ?1", params![space_id])?;
+    tx.execute(
+        "DELETE FROM micro_steps WHERE space_id IS ?1",
+        params![space_id],
+    )?;
     let now = now_ms();
     for (i, (text, minutes)) in cleaned.iter().enumerate() {
         tx.execute(
@@ -107,20 +116,34 @@ pub fn replace_steps(
 }
 
 pub fn set_done(c: &Connection, id: &str, done: bool) -> AppResult<MicroStep> {
-    let n = c.execute("UPDATE micro_steps SET done = ?1 WHERE id = ?2", params![done as i64, id])?;
+    let n = c.execute(
+        "UPDATE micro_steps SET done = ?1 WHERE id = ?2",
+        params![done as i64, id],
+    )?;
     if n == 0 {
         return Err(not_found());
     }
     get_step(c, id)
 }
 
-pub fn update_step(c: &Connection, id: &str, text: Option<&str>, minutes: Option<i64>) -> AppResult<MicroStep> {
+pub fn update_step(
+    c: &Connection,
+    id: &str,
+    text: Option<&str>,
+    minutes: Option<i64>,
+) -> AppResult<MicroStep> {
     get_step(c, id)?;
     if let Some(t) = text {
-        c.execute("UPDATE micro_steps SET text = ?1 WHERE id = ?2", params![clean_text(t)?, id])?;
+        c.execute(
+            "UPDATE micro_steps SET text = ?1 WHERE id = ?2",
+            params![clean_text(t)?, id],
+        )?;
     }
     if let Some(m) = minutes {
-        c.execute("UPDATE micro_steps SET minutes = ?1 WHERE id = ?2", params![clamp_minutes(m), id])?;
+        c.execute(
+            "UPDATE micro_steps SET minutes = ?1 WHERE id = ?2",
+            params![clamp_minutes(m), id],
+        )?;
     }
     get_step(c, id)
 }
@@ -131,12 +154,18 @@ pub fn delete_step(c: &Connection, id: &str) -> AppResult<()> {
 }
 
 pub fn clear_steps(c: &Connection, space_id: Option<&str>) -> AppResult<()> {
-    c.execute("DELETE FROM micro_steps WHERE space_id IS ?1", params![space_id])?;
+    c.execute(
+        "DELETE FROM micro_steps WHERE space_id IS ?1",
+        params![space_id],
+    )?;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn micro_steps_list(state: State<'_, AppState>, space_id: Option<String>) -> AppResult<Vec<MicroStep>> {
+pub async fn micro_steps_list(
+    state: State<'_, AppState>,
+    space_id: Option<String>,
+) -> AppResult<Vec<MicroStep>> {
     list_steps(&state.db.conn()?, space_id.as_deref())
 }
 
@@ -148,11 +177,21 @@ pub async fn micro_steps_replace(
     goal: Option<String>,
     steps: Vec<NewMicroStep>,
 ) -> AppResult<Vec<MicroStep>> {
-    replace_steps(&state.db.conn()?, space_id.as_deref(), session_id.as_deref(), goal.as_deref(), &steps)
+    replace_steps(
+        &state.db.conn()?,
+        space_id.as_deref(),
+        session_id.as_deref(),
+        goal.as_deref(),
+        &steps,
+    )
 }
 
 #[tauri::command]
-pub async fn micro_step_set_done(state: State<'_, AppState>, id: String, done: bool) -> AppResult<MicroStep> {
+pub async fn micro_step_set_done(
+    state: State<'_, AppState>,
+    id: String,
+    done: bool,
+) -> AppResult<MicroStep> {
     set_done(&state.db.conn()?, &id, done)
 }
 
@@ -172,7 +211,10 @@ pub async fn micro_step_delete(state: State<'_, AppState>, id: String) -> AppRes
 }
 
 #[tauri::command]
-pub async fn micro_steps_clear(state: State<'_, AppState>, space_id: Option<String>) -> AppResult<()> {
+pub async fn micro_steps_clear(
+    state: State<'_, AppState>,
+    space_id: Option<String>,
+) -> AppResult<()> {
     clear_steps(&state.db.conn()?, space_id.as_deref())
 }
 
@@ -182,17 +224,37 @@ mod tests {
     use crate::db::{models, test_db};
 
     fn ns(t: &str, m: i64) -> NewMicroStep {
-        NewMicroStep { text: t.into(), minutes: m }
+        NewMicroStep {
+            text: t.into(),
+            minutes: m,
+        }
     }
 
     #[test]
     fn replace_scopes_per_space_and_clamps() {
         let (db, _d) = test_db();
         let c = db.conn().unwrap();
-        let a = models::create_space(&c, models::SpacePatch { name: Some("A".into()), ..Default::default() }).unwrap();
-        let first = replace_steps(&c, Some(&a.id), None, Some(" Ch 3 "), &[ns("Open the PDF", 1), ns("  Read page 1 ", 30)]).unwrap();
+        let a = models::create_space(
+            &c,
+            models::SpacePatch {
+                name: Some("A".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let first = replace_steps(
+            &c,
+            Some(&a.id),
+            None,
+            Some(" Ch 3 "),
+            &[ns("Open the PDF", 1), ns("  Read page 1 ", 30)],
+        )
+        .unwrap();
         assert_eq!(
-            first.iter().map(|s| (s.text.as_str(), s.minutes, s.position)).collect::<Vec<_>>(),
+            first
+                .iter()
+                .map(|s| (s.text.as_str(), s.minutes, s.position))
+                .collect::<Vec<_>>(),
             vec![("Open the PDF", 2, 0), ("Read page 1", 5, 1)]
         );
         assert_eq!(first[0].goal.as_deref(), Some("Ch 3"));
@@ -228,10 +290,19 @@ mod tests {
     fn steps_go_with_their_space() {
         let (db, _d) = test_db();
         let c = db.conn().unwrap();
-        let a = models::create_space(&c, models::SpacePatch { name: Some("A".into()), ..Default::default() }).unwrap();
+        let a = models::create_space(
+            &c,
+            models::SpacePatch {
+                name: Some("A".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
         replace_steps(&c, Some(&a.id), None, None, &[ns("One", 2)]).unwrap();
         models::delete_space(&c, &a.id).unwrap();
-        let n: i64 = c.query_row("SELECT COUNT(*) FROM micro_steps", [], |r| r.get(0)).unwrap();
+        let n: i64 = c
+            .query_row("SELECT COUNT(*) FROM micro_steps", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(n, 0);
     }
 }

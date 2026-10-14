@@ -3,37 +3,37 @@ mod ask;
 mod backup;
 mod calculator;
 mod capture;
-pub mod cli;
 mod cards;
+pub mod cli;
 mod cloud;
 mod commands;
 mod db;
 mod deeplink;
 mod error;
-mod focus;
-mod ingest;
 mod exams;
-mod studio;
-mod notes;
-mod pack;
+mod focus;
+mod icons;
+mod inbox;
+mod ingest;
 mod insights;
 mod lan;
-mod music;
-mod micro_steps;
-mod oauth;
 pub mod mcp;
 mod mcp_client;
 mod mcp_oauth;
-pub mod paths;
-mod icons;
-mod inbox;
+mod micro_steps;
+mod music;
+mod notes;
+mod oauth;
 mod openrouter;
+mod pack;
+pub mod paths;
 mod placement;
 mod plans;
 mod practice;
 mod proxy;
 mod retrieval;
 mod secrets;
+mod studio;
 mod watch;
 
 use db::Db;
@@ -49,7 +49,9 @@ pub struct AppState {
 pub fn run() {
     let builder = tauri::Builder::default();
     #[cfg(any(target_os = "macos", windows, target_os = "linux"))]
-    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| deeplink::show_main(app)));
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+        deeplink::show_main(app)
+    }));
     builder
         .plugin(
             tauri_plugin_log::Builder::new()
@@ -67,7 +69,9 @@ pub fn run() {
         .manage(deeplink::DeepLinks::default())
         .manage(mcp_client::McpClients::default())
         .manage(commands::providers::ProviderServices::new())
-        .manage(std::sync::Arc::new(cloud::CloudServices::new(secrets::default_store())))
+        .manage(std::sync::Arc::new(cloud::CloudServices::new(
+            secrets::default_store(),
+        )))
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
@@ -216,6 +220,7 @@ pub fn run() {
             ingest::commands::embedder_status,
             ingest::commands::embedding_models,
             ingest::commands::set_embedding_model,
+            ingest::commands::openrouter_embedding_models,
             ingest::commands::topic_coverage,
             watch::commands::watch_list,
             watch::commands::watch_add,

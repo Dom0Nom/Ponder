@@ -93,14 +93,20 @@ fn valid_date(d: &str) -> bool {
     if b.len() != 10 || b[4] != b'-' || b[7] != b'-' {
         return false;
     }
-    let (Ok(y), Ok(m), Ok(day)) = (d[0..4].parse::<u32>(), d[5..7].parse::<u32>(), d[8..10].parse::<u32>()) else {
+    let (Ok(y), Ok(m), Ok(day)) = (
+        d[0..4].parse::<u32>(),
+        d[5..7].parse::<u32>(),
+        d[8..10].parse::<u32>(),
+    ) else {
         return false;
     };
     y >= 1970 && (1..=12).contains(&m) && (1..=31).contains(&day)
 }
 
 fn list_tasks(c: &Connection, space_id: &str) -> AppResult<Vec<PlanTask>> {
-    let mut st = c.prepare(&format!("SELECT {TASK_COLS} FROM plan_tasks WHERE space_id=?1 ORDER BY date, ord"))?;
+    let mut st = c.prepare(&format!(
+        "SELECT {TASK_COLS} FROM plan_tasks WHERE space_id=?1 ORDER BY date, ord"
+    ))?;
     let rows = st.query_map([space_id], task_row)?;
     Ok(rows.collect::<Result<_, _>>()?)
 }
@@ -127,7 +133,10 @@ pub fn get_plan(c: &Connection, space_id: &str) -> AppResult<Option<StudyPlanBun
         )
         .optional()?;
     match plan {
-        Some(plan) => Ok(Some(StudyPlanBundle { plan, tasks: list_tasks(c, space_id)? })),
+        Some(plan) => Ok(Some(StudyPlanBundle {
+            plan,
+            tasks: list_tasks(c, space_id)?,
+        })),
         None => Ok(None),
     }
 }
@@ -170,7 +179,10 @@ pub fn save_plan(
            replanned_at=CASE WHEN ?8 THEN ?7 ELSE replanned_at END, updated_at=?7",
         params![space_id, goal, f.exam_date, f.weekly_minutes, days, if replanned { Some(now) } else { None }, now, replanned],
     )?;
-    tx.execute("DELETE FROM plan_tasks WHERE space_id=?1 AND done_at IS NULL", [space_id])?;
+    tx.execute(
+        "DELETE FROM plan_tasks WHERE space_id=?1 AND done_at IS NULL",
+        [space_id],
+    )?;
     for t in tasks {
         tx.execute(
             "INSERT INTO plan_tasks (id, space_id, date, ord, kind, topic_id, title, minutes, done_at)
@@ -190,7 +202,11 @@ pub fn set_task_done(c: &Connection, id: &str, done: bool) -> AppResult<PlanTask
     if n == 0 {
         return Err(AppError::NotFound("plan task".into()));
     }
-    Ok(c.query_row(&format!("SELECT {TASK_COLS} FROM plan_tasks WHERE id=?1"), [id], task_row)?)
+    Ok(c.query_row(
+        &format!("SELECT {TASK_COLS} FROM plan_tasks WHERE id=?1"),
+        [id],
+        task_row,
+    )?)
 }
 
 pub fn delete_plan(c: &Connection, space_id: &str) -> AppResult<()> {
@@ -209,13 +225,20 @@ pub fn tasks_between(c: &Connection, from: &str, to: &str) -> AppResult<Vec<Date
          ORDER BY t.date, s.name, t.ord",
     )?;
     let rows = st.query_map([from, to], |r| {
-        Ok(DatedPlanTask { task: task_row(r)?, space_name: r.get(9)?, space_icon: r.get(10)? })
+        Ok(DatedPlanTask {
+            task: task_row(r)?,
+            space_name: r.get(9)?,
+            space_icon: r.get(10)?,
+        })
     })?;
     Ok(rows.collect::<Result<_, _>>()?)
 }
 
 #[tauri::command]
-pub async fn get_study_plan(state: State<'_, AppState>, space_id: String) -> AppResult<Option<StudyPlanBundle>> {
+pub async fn get_study_plan(
+    state: State<'_, AppState>,
+    space_id: String,
+) -> AppResult<Option<StudyPlanBundle>> {
     get_plan(&state.db.conn()?, &space_id)
 }
 
@@ -231,7 +254,11 @@ pub async fn save_study_plan(
 }
 
 #[tauri::command]
-pub async fn set_plan_task_done(state: State<'_, AppState>, id: String, done: bool) -> AppResult<PlanTask> {
+pub async fn set_plan_task_done(
+    state: State<'_, AppState>,
+    id: String,
+    done: bool,
+) -> AppResult<PlanTask> {
     set_task_done(&state.db.conn()?, &id, done)
 }
 
@@ -241,7 +268,11 @@ pub async fn delete_study_plan(state: State<'_, AppState>, space_id: String) -> 
 }
 
 #[tauri::command]
-pub async fn list_plan_tasks(state: State<'_, AppState>, from_date: String, to_date: String) -> AppResult<Vec<DatedPlanTask>> {
+pub async fn list_plan_tasks(
+    state: State<'_, AppState>,
+    from_date: String,
+    to_date: String,
+) -> AppResult<Vec<DatedPlanTask>> {
     tasks_between(&state.db.conn()?, &from_date, &to_date)
 }
 
@@ -251,15 +282,35 @@ mod tests {
     use crate::db::{models, test_db};
 
     fn fields() -> PlanFields {
-        PlanFields { goal: "Pass the GED".into(), exam_date: "2026-12-01".into(), weekly_minutes: 300, study_days: vec![1, 3, 5] }
+        PlanFields {
+            goal: "Pass the GED".into(),
+            exam_date: "2026-12-01".into(),
+            weekly_minutes: 300,
+            study_days: vec![1, 3, 5],
+        }
     }
 
     fn nt(date: &str, ord: i64, title: &str) -> NewPlanTask {
-        NewPlanTask { date: date.into(), ord, kind: "learn".into(), topic_id: Some("t1".into()), title: title.into(), minutes: 30 }
+        NewPlanTask {
+            date: date.into(),
+            ord,
+            kind: "learn".into(),
+            topic_id: Some("t1".into()),
+            title: title.into(),
+            minutes: 30,
+        }
     }
 
     fn space(c: &Connection, name: &str) -> String {
-        models::create_space(c, models::SpacePatch { name: Some(name.into()), ..Default::default() }).unwrap().id
+        models::create_space(
+            c,
+            models::SpacePatch {
+                name: Some(name.into()),
+                ..Default::default()
+            },
+        )
+        .unwrap()
+        .id
     }
 
     #[test]
@@ -268,9 +319,19 @@ mod tests {
         let c = db.conn().unwrap();
         let sp = space(&c, "A");
         assert!(get_plan(&c, &sp).unwrap().is_none());
-        let b = save_plan(&c, &sp, &fields(), false, &[nt("2026-10-14", 1, "B"), nt("2026-10-13", 0, "A")]).unwrap();
+        let b = save_plan(
+            &c,
+            &sp,
+            &fields(),
+            false,
+            &[nt("2026-10-14", 1, "B"), nt("2026-10-13", 0, "A")],
+        )
+        .unwrap();
         assert_eq!(b.plan.study_days, vec![1, 3, 5]);
-        assert_eq!(b.tasks.iter().map(|t| t.title.as_str()).collect::<Vec<_>>(), vec!["A", "B"]);
+        assert_eq!(
+            b.tasks.iter().map(|t| t.title.as_str()).collect::<Vec<_>>(),
+            vec!["A", "B"]
+        );
         assert!(b.plan.replanned_at.is_none());
         let mut f = fields();
         f.goal = "New goal".into();
@@ -308,7 +369,17 @@ mod tests {
         let (db, _d) = test_db();
         let c = db.conn().unwrap();
         let sp = space(&c, "A");
-        let b = save_plan(&c, &sp, &fields(), false, &[nt("2026-10-13", 0, "done one"), nt("2026-10-14", 0, "open one")]).unwrap();
+        let b = save_plan(
+            &c,
+            &sp,
+            &fields(),
+            false,
+            &[
+                nt("2026-10-13", 0, "done one"),
+                nt("2026-10-14", 0, "open one"),
+            ],
+        )
+        .unwrap();
         set_task_done(&c, &b.tasks[0].id, true).unwrap();
         let b = save_plan(&c, &sp, &fields(), true, &[nt("2026-10-16", 0, "fresh")]).unwrap();
         let titles: Vec<_> = b.tasks.iter().map(|t| t.title.as_str()).collect();
@@ -322,8 +393,14 @@ mod tests {
         let c = db.conn().unwrap();
         let sp = space(&c, "A");
         let b = save_plan(&c, &sp, &fields(), false, &[nt("2026-10-13", 0, "A")]).unwrap();
-        assert!(set_task_done(&c, &b.tasks[0].id, true).unwrap().done_at.is_some());
-        assert!(set_task_done(&c, &b.tasks[0].id, false).unwrap().done_at.is_none());
+        assert!(set_task_done(&c, &b.tasks[0].id, true)
+            .unwrap()
+            .done_at
+            .is_some());
+        assert!(set_task_done(&c, &b.tasks[0].id, false)
+            .unwrap()
+            .done_at
+            .is_none());
         assert!(set_task_done(&c, "nope", true).is_err());
     }
 
@@ -347,13 +424,35 @@ mod tests {
         let c = db.conn().unwrap();
         let a = space(&c, "Alpha");
         let b = space(&c, "Beta");
-        save_plan(&c, &a, &fields(), false, &[nt("2026-10-12", 0, "early"), nt("2026-10-13", 0, "a1")]).unwrap();
-        save_plan(&c, &b, &fields(), false, &[nt("2026-10-13", 0, "b1"), nt("2026-10-20", 0, "late")]).unwrap();
+        save_plan(
+            &c,
+            &a,
+            &fields(),
+            false,
+            &[nt("2026-10-12", 0, "early"), nt("2026-10-13", 0, "a1")],
+        )
+        .unwrap();
+        save_plan(
+            &c,
+            &b,
+            &fields(),
+            false,
+            &[nt("2026-10-13", 0, "b1"), nt("2026-10-20", 0, "late")],
+        )
+        .unwrap();
         let rows = tasks_between(&c, "2026-10-13", "2026-10-14").unwrap();
-        assert_eq!(rows.iter().map(|r| (r.space_name.as_str(), r.task.title.as_str())).collect::<Vec<_>>(), vec![("Alpha", "a1"), ("Beta", "b1")]);
+        assert_eq!(
+            rows.iter()
+                .map(|r| (r.space_name.as_str(), r.task.title.as_str()))
+                .collect::<Vec<_>>(),
+            vec![("Alpha", "a1"), ("Beta", "b1")]
+        );
         assert!(!rows[0].space_icon.is_empty());
         models::delete_space(&c, &a).unwrap();
         assert!(get_plan(&c, &a).unwrap().is_none());
-        assert_eq!(tasks_between(&c, "2026-10-01", "2026-12-01").unwrap().len(), 2);
+        assert_eq!(
+            tasks_between(&c, "2026-10-01", "2026-12-01").unwrap().len(),
+            2
+        );
     }
 }

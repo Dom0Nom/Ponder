@@ -15,8 +15,20 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_opener::OpenerExt;
 
 const PROVIDER_TYPES: &[&str] = &[
-    "anthropic", "openai", "google", "openrouter", "xai", "groq", "mistral", "deepseek", "openai-compatible", "lmstudio", "ollama",
-    "llamacpp", "chatgpt-oauth", "xai-oauth",
+    "anthropic",
+    "openai",
+    "google",
+    "openrouter",
+    "xai",
+    "groq",
+    "mistral",
+    "deepseek",
+    "openai-compatible",
+    "lmstudio",
+    "ollama",
+    "llamacpp",
+    "chatgpt-oauth",
+    "xai-oauth",
 ];
 const CHATGPT_SETTING: &str = "chatgptOAuth";
 const SIGN_IN_TIMEOUT: Duration = Duration::from_secs(10 * 60);
@@ -46,8 +58,12 @@ fn emit_status(app: &AppHandle, s: &OAuthStatus) {
     let _ = app.emit("oauth://status", s);
 }
 
-async fn blocking<T: Send + 'static>(f: impl FnOnce() -> AppResult<T> + Send + 'static) -> AppResult<T> {
-    tokio::task::spawn_blocking(f).await.map_err(|e| AppError::Other(e.to_string()))?
+async fn blocking<T: Send + 'static>(
+    f: impl FnOnce() -> AppResult<T> + Send + 'static,
+) -> AppResult<T> {
+    tokio::task::spawn_blocking(f)
+        .await
+        .map_err(|e| AppError::Other(e.to_string()))?
 }
 
 // ---------- providers ----------
@@ -58,9 +74,15 @@ pub async fn list_providers(state: State<'_, AppState>) -> AppResult<Vec<Provide
 }
 
 #[tauri::command]
-pub async fn save_provider(state: State<'_, AppState>, mut provider: Provider) -> AppResult<Provider> {
+pub async fn save_provider(
+    state: State<'_, AppState>,
+    mut provider: Provider,
+) -> AppResult<Provider> {
     if !PROVIDER_TYPES.contains(&provider.provider_type.as_str()) {
-        return Err(invalid(format!("Unknown provider type {}", provider.provider_type)));
+        return Err(invalid(format!(
+            "Unknown provider type {}",
+            provider.provider_type
+        )));
     }
     if !matches!(provider.kind.as_str(), "apiKey" | "oauth" | "local") {
         return Err(invalid("Unknown provider kind"));
@@ -70,7 +92,9 @@ pub async fn save_provider(state: State<'_, AppState>, mut provider: Provider) -
         .map(|b| b.trim().trim_end_matches('/').to_string())
         .filter(|b| !b.is_empty());
     if let Some(b) = &provider.base_url {
-        let ok = url::Url::parse(b).map(|u| matches!(u.scheme(), "http" | "https") && u.host().is_some()).unwrap_or(false);
+        let ok = url::Url::parse(b)
+            .map(|u| matches!(u.scheme(), "http" | "https") && u.host().is_some())
+            .unwrap_or(false);
         if !ok {
             return Err(invalid("Base URL must start with http:// or https://"));
         }
@@ -82,7 +106,11 @@ pub async fn save_provider(state: State<'_, AppState>, mut provider: Provider) -
 }
 
 #[tauri::command]
-pub async fn delete_provider(state: State<'_, AppState>, svc: State<'_, ProviderServices>, id: String) -> AppResult<()> {
+pub async fn delete_provider(
+    state: State<'_, AppState>,
+    svc: State<'_, ProviderServices>,
+    id: String,
+) -> AppResult<()> {
     m::delete_provider(&state.db.conn()?, &id)?;
     svc.oauth.cancel_flow(&id);
     svc.oauth.clear_transient(&id);
@@ -93,7 +121,11 @@ pub async fn delete_provider(state: State<'_, AppState>, svc: State<'_, Provider
 // ---------- secrets ----------
 
 #[tauri::command]
-pub async fn secret_set(svc: State<'_, ProviderServices>, provider_id: String, value: String) -> AppResult<()> {
+pub async fn secret_set(
+    svc: State<'_, ProviderServices>,
+    provider_id: String,
+    value: String,
+) -> AppResult<()> {
     let store = svc.secrets.clone();
     blocking(move || secrets::set_api_key(store.as_ref(), &provider_id, &value)).await
 }
@@ -150,7 +182,9 @@ fn record_account(app: &AppHandle, provider_id: &str, account: Option<&str>) {
         if !p.config.is_object() {
             p.config = json!({});
         }
-        p.config["account"] = account.map(|a| Value::String(a.into())).unwrap_or(Value::Null);
+        p.config["account"] = account
+            .map(|a| Value::String(a.into()))
+            .unwrap_or(Value::Null);
         let _ = m::save_provider(&conn, p);
     }
 }
@@ -167,7 +201,10 @@ fn chatgpt_registration(state: &AppState) -> AppResult<(String, Option<String>)>
             h
         }
     };
-    let client_id = v.get("clientId").and_then(Value::as_str).map(str::to_string);
+    let client_id = v
+        .get("clientId")
+        .and_then(Value::as_str)
+        .map(str::to_string);
     Ok((host_id, client_id))
 }
 
@@ -179,7 +216,12 @@ fn save_chatgpt_client_id(app: &AppHandle, client_id: &str) -> AppResult<()> {
     m::set_setting(&conn, CHATGPT_SETTING, &v)
 }
 
-fn finish_flow(app: &AppHandle, oauth: &OAuth, provider_id: &str, result: AppResult<Option<String>>) {
+fn finish_flow(
+    app: &AppHandle,
+    oauth: &OAuth,
+    provider_id: &str,
+    result: AppResult<Option<String>>,
+) {
     match result {
         Ok(account) => {
             oauth.clear_transient(provider_id);
@@ -208,7 +250,12 @@ pub async fn oauth_chatgpt_start(
     let (host_id, client_id) = chatgpt_registration(&state)?;
     let oauth = svc.oauth.clone();
     let lb = Loopback::bind().await?;
-    let req = chatgpt::build_authorize(&oauth.chatgpt, client_id.as_deref(), &host_id, &lb.redirect_uri());
+    let req = chatgpt::build_authorize(
+        &oauth.chatgpt,
+        client_id.as_deref(),
+        &host_id,
+        &lb.redirect_uri(),
+    );
     let pending = oauth.pending_status(&provider_id);
     oauth.set_transient(pending.clone());
     emit_status(&app, &pending);
@@ -225,8 +272,18 @@ pub async fn oauth_chatgpt_start(
                 .get("client_id")
                 .cloned()
                 .or(client_id)
-                .ok_or_else(|| AppError::Other("ChatGPT didn't return a client id. Try again.".into()))?;
-            let ts = chatgpt::exchange_code(&task_oauth.http, &task_oauth.chatgpt, &cid, &cb.code, &req.verifier, &req.redirect_uri).await?;
+                .ok_or_else(|| {
+                    AppError::Other("ChatGPT didn't return a client id. Try again.".into())
+                })?;
+            let ts = chatgpt::exchange_code(
+                &task_oauth.http,
+                &task_oauth.chatgpt,
+                &cid,
+                &cb.code,
+                &req.verifier,
+                &req.redirect_uri,
+            )
+            .await?;
             task_oauth.tokens.save(&pid, &ts)?;
             save_chatgpt_client_id(&task_app, &cid)?;
             Ok(ts.account)
@@ -268,7 +325,13 @@ pub async fn oauth_xai_device_start(
     let pid = provider_id.clone();
     let task = tokio::spawn(async move {
         let result = async {
-            let ts = xai::poll_token(&task_oauth.http, &disc, &start.device_code, xai::poll_config(&start)).await?;
+            let ts = xai::poll_token(
+                &task_oauth.http,
+                &disc,
+                &start.device_code,
+                xai::poll_config(&start),
+            )
+            .await?;
             task_oauth.tokens.save(&pid, &ts)?;
             Ok(ts.account)
         }
@@ -280,18 +343,34 @@ pub async fn oauth_xai_device_start(
 }
 
 #[tauri::command]
-pub async fn oauth_status(svc: State<'_, ProviderServices>, provider_id: String) -> AppResult<OAuthStatus> {
+pub async fn oauth_status(
+    svc: State<'_, ProviderServices>,
+    provider_id: String,
+) -> AppResult<OAuthStatus> {
     let oauth = svc.oauth.clone();
     blocking(move || oauth.status(&provider_id)).await
 }
 
 #[tauri::command]
-pub async fn oauth_sign_out(app: AppHandle, svc: State<'_, ProviderServices>, provider_id: String) -> AppResult<()> {
+pub async fn oauth_sign_out(
+    app: AppHandle,
+    svc: State<'_, ProviderServices>,
+    provider_id: String,
+) -> AppResult<()> {
     let oauth = svc.oauth.clone();
     let pid = provider_id.clone();
     blocking(move || oauth.sign_out(&pid)).await?;
     record_account(&app, &provider_id, None);
-    emit_status(&app, &OAuthStatus { provider_id, state: "signedOut", account: None, error: None, expires_at: None });
+    emit_status(
+        &app,
+        &OAuthStatus {
+            provider_id,
+            state: "signedOut",
+            account: None,
+            error: None,
+            expires_at: None,
+        },
+    );
     Ok(())
 }
 
@@ -317,12 +396,20 @@ pub async fn http_stream(
             },
             None => None,
         };
-        proxy::prepare(&request, provider.as_ref(), svc.secrets.as_ref(), &svc.oauth).await
+        proxy::prepare(
+            &request,
+            provider.as_ref(),
+            svc.secrets.as_ref(),
+            &svc.oauth,
+        )
+        .await
     }
     .await;
     match prepared {
         Ok(p) => proxy::run(&svc.stream_http, p, cancel, send).await,
-        Err(e) => send(ProxyEvent::Error { message: e.to_string() }),
+        Err(e) => send(ProxyEvent::Error {
+            message: e.to_string(),
+        }),
     }
     svc.inflight.done(&id);
     Ok(())
@@ -342,7 +429,13 @@ pub async fn http_bytes(
         },
         None => None,
     };
-    let prepared = proxy::prepare(&request, provider.as_ref(), svc.secrets.as_ref(), &svc.oauth).await?;
+    let prepared = proxy::prepare(
+        &request,
+        provider.as_ref(),
+        svc.secrets.as_ref(),
+        &svc.oauth,
+    )
+    .await?;
     let bytes = proxy::fetch_bytes(&svc.stream_http, prepared).await?;
     Ok(tauri::ipc::Response::new(bytes))
 }

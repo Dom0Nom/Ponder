@@ -176,7 +176,10 @@ pub fn add_cards(c: &Connection, space_id: &str, cards: &[NewCard]) -> AppResult
             ],
         )?;
         // new cards are due right away
-        tx.execute("INSERT INTO card_state (card_id, due, state) VALUES (?1, ?2, 0)", params![id, now])?;
+        tx.execute(
+            "INSERT INTO card_state (card_id, due, state) VALUES (?1, ?2, 0)",
+            params![id, now],
+        )?;
         ids.push(id);
     }
     tx.commit()?;
@@ -205,13 +208,20 @@ pub fn delete_card(c: &Connection, id: &str) -> AppResult<()> {
 }
 
 pub fn list_cards(c: &Connection, space_id: &str) -> AppResult<Vec<Card>> {
-    let mut st = c.prepare(&format!("{CARD_SELECT} WHERE c.space_id=?1 ORDER BY c.created_at DESC"))?;
+    let mut st = c.prepare(&format!(
+        "{CARD_SELECT} WHERE c.space_id=?1 ORDER BY c.created_at DESC"
+    ))?;
     let rows = st.query_map([space_id], card_from_row)?;
     Ok(rows.collect::<Result<_, _>>()?)
 }
 
 /// Due cards (including new ones), oldest due first; `space_id` None = every space.
-pub fn due_cards(c: &Connection, space_id: Option<&str>, now: i64, limit: i64) -> AppResult<Vec<Card>> {
+pub fn due_cards(
+    c: &Connection,
+    space_id: Option<&str>,
+    now: i64,
+    limit: i64,
+) -> AppResult<Vec<Card>> {
     let mut st = c.prepare(&format!(
         "{CARD_SELECT} WHERE c.suspended = 0 AND s.due <= ?1 AND (?2 IS NULL OR c.space_id = ?2)
          ORDER BY CASE WHEN s.state = 0 THEN 1 ELSE 0 END, s.due LIMIT ?3"
@@ -230,7 +240,13 @@ pub fn due_counts(c: &Connection, now: i64) -> AppResult<Vec<DueCount>> {
          GROUP BY sp.id ORDER BY sp.name",
     )?;
     let rows = st.query_map([now], |r| {
-        Ok(DueCount { space_id: r.get(0)?, space_name: r.get(1)?, due: r.get(2)?, new: r.get(3)?, total: r.get(4)? })
+        Ok(DueCount {
+            space_id: r.get(0)?,
+            space_name: r.get(1)?,
+            due: r.get(2)?,
+            new: r.get(3)?,
+            total: r.get(4)?,
+        })
     })?;
     Ok(rows.collect::<Result<_, _>>()?)
 }
@@ -264,7 +280,8 @@ pub fn review_card(
     )?;
     // a mistake counts as fixed once its re-test card has been answered right twice in a row
     let last_two: Vec<i64> = {
-        let mut st = tx.prepare("SELECT rating FROM review_logs WHERE card_id=?1 ORDER BY id DESC LIMIT 2")?;
+        let mut st =
+            tx.prepare("SELECT rating FROM review_logs WHERE card_id=?1 ORDER BY id DESC LIMIT 2")?;
         let rows = st.query_map([id], |r| r.get(0))?;
         rows.collect::<Result<_, _>>()?
     };
@@ -293,7 +310,11 @@ fn mistake_from_row(r: &Row) -> rusqlite::Result<Mistake> {
 }
 
 /// Saves wrong answers and creates a re-test card for each, so they come back in the review queue.
-pub fn add_mistakes(c: &Connection, space_id: &str, items: &[NewMistake]) -> AppResult<Vec<Mistake>> {
+pub fn add_mistakes(
+    c: &Connection,
+    space_id: &str,
+    items: &[NewMistake],
+) -> AppResult<Vec<Mistake>> {
     let mut out = Vec::new();
     for m in items {
         if m.question.trim().is_empty() || m.correct.trim().is_empty() {
@@ -304,9 +325,12 @@ pub fn add_mistakes(c: &Connection, space_id: &str, items: &[NewMistake]) -> App
             _ => m.correct.trim().to_string(),
         };
         let (kind, data) = match &m.options {
-            Some(opts) if opts.len() >= 2 && opts.iter().any(|o| o == &m.correct) => {
-                ("mcq", Some(serde_json::json!({ "options": opts, "answer": opts.iter().position(|o| o == &m.correct) })))
-            }
+            Some(opts) if opts.len() >= 2 && opts.iter().any(|o| o == &m.correct) => (
+                "mcq",
+                Some(
+                    serde_json::json!({ "options": opts, "answer": opts.iter().position(|o| o == &m.correct) }),
+                ),
+            ),
             _ => ("basic", None),
         };
         let card = add_cards(
@@ -330,7 +354,11 @@ pub fn add_mistakes(c: &Connection, space_id: &str, items: &[NewMistake]) -> App
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             params![id, space_id, m.origin, m.question.trim(), m.given, m.correct.trim(), m.explanation, m.topic, card.id, now_ms()],
         )?;
-        out.push(c.query_row("SELECT * FROM mistakes WHERE id=?1", [&id], mistake_from_row)?);
+        out.push(c.query_row(
+            "SELECT * FROM mistakes WHERE id=?1",
+            [&id],
+            mistake_from_row,
+        )?);
     }
     Ok(out)
 }
@@ -342,7 +370,10 @@ pub fn list_mistakes(c: &Connection, space_id: Option<&str>) -> AppResult<Vec<Mi
 }
 
 pub fn set_mistake_resolved(c: &Connection, id: &str, resolved: bool) -> AppResult<()> {
-    c.execute("UPDATE mistakes SET resolved=?2 WHERE id=?1", params![id, resolved as i64])?;
+    c.execute(
+        "UPDATE mistakes SET resolved=?2 WHERE id=?1",
+        params![id, resolved as i64],
+    )?;
     Ok(())
 }
 
@@ -353,7 +384,11 @@ pub fn delete_mistake(c: &Connection, id: &str) -> AppResult<()> {
 
 /// Copies an image into the app's data dir for occlusion cards; returns the stored file name.
 pub fn store_image(dir: &std::path::Path, src: &std::path::Path) -> AppResult<String> {
-    let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
+    let ext = src
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
     if !["png", "jpg", "jpeg", "webp", "gif"].contains(&ext.as_str()) {
         return Err(invalid("Use a PNG, JPEG, WebP or GIF image"));
     }
@@ -378,18 +413,29 @@ pub fn image_data_url(dir: &std::path::Path, name: &str) -> AppResult<String> {
         "gif" => "image/gif",
         _ => "image/jpeg",
     };
-    Ok(format!("data:{mime};base64,{}", base64::engine::general_purpose::STANDARD.encode(bytes)))
+    Ok(format!(
+        "data:{mime};base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(bytes)
+    ))
 }
 
 // ---------- commands ----------
 
 #[tauri::command]
-pub async fn cards_add(state: State<'_, AppState>, space_id: String, cards: Vec<NewCard>) -> AppResult<Vec<Card>> {
+pub async fn cards_add(
+    state: State<'_, AppState>,
+    space_id: String,
+    cards: Vec<NewCard>,
+) -> AppResult<Vec<Card>> {
     add_cards(&state.db.conn()?, &space_id, &cards)
 }
 
 #[tauri::command]
-pub async fn card_update(state: State<'_, AppState>, id: String, patch: CardPatch) -> AppResult<Card> {
+pub async fn card_update(
+    state: State<'_, AppState>,
+    id: String,
+    patch: CardPatch,
+) -> AppResult<Card> {
     update_card(&state.db.conn()?, &id, patch)
 }
 
@@ -404,8 +450,17 @@ pub async fn cards_list(state: State<'_, AppState>, space_id: String) -> AppResu
 }
 
 #[tauri::command]
-pub async fn cards_due(state: State<'_, AppState>, space_id: Option<String>, limit: Option<i64>) -> AppResult<Vec<Card>> {
-    due_cards(&state.db.conn()?, space_id.as_deref(), now_ms(), limit.unwrap_or(200))
+pub async fn cards_due(
+    state: State<'_, AppState>,
+    space_id: Option<String>,
+    limit: Option<i64>,
+) -> AppResult<Vec<Card>> {
+    due_cards(
+        &state.db.conn()?,
+        space_id.as_deref(),
+        now_ms(),
+        limit.unwrap_or(200),
+    )
 }
 
 #[tauri::command]
@@ -425,21 +480,41 @@ pub async fn card_review(
     duration_ms: Option<i64>,
     log: Option<Value>,
 ) -> AppResult<Card> {
-    review_card(&state.db.conn()?, &id, rating, &fsrs, due, card_state, duration_ms, log.as_ref())
+    review_card(
+        &state.db.conn()?,
+        &id,
+        rating,
+        &fsrs,
+        due,
+        card_state,
+        duration_ms,
+        log.as_ref(),
+    )
 }
 
 #[tauri::command]
-pub async fn mistakes_add(state: State<'_, AppState>, space_id: String, items: Vec<NewMistake>) -> AppResult<Vec<Mistake>> {
+pub async fn mistakes_add(
+    state: State<'_, AppState>,
+    space_id: String,
+    items: Vec<NewMistake>,
+) -> AppResult<Vec<Mistake>> {
     add_mistakes(&state.db.conn()?, &space_id, &items)
 }
 
 #[tauri::command]
-pub async fn mistakes_list(state: State<'_, AppState>, space_id: Option<String>) -> AppResult<Vec<Mistake>> {
+pub async fn mistakes_list(
+    state: State<'_, AppState>,
+    space_id: Option<String>,
+) -> AppResult<Vec<Mistake>> {
     list_mistakes(&state.db.conn()?, space_id.as_deref())
 }
 
 #[tauri::command]
-pub async fn mistake_set_resolved(state: State<'_, AppState>, id: String, resolved: bool) -> AppResult<()> {
+pub async fn mistake_set_resolved(
+    state: State<'_, AppState>,
+    id: String,
+    resolved: bool,
+) -> AppResult<()> {
     set_mistake_resolved(&state.db.conn()?, &id, resolved)
 }
 
@@ -465,19 +540,50 @@ mod tests {
     use serde_json::json;
 
     fn card(kind: &str, front: &str, back: &str) -> NewCard {
-        NewCard { kind: kind.into(), front: front.into(), back: back.into(), data: None, source_id: None, chunk_start: None, chunk_end: None, origin: None }
+        NewCard {
+            kind: kind.into(),
+            front: front.into(),
+            back: back.into(),
+            data: None,
+            source_id: None,
+            chunk_start: None,
+            chunk_end: None,
+            origin: None,
+        }
     }
 
     #[test]
     fn cards_queue_and_reviews() {
         let (db, _d) = test_db();
         let c = db.conn().unwrap();
-        let a = models::create_space(&c, models::SpacePatch { name: Some("A".into()), ..Default::default() }).unwrap();
-        let b = models::create_space(&c, models::SpacePatch { name: Some("B".into()), ..Default::default() }).unwrap();
+        let a = models::create_space(
+            &c,
+            models::SpacePatch {
+                name: Some("A".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let b = models::create_space(
+            &c,
+            models::SpacePatch {
+                name: Some("B".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
         assert!(add_cards(&c, &a.id, &[card("basic", "Q", "")]).is_err());
         assert!(add_cards(&c, &a.id, &[card("cloze", "no gap", "")]).is_err());
         assert!(add_cards(&c, &a.id, &[card("weird", "Q", "A")]).is_err());
-        let added = add_cards(&c, &a.id, &[card("basic", "Q1", "A1"), card("cloze", "The {{c1::stroma}} hosts it", "")]).unwrap();
+        let added = add_cards(
+            &c,
+            &a.id,
+            &[
+                card("basic", "Q1", "A1"),
+                card("cloze", "The {{c1::stroma}} hosts it", ""),
+            ],
+        )
+        .unwrap();
         add_cards(&c, &b.id, &[card("basic", "Q2", "A2")]).unwrap();
 
         let now = now_ms() + 1000;
@@ -485,7 +591,17 @@ mod tests {
         assert_eq!(due_cards(&c, Some(&a.id), now, 10).unwrap().len(), 2);
 
         let later = now + 86_400_000;
-        let r = review_card(&c, &added[0].id, 3, &json!({"stability": 3.1}), later, 2, Some(4000), None).unwrap();
+        let r = review_card(
+            &c,
+            &added[0].id,
+            3,
+            &json!({"stability": 3.1}),
+            later,
+            2,
+            Some(4000),
+            None,
+        )
+        .unwrap();
         assert_eq!(r.due, later);
         assert_eq!(r.state, 2);
         assert!(review_card(&c, &added[0].id, 7, &json!({}), later, 2, None, None).is_err());
@@ -498,7 +614,15 @@ mod tests {
         let ca = counts.iter().find(|x| x.space_id == a.id).unwrap();
         assert_eq!((ca.due, ca.new, ca.total), (0, 1, 2));
 
-        update_card(&c, &added[1].id, CardPatch { suspended: Some(true), ..Default::default() }).unwrap();
+        update_card(
+            &c,
+            &added[1].id,
+            CardPatch {
+                suspended: Some(true),
+                ..Default::default()
+            },
+        )
+        .unwrap();
         assert_eq!(due_cards(&c, Some(&a.id), later + 1, 10).unwrap().len(), 1);
 
         models::delete_space(&c, &b.id).unwrap();
@@ -509,7 +633,14 @@ mod tests {
     fn mistakes_become_retest_cards_and_resolve() {
         let (db, _d) = test_db();
         let c = db.conn().unwrap();
-        let sp = models::create_space(&c, models::SpacePatch { name: Some("GED".into()), ..Default::default() }).unwrap();
+        let sp = models::create_space(
+            &c,
+            models::SpacePatch {
+                name: Some("GED".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
         let ms = add_mistakes(
             &c,
             &sp.id,

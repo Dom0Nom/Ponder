@@ -19,7 +19,10 @@ pub fn parse_playlist(input: &str) -> AppResult<String> {
     let parts: Vec<&str> = if let Some(rest) = s.strip_prefix("spotify:") {
         rest.split(':').collect()
     } else {
-        let rest = s.strip_prefix("https://").or_else(|| s.strip_prefix("http://")).unwrap_or(s);
+        let rest = s
+            .strip_prefix("https://")
+            .or_else(|| s.strip_prefix("http://"))
+            .unwrap_or(s);
         let rest = rest.strip_prefix("www.").unwrap_or(rest);
         let Some(path) = rest.strip_prefix("open.spotify.com/") else {
             return Err(invalid(format!("That isn't a Spotify link. {HINT}")));
@@ -33,7 +36,9 @@ pub fn parse_playlist(input: &str) -> AppResult<String> {
     };
     match parts.as_slice() {
         [kind, id] if kind_ok(kind) && valid_id(id) => Ok(format!("spotify:{kind}:{id}")),
-        _ => Err(invalid(format!("Couldn't read that as a Spotify playlist or album. {HINT}"))),
+        _ => Err(invalid(format!(
+            "Couldn't read that as a Spotify playlist or album. {HINT}"
+        ))),
     }
 }
 
@@ -63,7 +68,10 @@ mod tests {
             parse_playlist(&format!("https://open.spotify.com/album/{ID}?si=1")).unwrap(),
             format!("spotify:album:{ID}")
         );
-        assert_eq!(parse_playlist(&format!("spotify:album:{ID}")).unwrap(), format!("spotify:album:{ID}"));
+        assert_eq!(
+            parse_playlist(&format!("spotify:album:{ID}")).unwrap(),
+            format!("spotify:album:{ID}")
+        );
     }
 
     #[test]

@@ -44,7 +44,11 @@ pub struct Timing {
 
 impl Default for Timing {
     fn default() -> Self {
-        Self { debounce: Duration::from_secs(2), recheck: Duration::from_millis(1500), retry_missing: Duration::from_secs(15) }
+        Self {
+            debounce: Duration::from_secs(2),
+            recheck: Duration::from_millis(1500),
+            retry_missing: Duration::from_secs(15),
+        }
     }
 }
 
@@ -78,7 +82,12 @@ struct FolderState {
 
 impl FolderState {
     fn new(row: FolderRow) -> Self {
-        Self { row, watcher: None, due: Some(Instant::now()), pending: HashMap::new() }
+        Self {
+            row,
+            watcher: None,
+            due: Some(Instant::now()),
+            pending: HashMap::new(),
+        }
     }
 }
 
@@ -99,7 +108,13 @@ struct Core {
 impl WatchService {
     /// Spawns the watch thread and restores watchers for every saved folder.
     pub fn start(db: Db, ingest: Ingest, emit: Emit, timing: Timing) -> AppResult<Self> {
-        let core = Arc::new(Core { db, ingest, emit, timing, runtime: Mutex::new(HashMap::new()) });
+        let core = Arc::new(Core {
+            db,
+            ingest,
+            emit,
+            timing,
+            runtime: Mutex::new(HashMap::new()),
+        });
         let (tx, rx) = channel::<Msg>();
         let ids: Vec<String> = {
             let c = core.db.conn()?;
@@ -144,10 +159,15 @@ impl WatchService {
                         Err(RecvTimeoutError::Timeout) => {}
                     }
                     let now = Instant::now();
-                    let due: Vec<String> =
-                        folders.iter().filter(|(_, f)| f.due.is_some_and(|d| d <= now)).map(|(k, _)| k.clone()).collect();
+                    let due: Vec<String> = folders
+                        .iter()
+                        .filter(|(_, f)| f.due.is_some_and(|d| d <= now))
+                        .map(|(k, _)| k.clone())
+                        .collect();
                     for id in due {
-                        let Some(f) = folders.get_mut(&id) else { continue };
+                        let Some(f) = folders.get_mut(&id) else {
+                            continue;
+                        };
                         f.due = None;
                         let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                             thread_core.sync(f, Some(&thread_tx))
@@ -159,7 +179,11 @@ impl WatchService {
                             }
                             Err(_) => {
                                 log::error!("watched folder sync panicked");
-                                thread_core.set_runtime(&id, "error", Some("Something went wrong while scanning this folder.".into()));
+                                thread_core.set_runtime(
+                                    &id,
+                                    "error",
+                                    Some("Something went wrong while scanning this folder.".into()),
+                                );
                             }
                         }
                     }
@@ -171,8 +195,11 @@ impl WatchService {
 
     pub fn list(&self, space_id: &str) -> AppResult<Vec<WatchedFolder>> {
         let c = self.core.db.conn()?;
-        let mut st = c.prepare("SELECT id FROM watched_folders WHERE space_id=?1 ORDER BY created_at")?;
-        let ids: Vec<String> = st.query_map([space_id], |r| r.get(0))?.collect::<Result<_, _>>()?;
+        let mut st =
+            c.prepare("SELECT id FROM watched_folders WHERE space_id=?1 ORDER BY created_at")?;
+        let ids: Vec<String> = st
+            .query_map([space_id], |r| r.get(0))?
+            .collect::<Result<_, _>>()?;
         ids.iter().map(|id| self.core.folder(&c, id)).collect()
     }
 
@@ -184,7 +211,11 @@ impl WatchService {
         let c = self.core.db.conn()?;
         crate::db::models::get_space(&c, space_id)?;
         let dup: Option<String> = c
-            .query_row("SELECT id FROM watched_folders WHERE space_id=?1 AND path=?2", params![space_id, path], |r| r.get(0))
+            .query_row(
+                "SELECT id FROM watched_folders WHERE space_id=?1 AND path=?2",
+                params![space_id, path],
+                |r| r.get(0),
+            )
             .optional()?;
         if dup.is_some() {
             return Err(invalid("This folder is already watched in this space."));
@@ -204,11 +235,20 @@ impl WatchService {
     /// Stops watching; sources imported from the folder stay.
     pub fn remove(&self, id: &str) -> AppResult<()> {
         let c = self.core.db.conn()?;
-        let space_id: Option<String> =
-            c.query_row("SELECT space_id FROM watched_folders WHERE id=?1", [id], |r| r.get(0)).optional()?;
+        let space_id: Option<String> = c
+            .query_row(
+                "SELECT space_id FROM watched_folders WHERE id=?1",
+                [id],
+                |r| r.get(0),
+            )
+            .optional()?;
         let space_id = space_id.ok_or_else(|| AppError::NotFound("watched folder".into()))?;
         c.execute("DELETE FROM watched_folders WHERE id=?1", [id])?;
-        self.core.runtime.lock().unwrap_or_else(|e| e.into_inner()).remove(id);
+        self.core
+            .runtime
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(id);
         self.send(Msg::Remove(id.into()))?;
         self.core.emit_folder(id, &space_id);
         Ok(())
@@ -221,7 +261,9 @@ impl WatchService {
     }
 
     fn send(&self, m: Msg) -> AppResult<()> {
-        self.tx.send(m).map_err(|_| AppError::Other("The folder watcher stopped. Restart the app.".into()))
+        self.tx
+            .send(m)
+            .map_err(|_| AppError::Other("The folder watcher stopped. Restart the app.".into()))
     }
 
     #[cfg(test)]
@@ -232,26 +274,43 @@ impl WatchService {
 
 impl Core {
     fn set_runtime(&self, id: &str, status: &'static str, error: Option<String>) {
-        self.runtime.lock().unwrap_or_else(|e| e.into_inner()).insert(id.into(), Runtime { status, error });
+        self.runtime
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(id.into(), Runtime { status, error });
     }
 
     fn emit_folder(&self, id: &str, space_id: &str) {
-        (self.emit)("watch://updated", serde_json::json!({ "id": id, "spaceId": space_id }));
+        (self.emit)(
+            "watch://updated",
+            serde_json::json!({ "id": id, "spaceId": space_id }),
+        );
     }
 
     fn load_row(&self, id: &str) -> AppResult<Option<FolderRow>> {
         let c = self.db.conn()?;
-        Ok(c.query_row("SELECT id, space_id, path, recursive FROM watched_folders WHERE id=?1", [id], |r| {
-            Ok(FolderRow { id: r.get(0)?, space_id: r.get(1)?, path: r.get(2)?, recursive: r.get::<_, i64>(3)? != 0 })
-        })
+        Ok(c.query_row(
+            "SELECT id, space_id, path, recursive FROM watched_folders WHERE id=?1",
+            [id],
+            |r| {
+                Ok(FolderRow {
+                    id: r.get(0)?,
+                    space_id: r.get(1)?,
+                    path: r.get(2)?,
+                    recursive: r.get::<_, i64>(3)? != 0,
+                })
+            },
+        )
         .optional()?)
     }
 
     fn folder(&self, c: &Connection, id: &str) -> AppResult<WatchedFolder> {
         let (space_id, path, recursive, created_at): (String, String, i64, i64) = c
-            .query_row("SELECT space_id, path, recursive, created_at FROM watched_folders WHERE id=?1", [id], |r| {
-                Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
-            })
+            .query_row(
+                "SELECT space_id, path, recursive, created_at FROM watched_folders WHERE id=?1",
+                [id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            )
             .optional()?
             .ok_or_else(|| AppError::NotFound("watched folder".into()))?;
         let file_count: i64 = c.query_row(
@@ -259,8 +318,16 @@ impl Core {
             [id],
             |r| r.get(0),
         )?;
-        let rt = self.runtime.lock().unwrap_or_else(|e| e.into_inner()).get(id).cloned();
-        let rt = rt.unwrap_or(Runtime { status: "scanning", error: None });
+        let rt = self
+            .runtime
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(id)
+            .cloned();
+        let rt = rt.unwrap_or(Runtime {
+            status: "scanning",
+            error: None,
+        });
         Ok(WatchedFolder {
             id: id.into(),
             space_id,
@@ -291,8 +358,11 @@ impl Core {
 
     fn try_sync(&self, f: &mut FolderState, tx: Option<&Sender<Msg>>) -> AppResult<bool> {
         let mut c = self.db.conn()?;
-        let exists: bool =
-            c.query_row("SELECT count(*) FROM watched_folders WHERE id=?1", [&f.row.id], |r| r.get::<_, i64>(0))? > 0;
+        let exists: bool = c.query_row(
+            "SELECT count(*) FROM watched_folders WHERE id=?1",
+            [&f.row.id],
+            |r| r.get::<_, i64>(0),
+        )? > 0;
         if !exists {
             return Ok(false);
         }
@@ -300,7 +370,11 @@ impl Core {
         if !root.is_dir() {
             f.watcher = None;
             f.pending.clear();
-            self.set_runtime(&f.row.id, "missing", Some(format!("Folder not found: {}", f.row.path)));
+            self.set_runtime(
+                &f.row.id,
+                "missing",
+                Some(format!("Folder not found: {}", f.row.path)),
+            );
             f.due = Some(Instant::now() + self.timing.retry_missing);
             return Ok(true);
         }
@@ -315,7 +389,10 @@ impl Core {
 
         for (rel, stamp) in &plan.import {
             let path = root.join(rel);
-            let source_id = match self.ingest.import_file(&f.row.space_id, &path.to_string_lossy()) {
+            let source_id = match self
+                .ingest
+                .import_file(&f.row.space_id, &path.to_string_lossy())
+            {
                 Ok(s) => Some(s.id),
                 Err(e) => {
                     log::warn!("couldn't import {}: {e}", path.display());
@@ -328,7 +405,11 @@ impl Core {
             let path = root.join(rel);
             let source_id = match self.ingest.reimport_file(source_id, &path) {
                 Ok(s) => Some(s.id),
-                Err(AppError::NotFound(_)) => self.ingest.import_file(&f.row.space_id, &path.to_string_lossy()).ok().map(|s| s.id),
+                Err(AppError::NotFound(_)) => self
+                    .ingest
+                    .import_file(&f.row.space_id, &path.to_string_lossy())
+                    .ok()
+                    .map(|s| s.id),
                 Err(e) => {
                     log::warn!("couldn't reimport {}: {e}", path.display());
                     Some(source_id.clone())
@@ -339,10 +420,16 @@ impl Core {
         if !plan.removed.is_empty() || !plan.restored.is_empty() {
             let tx = c.transaction()?;
             for rel in &plan.removed {
-                tx.execute("UPDATE watched_files SET removed=1 WHERE folder_id=?1 AND rel_path=?2", params![f.row.id, rel])?;
+                tx.execute(
+                    "UPDATE watched_files SET removed=1 WHERE folder_id=?1 AND rel_path=?2",
+                    params![f.row.id, rel],
+                )?;
             }
             for rel in &plan.restored {
-                tx.execute("UPDATE watched_files SET removed=0 WHERE folder_id=?1 AND rel_path=?2", params![f.row.id, rel])?;
+                tx.execute(
+                    "UPDATE watched_files SET removed=0 WHERE folder_id=?1 AND rel_path=?2",
+                    params![f.row.id, rel],
+                )?;
             }
             tx.commit()?;
         }
@@ -356,27 +443,38 @@ impl Core {
 
     fn make_watcher(&self, row: &FolderRow, tx: Sender<Msg>) -> AppResult<RecommendedWatcher> {
         let id = row.id.clone();
-        let mut w = notify::recommended_watcher(move |res: notify::Result<notify::Event>| match res {
-            Ok(ev) if matches!(ev.kind, EventKind::Access(_)) => {}
-            Ok(_) => {
-                let _ = tx.send(Msg::Changed(id.clone()));
-            }
-            Err(e) => log::warn!("folder watch error: {e}"),
-        })
-        .map_err(|e| AppError::Other(format!("Couldn't watch this folder: {e}")))?;
-        let mode = if row.recursive { RecursiveMode::Recursive } else { RecursiveMode::NonRecursive };
-        w.watch(Path::new(&row.path), mode).map_err(|e| AppError::Other(format!("Couldn't watch this folder: {e}")))?;
+        let mut w =
+            notify::recommended_watcher(move |res: notify::Result<notify::Event>| match res {
+                Ok(ev) if matches!(ev.kind, EventKind::Access(_)) => {}
+                Ok(_) => {
+                    let _ = tx.send(Msg::Changed(id.clone()));
+                }
+                Err(e) => log::warn!("folder watch error: {e}"),
+            })
+            .map_err(|e| AppError::Other(format!("Couldn't watch this folder: {e}")))?;
+        let mode = if row.recursive {
+            RecursiveMode::Recursive
+        } else {
+            RecursiveMode::NonRecursive
+        };
+        w.watch(Path::new(&row.path), mode)
+            .map_err(|e| AppError::Other(format!("Couldn't watch this folder: {e}")))?;
         Ok(w)
     }
 }
 
 fn load_known(c: &Connection, folder_id: &str) -> AppResult<HashMap<String, Known>> {
-    let mut st = c.prepare("SELECT rel_path, size, mtime, source_id, removed FROM watched_files WHERE folder_id=?1")?;
+    let mut st = c.prepare(
+        "SELECT rel_path, size, mtime, source_id, removed FROM watched_files WHERE folder_id=?1",
+    )?;
     let rows = st.query_map([folder_id], |r| {
         Ok((
             r.get::<_, String>(0)?,
             Known {
-                stamp: Stamp { size: r.get::<_, i64>(1)? as u64, mtime: r.get(2)? },
+                stamp: Stamp {
+                    size: r.get::<_, i64>(1)? as u64,
+                    mtime: r.get(2)?,
+                },
                 source_id: r.get(3)?,
                 removed: r.get::<_, i64>(4)? != 0,
             },
@@ -385,7 +483,13 @@ fn load_known(c: &Connection, folder_id: &str) -> AppResult<HashMap<String, Know
     Ok(rows.collect::<Result<_, _>>()?)
 }
 
-fn upsert_file(c: &Connection, folder_id: &str, rel: &str, st: &Stamp, source_id: Option<&str>) -> AppResult<()> {
+fn upsert_file(
+    c: &Connection,
+    folder_id: &str,
+    rel: &str,
+    st: &Stamp,
+    source_id: Option<&str>,
+) -> AppResult<()> {
     c.execute(
         "INSERT INTO watched_files (folder_id, rel_path, size, mtime, source_id, removed) VALUES (?1, ?2, ?3, ?4, ?5, 0)
          ON CONFLICT(folder_id, rel_path) DO UPDATE SET size=?3, mtime=?4, source_id=?5, removed=0",
@@ -430,12 +534,23 @@ mod tests {
         let (db, dir) = crate::db::test_db();
         let emit: Emit = Arc::new(|_, _| {});
         let svc = Arc::new(EmbedderService::ready(Arc::new(FakeEmbedder), emit.clone()));
-        let space =
-            models::create_space(&db.conn().unwrap(), models::SpacePatch { name: Some("S".into()), ..Default::default() })
-                .unwrap()
-                .id;
+        let space = models::create_space(
+            &db.conn().unwrap(),
+            models::SpacePatch {
+                name: Some("S".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap()
+        .id;
         let ingest = Ingest::spawn(db.clone(), svc, emit.clone()).unwrap();
-        Env { db, ingest, emit, space, _dir: dir }
+        Env {
+            db,
+            ingest,
+            emit,
+            space,
+            _dir: dir,
+        }
     }
 
     fn core(e: &Env) -> Core {
@@ -457,7 +572,12 @@ mod tests {
                 params![id, space, path.to_string_lossy(), recursive as i64],
             )
             .unwrap();
-        FolderState::new(FolderRow { id, space_id: space.into(), path: path.to_string_lossy().into(), recursive })
+        FolderState::new(FolderRow {
+            id,
+            space_id: space.into(),
+            path: path.to_string_lossy().into(),
+            recursive,
+        })
     }
 
     fn sources(db: &Db, space: &str) -> Vec<models::Source> {
@@ -472,7 +592,10 @@ mod tests {
             if let Some(v) = f() {
                 return v;
             }
-            assert!(t.elapsed() < Duration::from_secs(20), "timed out waiting for {what}");
+            assert!(
+                t.elapsed() < Duration::from_secs(20),
+                "timed out waiting for {what}"
+            );
             std::thread::sleep(Duration::from_millis(25));
         }
     }
@@ -485,7 +608,9 @@ mod tests {
     }
 
     fn text_of(db: &Db, id: &str) -> String {
-        models::get_source_text(&db.conn().unwrap(), id).unwrap().text
+        models::get_source_text(&db.conn().unwrap(), id)
+            .unwrap()
+            .text
     }
 
     #[test]
@@ -505,7 +630,10 @@ mod tests {
         let mut f = insert_folder(&e.db, &e.space, r, true);
 
         assert!(c.sync(&mut f, None));
-        assert!(sources(&e.db, &e.space).is_empty(), "first sight only records stamps");
+        assert!(
+            sources(&e.db, &e.space).is_empty(),
+            "first sight only records stamps"
+        );
         assert_eq!(f.pending.len(), 3);
         assert!(f.due.is_some());
 
@@ -526,20 +654,31 @@ mod tests {
 
         // a changed file reindexes the same source
         let cells = srcs.iter().find(|s| s.title == "Cells").unwrap().id.clone();
-        std::fs::write(r.join("Cells.md"), "# Cells\n\nRibosomes build proteins from amino acids.").unwrap();
+        std::fs::write(
+            r.join("Cells.md"),
+            "# Cells\n\nRibosomes build proteins from amino acids.",
+        )
+        .unwrap();
         c.sync(&mut f, None);
         c.sync(&mut f, None);
         let after = sources(&e.db, &e.space);
         assert_eq!(after.len(), 3);
         assert!(after.iter().any(|s| s.id == cells));
         wait_ready(&e.db, &cells);
-        wait_for("new text", || text_of(&e.db, &cells).contains("Ribosomes").then_some(()));
+        wait_for("new text", || {
+            text_of(&e.db, &cells).contains("Ribosomes").then_some(())
+        });
 
         // a deleted file keeps its source
         std::fs::remove_file(r.join("Plants.txt")).unwrap();
         c.sync(&mut f, None);
         assert_eq!(sources(&e.db, &e.space).len(), 3);
-        assert_eq!(c.folder(&e.db.conn().unwrap(), &f.row.id).unwrap().file_count, 2);
+        assert_eq!(
+            c.folder(&e.db.conn().unwrap(), &f.row.id)
+                .unwrap()
+                .file_count,
+            2
+        );
     }
 
     #[test]
@@ -579,11 +718,17 @@ mod tests {
         std::fs::write(gone.join("a.md"), "Back again.").unwrap();
         c.sync(&mut f, None);
         c.sync(&mut f, None);
-        assert_eq!(c.folder(&e.db.conn().unwrap(), &f.row.id).unwrap().status, "watching");
+        assert_eq!(
+            c.folder(&e.db.conn().unwrap(), &f.row.id).unwrap().status,
+            "watching"
+        );
         assert_eq!(sources(&e.db, &e.space).len(), 1);
 
         // deleted from the DB (e.g. space removed): the thread drops it
-        e.db.conn().unwrap().execute("DELETE FROM watched_folders", []).unwrap();
+        e.db.conn()
+            .unwrap()
+            .execute("DELETE FROM watched_folders", [])
+            .unwrap();
         assert!(!c.sync(&mut f, None));
     }
 
@@ -598,7 +743,8 @@ mod tests {
     #[test]
     fn add_validates_and_remove_keeps_sources() {
         let e = env();
-        let svc = WatchService::start(e.db.clone(), e.ingest.clone(), e.emit.clone(), fast()).unwrap();
+        let svc =
+            WatchService::start(e.db.clone(), e.ingest.clone(), e.emit.clone(), fast()).unwrap();
         assert!(svc.add(&e.space, "/definitely/not/here", true).is_err());
         assert!(svc.add(&e.space, "relative/path", true).is_err());
         let dir = tempfile::tempdir().unwrap();
@@ -606,7 +752,9 @@ mod tests {
         let path = dir.path().to_string_lossy().into_owned();
         let f = svc.add(&e.space, &path, true).unwrap();
         assert!(svc.add(&e.space, &path, true).is_err(), "duplicate");
-        wait_for("import", || (sources(&e.db, &e.space).len() == 1).then_some(()));
+        wait_for("import", || {
+            (sources(&e.db, &e.space).len() == 1).then_some(())
+        });
         svc.remove(&f.id).unwrap();
         assert!(svc.list(&e.space).unwrap().is_empty());
         assert_eq!(sources(&e.db, &e.space).len(), 1);
@@ -620,9 +768,12 @@ mod tests {
         std::fs::write(dir.path().join("first.md"), "First file.").unwrap();
         let path = dir.path().to_string_lossy().into_owned();
 
-        let svc = WatchService::start(e.db.clone(), e.ingest.clone(), e.emit.clone(), fast()).unwrap();
+        let svc =
+            WatchService::start(e.db.clone(), e.ingest.clone(), e.emit.clone(), fast()).unwrap();
         let f = svc.add(&e.space, &path, true).unwrap();
-        wait_for("initial import", || (sources(&e.db, &e.space).len() == 1).then_some(()));
+        wait_for("initial import", || {
+            (sources(&e.db, &e.space).len() == 1).then_some(())
+        });
         wait_for("watching", || {
             let l = svc.list(&e.space).unwrap();
             (l[0].status == "watching" && l[0].file_count == 1).then_some(())
@@ -630,18 +781,25 @@ mod tests {
 
         // no manual rescan: only the filesystem event can trigger this import
         std::fs::write(dir.path().join("second.txt"), "Dropped in later.").unwrap();
-        wait_for("notify import", || (sources(&e.db, &e.space).len() == 2).then_some(()));
+        wait_for("notify import", || {
+            (sources(&e.db, &e.space).len() == 2).then_some(())
+        });
         svc.stop();
 
         // app closed: a file arrives; on restart the watcher comes back and catches up
         std::thread::sleep(Duration::from_millis(100));
         std::fs::write(dir.path().join("third.md"), "Added while closed.").unwrap();
-        let svc2 = WatchService::start(e.db.clone(), e.ingest.clone(), e.emit.clone(), fast()).unwrap();
+        let svc2 =
+            WatchService::start(e.db.clone(), e.ingest.clone(), e.emit.clone(), fast()).unwrap();
         let l = svc2.list(&e.space).unwrap();
         assert_eq!((l.len(), l[0].id.as_str()), (1, f.id.as_str()));
-        wait_for("catch-up import", || (sources(&e.db, &e.space).len() == 3).then_some(()));
+        wait_for("catch-up import", || {
+            (sources(&e.db, &e.space).len() == 3).then_some(())
+        });
         std::fs::write(dir.path().join("fourth.md"), "After restart.").unwrap();
-        wait_for("watching after restart", || (sources(&e.db, &e.space).len() == 4).then_some(()));
+        wait_for("watching after restart", || {
+            (sources(&e.db, &e.space).len() == 4).then_some(())
+        });
         svc2.touch(&f.id);
         std::thread::sleep(Duration::from_millis(400));
         assert_eq!(sources(&e.db, &e.space).len(), 4);

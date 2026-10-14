@@ -47,19 +47,36 @@ fn client() -> &'static reqwest::Client {
 }
 
 fn now_secs() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 /// Lowercased hostname from a bare host or a URL. `None` for IPs, localhost and single-label names.
 pub fn normalize_host(input: &str) -> Option<String> {
     let s = input.trim();
-    let with_scheme = if s.contains("://") { s.to_string() } else { format!("https://{s}") };
-    let host = url::Url::parse(&with_scheme).ok()?.host_str()?.trim_end_matches('.').to_ascii_lowercase();
+    let with_scheme = if s.contains("://") {
+        s.to_string()
+    } else {
+        format!("https://{s}")
+    };
+    let host = url::Url::parse(&with_scheme)
+        .ok()?
+        .host_str()?
+        .trim_end_matches('.')
+        .to_ascii_lowercase();
     if host.parse::<IpAddr>().is_ok() || host.starts_with('[') {
         return None;
     }
-    let local = host == "localhost" || !host.contains('.') || host.ends_with(".local") || host.ends_with(".lan") || host.ends_with(".internal");
-    let valid = host.split('.').all(|l| !l.is_empty() && l.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'));
+    let local = host == "localhost"
+        || !host.contains('.')
+        || host.ends_with(".local")
+        || host.ends_with(".lan")
+        || host.ends_with(".internal");
+    let valid = host
+        .split('.')
+        .all(|l| !l.is_empty() && l.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'));
     (!local && valid).then_some(host)
 }
 
@@ -70,7 +87,10 @@ pub fn root_domain(host: &str) -> String {
     if n <= 2 {
         return host.to_string();
     }
-    let second_level = matches!(labels[n - 2], "co" | "com" | "org" | "net" | "gov" | "edu" | "ac" | "or" | "ne") && labels[n - 1].len() == 2;
+    let second_level = matches!(
+        labels[n - 2],
+        "co" | "com" | "org" | "net" | "gov" | "edu" | "ac" | "or" | "ne"
+    ) && labels[n - 1].len() == 2;
     let keep = if second_level { 3 } else { 2 };
     labels[n - keep.min(n)..].join(".")
 }
@@ -87,11 +107,20 @@ pub fn candidate_hosts(host: &str) -> Vec<String> {
 
 fn sniff(mime: &str, b: &[u8]) -> Option<&'static str> {
     match mime {
-        "image/svg+xml" => std::str::from_utf8(b).ok().filter(|s| s.contains("<svg")).map(|_| "image/svg+xml"),
-        "image/png" => b.starts_with(&[0x89, b'P', b'N', b'G']).then_some("image/png"),
+        "image/svg+xml" => std::str::from_utf8(b)
+            .ok()
+            .filter(|s| s.contains("<svg"))
+            .map(|_| "image/svg+xml"),
+        "image/png" => b
+            .starts_with(&[0x89, b'P', b'N', b'G'])
+            .then_some("image/png"),
         "image/jpeg" | "image/jpg" => b.starts_with(&[0xFF, 0xD8]).then_some("image/jpeg"),
-        "image/webp" => (b.len() > 12 && &b[..4] == b"RIFF" && &b[8..12] == b"WEBP").then_some("image/webp"),
-        "image/x-icon" | "image/vnd.microsoft.icon" | "image/ico" => b.starts_with(&[0, 0, 1, 0]).then_some("image/x-icon"),
+        "image/webp" => {
+            (b.len() > 12 && &b[..4] == b"RIFF" && &b[8..12] == b"WEBP").then_some("image/webp")
+        }
+        "image/x-icon" | "image/vnd.microsoft.icon" | "image/ico" => {
+            b.starts_with(&[0, 0, 1, 0]).then_some("image/x-icon")
+        }
         _ => None,
     }
 }
@@ -107,9 +136,18 @@ async fn get_capped(url: &str) -> Option<(Vec<u8>, String, String)> {
         .headers()
         .get(reqwest::header::CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())
-        .map(|v| v.split(';').next().unwrap_or("").trim().to_ascii_lowercase())
+        .map(|v| {
+            v.split(';')
+                .next()
+                .unwrap_or("")
+                .trim()
+                .to_ascii_lowercase()
+        })
         .unwrap_or_default();
-    if resp.content_length().is_some_and(|n| n as usize > MAX_BYTES) {
+    if resp
+        .content_length()
+        .is_some_and(|n| n as usize > MAX_BYTES)
+    {
         return None;
     }
     let mut body = Vec::new();
@@ -137,21 +175,28 @@ struct Link {
 fn parse_size(sizes: &str) -> u32 {
     sizes
         .split_whitespace()
-        .filter_map(|s| s.to_ascii_lowercase().split_once('x').and_then(|(w, _)| w.parse::<u32>().ok()))
+        .filter_map(|s| {
+            s.to_ascii_lowercase()
+                .split_once('x')
+                .and_then(|(w, _)| w.parse::<u32>().ok())
+        })
         .max()
         .unwrap_or(0)
 }
 
 /// Icon links of a page ranked best first: SVG, mask icons, then raster by size (>= 32px preferred).
 fn parse_links(html: &str, base: &str) -> Vec<Link> {
-    let Ok(base) = url::Url::parse(base) else { return vec![] };
+    let Ok(base) = url::Url::parse(base) else {
+        return vec![];
+    };
     let doc = scraper::Html::parse_document(html);
     let sel = scraper::Selector::parse("link[rel][href]").unwrap();
     let mut out: Vec<Link> = vec![];
     for el in doc.select(&sel) {
         let rel = el.value().attr("rel").unwrap_or("").to_ascii_lowercase();
         let rels: Vec<&str> = rel.split_whitespace().collect();
-        let apple = rels.contains(&"apple-touch-icon") || rels.contains(&"apple-touch-icon-precomposed");
+        let apple =
+            rels.contains(&"apple-touch-icon") || rels.contains(&"apple-touch-icon-precomposed");
         let mask = rels.contains(&"mask-icon");
         let icon = rels.contains(&"icon");
         if !(apple || mask || icon) {
@@ -189,7 +234,10 @@ fn parse_links(html: &str, base: &str) -> Vec<Link> {
         } else {
             2
         };
-        out.push(Link { href: href.to_string(), score });
+        out.push(Link {
+            href: href.to_string(),
+            score,
+        });
     }
     out.sort_by_key(|o| std::cmp::Reverse(o.score));
     let mut seen = std::collections::HashSet::new();
@@ -203,7 +251,12 @@ pub async fn fetch_best(origin: &str) -> Option<Icon> {
     if let Some((body, ctype, final_url)) = get_capped(&format!("{origin}/")).await {
         if ctype.contains("html") {
             let html = String::from_utf8_lossy(&body);
-            urls.extend(parse_links(&html, &final_url).into_iter().take(MAX_LINK_TRIES).map(|l| l.href));
+            urls.extend(
+                parse_links(&html, &final_url)
+                    .into_iter()
+                    .take(MAX_LINK_TRIES)
+                    .map(|l| l.href),
+            );
         }
     }
     for p in FALLBACK_PATHS {
@@ -241,11 +294,18 @@ fn mime_of(ext: &str) -> &'static str {
 }
 
 fn read_index(dir: &Path) -> Index {
-    std::fs::read(dir.join(INDEX_FILE)).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default()
+    std::fs::read(dir.join(INDEX_FILE))
+        .ok()
+        .and_then(|b| serde_json::from_slice(&b).ok())
+        .unwrap_or_default()
 }
 
 pub fn data_url(icon: &Icon) -> String {
-    format!("data:{};base64,{}", icon.mime, base64::engine::general_purpose::STANDARD.encode(&icon.bytes))
+    format!(
+        "data:{};base64,{}",
+        icon.mime,
+        base64::engine::general_purpose::STANDARD.encode(&icon.bytes)
+    )
 }
 
 enum Cached {
@@ -256,12 +316,17 @@ enum Cached {
 
 fn lookup_cache(dir: &Path, host: &str, now: u64) -> Cached {
     let _g = INDEX_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-    let Some(e) = read_index(dir).get(host).cloned() else { return Cached::Stale };
+    let Some(e) = read_index(dir).get(host).cloned() else {
+        return Cached::Stale;
+    };
     let age = now.saturating_sub(e.fetched_at);
     match e.ext {
         None if age < NEGATIVE_TTL => Cached::Miss,
         Some(ext) if age < TTL => match std::fs::read(dir.join(format!("{host}.{ext}"))) {
-            Ok(bytes) => Cached::Hit(Icon { mime: mime_of(&ext), bytes }),
+            Ok(bytes) => Cached::Hit(Icon {
+                mime: mime_of(&ext),
+                bytes,
+            }),
             Err(_) => Cached::Stale,
         },
         _ => Cached::Stale,
@@ -273,9 +338,17 @@ fn store(dir: &Path, host: &str, icon: Option<&Icon>, now: u64) {
     let mut idx = read_index(dir);
     let ext = icon.and_then(|i| {
         let ext = ext_of(i.mime);
-        std::fs::write(dir.join(format!("{host}.{ext}")), &i.bytes).ok().map(|_| ext.to_string())
+        std::fs::write(dir.join(format!("{host}.{ext}")), &i.bytes)
+            .ok()
+            .map(|_| ext.to_string())
     });
-    idx.insert(host.to_string(), Entry { fetched_at: now, ext });
+    idx.insert(
+        host.to_string(),
+        Entry {
+            fetched_at: now,
+            ext,
+        },
+    );
     if let Ok(b) = serde_json::to_vec(&idx) {
         let _ = std::fs::write(dir.join(INDEX_FILE), b);
     }
@@ -303,9 +376,16 @@ async fn resolve(dir: &Path, host: &str, origins: Vec<String>, now: u64) -> Opti
 
 /// Data URL of the site's icon, or `None` when the input is not a public hostname or no icon exists.
 pub async fn site_icon(dir: &Path, host_or_url: &str) -> AppResult<Option<String>> {
-    let Some(host) = normalize_host(host_or_url) else { return Ok(None) };
-    let origins = candidate_hosts(&host).into_iter().map(|h| format!("https://{h}")).collect();
-    Ok(resolve(dir, &host, origins, now_secs()).await.map(|i| data_url(&i)))
+    let Some(host) = normalize_host(host_or_url) else {
+        return Ok(None);
+    };
+    let origins = candidate_hosts(&host)
+        .into_iter()
+        .map(|h| format!("https://{h}"))
+        .collect();
+    Ok(resolve(dir, &host, origins, now_secs())
+        .await
+        .map(|i| data_url(&i)))
 }
 
 #[cfg(test)]
@@ -318,7 +398,8 @@ mod tests {
     const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 13, 10, 26, 10, 0, 0];
 
     fn html(body: &str) -> ResponseTemplate {
-        ResponseTemplate::new(200).set_body_raw(body.as_bytes().to_vec(), "text/html; charset=utf-8")
+        ResponseTemplate::new(200)
+            .set_body_raw(body.as_bytes().to_vec(), "text/html; charset=utf-8")
     }
     fn svg() -> ResponseTemplate {
         ResponseTemplate::new(200).set_body_raw(SVG.as_bytes().to_vec(), "image/svg+xml")
@@ -329,14 +410,26 @@ mod tests {
 
     #[test]
     fn hosts() {
-        assert_eq!(normalize_host("https://API.Kimi.ai/coding/v1").as_deref(), Some("api.kimi.ai"));
+        assert_eq!(
+            normalize_host("https://API.Kimi.ai/coding/v1").as_deref(),
+            Some("api.kimi.ai")
+        );
         assert_eq!(normalize_host("kimi.ai").as_deref(), Some("kimi.ai"));
-        for bad in ["http://192.168.1.20:1234/v1", "localhost:11434", "http://[::1]:8080", "mybox", "foo.local"] {
+        for bad in [
+            "http://192.168.1.20:1234/v1",
+            "localhost:11434",
+            "http://[::1]:8080",
+            "mybox",
+            "foo.local",
+        ] {
             assert_eq!(normalize_host(bad), None, "{bad}");
         }
         assert_eq!(root_domain("api.kimi.ai"), "kimi.ai");
         assert_eq!(root_domain("api.example.co.uk"), "example.co.uk");
-        assert_eq!(candidate_hosts("api.kimi.ai"), vec!["kimi.ai", "www.kimi.ai", "api.kimi.ai"]);
+        assert_eq!(
+            candidate_hosts("api.kimi.ai"),
+            vec!["kimi.ai", "www.kimi.ai", "api.kimi.ai"]
+        );
         assert_eq!(candidate_hosts("kimi.ai"), vec!["kimi.ai", "www.kimi.ai"]);
     }
 
@@ -352,7 +445,10 @@ mod tests {
           <link rel="stylesheet" href="/x.css">
           <link rel="icon" href="data:image/png;base64,AAAA">
         </head>"#;
-        let hrefs: Vec<String> = parse_links(page, "https://site.test/home/").into_iter().map(|l| l.href).collect();
+        let hrefs: Vec<String> = parse_links(page, "https://site.test/home/")
+            .into_iter()
+            .map(|l| l.href)
+            .collect();
         assert_eq!(
             hrefs,
             vec![
@@ -370,17 +466,34 @@ mod tests {
     async fn prefers_svg_link_over_png() {
         let s = MockServer::start().await;
         Mock::given(path("/")).respond_with(html(r#"<link rel="icon" href="/big.png" sizes="128x128"><link rel="icon" href="/m.svg" type="image/svg+xml">"#)).mount(&s).await;
-        Mock::given(path("/big.png")).respond_with(png()).mount(&s).await;
-        Mock::given(path("/m.svg")).respond_with(svg()).mount(&s).await;
+        Mock::given(path("/big.png"))
+            .respond_with(png())
+            .mount(&s)
+            .await;
+        Mock::given(path("/m.svg"))
+            .respond_with(svg())
+            .mount(&s)
+            .await;
         assert_eq!(fetch_best(&s.uri()).await.unwrap().mime, "image/svg+xml");
     }
 
     #[tokio::test]
     async fn falls_back_to_well_known_paths() {
         let s = MockServer::start().await;
-        Mock::given(path("/")).respond_with(html("<html>no links</html>")).mount(&s).await;
-        Mock::given(path("/favicon.svg")).respond_with(ResponseTemplate::new(404)).mount(&s).await;
-        Mock::given(path("/favicon.ico")).respond_with(ResponseTemplate::new(200).set_body_raw(vec![0, 0, 1, 0, 1, 0], "image/x-icon")).mount(&s).await;
+        Mock::given(path("/"))
+            .respond_with(html("<html>no links</html>"))
+            .mount(&s)
+            .await;
+        Mock::given(path("/favicon.svg"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&s)
+            .await;
+        Mock::given(path("/favicon.ico"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_raw(vec![0, 0, 1, 0, 1, 0], "image/x-icon"),
+            )
+            .mount(&s)
+            .await;
         assert_eq!(fetch_best(&s.uri()).await.unwrap().mime, "image/x-icon");
     }
 
@@ -388,8 +501,14 @@ mod tests {
     async fn skips_broken_link_and_uses_next() {
         let s = MockServer::start().await;
         Mock::given(path("/")).respond_with(html(r#"<link rel="icon" href="/gone.svg" type="image/svg+xml"><link rel="icon" href="/ok.png" sizes="64x64">"#)).mount(&s).await;
-        Mock::given(path("/gone.svg")).respond_with(ResponseTemplate::new(404)).mount(&s).await;
-        Mock::given(path("/ok.png")).respond_with(png()).mount(&s).await;
+        Mock::given(path("/gone.svg"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&s)
+            .await;
+        Mock::given(path("/ok.png"))
+            .respond_with(png())
+            .mount(&s)
+            .await;
         assert_eq!(fetch_best(&s.uri()).await.unwrap().mime, "image/png");
     }
 
@@ -399,26 +518,55 @@ mod tests {
         Mock::given(path("/")).respond_with(html(r#"<link rel="icon" href="/huge.png"><link rel="icon" href="/page.png" sizes="64x64">"#)).mount(&s).await;
         let mut big = PNG.to_vec();
         big.resize(MAX_BYTES + 10, 0);
-        Mock::given(path("/huge.png")).respond_with(ResponseTemplate::new(200).set_body_raw(big, "image/png")).mount(&s).await;
-        Mock::given(path("/page.png")).respond_with(html("<html>soft 404</html>")).mount(&s).await;
-        Mock::given(path("/favicon.svg")).respond_with(ResponseTemplate::new(200).set_body_raw(SVG.as_bytes().to_vec(), "text/plain")).mount(&s).await;
+        Mock::given(path("/huge.png"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(big, "image/png"))
+            .mount(&s)
+            .await;
+        Mock::given(path("/page.png"))
+            .respond_with(html("<html>soft 404</html>"))
+            .mount(&s)
+            .await;
+        Mock::given(path("/favicon.svg"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_raw(SVG.as_bytes().to_vec(), "text/plain"),
+            )
+            .mount(&s)
+            .await;
         assert!(fetch_best(&s.uri()).await.is_none());
     }
 
     #[tokio::test]
     async fn rejects_mismatched_bytes() {
         let s = MockServer::start().await;
-        Mock::given(path("/")).respond_with(ResponseTemplate::new(404)).mount(&s).await;
-        Mock::given(path("/favicon.svg")).respond_with(ResponseTemplate::new(200).set_body_raw(b"<html>nope</html>".to_vec(), "image/svg+xml")).mount(&s).await;
+        Mock::given(path("/"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&s)
+            .await;
+        Mock::given(path("/favicon.svg"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_raw(b"<html>nope</html>".to_vec(), "image/svg+xml"),
+            )
+            .mount(&s)
+            .await;
         assert!(fetch_best(&s.uri()).await.is_none());
     }
 
     #[tokio::test]
     async fn follows_redirects() {
         let s = MockServer::start().await;
-        Mock::given(path("/")).respond_with(ResponseTemplate::new(301).insert_header("location", "/home/")).mount(&s).await;
-        Mock::given(path("/home/")).respond_with(html(r#"<link rel="icon" href="logo.svg">"#)).mount(&s).await;
-        Mock::given(path("/home/logo.svg")).respond_with(svg()).mount(&s).await;
+        Mock::given(path("/"))
+            .respond_with(ResponseTemplate::new(301).insert_header("location", "/home/"))
+            .mount(&s)
+            .await;
+        Mock::given(path("/home/"))
+            .respond_with(html(r#"<link rel="icon" href="logo.svg">"#))
+            .mount(&s)
+            .await;
+        Mock::given(path("/home/logo.svg"))
+            .respond_with(svg())
+            .mount(&s)
+            .await;
         assert_eq!(fetch_best(&s.uri()).await.unwrap().mime, "image/svg+xml");
     }
 
@@ -426,29 +574,63 @@ mod tests {
     async fn caches_hits_and_misses() {
         let dir = tempfile::tempdir().unwrap();
         let s = MockServer::start().await;
-        Mock::given(method("GET")).and(path("/")).respond_with(html(r#"<link rel="icon" href="/m.svg">"#)).expect(1).mount(&s).await;
-        Mock::given(path("/m.svg")).respond_with(svg()).mount(&s).await;
+        Mock::given(method("GET"))
+            .and(path("/"))
+            .respond_with(html(r#"<link rel="icon" href="/m.svg">"#))
+            .expect(1)
+            .mount(&s)
+            .await;
+        Mock::given(path("/m.svg"))
+            .respond_with(svg())
+            .mount(&s)
+            .await;
         let now = 1_000_000;
-        let a = resolve(dir.path(), "a.test", vec![s.uri()], now).await.unwrap();
-        let b = resolve(dir.path(), "a.test", vec![s.uri()], now + 10).await.unwrap();
+        let a = resolve(dir.path(), "a.test", vec![s.uri()], now)
+            .await
+            .unwrap();
+        let b = resolve(dir.path(), "a.test", vec![s.uri()], now + 10)
+            .await
+            .unwrap();
         assert_eq!(a, b);
         assert!(dir.path().join("icons/a.test.svg").exists());
-        assert!(matches!(lookup_cache(&dir.path().join("icons"), "a.test", now + TTL), Cached::Stale));
+        assert!(matches!(
+            lookup_cache(&dir.path().join("icons"), "a.test", now + TTL),
+            Cached::Stale
+        ));
 
         let dead = MockServer::start().await;
-        Mock::given(method("GET")).respond_with(ResponseTemplate::new(404)).mount(&dead).await;
-        assert!(resolve(dir.path(), "b.test", vec![dead.uri()], now).await.is_none());
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&dead)
+            .await;
+        assert!(resolve(dir.path(), "b.test", vec![dead.uri()], now)
+            .await
+            .is_none());
         let seen = dead.received_requests().await.unwrap().len();
-        assert!(resolve(dir.path(), "b.test", vec![dead.uri()], now + NEGATIVE_TTL - 1).await.is_none());
+        assert!(resolve(
+            dir.path(),
+            "b.test",
+            vec![dead.uri()],
+            now + NEGATIVE_TTL - 1
+        )
+        .await
+        .is_none());
         assert_eq!(dead.received_requests().await.unwrap().len(), seen);
-        assert!(resolve(dir.path(), "b.test", vec![dead.uri()], now + NEGATIVE_TTL).await.is_none());
+        assert!(
+            resolve(dir.path(), "b.test", vec![dead.uri()], now + NEGATIVE_TTL)
+                .await
+                .is_none()
+        );
         assert!(dead.received_requests().await.unwrap().len() > seen);
     }
 
     #[tokio::test]
     async fn no_credentials_sent() {
         let s = MockServer::start().await;
-        Mock::given(path("/")).respond_with(ResponseTemplate::new(404)).mount(&s).await;
+        Mock::given(path("/"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&s)
+            .await;
         let _ = fetch_best(&s.uri()).await;
         for r in s.received_requests().await.unwrap() {
             assert!(r.headers.get("authorization").is_none() && r.headers.get("cookie").is_none());
@@ -459,7 +641,9 @@ mod tests {
     #[ignore = "network"]
     async fn live_kimi() {
         let dir = tempfile::tempdir().unwrap();
-        let url = site_icon(dir.path(), "https://api.kimi.ai/coding/v1").await.unwrap();
+        let url = site_icon(dir.path(), "https://api.kimi.ai/coding/v1")
+            .await
+            .unwrap();
         assert!(url.unwrap().starts_with("data:image/"));
     }
 
@@ -467,16 +651,25 @@ mod tests {
     #[tokio::test]
     #[ignore = "network"]
     async fn live_dump() {
-        let (Ok(file), Ok(out)) = (std::env::var("ICON_DOMAINS"), std::env::var("ICON_OUT")) else { return };
-        let map: std::collections::BTreeMap<String, String> = serde_json::from_slice(&std::fs::read(file).unwrap()).unwrap();
+        let (Ok(file), Ok(out)) = (std::env::var("ICON_DOMAINS"), std::env::var("ICON_OUT")) else {
+            return;
+        };
+        let map: std::collections::BTreeMap<String, String> =
+            serde_json::from_slice(&std::fs::read(file).unwrap()).unwrap();
         let dir = tempfile::tempdir().unwrap();
         for (name, domain) in map {
             match site_icon(dir.path(), &domain).await.unwrap() {
                 Some(url) => {
                     let (head, b64) = url.split_once(',').unwrap();
                     let ext = ext_of(head.trim_start_matches("data:").trim_end_matches(";base64"));
-                    let bytes = base64::engine::general_purpose::STANDARD.decode(b64).unwrap();
-                    std::fs::write(std::path::Path::new(&out).join(format!("{name}.{ext}")), bytes).unwrap();
+                    let bytes = base64::engine::general_purpose::STANDARD
+                        .decode(b64)
+                        .unwrap();
+                    std::fs::write(
+                        std::path::Path::new(&out).join(format!("{name}.{ext}")),
+                        bytes,
+                    )
+                    .unwrap();
                     println!("OK   {name} <- {domain} ({ext})");
                 }
                 None => println!("MISS {name} <- {domain}"),

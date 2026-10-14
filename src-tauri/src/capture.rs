@@ -29,16 +29,28 @@ pub fn parse_shortcut(s: &str) -> AppResult<Shortcut> {
     if s.is_empty() {
         return Err(invalid("Choose a shortcut."));
     }
-    let sc = Shortcut::from_str(s).map_err(|_| invalid(format!("“{s}” isn't a valid shortcut.")))?;
-    if !sc.mods.intersects(Modifiers::ALT | Modifiers::CONTROL | Modifiers::SUPER) {
-        return Err(invalid("Add ⌘, ⌥ or ⌃ to the shortcut so it doesn't get in the way of typing."));
+    let sc =
+        Shortcut::from_str(s).map_err(|_| invalid(format!("“{s}” isn't a valid shortcut.")))?;
+    if !sc
+        .mods
+        .intersects(Modifiers::ALT | Modifiers::CONTROL | Modifiers::SUPER)
+    {
+        return Err(invalid(
+            "Add ⌘, ⌥ or ⌃ to the shortcut so it doesn't get in the way of typing.",
+        ));
     }
     Ok(sc)
 }
 
 fn prefs(db: &Db) -> (bool, String) {
-    let Ok(c) = db.conn() else { return (true, DEFAULT_SHORTCUT.into()) };
-    let enabled = models::get_setting(&c, KEY_ENABLED).ok().flatten().and_then(|v| v.as_bool()).unwrap_or(true);
+    let Ok(c) = db.conn() else {
+        return (true, DEFAULT_SHORTCUT.into());
+    };
+    let enabled = models::get_setting(&c, KEY_ENABLED)
+        .ok()
+        .flatten()
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
     let shortcut = models::get_setting(&c, KEY_SHORTCUT)
         .ok()
         .flatten()
@@ -82,7 +94,12 @@ pub fn plugin<R: Runtime>() -> tauri::plugin::TauriPlugin<R> {
 /// (registration dispatches to the main thread and waits, which would deadlock during setup).
 pub fn init(app: &AppHandle, db: &Db) {
     let (enabled, shortcut) = prefs(db);
-    app.manage(CaptureState(Mutex::new(CaptureStatus { enabled, shortcut: shortcut.clone(), registered: false, error: None })));
+    app.manage(CaptureState(Mutex::new(CaptureStatus {
+        enabled,
+        shortcut: shortcut.clone(),
+        registered: false,
+        error: None,
+    })));
     if !enabled {
         return;
     }
@@ -137,7 +154,12 @@ pub async fn capture_configure(
         if prev.registered {
             unregister(&app, &prev.shortcut);
         }
-        let mut next = CaptureStatus { enabled, shortcut, registered: false, error: None };
+        let mut next = CaptureStatus {
+            enabled,
+            shortcut,
+            registered: false,
+            error: None,
+        };
         if enabled {
             if let Err(e) = register(&app, &next.shortcut) {
                 if prev.registered {
@@ -149,7 +171,11 @@ pub async fn capture_configure(
         }
         let c = db.conn()?;
         models::set_setting(&c, KEY_ENABLED, &serde_json::Value::Bool(enabled))?;
-        models::set_setting(&c, KEY_SHORTCUT, &serde_json::Value::String(next.shortcut.clone()))?;
+        models::set_setting(
+            &c,
+            KEY_SHORTCUT,
+            &serde_json::Value::String(next.shortcut.clone()),
+        )?;
         Ok(next)
     })
     .await

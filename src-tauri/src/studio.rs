@@ -57,13 +57,20 @@ pub fn save(c: &Connection, o: &StudioOutput) -> AppResult<StudioOutput> {
 }
 
 pub fn list(c: &Connection, space_id: &str) -> AppResult<Vec<StudioOutput>> {
-    let mut st = c.prepare(&format!("SELECT {COLS} FROM studio_outputs WHERE space_id = ?1 ORDER BY updated_at DESC"))?;
+    let mut st = c.prepare(&format!(
+        "SELECT {COLS} FROM studio_outputs WHERE space_id = ?1 ORDER BY updated_at DESC"
+    ))?;
     let out = st.query_map([space_id], row)?.collect::<Result<_, _>>()?;
     Ok(out)
 }
 
 pub fn get(c: &Connection, id: &str) -> AppResult<Option<StudioOutput>> {
-    Ok(c.query_row(&format!("SELECT {COLS} FROM studio_outputs WHERE id = ?1"), [id], row).optional()?)
+    Ok(c.query_row(
+        &format!("SELECT {COLS} FROM studio_outputs WHERE id = ?1"),
+        [id],
+        row,
+    )
+    .optional()?)
 }
 
 pub fn delete(c: &Connection, id: &str) -> AppResult<()> {
@@ -72,12 +79,18 @@ pub fn delete(c: &Connection, id: &str) -> AppResult<()> {
 }
 
 #[tauri::command]
-pub async fn output_save(state: State<'_, AppState>, output: StudioOutput) -> AppResult<StudioOutput> {
+pub async fn output_save(
+    state: State<'_, AppState>,
+    output: StudioOutput,
+) -> AppResult<StudioOutput> {
     save(&state.db.conn()?, &output)
 }
 
 #[tauri::command]
-pub async fn outputs_list(state: State<'_, AppState>, space_id: String) -> AppResult<Vec<StudioOutput>> {
+pub async fn outputs_list(
+    state: State<'_, AppState>,
+    space_id: String,
+) -> AppResult<Vec<StudioOutput>> {
     list(&state.db.conn()?, &space_id)
 }
 
@@ -93,16 +106,38 @@ pub async fn output_delete(state: State<'_, AppState>, id: String) -> AppResult<
 
 /// Keeps a suggested file name to plain characters so it can't point into another folder.
 fn safe_name(name: &str) -> String {
-    let s: String = name.chars().map(|c| if c.is_alphanumeric() || " .-_()".contains(c) { c } else { '-' }).collect();
+    let s: String = name
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || " .-_()".contains(c) {
+                c
+            } else {
+                '-'
+            }
+        })
+        .collect();
     let s = s.trim().trim_start_matches('.').to_string();
-    if s.is_empty() { "export".into() } else { s.chars().take(120).collect() }
+    if s.is_empty() {
+        "export".into()
+    } else {
+        s.chars().take(120).collect()
+    }
 }
 
 /// Asks the user where to save, then writes `bytes` there. The path never comes from the webview.
 /// Returns the chosen path, or None when the dialog was cancelled.
 #[tauri::command]
-pub async fn export_file(window: WebviewWindow, name: String, extension: String, bytes: Vec<u8>) -> AppResult<Option<String>> {
-    let ext: String = extension.chars().filter(|c| c.is_ascii_alphanumeric()).take(8).collect();
+pub async fn export_file(
+    window: WebviewWindow,
+    name: String,
+    extension: String,
+    bytes: Vec<u8>,
+) -> AppResult<Option<String>> {
+    let ext: String = extension
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .take(8)
+        .collect();
     if ext.is_empty() {
         return Err(AppError::Other("missing file extension".into()));
     }
@@ -114,7 +149,9 @@ pub async fn export_file(window: WebviewWindow, name: String, extension: String,
         .add_filter(ext.to_uppercase(), &[ext.as_str()])
         .blocking_save_file();
     let Some(path) = picked else { return Ok(None) };
-    let path = path.into_path().map_err(|e| AppError::Other(e.to_string()))?;
+    let path = path
+        .into_path()
+        .map_err(|e| AppError::Other(e.to_string()))?;
     std::fs::write(&path, bytes)?;
     Ok(Some(path.to_string_lossy().into_owned()))
 }
@@ -134,7 +171,14 @@ mod tests {
     fn save_list_delete() {
         let (db, _d) = test_db();
         let c = db.conn().unwrap();
-        let s = models::create_space(&c, models::SpacePatch { name: Some("Bio".into()), ..Default::default() }).unwrap();
+        let s = models::create_space(
+            &c,
+            models::SpacePatch {
+                name: Some("Bio".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
         let o = StudioOutput {
             id: String::new(),
             space_id: s.id.clone(),
@@ -147,10 +191,20 @@ mod tests {
         };
         let saved = save(&c, &o).unwrap();
         assert!(!saved.id.is_empty() && saved.created_at > 0);
-        let edited = save(&c, &StudioOutput { title: "Cells".into(), ..saved.clone() }).unwrap();
+        let edited = save(
+            &c,
+            &StudioOutput {
+                title: "Cells".into(),
+                ..saved.clone()
+            },
+        )
+        .unwrap();
         assert_eq!(edited.created_at, saved.created_at);
         assert_eq!(list(&c, &s.id).unwrap(), vec![edited.clone()]);
-        assert_eq!(get(&c, &saved.id).unwrap().unwrap().data["events"][0]["title"], "Hooke");
+        assert_eq!(
+            get(&c, &saved.id).unwrap().unwrap().data["events"][0]["title"],
+            "Hooke"
+        );
         delete(&c, &saved.id).unwrap();
         assert!(list(&c, &s.id).unwrap().is_empty());
     }
@@ -158,7 +212,10 @@ mod tests {
     #[test]
     fn export_names_stay_in_the_folder() {
         assert_eq!(safe_name("../../etc/passwd"), "-..-etc-passwd");
-        assert_eq!(safe_name("Cell theory: a timeline"), "Cell theory- a timeline");
+        assert_eq!(
+            safe_name("Cell theory: a timeline"),
+            "Cell theory- a timeline"
+        );
         assert_eq!(safe_name("..."), "export");
     }
 }

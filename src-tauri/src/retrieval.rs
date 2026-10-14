@@ -1,6 +1,6 @@
 //! Hybrid search: FTS5 bm25 + sqlite-vec KNN, fused with Reciprocal Rank Fusion.
 
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use rusqlite::OptionalExtension;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
@@ -41,12 +41,48 @@ pub fn vec_blob(v: &[f32]) -> Vec<u8> {
     v.iter().flat_map(|f| f.to_le_bytes()).collect()
 }
 
+/// Size of the vectors the index holds; it follows the embedding model.
+pub fn vec_dims(c: &Connection) -> AppResult<usize> {
+    let sql: String = c.query_row(
+        "SELECT sql FROM sqlite_master WHERE name = 'vec_chunks'",
+        [],
+        |r| r.get(0),
+    )?;
+    sql.split("float[")
+        .nth(1)
+        .and_then(|r| r.split(']').next())
+        .and_then(|n| n.trim().parse().ok())
+        .ok_or_else(|| AppError::Other("The vector index has an unexpected layout.".into()))
+}
+
+/// Replaces the vector index with an empty one for vectors of `dims` numbers.
+pub fn reset_vec_table(c: &Connection, dims: usize) -> AppResult<()> {
+    let tx = c.unchecked_transaction()?;
+    tx.execute_batch(&format!(
+        "DROP TABLE vec_chunks;
+         CREATE VIRTUAL TABLE vec_chunks USING vec0(
+           chunk_id INTEGER PRIMARY KEY,
+           space_id TEXT PARTITION KEY,
+           embedding float[{dims}] distance_metric=cosine
+         );"
+    ))?;
+    tx.commit()?;
+    Ok(())
+}
+
 fn source_filter_json(source_ids: Option<&[String]>) -> Option<String> {
     source_ids.map(|ids| serde_json::to_string(ids).unwrap_or_else(|_| "[]".into()))
 }
 
-fn fts_ranked(c: &Connection, space_id: &str, q: &str, filter: &Option<String>) -> AppResult<Vec<i64>> {
-    let Some(m) = fts_query(q) else { return Ok(vec![]) };
+fn fts_ranked(
+    c: &Connection,
+    space_id: &str,
+    q: &str,
+    filter: &Option<String>,
+) -> AppResult<Vec<i64>> {
+    let Some(m) = fts_query(q) else {
+        return Ok(vec![]);
+    };
     let mut st = c.prepare_cached(
         "SELECT c.id FROM chunks_fts f
          JOIN chunks c ON c.id = f.rowid
@@ -55,13 +91,24 @@ fn fts_ranked(c: &Connection, space_id: &str, q: &str, filter: &Option<String>) 
            AND (?3 IS NULL OR c.source_id IN (SELECT value FROM json_each(?3)))
          ORDER BY bm25(chunks_fts) LIMIT ?4",
     )?;
-    let rows = st.query_map(params![m, space_id, filter, CANDIDATES as i64], |r| r.get(0))?;
+    let rows = st.query_map(params![m, space_id, filter, CANDIDATES as i64], |r| {
+        r.get(0)
+    })?;
     Ok(rows.collect::<Result<_, _>>()?)
 }
 
-fn vec_ranked(c: &Connection, space_id: &str, qv: &[f32], filter: &Option<String>) -> AppResult<Vec<i64>> {
+fn vec_ranked(
+    c: &Connection,
+    space_id: &str,
+    qv: &[f32],
+    filter: &Option<String>,
+) -> AppResult<Vec<i64>> {
     // over-fetch because use_in_chat / source filters are applied after the KNN
-    let k = if filter.is_some() { CANDIDATES * 5 } else { CANDIDATES * 2 };
+    let k = if filter.is_some() {
+        CANDIDATES * 5
+    } else {
+        CANDIDATES * 2
+    };
     let mut st = c.prepare_cached(
         "SELECT v.chunk_id FROM (
             SELECT chunk_id, distance FROM vec_chunks
@@ -73,7 +120,10 @@ fn vec_ranked(c: &Connection, space_id: &str, qv: &[f32], filter: &Option<String
            AND (?4 IS NULL OR c.source_id IN (SELECT value FROM json_each(?4)))
          ORDER BY v.distance LIMIT ?5",
     )?;
-    let rows = st.query_map(params![vec_blob(qv), k as i64, space_id, filter, CANDIDATES as i64], |r| r.get(0))?;
+    let rows = st.query_map(
+        params![vec_blob(qv), k as i64, space_id, filter, CANDIDATES as i64],
+        |r| r.get(0),
+    )?;
     Ok(rows.collect::<Result<_, _>>()?)
 }
 
@@ -183,14 +233,18 @@ pub fn coverage(
     let mut out = Vec::with_capacity(topics.len());
     for (i, t) in topics.iter().enumerate() {
         let keyword_hits: i64 = match fts_all_words(&t.text) {
-            Some(q) => count.query_row(params![q, space_id], |r| r.get(0)).unwrap_or(0),
+            Some(q) => count
+                .query_row(params![q, space_id], |r| r.get(0))
+                .unwrap_or(0),
             None => 0,
         };
         let mut similarity = None;
         let mut best = None;
         if let Some(v) = vectors.and_then(|vs| vs.get(i)) {
             let hit: Option<(i64, f64)> = knn
-                .query_row(params![vec_blob(v), space_id], |r| Ok((r.get(0)?, r.get(1)?)))
+                .query_row(params![vec_blob(v), space_id], |r| {
+                    Ok((r.get(0)?, r.get(1)?))
+                })
                 .optional()?;
             if let Some((id, dist)) = hit {
                 similarity = Some(1.0 - dist);
@@ -210,7 +264,12 @@ pub fn coverage(
                     .optional()?;
             }
         }
-        out.push(TopicCoverage { topic_id: t.id.clone(), similarity, keyword_hits, best });
+        out.push(TopicCoverage {
+            topic_id: t.id.clone(),
+            similarity,
+            keyword_hits,
+            best,
+        });
     }
     Ok(out)
 }
@@ -225,15 +284,24 @@ mod tests {
 
     fn setup() -> (Db, tempfile::TempDir, Worker) {
         let (db, dir) = test_db();
-        let emb = Arc::new(EmbedderService::ready(Arc::new(FakeEmbedder), Arc::new(|_, _| {})));
-        let w = Worker::new(db.clone(), emb, Arc::new(|_, _| {}));
+        let emb = Arc::new(EmbedderService::ready(
+            Arc::new(FakeEmbedder),
+            Arc::new(|_, _| {}),
+        ));
+        let w = Worker::new(db.clone(), emb, Arc::new(|_, _| {}), Default::default());
         (db, dir, w)
     }
 
     fn space(db: &Db, name: &str) -> String {
-        models::create_space(&db.conn().unwrap(), models::SpacePatch { name: Some(name.into()), ..Default::default() })
-            .unwrap()
-            .id
+        models::create_space(
+            &db.conn().unwrap(),
+            models::SpacePatch {
+                name: Some(name.into()),
+                ..Default::default()
+            },
+        )
+        .unwrap()
+        .id
     }
 
     fn add(db: &Db, w: &mut Worker, space: &str, title: &str, text: &str) -> String {
@@ -248,11 +316,55 @@ mod tests {
         c.query_row(sql, p, |r| r.get(0)).unwrap()
     }
 
+    struct Small;
+    impl crate::ingest::embed::Embedder for Small {
+        fn embed(&self, texts: &[String]) -> AppResult<Vec<Vec<f32>>> {
+            Ok(texts.iter().map(|t| fake_vector(t)[..8].to_vec()).collect())
+        }
+        fn dims(&self) -> usize {
+            8
+        }
+    }
+
+    #[test]
+    fn the_index_follows_the_model_vector_size() {
+        let (db, _d, mut w) = setup();
+        let sp = space(&db, "S");
+        add(&db, &mut w, &sp, "A", "Zellen und Licht im Blatt.");
+        let c = db.conn().unwrap();
+        assert_eq!(vec_dims(&c).unwrap(), 384);
+        let emb = Arc::new(EmbedderService::ready(Arc::new(Small), Arc::new(|_, _| {})));
+        let mut w = Worker::new(db.clone(), emb, Arc::new(|_, _| {}), Default::default());
+        add(&db, &mut w, &sp, "B", "Kräfte und Energie.");
+        assert_eq!(vec_dims(&c).unwrap(), 8);
+        // A's vectors went with the old table and were made again with the new model
+        assert_eq!(
+            count(&c, "SELECT count(*) FROM vec_chunks", []),
+            count(&c, "SELECT count(*) FROM chunks", [])
+        );
+        assert!(!search(
+            &c,
+            &sp,
+            "Energie",
+            Some(&fake_vector("Energie")[..8]),
+            4,
+            None
+        )
+        .unwrap()
+        .is_empty());
+        // the chunk delete trigger still works against the new table
+        c.execute("DELETE FROM sources", []).unwrap();
+        assert_eq!(count(&c, "SELECT count(*) FROM vec_chunks", []), 0);
+    }
+
     #[test]
     fn sanitizes_fts_queries() {
         assert_eq!(fts_query("  "), None);
         assert_eq!(fts_query("\"*()"), None);
-        assert_eq!(fts_query("what's NEAR(x) Grüße?").unwrap(), "\"what\" OR \"s\" OR \"NEAR\" OR \"x\" OR \"Grüße\"");
+        assert_eq!(
+            fts_query("what's NEAR(x) Grüße?").unwrap(),
+            "\"what\" OR \"s\" OR \"NEAR\" OR \"x\" OR \"Grüße\""
+        );
     }
 
     #[test]
@@ -267,14 +379,22 @@ mod tests {
         let (db, _d) = test_db();
         let c = db.conn().unwrap();
         let ins = "INSERT INTO vec_chunks(chunk_id, space_id, embedding) VALUES (?1, ?2, ?3)";
-        c.execute(ins, params![1, "space-a", vec_blob(&fake_vector("apple"))]).unwrap();
-        c.execute(ins, params![2, "space-b", vec_blob(&fake_vector("apple"))]).unwrap();
-        c.execute(ins, params![3, "space-a", vec_blob(&fake_vector("tax law"))]).unwrap();
+        c.execute(ins, params![1, "space-a", vec_blob(&fake_vector("apple"))])
+            .unwrap();
+        c.execute(ins, params![2, "space-b", vec_blob(&fake_vector("apple"))])
+            .unwrap();
+        c.execute(
+            ins,
+            params![3, "space-a", vec_blob(&fake_vector("tax law"))],
+        )
+        .unwrap();
         let mut st = c
             .prepare("SELECT chunk_id FROM vec_chunks WHERE embedding MATCH ?1 AND k = 10 AND space_id = ?2 ORDER BY distance")
             .unwrap();
         let ids: Vec<i64> = st
-            .query_map(params![vec_blob(&fake_vector("apple")), "space-a"], |r| r.get(0))
+            .query_map(params![vec_blob(&fake_vector("apple")), "space-a"], |r| {
+                r.get(0)
+            })
             .unwrap()
             .map(Result::unwrap)
             .collect();
@@ -286,16 +406,36 @@ mod tests {
         let (db, _d, mut w) = setup();
         let a = space(&db, "Bio");
         let b = space(&db, "Other");
-        let bio = add(&db, &mut w, &a, "Plants", "Chlorophyll absorbs light in the chloroplasts of leaves.");
-        let tax = add(&db, &mut w, &a, "Taxes", "Capital gains are taxed at a reduced rate after one year.");
-        let _other = add(&db, &mut w, &b, "Elsewhere", "Chlorophyll chlorophyll chlorophyll everywhere.");
+        let bio = add(
+            &db,
+            &mut w,
+            &a,
+            "Plants",
+            "Chlorophyll absorbs light in the chloroplasts of leaves.",
+        );
+        let tax = add(
+            &db,
+            &mut w,
+            &a,
+            "Taxes",
+            "Capital gains are taxed at a reduced rate after one year.",
+        );
+        let _other = add(
+            &db,
+            &mut w,
+            &b,
+            "Elsewhere",
+            "Chlorophyll chlorophyll chlorophyll everywhere.",
+        );
         let c = db.conn().unwrap();
         let qv = fake_vector("chlorophyll");
 
         let hits = search(&c, &a, "chlorophyll?", Some(&qv), 8, None).unwrap();
         assert_eq!(hits[0].source_id, bio);
         assert_eq!(hits[0].source_title, "Plants");
-        assert!(hits.iter().all(|h| h.source_id == bio || h.source_id == tax));
+        assert!(hits
+            .iter()
+            .all(|h| h.source_id == bio || h.source_id == tax));
         assert!(hits[0].score > 0.0);
 
         // FTS only
@@ -304,17 +444,35 @@ mod tests {
         assert_eq!(hits[0].source_id, bio);
 
         // vector only (no word tokens)
-        let hits = search(&c, &a, "", Some(&fake_vector("capital gains taxed")), 1, None).unwrap();
+        let hits = search(
+            &c,
+            &a,
+            "",
+            Some(&fake_vector("capital gains taxed")),
+            1,
+            None,
+        )
+        .unwrap();
         assert_eq!(hits[0].source_id, tax);
 
         // source filter
         let only_tax = vec![tax.clone()];
         let hits = search(&c, &a, "chlorophyll", Some(&qv), 8, Some(&only_tax)).unwrap();
         assert!(hits.iter().all(|h| h.source_id == tax));
-        assert!(search(&c, &a, "chlorophyll", Some(&qv), 8, Some(&[])).unwrap().is_empty());
+        assert!(search(&c, &a, "chlorophyll", Some(&qv), 8, Some(&[]))
+            .unwrap()
+            .is_empty());
 
         // disabled sources are excluded
-        models::update_source(&c, &bio, models::SourcePatch { use_in_chat: Some(false), ..Default::default() }).unwrap();
+        models::update_source(
+            &c,
+            &bio,
+            models::SourcePatch {
+                use_in_chat: Some(false),
+                ..Default::default()
+            },
+        )
+        .unwrap();
         let hits = search(&c, &a, "chlorophyll", Some(&qv), 8, None).unwrap();
         assert!(hits.iter().all(|h| h.source_id != bio));
     }
@@ -323,7 +481,13 @@ mod tests {
     fn deleting_a_source_removes_chunks_fts_and_vectors() {
         let (db, _d, mut w) = setup();
         let a = space(&db, "Bio");
-        let bio = add(&db, &mut w, &a, "Plants", "Chlorophyll absorbs light.\n\nMitochondria make energy.");
+        let bio = add(
+            &db,
+            &mut w,
+            &a,
+            "Plants",
+            "Chlorophyll absorbs light.\n\nMitochondria make energy.",
+        );
         let c = db.conn().unwrap();
         let ids: Vec<i64> = c
             .prepare("SELECT id FROM chunks WHERE source_id = ?1")
@@ -333,14 +497,51 @@ mod tests {
             .map(Result::unwrap)
             .collect();
         assert!(!ids.is_empty());
-        assert_eq!(count(&c, "SELECT count(*) FROM vec_chunks WHERE chunk_id = ?1", [ids[0]]), 1);
-        assert_eq!(count(&c, "SELECT count(*) FROM chunks_fts WHERE chunks_fts MATCH 'chlorophyll'", []), 1);
+        assert_eq!(
+            count(
+                &c,
+                "SELECT count(*) FROM vec_chunks WHERE chunk_id = ?1",
+                [ids[0]]
+            ),
+            1
+        );
+        assert_eq!(
+            count(
+                &c,
+                "SELECT count(*) FROM chunks_fts WHERE chunks_fts MATCH 'chlorophyll'",
+                []
+            ),
+            1
+        );
 
         models::delete_source(&c, &bio).unwrap();
-        assert_eq!(count(&c, "SELECT count(*) FROM chunks WHERE source_id = ?1", [&bio]), 0);
-        assert_eq!(count(&c, "SELECT count(*) FROM chunks_fts WHERE chunks_fts MATCH 'chlorophyll'", []), 0);
+        assert_eq!(
+            count(
+                &c,
+                "SELECT count(*) FROM chunks WHERE source_id = ?1",
+                [&bio]
+            ),
+            0
+        );
+        assert_eq!(
+            count(
+                &c,
+                "SELECT count(*) FROM chunks_fts WHERE chunks_fts MATCH 'chlorophyll'",
+                []
+            ),
+            0
+        );
         assert_eq!(count(&c, "SELECT count(*) FROM vec_chunks", []), 0);
-        assert!(search(&c, &a, "chlorophyll", Some(&fake_vector("chlorophyll")), 8, None).unwrap().is_empty());
+        assert!(search(
+            &c,
+            &a,
+            "chlorophyll",
+            Some(&fake_vector("chlorophyll")),
+            8,
+            None
+        )
+        .unwrap()
+        .is_empty());
     }
 
     #[test]
@@ -349,10 +550,22 @@ mod tests {
         let sp = space(&db, "Bio");
         let other = space(&db, "Other");
         add(&db, &mut w, &sp, "Notes", "Photosynthesis converts light energy in chloroplasts.\n\nGlycolysis splits glucose in the cytoplasm.");
-        add(&db, &mut w, &other, "Tax", "Income tax brackets and deductions.");
+        add(
+            &db,
+            &mut w,
+            &other,
+            "Tax",
+            "Income tax brackets and deductions.",
+        );
         let topics = vec![
-            TopicInput { id: "photo".into(), text: "photosynthesis chloroplasts light".into() },
-            TopicInput { id: "tax".into(), text: "income tax deductions".into() },
+            TopicInput {
+                id: "photo".into(),
+                text: "photosynthesis chloroplasts light".into(),
+            },
+            TopicInput {
+                id: "tax".into(),
+                text: "income tax deductions".into(),
+            },
         ];
         let vecs: Vec<Vec<f32>> = topics.iter().map(|t| fake_vector(&t.text)).collect();
         let c = db.conn().unwrap();
@@ -361,7 +574,10 @@ mod tests {
         assert!(cov[0].keyword_hits >= 1);
         assert!(cov[0].similarity.unwrap() > cov[1].similarity.unwrap_or(0.0));
         assert_eq!(cov[0].best.as_ref().unwrap().source_title, "Notes");
-        assert_eq!(cov[1].keyword_hits, 0, "other space's chunks must not count");
+        assert_eq!(
+            cov[1].keyword_hits, 0,
+            "other space's chunks must not count"
+        );
         let no_vec = coverage(&c, &sp, &topics, None).unwrap();
         assert!(no_vec[0].similarity.is_none() && no_vec[0].keyword_hits >= 1);
     }

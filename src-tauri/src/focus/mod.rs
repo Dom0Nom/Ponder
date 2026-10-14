@@ -26,7 +26,8 @@ pub fn start(app: &AppHandle, db: Db) {
 }
 
 fn break_locked(app: &AppHandle) -> bool {
-    app.try_state::<FocusService>().is_some_and(|s| s.is_break_locked())
+    app.try_state::<FocusService>()
+        .is_some_and(|s| s.is_break_locked())
 }
 
 /// Blocks closing and keeps the window fullscreen while a break is locked.

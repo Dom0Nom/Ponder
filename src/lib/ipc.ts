@@ -55,6 +55,7 @@ export const api = {
   embedderStatus: () => call<T.EmbedderStatus>("embedder_status"),
   embeddingModels: () => call<T.EmbeddingModel[]>("embedding_models"),
   setEmbeddingModel: (model: string) => call<void>("set_embedding_model", { model }),
+  openrouterEmbeddingModels: () => call<T.RemoteEmbeddingModel[]>("openrouter_embedding_models"),
 
   // watched folders
   watchList: (spaceId: string) => call<T.WatchedFolder[]>("watch_list", { spaceId }),

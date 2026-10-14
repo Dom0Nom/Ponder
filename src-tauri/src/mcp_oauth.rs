@@ -64,7 +64,12 @@ fn well_known(base: &Url, suffix: &str) -> Vec<String> {
 }
 
 async fn get_json(http: &reqwest::Client, url: &str) -> Option<Value> {
-    let res = http.get(url).header("Accept", "application/json").send().await.ok()?;
+    let res = http
+        .get(url)
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .ok()?;
     if !res.status().is_success() {
         return None;
     }
@@ -72,19 +77,30 @@ async fn get_json(http: &reqwest::Client, url: &str) -> Option<Value> {
 }
 
 fn https_or_local(url: &str) -> AppResult<Url> {
-    let u = Url::parse(url).map_err(|_| AppError::Other(format!("The sign-in server sent a bad address: {url}")))?;
+    let u = Url::parse(url)
+        .map_err(|_| AppError::Other(format!("The sign-in server sent a bad address: {url}")))?;
     let local = matches!(u.host_str(), Some("localhost" | "127.0.0.1" | "[::1]"));
     if u.scheme() == "https" || (u.scheme() == "http" && local) {
         Ok(u)
     } else {
-        Err(AppError::Other(format!("The sign-in server must use https: {url}")))
+        Err(AppError::Other(format!(
+            "The sign-in server must use https: {url}"
+        )))
     }
 }
 
 /// Finds where to sign in for `server_url`. `challenge` is the `WWW-Authenticate` header of a 401, if any.
-pub async fn discover(http: &reqwest::Client, server_url: &str, challenge: Option<&str>) -> AppResult<Discovered> {
-    let server = Url::parse(server_url).map_err(|_| AppError::Invalid("Enter the server's full URL.".into()))?;
-    let mut candidates = challenge.and_then(|c| auth_param(c, "resource_metadata")).into_iter().collect::<Vec<_>>();
+pub async fn discover(
+    http: &reqwest::Client,
+    server_url: &str,
+    challenge: Option<&str>,
+) -> AppResult<Discovered> {
+    let server = Url::parse(server_url)
+        .map_err(|_| AppError::Invalid("Enter the server's full URL.".into()))?;
+    let mut candidates = challenge
+        .and_then(|c| auth_param(c, "resource_metadata"))
+        .into_iter()
+        .collect::<Vec<_>>();
     candidates.extend(well_known(&server, "oauth-protected-resource"));
     let mut prm = None;
     for url in candidates {
@@ -95,7 +111,13 @@ pub async fn discover(http: &reqwest::Client, server_url: &str, challenge: Optio
     }
     let issuer = prm
         .as_ref()
-        .and_then(|p| p.get("authorization_servers")?.as_array()?.first()?.as_str().map(str::to_string))
+        .and_then(|p| {
+            p.get("authorization_servers")?
+                .as_array()?
+                .first()?
+                .as_str()
+                .map(str::to_string)
+        })
         .unwrap_or_else(|| server.origin().ascii_serialization());
     let issuer = https_or_local(&issuer)?;
     let mut meta = None;
@@ -111,19 +133,28 @@ pub async fn discover(http: &reqwest::Client, server_url: &str, challenge: Optio
     }
     let origin = issuer.origin().ascii_serialization();
     let field = |k: &str, default: &str| -> String {
-        meta.as_ref().and_then(|m| m.get(k)?.as_str().map(str::to_string)).unwrap_or_else(|| format!("{origin}{default}"))
+        meta.as_ref()
+            .and_then(|m| m.get(k)?.as_str().map(str::to_string))
+            .unwrap_or_else(|| format!("{origin}{default}"))
     };
     let authorize = field("authorization_endpoint", "/authorize");
     let token = field("token_endpoint", "/token");
     https_or_local(&authorize)?;
     https_or_local(&token)?;
     let register = match &meta {
-        Some(m) => m.get("registration_endpoint").and_then(Value::as_str).map(str::to_string),
+        Some(m) => m
+            .get("registration_endpoint")
+            .and_then(Value::as_str)
+            .map(str::to_string),
         None => Some(format!("{origin}/register")),
     };
     let scope = challenge.and_then(|c| auth_param(c, "scope")).or_else(|| {
         let list = prm.as_ref()?.get("scopes_supported")?.as_array()?;
-        let joined = list.iter().filter_map(Value::as_str).collect::<Vec<_>>().join(" ");
+        let joined = list
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>()
+            .join(" ");
         Some(joined).filter(|s| !s.is_empty())
     });
     let resource = prm
@@ -134,11 +165,21 @@ pub async fn discover(http: &reqwest::Client, server_url: &str, challenge: Optio
             u.set_fragment(None);
             u.to_string()
         });
-    Ok(Discovered { authorize, token, register, scope, resource })
+    Ok(Discovered {
+        authorize,
+        token,
+        register,
+        scope,
+        resource,
+    })
 }
 
 /// Registers Ponder as a public client for `redirect_uri`. Returns (client_id, client_secret).
-pub async fn register(http: &reqwest::Client, endpoint: &str, redirect_uri: &str) -> AppResult<(String, Option<String>)> {
+pub async fn register(
+    http: &reqwest::Client,
+    endpoint: &str,
+    redirect_uri: &str,
+) -> AppResult<(String, Option<String>)> {
     https_or_local(endpoint)?;
     let body = json!({
         "client_name": "Ponder",
@@ -158,16 +199,30 @@ pub async fn register(http: &reqwest::Client, endpoint: &str, redirect_uri: &str
     if !(200..300).contains(&status) {
         return Err(AppError::Other(oauth_error_message(status, &text)));
     }
-    let v: Value = serde_json::from_str(&text).map_err(|_| AppError::Other("The sign-in server sent an unreadable registration.".into()))?;
+    let v: Value = serde_json::from_str(&text).map_err(|_| {
+        AppError::Other("The sign-in server sent an unreadable registration.".into())
+    })?;
     let id = v
         .get("client_id")
         .and_then(Value::as_str)
         .ok_or_else(|| AppError::Other("The sign-in server didn't return a client id.".into()))?;
-    Ok((id.to_string(), v.get("client_secret").and_then(Value::as_str).map(str::to_string)))
+    Ok((
+        id.to_string(),
+        v.get("client_secret")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+    ))
 }
 
-pub fn authorize_url(d: &Discovered, client_id: &str, redirect_uri: &str, state: &str, verifier: &str) -> AppResult<String> {
-    let mut url = Url::parse(&d.authorize).map_err(|_| AppError::Other("The sign-in server sent a bad address.".into()))?;
+pub fn authorize_url(
+    d: &Discovered,
+    client_id: &str,
+    redirect_uri: &str,
+    state: &str,
+    verifier: &str,
+) -> AppResult<String> {
+    let mut url = Url::parse(&d.authorize)
+        .map_err(|_| AppError::Other("The sign-in server sent a bad address.".into()))?;
     {
         let mut q = url.query_pairs_mut();
         q.append_pair("response_type", "code");
@@ -203,28 +258,46 @@ pub async fn exchange(
     if let Some(secret) = client.1 {
         form.push(("client_secret", secret));
     }
-    let v = post_form(http, &d.token, &form).await.map_err(|(s, b)| AppError::Other(oauth_error_message(s, &b)))?;
+    let v = post_form(http, &d.token, &form)
+        .await
+        .map_err(|(s, b)| AppError::Other(oauth_error_message(s, &b)))?;
     let mut tokens = TokenSet::from_response(&v, now_ms(), None)?;
     tokens.client_id = Some(client.0.to_string());
-    Ok(McpAuth { tokens, token_endpoint: d.token.clone(), client_secret: client.1.map(str::to_string), resource: d.resource.clone() })
+    Ok(McpAuth {
+        tokens,
+        token_endpoint: d.token.clone(),
+        client_secret: client.1.map(str::to_string),
+        resource: d.resource.clone(),
+    })
 }
 
 pub async fn refresh(http: &reqwest::Client, auth: &McpAuth) -> AppResult<McpAuth> {
-    let refresh = auth
-        .tokens
-        .refresh
-        .as_deref()
-        .ok_or_else(|| AppError::Other("Your sign-in to this MCP server expired. Sign in again.".into()))?;
+    let refresh = auth.tokens.refresh.as_deref().ok_or_else(|| {
+        AppError::Other("Your sign-in to this MCP server expired. Sign in again.".into())
+    })?;
     let client_id = auth.tokens.client_id.as_deref().unwrap_or_default();
-    let mut form = vec![("grant_type", "refresh_token"), ("refresh_token", refresh), ("client_id", client_id), ("resource", auth.resource.as_str())];
+    let mut form = vec![
+        ("grant_type", "refresh_token"),
+        ("refresh_token", refresh),
+        ("client_id", client_id),
+        ("resource", auth.resource.as_str()),
+    ];
     if let Some(secret) = &auth.client_secret {
         form.push(("client_secret", secret));
     }
     let v = post_form(http, &auth.token_endpoint, &form)
         .await
-        .map_err(|(s, b)| AppError::Other(format!("Your sign-in to this MCP server expired. Sign in again. ({})", oauth_error_message(s, &b))))?;
+        .map_err(|(s, b)| {
+            AppError::Other(format!(
+                "Your sign-in to this MCP server expired. Sign in again. ({})",
+                oauth_error_message(s, &b)
+            ))
+        })?;
     let tokens = TokenSet::from_response(&v, now_ms(), Some(&auth.tokens))?;
-    Ok(McpAuth { tokens, ..auth.clone() })
+    Ok(McpAuth {
+        tokens,
+        ..auth.clone()
+    })
 }
 
 pub fn new_verifier() -> (String, String) {
@@ -259,26 +332,41 @@ mod tests {
                         }
                         buf.extend_from_slice(&chunk[..n]);
                         let text = String::from_utf8_lossy(&buf).to_string();
-                        let Some(end) = text.find("\r\n\r\n") else { continue };
+                        let Some(end) = text.find("\r\n\r\n") else {
+                            continue;
+                        };
                         let head = text[..end].to_lowercase();
-                        let len: usize = head.lines().find_map(|l| l.strip_prefix("content-length:")).map_or(0, |v| v.trim().parse().unwrap());
+                        let len: usize = head
+                            .lines()
+                            .find_map(|l| l.strip_prefix("content-length:"))
+                            .map_or(0, |v| v.trim().parse().unwrap());
                         if buf.len() >= end + 4 + len {
-                            break (text.lines().next().unwrap().to_string(), text[end + 4..end + 4 + len].to_string());
+                            break (
+                                text.lines().next().unwrap().to_string(),
+                                text[end + 4..end + 4 + len].to_string(),
+                            );
                         }
                     };
                     let path = line.split(' ').nth(1).unwrap().to_string();
                     log.lock().unwrap().push((path.clone(), body.clone()));
                     let (status, out) = match path.as_str() {
-                        "/.well-known/oauth-protected-resource/mcp" => {
-                            ("200 OK", json!({ "resource": format!("{base}/mcp"), "authorization_servers": [format!("{base}/auth")], "scopes_supported": ["mcp"] }))
-                        }
+                        "/.well-known/oauth-protected-resource/mcp" => (
+                            "200 OK",
+                            json!({ "resource": format!("{base}/mcp"), "authorization_servers": [format!("{base}/auth")], "scopes_supported": ["mcp"] }),
+                        ),
                         "/.well-known/oauth-authorization-server/auth" => (
                             "200 OK",
                             json!({ "issuer": format!("{base}/auth"), "authorization_endpoint": format!("{base}/auth/go"), "token_endpoint": format!("{base}/auth/token"), "registration_endpoint": format!("{base}/auth/reg") }),
                         ),
                         "/auth/reg" => ("201 Created", json!({ "client_id": "c1" })),
-                        "/auth/token" if body.contains("grant_type=authorization_code") => ("200 OK", json!({ "access_token": "a1", "refresh_token": "r1", "expires_in": 60 })),
-                        "/auth/token" => ("200 OK", json!({ "access_token": "a2", "expires_in": 3600 })),
+                        "/auth/token" if body.contains("grant_type=authorization_code") => (
+                            "200 OK",
+                            json!({ "access_token": "a1", "refresh_token": "r1", "expires_in": 60 }),
+                        ),
+                        "/auth/token" => (
+                            "200 OK",
+                            json!({ "access_token": "a2", "expires_in": 3600 }),
+                        ),
                         _ => ("404 Not Found", json!({})),
                     };
                     let out = out.to_string();
@@ -298,20 +386,55 @@ mod tests {
         assert_eq!(d.authorize, format!("{base}/auth/go"));
         assert_eq!(d.scope.as_deref(), Some("mcp"));
         assert_eq!(d.resource, format!("{base}/mcp"));
-        let (id, secret) = register(&http, d.register.as_deref().unwrap(), "http://127.0.0.1:1/auth/callback").await.unwrap();
+        let (id, secret) = register(
+            &http,
+            d.register.as_deref().unwrap(),
+            "http://127.0.0.1:1/auth/callback",
+        )
+        .await
+        .unwrap();
         assert_eq!((id.as_str(), secret), ("c1", None));
-        let auth = exchange(&http, &d, (&id, None), "code", "verifier", "http://127.0.0.1:1/auth/callback").await.unwrap();
-        assert_eq!((auth.tokens.access.as_str(), auth.tokens.refresh.as_deref()), ("a1", Some("r1")));
+        let auth = exchange(
+            &http,
+            &d,
+            (&id, None),
+            "code",
+            "verifier",
+            "http://127.0.0.1:1/auth/callback",
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            (auth.tokens.access.as_str(), auth.tokens.refresh.as_deref()),
+            ("a1", Some("r1"))
+        );
         let fresh = refresh(&http, &auth).await.unwrap();
-        assert_eq!((fresh.tokens.access.as_str(), fresh.tokens.refresh.as_deref()), ("a2", Some("r1")));
-        let token_calls: Vec<String> = log.lock().unwrap().iter().filter(|(p, _)| p == "/auth/token").map(|(_, b)| b.clone()).collect();
-        assert!(token_calls.iter().all(|b| b.contains("resource=") && b.contains("client_id=c1")));
+        assert_eq!(
+            (
+                fresh.tokens.access.as_str(),
+                fresh.tokens.refresh.as_deref()
+            ),
+            ("a2", Some("r1"))
+        );
+        let token_calls: Vec<String> = log
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|(p, _)| p == "/auth/token")
+            .map(|(_, b)| b.clone())
+            .collect();
+        assert!(token_calls
+            .iter()
+            .all(|b| b.contains("resource=") && b.contains("client_id=c1")));
     }
 
     #[test]
     fn reads_challenge_params() {
         let h = r#"Bearer error="invalid_token", resource_metadata="https://a.example/.well-known/oauth-protected-resource/mcp", scope=read"#;
-        assert_eq!(auth_param(h, "resource_metadata").as_deref(), Some("https://a.example/.well-known/oauth-protected-resource/mcp"));
+        assert_eq!(
+            auth_param(h, "resource_metadata").as_deref(),
+            Some("https://a.example/.well-known/oauth-protected-resource/mcp")
+        );
         assert_eq!(auth_param(h, "scope").as_deref(), Some("read"));
         assert_eq!(auth_param(h, "error").as_deref(), Some("invalid_token"));
         assert_eq!(auth_param(r#"Bearer xscope="no""#, "scope"), None);
@@ -322,7 +445,10 @@ mod tests {
         let u = Url::parse("https://a.example/tenant/mcp/").unwrap();
         assert_eq!(
             well_known(&u, "oauth-protected-resource"),
-            ["https://a.example/.well-known/oauth-protected-resource/tenant/mcp", "https://a.example/.well-known/oauth-protected-resource"]
+            [
+                "https://a.example/.well-known/oauth-protected-resource/tenant/mcp",
+                "https://a.example/.well-known/oauth-protected-resource"
+            ]
         );
     }
 
@@ -342,7 +468,10 @@ mod tests {
             scope: Some("read write".into()),
             resource: "https://a.example/mcp".into(),
         };
-        let url = Url::parse(&authorize_url(&d, "cid", "http://127.0.0.1:5/auth/callback", "st", "v").unwrap()).unwrap();
+        let url = Url::parse(
+            &authorize_url(&d, "cid", "http://127.0.0.1:5/auth/callback", "st", "v").unwrap(),
+        )
+        .unwrap();
         let q: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
         assert_eq!(q["client_id"], "cid");
         assert_eq!(q["resource"], "https://a.example/mcp");

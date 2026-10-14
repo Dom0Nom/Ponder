@@ -9,9 +9,17 @@ pub const SUBCOMMANDS: [&str; 5] = ["open", "ask", "import", "spaces", "help"];
 
 #[derive(Debug, PartialEq)]
 pub enum Command {
-    Open { space: String },
-    Ask { question: String, space: Option<String> },
-    Import { target: String, space: Option<String> },
+    Open {
+        space: String,
+    },
+    Ask {
+        question: String,
+        space: Option<String>,
+    },
+    Import {
+        target: String,
+        space: Option<String>,
+    },
     Spaces,
     Help,
 }
@@ -34,7 +42,8 @@ pub const USAGE: &str = "Usage:
 
 /// True when the first argument is a command rather than something the GUI launcher passes.
 pub fn is_cli_invocation(args: &[String]) -> bool {
-    args.get(1).is_some_and(|a| SUBCOMMANDS.contains(&a.as_str()) || a == "--help" || a == "-h")
+    args.get(1)
+        .is_some_and(|a| SUBCOMMANDS.contains(&a.as_str()) || a == "--help" || a == "-h")
 }
 
 pub fn parse(args: &[String]) -> AppResult<Cli> {
@@ -43,8 +52,20 @@ pub fn parse(args: &[String]) -> AppResult<Cli> {
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
-            "--space" | "-s" => space = Some(it.next().ok_or_else(|| invalid("--space needs a value"))?.clone()),
-            "--db" => db = Some(it.next().ok_or_else(|| invalid("--db needs a path"))?.clone()),
+            "--space" | "-s" => {
+                space = Some(
+                    it.next()
+                        .ok_or_else(|| invalid("--space needs a value"))?
+                        .clone(),
+                )
+            }
+            "--db" => {
+                db = Some(
+                    it.next()
+                        .ok_or_else(|| invalid("--db needs a path"))?
+                        .clone(),
+                )
+            }
             "--print" => print = true,
             "--help" | "-h" => positional.insert(0, "help".into()),
             _ => positional.push(a.clone()),
@@ -60,9 +81,17 @@ pub fn parse(args: &[String]) -> AppResult<Cli> {
         }
     };
     let command = match name.as_str() {
-        "open" => Command::Open { space: one("a space")? },
-        "ask" => Command::Ask { question: rest.join(" ").trim().to_string(), space },
-        "import" => Command::Import { target: one("a URL or file")?, space },
+        "open" => Command::Open {
+            space: one("a space")?,
+        },
+        "ask" => Command::Ask {
+            question: rest.join(" ").trim().to_string(),
+            space,
+        },
+        "import" => Command::Import {
+            target: one("a URL or file")?,
+            space,
+        },
         "spaces" => Command::Spaces,
         "help" => Command::Help,
         other => return Err(invalid(format!("Unknown command “{other}”.\n\n{USAGE}"))),
@@ -100,10 +129,12 @@ pub fn to_link(cmd: &Command, resolve: &dyn Fn(&str) -> AppResult<String>) -> Ap
             let value = if t.starts_with("http://") || t.starts_with("https://") {
                 t.to_string()
             } else {
-                let path = Path::new(t)
-                    .canonicalize()
-                    .map_err(|_| invalid(format!("“{t}” is neither a web link nor an existing file.")))?;
-                url::Url::from_file_path(&path).map_err(|_| invalid("Can't turn that path into a link."))?.to_string()
+                let path = Path::new(t).canonicalize().map_err(|_| {
+                    invalid(format!("“{t}” is neither a web link nor an existing file."))
+                })?;
+                url::Url::from_file_path(&path)
+                    .map_err(|_| invalid("Can't turn that path into a link."))?
+                    .to_string()
             };
             let mut p = vec![("url", value.as_str())];
             let id = space.as_deref().map(resolve).transpose()?;
@@ -128,7 +159,9 @@ pub fn open_url(url: &str) -> std::io::Result<()> {
     if status.success() {
         Ok(())
     } else {
-        Err(std::io::Error::other(format!("{prog} exited with {status}. Is Ponder installed and registered for ponder:// links?")))
+        Err(std::io::Error::other(format!(
+            "{prog} exited with {status}. Is Ponder installed and registered for ponder:// links?"
+        )))
     }
 }
 
@@ -151,7 +184,14 @@ pub fn run_with(
                 writeln!(out, "No spaces yet.")?;
             }
             for s in spaces {
-                writeln!(out, "{}\t{}\t{} source{}", s.id, s.name, s.source_count, if s.source_count == 1 { "" } else { "s" })?;
+                writeln!(
+                    out,
+                    "{}\t{}\t{} source{}",
+                    s.id,
+                    s.name,
+                    s.source_count,
+                    if s.source_count == 1 { "" } else { "s" }
+                )?;
             }
         }
         cmd => {
@@ -187,7 +227,9 @@ pub struct IntegrationsInfo {
 
 /// Real paths for the command line and MCP snippets shown in Settings.
 #[tauri::command]
-pub async fn integrations_info(state: tauri::State<'_, crate::AppState>) -> AppResult<IntegrationsInfo> {
+pub async fn integrations_info(
+    state: tauri::State<'_, crate::AppState>,
+) -> AppResult<IntegrationsInfo> {
     let exe = std::env::current_exe()?;
     Ok(IntegrationsInfo {
         exe_path: exe.to_string_lossy().into_owned(),
@@ -206,12 +248,32 @@ mod tests {
 
     #[test]
     fn parses_commands_and_flags() {
-        assert_eq!(parse(&a(&["open", "Biology"])).unwrap().command, Command::Open { space: "Biology".into() });
-        let c = parse(&a(&["ask", "what", "is", "ATP?", "--space", "bio", "--print"])).unwrap();
-        assert_eq!(c.command, Command::Ask { question: "what is ATP?".into(), space: Some("bio".into()) });
+        assert_eq!(
+            parse(&a(&["open", "Biology"])).unwrap().command,
+            Command::Open {
+                space: "Biology".into()
+            }
+        );
+        let c = parse(&a(&[
+            "ask", "what", "is", "ATP?", "--space", "bio", "--print",
+        ]))
+        .unwrap();
+        assert_eq!(
+            c.command,
+            Command::Ask {
+                question: "what is ATP?".into(),
+                space: Some("bio".into())
+            }
+        );
         assert!(c.print);
         assert_eq!(parse(&a(&["--help"])).unwrap().command, Command::Help);
-        assert_eq!(parse(&a(&["spaces", "--db", "/x.db"])).unwrap().db.as_deref(), Some("/x.db"));
+        assert_eq!(
+            parse(&a(&["spaces", "--db", "/x.db"]))
+                .unwrap()
+                .db
+                .as_deref(),
+            Some("/x.db")
+        );
         assert!(parse(&a(&["open"])).is_err());
         assert!(parse(&a(&["ask"])).is_err());
         assert!(parse(&a(&["bogus"])).is_err());
@@ -228,28 +290,86 @@ mod tests {
     #[test]
     fn builds_links() {
         let id = |k: &str| -> AppResult<String> { Ok(format!("id-{k}")) };
-        let open = to_link(&Command::Open { space: "bio".into() }, &id).unwrap();
+        let open = to_link(
+            &Command::Open {
+                space: "bio".into(),
+            },
+            &id,
+        )
+        .unwrap();
         assert_eq!(open, "ponder://space/id-bio");
-        let ask = to_link(&Command::Ask { question: "why & how?".into(), space: Some("bio".into()) }, &id).unwrap();
+        let ask = to_link(
+            &Command::Ask {
+                question: "why & how?".into(),
+                space: Some("bio".into()),
+            },
+            &id,
+        )
+        .unwrap();
         assert_eq!(ask, "ponder://ask?q=why+%26+how%3F&space=id-bio");
-        let ask = to_link(&Command::Ask { question: "hi".into(), space: None }, &id).unwrap();
+        let ask = to_link(
+            &Command::Ask {
+                question: "hi".into(),
+                space: None,
+            },
+            &id,
+        )
+        .unwrap();
         assert_eq!(ask, "ponder://ask?q=hi");
-        let imp = to_link(&Command::Import { target: "https://example.com/a?b=1".into(), space: None }, &id).unwrap();
-        assert_eq!(imp, "ponder://import?url=https%3A%2F%2Fexample.com%2Fa%3Fb%3D1");
+        let imp = to_link(
+            &Command::Import {
+                target: "https://example.com/a?b=1".into(),
+                space: None,
+            },
+            &id,
+        )
+        .unwrap();
+        assert_eq!(
+            imp,
+            "ponder://import?url=https%3A%2F%2Fexample.com%2Fa%3Fb%3D1"
+        );
         let dir = tempfile::tempdir().unwrap();
         let f = dir.path().join("my notes.pdf");
         std::fs::write(&f, b"x").unwrap();
-        let imp = to_link(&Command::Import { target: f.to_string_lossy().into(), space: Some("s".into()) }, &id).unwrap();
-        assert!(imp.starts_with("ponder://import?url=file%3A%2F%2F%2F"), "{imp}");
-        assert!(imp.contains("my%2520notes.pdf") && imp.ends_with("&space=id-s"), "{imp}");
-        assert!(to_link(&Command::Import { target: "/no/such/file".into(), space: None }, &id).is_err());
+        let imp = to_link(
+            &Command::Import {
+                target: f.to_string_lossy().into(),
+                space: Some("s".into()),
+            },
+            &id,
+        )
+        .unwrap();
+        assert!(
+            imp.starts_with("ponder://import?url=file%3A%2F%2F%2F"),
+            "{imp}"
+        );
+        assert!(
+            imp.contains("my%2520notes.pdf") && imp.ends_with("&space=id-s"),
+            "{imp}"
+        );
+        assert!(to_link(
+            &Command::Import {
+                target: "/no/such/file".into(),
+                space: None
+            },
+            &id
+        )
+        .is_err());
     }
 
     fn seeded_db() -> (tempfile::TempDir, String) {
         let (db, dir) = crate::db::test_db();
         let c = db.conn().unwrap();
-        c.execute("INSERT INTO spaces (id,name,created_at,updated_at) VALUES ('s1','Biology',1,5)", []).unwrap();
-        c.execute("INSERT INTO spaces (id,name,created_at,updated_at) VALUES ('s2','Algebra',1,9)", []).unwrap();
+        c.execute(
+            "INSERT INTO spaces (id,name,created_at,updated_at) VALUES ('s1','Biology',1,5)",
+            [],
+        )
+        .unwrap();
+        c.execute(
+            "INSERT INTO spaces (id,name,created_at,updated_at) VALUES ('s2','Algebra',1,9)",
+            [],
+        )
+        .unwrap();
         c.execute("INSERT INTO sources (id,space_id,title,kind,created_at,updated_at) VALUES ('a','s1','Cells','text',1,1)", []).unwrap();
         let p = db.path().to_string_lossy().into_owned();
         (dir, p)
@@ -269,15 +389,37 @@ mod tests {
         assert_eq!(text, "s2\tAlgebra\t0 sources\ns1\tBiology\t1 source\n");
 
         run_with(&a(&["open", "biology", "--db", &db]), &mut vec![], &opener).unwrap();
-        run_with(&a(&["ask", "hello", "--space", "s2", "--db", &db]), &mut vec![], &opener).unwrap();
-        assert_eq!(*opened.borrow(), vec!["ponder://space/s1".to_string(), "ponder://ask?q=hello&space=s2".to_string()]);
+        run_with(
+            &a(&["ask", "hello", "--space", "s2", "--db", &db]),
+            &mut vec![],
+            &opener,
+        )
+        .unwrap();
+        assert_eq!(
+            *opened.borrow(),
+            vec![
+                "ponder://space/s1".to_string(),
+                "ponder://ask?q=hello&space=s2".to_string()
+            ]
+        );
 
         let mut out = vec![];
-        run_with(&a(&["open", "s1", "--print", "--db", &db]), &mut out, &opener).unwrap();
+        run_with(
+            &a(&["open", "s1", "--print", "--db", &db]),
+            &mut out,
+            &opener,
+        )
+        .unwrap();
         assert_eq!(String::from_utf8(out).unwrap(), "ponder://space/s1\n");
         assert_eq!(opened.borrow().len(), 2);
 
-        let e = run_with(&a(&["open", "Chemistry", "--db", &db]), &mut vec![], &opener).unwrap_err().to_string();
+        let e = run_with(
+            &a(&["open", "Chemistry", "--db", &db]),
+            &mut vec![],
+            &opener,
+        )
+        .unwrap_err()
+        .to_string();
         assert!(e.contains("No space matches"), "{e}");
     }
 }

@@ -68,5 +68,6 @@ opt-level = 2
 codegen-units = 1
 lto = true
 opt-level = 3
-panic = "abort"
+# unwind: the ingest worker catches panics from PDF/EPUB parsers and marks just that source as failed
+panic = "unwind"
 strip = true

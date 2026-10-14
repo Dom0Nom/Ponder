@@ -41,14 +41,22 @@ pub struct OpenRouterCatalog {
 }
 
 fn now_secs() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 /// Chat models only: text in, text-only out (drops image generators such as Gemini image models).
 fn is_text_chat(m: &Value) -> bool {
-    let Some(arch) = m.get("architecture") else { return true };
+    let Some(arch) = m.get("architecture") else {
+        return true;
+    };
     let list = |k: &str| -> Vec<&str> {
-        arch.get(k).and_then(Value::as_array).map(|a| a.iter().filter_map(Value::as_str).collect()).unwrap_or_default()
+        arch.get(k)
+            .and_then(Value::as_array)
+            .map(|a| a.iter().filter_map(Value::as_str).collect())
+            .unwrap_or_default()
     };
     let (input, output) = (list("input_modalities"), list("output_modalities"));
     (input.is_empty() || input.contains(&"text")) && (output.is_empty() || output == ["text"])
@@ -57,20 +65,36 @@ fn is_text_chat(m: &Value) -> bool {
 fn parse_reasoning(r: &Value) -> Option<OpenRouterReasoning> {
     let obj = r.as_object()?;
     let strings = |k: &str| -> Option<Vec<String>> {
-        obj.get(k).and_then(Value::as_array).map(|a| a.iter().filter_map(|x| x.as_str().map(str::to_string)).collect())
+        obj.get(k).and_then(Value::as_array).map(|a| {
+            a.iter()
+                .filter_map(|x| x.as_str().map(str::to_string))
+                .collect()
+        })
     };
     Some(OpenRouterReasoning {
-        mandatory: obj.get("mandatory").and_then(Value::as_bool).unwrap_or(false),
+        mandatory: obj
+            .get("mandatory")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
         supported_efforts: strings("supported_efforts"),
-        default_effort: obj.get("default_effort").and_then(Value::as_str).map(str::to_string),
+        default_effort: obj
+            .get("default_effort")
+            .and_then(Value::as_str)
+            .map(str::to_string),
         default_enabled: obj.get("default_enabled").and_then(Value::as_bool),
-        supports_max_tokens: obj.get("supports_max_tokens").and_then(Value::as_bool).unwrap_or(false),
+        supports_max_tokens: obj
+            .get("supports_max_tokens")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
     })
 }
 
 pub fn parse(body: &str) -> AppResult<Vec<OpenRouterModel>> {
     let v: Value = serde_json::from_str(body)?;
-    let data = v.get("data").and_then(Value::as_array).ok_or_else(|| AppError::Other("Unexpected OpenRouter response".into()))?;
+    let data = v
+        .get("data")
+        .and_then(Value::as_array)
+        .ok_or_else(|| AppError::Other("Unexpected OpenRouter response".into()))?;
     let mut out: Vec<OpenRouterModel> = data
         .iter()
         .filter_map(|m| {
@@ -78,11 +102,19 @@ pub fn parse(body: &str) -> AppResult<Vec<OpenRouterModel>> {
                 return None;
             }
             let id = m.get("id")?.as_str()?.to_string();
-            let name = m.get("name").and_then(Value::as_str).unwrap_or(&id).to_string();
+            let name = m
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or(&id)
+                .to_string();
             let supported_parameters = m
                 .get("supported_parameters")
                 .and_then(Value::as_array)
-                .map(|a| a.iter().filter_map(|x| x.as_str().map(str::to_string)).collect())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|x| x.as_str().map(str::to_string))
+                        .collect()
+                })
                 .unwrap_or_default();
             Some(OpenRouterModel {
                 id,
@@ -107,9 +139,16 @@ fn is_fresh(c: &OpenRouterCatalog, now: u64) -> bool {
 }
 
 async fn fetch(http: &reqwest::Client, url: &str) -> AppResult<Vec<OpenRouterModel>> {
-    let resp = http.get(url).header("Accept", "application/json").send().await?;
+    let resp = http
+        .get(url)
+        .header("Accept", "application/json")
+        .send()
+        .await?;
     if !resp.status().is_success() {
-        return Err(AppError::Other(format!("OpenRouter answered {}", resp.status().as_u16())));
+        return Err(AppError::Other(format!(
+            "OpenRouter answered {}",
+            resp.status().as_u16()
+        )));
     }
     parse(&resp.text().await?)
 }
@@ -119,7 +158,12 @@ pub async fn load(http: &reqwest::Client, dir: &Path, force: bool) -> AppResult<
     load_from(http, URL, dir, force).await
 }
 
-async fn load_from(http: &reqwest::Client, url: &str, dir: &Path, force: bool) -> AppResult<OpenRouterCatalog> {
+async fn load_from(
+    http: &reqwest::Client,
+    url: &str,
+    dir: &Path,
+    force: bool,
+) -> AppResult<OpenRouterCatalog> {
     let cached = read_cache(dir);
     if let Some(c) = &cached {
         if !force && is_fresh(c, now_secs()) {
@@ -128,7 +172,10 @@ async fn load_from(http: &reqwest::Client, url: &str, dir: &Path, force: bool) -
     }
     match fetch(http, url).await {
         Ok(models) => {
-            let c = OpenRouterCatalog { fetched_at: now_secs(), models };
+            let c = OpenRouterCatalog {
+                fetched_at: now_secs(),
+                models,
+            };
             if let Ok(bytes) = serde_json::to_vec(&c) {
                 let _ = std::fs::write(dir.join(CACHE_FILE), bytes);
             }
@@ -158,7 +205,10 @@ mod tests {
         assert_eq!(m[1].supported_parameters, vec!["temperature", "reasoning"]);
         let r = m[0].reasoning.as_ref().unwrap();
         assert!(r.mandatory);
-        assert_eq!(r.supported_efforts.as_deref(), Some(&["high".to_string(), "low".to_string()][..]));
+        assert_eq!(
+            r.supported_efforts.as_deref(),
+            Some(&["high".to_string(), "low".to_string()][..])
+        );
         assert_eq!(r.default_effort.as_deref(), Some("high"));
         assert!(m[1].reasoning.is_none());
         assert!(parse("{}").is_err());
@@ -177,7 +227,10 @@ mod tests {
 
     #[test]
     fn freshness_uses_ttl() {
-        let c = OpenRouterCatalog { fetched_at: 1000, models: vec![] };
+        let c = OpenRouterCatalog {
+            fetched_at: 1000,
+            models: vec![],
+        };
         assert!(is_fresh(&c, 1000 + TTL.as_secs() - 1));
         assert!(!is_fresh(&c, 1000 + TTL.as_secs()));
     }
@@ -186,9 +239,15 @@ mod tests {
     #[ignore = "network"]
     async fn live_list_parses() {
         let dir = tempfile::tempdir().unwrap();
-        let c = load(&reqwest::Client::new(), dir.path(), true).await.unwrap();
+        let c = load(&reqwest::Client::new(), dir.path(), true)
+            .await
+            .unwrap();
         for id in ["deepseek/deepseek-v4.1-flash", "anthropic/claude-haiku-4.5"] {
-            let m = c.models.iter().find(|m| m.id == id).unwrap_or_else(|| panic!("{id} missing"));
+            let m = c
+                .models
+                .iter()
+                .find(|m| m.id == id)
+                .unwrap_or_else(|| panic!("{id} missing"));
             assert!(m.supported_parameters.iter().any(|p| p == "reasoning"));
         }
         assert!(dir.path().join(CACHE_FILE).exists());
@@ -198,18 +257,35 @@ mod tests {
     async fn caches_then_falls_back_to_stale() {
         let dir = tempfile::tempdir().unwrap();
         let server = MockServer::start().await;
-        Mock::given(method("GET")).respond_with(ResponseTemplate::new(200).set_body_string(BODY)).up_to_n_times(2).mount(&server).await;
-        Mock::given(method("GET")).respond_with(ResponseTemplate::new(500)).mount(&server).await;
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(BODY))
+            .up_to_n_times(2)
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(500))
+            .mount(&server)
+            .await;
         let http = reqwest::Client::new();
-        let first = load_from(&http, &server.uri(), dir.path(), false).await.unwrap();
+        let first = load_from(&http, &server.uri(), dir.path(), false)
+            .await
+            .unwrap();
         assert_eq!(first.models.len(), 2);
-        let again = load_from(&http, &server.uri(), dir.path(), false).await.unwrap();
+        let again = load_from(&http, &server.uri(), dir.path(), false)
+            .await
+            .unwrap();
         assert_eq!(again.fetched_at, first.fetched_at);
-        let forced = load_from(&http, &server.uri(), dir.path(), true).await.unwrap();
+        let forced = load_from(&http, &server.uri(), dir.path(), true)
+            .await
+            .unwrap();
         assert_eq!(forced.models.len(), 2);
-        let failing = load_from(&http, &server.uri(), dir.path(), true).await.unwrap();
+        let failing = load_from(&http, &server.uri(), dir.path(), true)
+            .await
+            .unwrap();
         assert_eq!(failing.models.len(), 2);
         let empty = tempfile::tempdir().unwrap();
-        assert!(load_from(&http, &server.uri(), empty.path(), false).await.is_err());
+        assert!(load_from(&http, &server.uri(), empty.path(), false)
+            .await
+            .is_err());
     }
 }

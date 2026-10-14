@@ -59,13 +59,20 @@ pub fn save(c: &Connection, a: &ExamAttempt) -> AppResult<ExamAttempt> {
 }
 
 pub fn list(c: &Connection, space_id: &str) -> AppResult<Vec<ExamAttempt>> {
-    let mut st = c.prepare(&format!("SELECT {COLS} FROM exam_attempts WHERE space_id = ?1 ORDER BY started_at DESC"))?;
+    let mut st = c.prepare(&format!(
+        "SELECT {COLS} FROM exam_attempts WHERE space_id = ?1 ORDER BY started_at DESC"
+    ))?;
     let out = st.query_map([space_id], row)?.collect::<Result<_, _>>()?;
     Ok(out)
 }
 
 pub fn get(c: &Connection, id: &str) -> AppResult<Option<ExamAttempt>> {
-    Ok(c.query_row(&format!("SELECT {COLS} FROM exam_attempts WHERE id = ?1"), [id], row).optional()?)
+    Ok(c.query_row(
+        &format!("SELECT {COLS} FROM exam_attempts WHERE id = ?1"),
+        [id],
+        row,
+    )
+    .optional()?)
 }
 
 pub fn delete(c: &Connection, id: &str) -> AppResult<()> {
@@ -79,7 +86,10 @@ pub async fn exam_save(state: State<'_, AppState>, attempt: ExamAttempt) -> AppR
 }
 
 #[tauri::command]
-pub async fn exams_list(state: State<'_, AppState>, space_id: String) -> AppResult<Vec<ExamAttempt>> {
+pub async fn exams_list(
+    state: State<'_, AppState>,
+    space_id: String,
+) -> AppResult<Vec<ExamAttempt>> {
     list(&state.db.conn()?, &space_id)
 }
 
@@ -102,7 +112,14 @@ mod tests {
     fn save_update_list_delete() {
         let (db, _d) = test_db();
         let c = db.conn().unwrap();
-        let s = models::create_space(&c, models::SpacePatch { name: Some("GED".into()), ..Default::default() }).unwrap();
+        let s = models::create_space(
+            &c,
+            models::SpacePatch {
+                name: Some("GED".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
         let a = ExamAttempt {
             id: String::new(),
             space_id: s.id.clone(),
@@ -118,7 +135,17 @@ mod tests {
         };
         let saved = save(&c, &a).unwrap();
         assert!(!saved.id.is_empty() && saved.started_at > 0);
-        let done = save(&c, &ExamAttempt { score: Some(0.75), scaled: Some(160), completed_at: Some(saved.started_at + 1), time_used_ms: 900, ..saved.clone() }).unwrap();
+        let done = save(
+            &c,
+            &ExamAttempt {
+                score: Some(0.75),
+                scaled: Some(160),
+                completed_at: Some(saved.started_at + 1),
+                time_used_ms: 900,
+                ..saved.clone()
+            },
+        )
+        .unwrap();
         let all = list(&c, &s.id).unwrap();
         assert_eq!(all, vec![done.clone()]);
         assert_eq!(get(&c, &done.id).unwrap().unwrap().data["answers"][1], 2);

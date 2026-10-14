@@ -21,7 +21,10 @@ pub fn wants_music(state: Option<&FocusState>) -> bool {
 
 /// Tracker for a session that already exists at launch: nothing is started or stopped.
 pub fn initial(state: Option<&FocusState>) -> Tracker {
-    Tracker { playing: wants_music(state), started: state.map(|s| s.session_id.clone()) }
+    Tracker {
+        playing: wants_music(state),
+        started: state.map(|s| s.session_id.clone()),
+    }
 }
 
 /// Acts only when the desired state differs from the previous one.
@@ -34,7 +37,13 @@ pub fn next(prev: &Tracker, state: Option<&FocusState>) -> (Tracker, Option<Acti
         (true, false) => Some(Action::Pause),
         _ => None,
     };
-    (Tracker { playing: want, started }, action)
+    (
+        Tracker {
+            playing: want,
+            started,
+        },
+        action,
+    )
 }
 
 #[cfg(test)]
@@ -78,16 +87,28 @@ mod tests {
         let work = st("a", Phase::Work, false);
         assert_eq!(run(&mut t, Some(&work)), Some(Action::Start));
         assert_eq!(run(&mut t, Some(&work)), None, "ticks do nothing");
-        assert_eq!(run(&mut t, Some(&st("a", Phase::Work, true))), Some(Action::Pause));
+        assert_eq!(
+            run(&mut t, Some(&st("a", Phase::Work, true))),
+            Some(Action::Pause)
+        );
         assert_eq!(run(&mut t, Some(&work)), Some(Action::Resume));
-        assert_eq!(run(&mut t, Some(&st("a", Phase::Break, false))), Some(Action::Pause));
+        assert_eq!(
+            run(&mut t, Some(&st("a", Phase::Break, false))),
+            Some(Action::Pause)
+        );
         assert_eq!(run(&mut t, Some(&st("a", Phase::Break, true))), None);
         assert_eq!(run(&mut t, Some(&work)), Some(Action::Resume));
-        assert_eq!(run(&mut t, Some(&st("a", Phase::LongBreak, false))), Some(Action::Pause));
+        assert_eq!(
+            run(&mut t, Some(&st("a", Phase::LongBreak, false))),
+            Some(Action::Pause)
+        );
         assert_eq!(run(&mut t, Some(&work)), Some(Action::Resume));
         assert_eq!(run(&mut t, None), Some(Action::Pause));
         assert_eq!(run(&mut t, None), None);
-        assert_eq!(run(&mut t, Some(&st("b", Phase::Work, false))), Some(Action::Start));
+        assert_eq!(
+            run(&mut t, Some(&st("b", Phase::Work, false))),
+            Some(Action::Start)
+        );
     }
 
     #[test]
@@ -95,7 +116,10 @@ mod tests {
         let work = st("a", Phase::Work, false);
         let mut t = initial(Some(&work));
         assert_eq!(run(&mut t, Some(&work)), None);
-        assert_eq!(run(&mut t, Some(&st("a", Phase::Break, false))), Some(Action::Pause));
+        assert_eq!(
+            run(&mut t, Some(&st("a", Phase::Break, false))),
+            Some(Action::Pause)
+        );
 
         let mut t = initial(Some(&st("a", Phase::Break, false)));
         assert_eq!(run(&mut t, Some(&st("a", Phase::Break, false))), None);

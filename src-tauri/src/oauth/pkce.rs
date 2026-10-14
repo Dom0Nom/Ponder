@@ -35,7 +35,9 @@ mod tests {
     fn verifier_shape() {
         let v = verifier();
         assert_eq!(v.len(), 43);
-        assert!(v.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'));
+        assert!(v
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'));
         assert_ne!(v, verifier());
     }
 }

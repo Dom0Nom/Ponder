@@ -19,6 +19,7 @@ use crate::error::{invalid, AppError, AppResult};
 use crate::retrieval::{self, SearchHit};
 use embed::EmbedderService;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
@@ -34,6 +35,7 @@ pub struct Ingest {
     tx: Sender<Job>,
     pub embedder: Arc<EmbedderService>,
     emit: Emit,
+    reembed: Arc<AtomicBool>,
 }
 
 impl Ingest {
@@ -41,43 +43,75 @@ impl Ingest {
         let (tx, rx) = channel();
         let pending: Vec<String> = {
             let c = db.conn()?;
-            let mut st = c.prepare("SELECT id FROM sources WHERE status='processing' ORDER BY created_at")?;
+            let reading = models::get_setting(&c, worker::SETTING_READING)?.unwrap_or_default();
+            if let (Some(id), Some(tries)) = (reading["id"].as_str(), reading["tries"].as_u64()) {
+                if tries >= worker::MAX_READ_TRIES {
+                    c.execute(
+                    "UPDATE sources SET status='error', error=?2, progress=0, updated_at=?3 WHERE id=?1 AND status='processing'",
+                        rusqlite::params![id, "Ponder closed while reading this source.", crate::db::now_ms()],
+                    )?;
+                    models::set_setting(&c, worker::SETTING_READING, &serde_json::Value::Null)?;
+                }
+            }
+            let mut st =
+                c.prepare("SELECT id FROM sources WHERE status='processing' ORDER BY created_at")?;
             let rows = st.query_map([], |r| r.get(0))?;
             rows.collect::<Result<_, _>>()?
         };
         for id in pending {
-            let _ = tx.send(Job::Ingest { source_id: id, input: Input::Stored });
+            let _ = tx.send(Job::Ingest {
+                source_id: id,
+                input: Input::Stored,
+            });
         }
         let (index_model, has_chunks) = {
             let c = db.conn()?;
             let index_model = models::get_setting(&c, embed::SETTING_INDEX_MODEL)?
                 .and_then(|v| v.as_str().map(str::to_string))
                 .unwrap_or_else(|| embed::DEFAULT_MODEL.to_string());
-            let has_chunks: bool = c.query_row("SELECT EXISTS (SELECT 1 FROM chunks)", [], |r| r.get(0))?;
+            let has_chunks: bool =
+                c.query_row("SELECT EXISTS (SELECT 1 FROM chunks)", [], |r| r.get(0))?;
             (index_model, has_chunks)
         };
-        if has_chunks && index_model != embedder.model_id() {
-            // a switch that didn't finish before the app quit
+        // a switch that didn't finish before the app quit
+        let reembed = Arc::new(AtomicBool::new(
+            has_chunks && index_model != embedder.model_id(),
+        ));
+        if reembed.load(Ordering::SeqCst) {
             let _ = tx.send(Job::Reembed);
         } else if embedder.files_present() || has_chunks {
             let _ = tx.send(Job::Warmup);
         }
-        let w = Worker::new(db.clone(), embedder.clone(), emit.clone());
+        let w = Worker::new(db.clone(), embedder.clone(), emit.clone(), reembed.clone());
         std::thread::Builder::new()
             .name("ingest".into())
+            // the PDF parser recurses deeply on some files; 2 MB overflowed on real lecture slides
+            .stack_size(256 << 20)
             .spawn(move || w.run(rx))
             .map_err(AppError::Io)?;
-        Ok(Self { db, tx, embedder, emit })
+        Ok(Self {
+            db,
+            tx,
+            embedder,
+            emit,
+            reembed,
+        })
     }
 
     fn enqueue(&self, source_id: &str, input: Input) -> AppResult<()> {
         self.tx
-            .send(Job::Ingest { source_id: source_id.into(), input })
+            .send(Job::Ingest {
+                source_id: source_id.into(),
+                input,
+            })
             .map_err(|_| AppError::Other("The import worker stopped. Restart the app.".into()))
     }
 
     fn emit_source(&self, s: &models::Source) {
-        (self.emit)("source://updated", serde_json::to_value(s).unwrap_or_default());
+        (self.emit)(
+            "source://updated",
+            serde_json::to_value(s).unwrap_or_default(),
+        );
     }
 
     pub fn import_file(&self, space_id: &str, path: &str) -> AppResult<models::Source> {
@@ -86,7 +120,9 @@ impl Ingest {
             Some(ext) => invalid(format!("Unsupported file type: .{}", ext.to_lowercase())),
             None => invalid(format!(
                 "Unsupported file type: {}",
-                p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()
+                p.file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default()
             )),
         })?;
         let title = p
@@ -98,16 +134,29 @@ impl Ingest {
     }
 
     /// Imports a local file but records a different title and origin (e.g. a downloaded cloud file).
-    pub fn import_file_as(&self, space_id: &str, path: &str, title: &str, origin: &str) -> AppResult<models::Source> {
+    pub fn import_file_as(
+        &self,
+        space_id: &str,
+        path: &str,
+        title: &str,
+        origin: &str,
+    ) -> AppResult<models::Source> {
         let p = Path::new(path);
         let kind = extract::kind_for_path(p).ok_or_else(|| invalid("Unsupported file type"))?;
-        let title = if title.trim().is_empty() { "Untitled" } else { title.trim() };
+        let title = if title.trim().is_empty() {
+            "Untitled"
+        } else {
+            title.trim()
+        };
         let c = self.db.conn()?;
         models::get_space(&c, space_id)?;
         let src = models::insert_source(&c, space_id, title, kind, Some(origin))?;
         if origin != path {
             // the origin isn't a readable file (e.g. a cloud id): keep the downloaded copy for a retry after restart
-            c.execute("UPDATE sources SET local_path=?2 WHERE id=?1", rusqlite::params![src.id, path])?;
+            c.execute(
+                "UPDATE sources SET local_path=?2 WHERE id=?1",
+                rusqlite::params![src.id, path],
+            )?;
         }
         self.emit_source(&src);
         self.enqueue(&src.id, Input::File(PathBuf::from(path), kind.into()))?;
@@ -128,7 +177,11 @@ impl Ingest {
         if !TEXT_KINDS.contains(&kind) {
             return Err(invalid(format!("Unknown source type: {kind}")));
         }
-        let title = if title.trim().is_empty() { "Untitled" } else { title.trim() };
+        let title = if title.trim().is_empty() {
+            "Untitled"
+        } else {
+            title.trim()
+        };
         let text = extract::normalize_newlines(text);
         let mut c = self.db.conn()?;
         models::get_space(&c, space_id)?;
@@ -149,7 +202,11 @@ impl Ingest {
         if text.trim().is_empty() {
             return Err(invalid("The source is empty"));
         }
-        let title = if title.trim().is_empty() { "Untitled" } else { title.trim() };
+        let title = if title.trim().is_empty() {
+            "Untitled"
+        } else {
+            title.trim()
+        };
         let text = extract::normalize_newlines(text);
         let mut c = self.db.conn()?;
         models::get_source(&c, id)?;
@@ -158,7 +215,10 @@ impl Ingest {
             "INSERT OR REPLACE INTO source_texts (source_id, text, pages) VALUES (?1, ?2, NULL)",
             rusqlite::params![id, text],
         )?;
-        tx.execute("UPDATE sources SET title=?2, summary=NULL WHERE id=?1", rusqlite::params![id, title])?;
+        tx.execute(
+            "UPDATE sources SET title=?2, summary=NULL WHERE id=?1",
+            rusqlite::params![id, title],
+        )?;
         tx.commit()?;
         models::set_source_status(&c, id, "processing", None, 0.0)?;
         let src = models::get_source(&c, id)?;
@@ -169,14 +229,19 @@ impl Ingest {
 
     /// Switches the local embedding model and re-embeds every chunk with it in the background.
     pub fn set_embedding_model(&self, model_id: &str) -> AppResult<()> {
-        if !embed::MODELS.iter().any(|m| m.id == model_id) {
+        if !embed::is_known_model(model_id) {
             return Err(invalid(format!("Unknown embedding model: {model_id}")));
         }
-        models::set_setting(&self.db.conn()?, embed::SETTING_MODEL, &serde_json::json!(model_id))?;
+        models::set_setting(
+            &self.db.conn()?,
+            embed::SETTING_MODEL,
+            &serde_json::json!(model_id),
+        )?;
         if self.embedder.switch(model_id) {
-            self.tx
-                .send(Job::Reembed)
-                .map_err(|_| AppError::Other("The import worker stopped. Restart the app.".into()))?;
+            self.reembed.store(true, Ordering::SeqCst);
+            self.tx.send(Job::Reembed).map_err(|_| {
+                AppError::Other("The import worker stopped. Restart the app.".into())
+            })?;
         }
         Ok(())
     }
@@ -222,25 +287,40 @@ impl Ingest {
             _ => None,
         };
         let c = self.db.conn()?;
+        // vectors from a model the index doesn't hold yet (right after a switch) can't be compared
+        let qv = qv.filter(|v| retrieval::vec_dims(&c).is_ok_and(|d| d == v.len()));
         retrieval::search(&c, space_id, query, qv.as_deref(), limit, source_ids)
     }
 }
 
 impl Ingest {
     /// Blocking: embeds all topics in one batch when the model is ready. Call via spawn_blocking.
-    pub fn coverage(&self, space_id: &str, topics: &[retrieval::TopicInput]) -> AppResult<Vec<retrieval::TopicCoverage>> {
-        let vecs = match self.embedder.current() {
+    pub fn coverage(
+        &self,
+        space_id: &str,
+        topics: &[retrieval::TopicInput],
+    ) -> AppResult<Vec<retrieval::TopicCoverage>> {
+        let model = self.embedder.current();
+        let vecs = match &model {
             Some(m) if !topics.is_empty() => {
                 let texts: Vec<String> = topics.iter().map(|t| t.text.clone()).collect();
-                m.embed_queries(&texts).map_err(|e| log::warn!("topic embedding failed, keyword coverage only: {e}")).ok()
+                m.embed_queries(&texts)
+                    .map_err(|e| log::warn!("topic embedding failed, keyword coverage only: {e}"))
+                    .ok()
             }
             _ => None,
         };
         let c = self.db.conn()?;
-        let spec = embed::spec(self.embedder.model_id());
+        let vecs = vecs.filter(|v| {
+            v.first()
+                .is_some_and(|f| retrieval::vec_dims(&c).is_ok_and(|d| d == f.len()))
+        });
+        let map = model
+            .and_then(|m| m.sim_map())
+            .unwrap_or(embed::spec(&self.embedder.model_id()).sim_map);
         let mut out = retrieval::coverage(&c, space_id, topics, vecs.as_deref())?;
         for t in &mut out {
-            t.similarity = t.similarity.map(|s| spec.calibrated(s));
+            t.similarity = t.similarity.map(|s| embed::calibrated(map, s));
         }
         Ok(out)
     }
@@ -257,7 +337,31 @@ pub fn start(app: &AppHandle, db: Db, data_dir: PathBuf) {
         .and_then(|c| models::get_setting(&c, embed::SETTING_MODEL).ok().flatten())
         .and_then(|v| v.as_str().map(str::to_string))
         .unwrap_or_else(|| embed::DEFAULT_MODEL.to_string());
-    let embedder = Arc::new(EmbedderService::new(data_dir.join("models"), &model_id, emit.clone()));
+    use rusqlite::OptionalExtension;
+    let key_db = db.clone();
+    let remote_key: embed::RemoteKey = Arc::new(move || {
+        let c = key_db.conn()?;
+        let id: Option<String> = c
+            .query_row(
+                "SELECT id FROM providers WHERE type = 'openrouter' ORDER BY created_at LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .optional()?;
+        let missing =
+            || invalid("Add an OpenRouter key in Settings → Models to use this search model.");
+        let id = id.ok_or_else(missing)?;
+        crate::secrets::default_store()
+            .get(&id)?
+            .filter(|k| !k.trim().is_empty())
+            .ok_or_else(missing)
+    });
+    let embedder = Arc::new(EmbedderService::new(
+        data_dir.join("models"),
+        &model_id,
+        emit.clone(),
+        remote_key,
+    ));
     match Ingest::spawn(db, embedder, emit) {
         Ok(ingest) => {
             app.manage(ingest);
@@ -275,7 +379,9 @@ pub mod tests {
 
     pub type Events = Arc<Mutex<Vec<(String, serde_json::Value)>>>;
 
-    pub fn setup(embedder: Option<Arc<dyn embed::Embedder>>) -> (Ingest, Db, tempfile::TempDir, Events, String) {
+    pub fn setup(
+        embedder: Option<Arc<dyn embed::Embedder>>,
+    ) -> (Ingest, Db, tempfile::TempDir, Events, String) {
         let (db, dir) = crate::db::test_db();
         let events: Events = Arc::new(Mutex::new(Vec::new()));
         let ev = events.clone();
@@ -286,7 +392,10 @@ pub mod tests {
         });
         let space = models::create_space(
             &db.conn().unwrap(),
-            models::SpacePatch { name: Some("S".into()), ..Default::default() },
+            models::SpacePatch {
+                name: Some("S".into()),
+                ..Default::default()
+            },
         )
         .unwrap()
         .id;
@@ -301,7 +410,10 @@ pub mod tests {
             if s.status == status {
                 return s;
             }
-            assert!(t.elapsed() < Duration::from_secs(20), "timed out, source is {s:?}");
+            assert!(
+                t.elapsed() < Duration::from_secs(20),
+                "timed out, source is {s:?}"
+            );
             std::thread::sleep(Duration::from_millis(20));
         }
     }
@@ -320,7 +432,15 @@ pub mod tests {
     #[test]
     fn switching_the_embedding_model_drops_old_vectors() {
         let (ing, db, _d, events, space) = setup(Some(Arc::new(FakeEmbedder)));
-        let src = ing.import_text(&space, "Notes", "Photosynthese im Blatt.\n\nLicht wird zu Zucker.", "text", None).unwrap();
+        let src = ing
+            .import_text(
+                &space,
+                "Notes",
+                "Photosynthese im Blatt.\n\nLicht wird zu Zucker.",
+                "text",
+                None,
+            )
+            .unwrap();
         let done = wait_status(&db, &src.id, "ready");
         assert_eq!(vec_count(&db, &src.id), done.chunk_count);
         assert!(ing.set_embedding_model("nope").is_err());
@@ -332,12 +452,96 @@ pub mod tests {
             std::thread::sleep(Duration::from_millis(20));
         }
         let c = db.conn().unwrap();
-        assert_eq!(models::get_setting(&c, embed::SETTING_MODEL).unwrap(), Some(serde_json::json!("multilingual-e5-small")));
-        assert_eq!(models::get_setting(&c, embed::SETTING_INDEX_MODEL).unwrap(), Some(serde_json::json!("multilingual-e5-small")));
+        assert_eq!(
+            models::get_setting(&c, embed::SETTING_MODEL).unwrap(),
+            Some(serde_json::json!("multilingual-e5-small"))
+        );
+        assert_eq!(
+            models::get_setting(&c, embed::SETTING_INDEX_MODEL).unwrap(),
+            Some(serde_json::json!("multilingual-e5-small"))
+        );
         assert_eq!(ing.embedder.status().model, "multilingual-e5-small");
         // no model available in tests: search falls back to keywords instead of failing
-        assert!(ing.search(&space, "Photosynthese", 4, None).unwrap()[0].text.contains("Photosynthese"));
-        assert!(events.lock().unwrap().iter().any(|(e, p)| e == "embedder://status" && p["model"] == "multilingual-e5-small"));
+        assert!(ing.search(&space, "Photosynthese", 4, None).unwrap()[0]
+            .text
+            .contains("Photosynthese"));
+        assert!(events
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|(e, p)| e == "embedder://status" && p["model"] == "multilingual-e5-small"));
+    }
+
+    #[test]
+    fn a_switch_drops_old_vectors_before_imports_queued_earlier() {
+        let (ing, db, _d, _e, space) = setup(Some(Arc::new(FakeEmbedder)));
+        let a = ing
+            .import_text(&space, "A", "Zellen und Licht.", "text", None)
+            .unwrap();
+        wait_status(&db, &a.id, "ready");
+        ing.reembed.store(true, Ordering::SeqCst);
+        let b = ing
+            .import_text(&space, "B", "Kräfte und Energie.", "text", None)
+            .unwrap();
+        let done = wait_status(&db, &b.id, "ready");
+        assert!(!ing.reembed.load(Ordering::SeqCst));
+        let c = db.conn().unwrap();
+        assert_eq!(
+            models::get_setting(&c, embed::SETTING_INDEX_MODEL).unwrap(),
+            Some(serde_json::json!(embed::DEFAULT_MODEL))
+        );
+        assert_eq!(vec_count(&db, &b.id), done.chunk_count);
+    }
+
+    #[test]
+    fn a_source_the_app_died_on_twice_is_failed_at_startup() {
+        let (db, _d) = crate::db::test_db();
+        let c = db.conn().unwrap();
+        let space = models::create_space(
+            &c,
+            models::SpacePatch {
+                name: Some("S".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap()
+        .id;
+        let stored = |title: &str| {
+            let s = models::insert_source(&c, &space, title, "text", None).unwrap();
+            c.execute(
+                "INSERT INTO source_texts (source_id, text) VALUES (?1, 'Zellen und Licht.')",
+                [&s.id],
+            )
+            .unwrap();
+            s.id
+        };
+        let (crashed, quit) = (stored("crashed"), stored("quit"));
+        let emit: Emit = Arc::new(|_: &str, _| {});
+        let svc = Arc::new(EmbedderService::ready(Arc::new(FakeEmbedder), emit.clone()));
+
+        let reading = |id: &str, tries: u64| serde_json::json!({ "id": id, "tries": tries });
+        models::set_setting(
+            &c,
+            worker::SETTING_READING,
+            &reading(&crashed, worker::MAX_READ_TRIES),
+        )
+        .unwrap();
+        let _a = Ingest::spawn(db.clone(), svc.clone(), emit.clone()).unwrap();
+        let failed = wait_status(&db, &crashed, "error");
+        assert_eq!(
+            failed.error.as_deref(),
+            Some("Ponder closed while reading this source.")
+        );
+        wait_status(&db, &quit, "ready");
+
+        models::set_source_status(&c, &quit, "processing", None, 0.0).unwrap();
+        models::set_setting(&c, worker::SETTING_READING, &reading(&quit, 1)).unwrap();
+        let _b = Ingest::spawn(db.clone(), svc, emit).unwrap();
+        wait_status(&db, &quit, "ready");
+        assert_eq!(
+            models::get_setting(&c, worker::SETTING_READING).unwrap(),
+            None
+        );
     }
 
     #[test]
@@ -345,9 +549,13 @@ pub mod tests {
         let (ing, db, _d, events, space) = setup(Some(Arc::new(FakeEmbedder)));
         let mut text = String::from("# Zellen\n\nChlorophyll absorbiert Licht 🌿.\n\n");
         for i in 0..60 {
-            text.push_str(&format!("Absatz {i} über Photosynthese und Grüße aus dem Blatt.\r\n\r\n"));
+            text.push_str(&format!(
+                "Absatz {i} über Photosynthese und Grüße aus dem Blatt.\r\n\r\n"
+            ));
         }
-        let src = ing.import_text(&space, "Bio notes", &text, "text", Some("paste")).unwrap();
+        let src = ing
+            .import_text(&space, "Bio notes", &text, "text", Some("paste"))
+            .unwrap();
         assert_eq!(src.status, "processing");
         let done = wait_status(&db, &src.id, "ready");
         assert!(done.chunk_count >= 3);
@@ -358,9 +566,15 @@ pub mod tests {
         assert_eq!(vec_count(&db, &src.id), done.chunk_count);
 
         let c = db.conn().unwrap();
-        let mut st = c.prepare("SELECT text, start_offset, end_offset, heading FROM chunks WHERE source_id=?1").unwrap();
+        let mut st = c
+            .prepare(
+                "SELECT text, start_offset, end_offset, heading FROM chunks WHERE source_id=?1",
+            )
+            .unwrap();
         let rows: Vec<(String, i64, i64, Option<String>)> = st
-            .query_map([&src.id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))
+            .query_map([&src.id], |r| {
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
+            })
             .unwrap()
             .map(Result::unwrap)
             .collect();
@@ -373,8 +587,11 @@ pub mod tests {
         assert!(hits[0].text.contains("Chlorophyll"));
 
         let ev = events.lock().unwrap();
-        let updates: Vec<&serde_json::Value> =
-            ev.iter().filter(|(e, _)| e == "source://updated").map(|(_, p)| p).collect();
+        let updates: Vec<&serde_json::Value> = ev
+            .iter()
+            .filter(|(e, _)| e == "source://updated")
+            .map(|(_, p)| p)
+            .collect();
         assert_eq!(updates.first().unwrap()["status"], "processing");
         assert_eq!(updates.last().unwrap()["status"], "ready");
         assert_eq!(updates.last().unwrap()["spaceId"], space.as_str());
@@ -384,7 +601,13 @@ pub mod tests {
         ing.reindex(&src.id).unwrap();
         let again = wait_status(&db, &src.id, "ready");
         assert_eq!(again.chunk_count, done.chunk_count);
-        let n: i64 = c.query_row("SELECT count(*) FROM chunks WHERE source_id=?1", [&src.id], |r| r.get(0)).unwrap();
+        let n: i64 = c
+            .query_row(
+                "SELECT count(*) FROM chunks WHERE source_id=?1",
+                [&src.id],
+                |r| r.get(0),
+            )
+            .unwrap();
         assert_eq!(n, done.chunk_count);
         assert_eq!(vec_count(&db, &src.id), done.chunk_count);
     }
@@ -400,7 +623,10 @@ pub mod tests {
         let docx = dir.path().join("Plant Biology.docx");
         std::fs::write(&docx, extract::tests::sample_docx()).unwrap();
         let s = ing.import_file(&space, docx.to_str().unwrap()).unwrap();
-        assert_eq!((s.title.as_str(), s.kind.as_str()), ("Plant Biology", "docx"));
+        assert_eq!(
+            (s.title.as_str(), s.kind.as_str()),
+            ("Plant Biology", "docx")
+        );
         let s = wait_status(&db, &s.id, "ready");
         assert!(s.chunk_count >= 1);
 
@@ -437,7 +663,15 @@ pub mod tests {
     #[test]
     fn without_model_sources_are_ready_and_fts_works() {
         let (ing, db, _d, _events, space) = setup(None);
-        let src = ing.import_text(&space, "t", "Mitochondria are the powerhouse.", "markdown", None).unwrap();
+        let src = ing
+            .import_text(
+                &space,
+                "t",
+                "Mitochondria are the powerhouse.",
+                "markdown",
+                None,
+            )
+            .unwrap();
         let s = wait_status(&db, &src.id, "ready");
         assert_eq!(vec_count(&db, &src.id), 0);
         assert_eq!(s.chunk_count, 1);
@@ -450,11 +684,23 @@ pub mod tests {
     fn processing_sources_resume_on_startup() {
         let (db, _d) = crate::db::test_db();
         let c = db.conn().unwrap();
-        let space =
-            models::create_space(&c, models::SpacePatch { name: Some("S".into()), ..Default::default() }).unwrap().id;
+        let space = models::create_space(
+            &c,
+            models::SpacePatch {
+                name: Some("S".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap()
+        .id;
         let src = models::insert_source(&c, &space, "Half done", "text", None).unwrap();
-        c.execute("INSERT INTO source_texts (source_id, text) VALUES (?1, 'Resumed text body.')", [&src.id]).unwrap();
-        let orphan = models::insert_source(&c, &space, "No text", "url", Some("https://x")).unwrap();
+        c.execute(
+            "INSERT INTO source_texts (source_id, text) VALUES (?1, 'Resumed text body.')",
+            [&src.id],
+        )
+        .unwrap();
+        let orphan =
+            models::insert_source(&c, &space, "No text", "url", Some("https://x")).unwrap();
         let emit: Emit = Arc::new(|_, _| {});
         let svc = Arc::new(EmbedderService::ready(Arc::new(FakeEmbedder), emit.clone()));
         let _ing = Ingest::spawn(db.clone(), svc, emit).unwrap();
@@ -470,15 +716,36 @@ pub mod tests {
         std::fs::write(&file, "# Cells\n\nMitochondria make ATP.").unwrap();
         let space = {
             let c = db.conn().unwrap();
-            models::create_space(&c, models::SpacePatch { name: Some("S".into()), ..Default::default() }).unwrap().id
+            models::create_space(
+                &c,
+                models::SpacePatch {
+                    name: Some("S".into()),
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+            .id
         };
         let emit: Emit = Arc::new(|_, _| {});
         // a worker that never runs stands in for the app quitting before the job started
         let (tx, _rx) = channel();
         let svc = Arc::new(EmbedderService::ready(Arc::new(FakeEmbedder), emit.clone()));
-        let dead = Ingest { db: db.clone(), tx, embedder: svc.clone(), emit: emit.clone() };
-        let src = dead.import_file_as(&space, &file.to_string_lossy(), "Cells", "gdrive://abc").unwrap();
-        assert_eq!(models::get_source(&db.conn().unwrap(), &src.id).unwrap().status, "processing");
+        let dead = Ingest {
+            db: db.clone(),
+            tx,
+            embedder: svc.clone(),
+            emit: emit.clone(),
+            reembed: Default::default(),
+        };
+        let src = dead
+            .import_file_as(&space, &file.to_string_lossy(), "Cells", "gdrive://abc")
+            .unwrap();
+        assert_eq!(
+            models::get_source(&db.conn().unwrap(), &src.id)
+                .unwrap()
+                .status,
+            "processing"
+        );
 
         let _ing = Ingest::spawn(db.clone(), svc, emit).unwrap();
         let s = wait_status(&db, &src.id, "ready");

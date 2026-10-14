@@ -8,7 +8,17 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 
 const KINDS: &[&str] = &["mcq", "numeric", "short"];
-pub const ERROR_TYPES: &[&str] = &["concept", "procedure", "arithmetic", "sign", "misread", "units", "careless", "vocabulary", "other"];
+pub const ERROR_TYPES: &[&str] = &[
+    "concept",
+    "procedure",
+    "arithmetic",
+    "sign",
+    "misread",
+    "units",
+    "careless",
+    "vocabulary",
+    "other",
+];
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -63,7 +73,13 @@ pub struct ErrorPattern {
 }
 
 fn ability_from_row(r: &Row) -> rusqlite::Result<Ability> {
-    Ok(Ability { topic_key: r.get(0)?, topic_title: r.get(1)?, theta: r.get(2)?, n: r.get(3)?, updated_at: r.get(4)? })
+    Ok(Ability {
+        topic_key: r.get(0)?,
+        topic_title: r.get(1)?,
+        theta: r.get(2)?,
+        n: r.get(3)?,
+        updated_at: r.get(4)?,
+    })
 }
 
 pub fn list_abilities(c: &Connection, space_id: &str) -> AppResult<Vec<Ability>> {
@@ -91,7 +107,11 @@ pub fn add_item(c: &Connection, space_id: &str, item: &PracticeItem) -> AppResul
     if item.kind == "mcq" && item.options.as_ref().map(|o| o.len() < 2).unwrap_or(true) {
         return Err(invalid("A multiple-choice item needs options"));
     }
-    let hint = item.hint.as_ref().map(|h| h.trim().to_string()).filter(|h| !h.is_empty());
+    let hint = item
+        .hint
+        .as_ref()
+        .map(|h| h.trim().to_string())
+        .filter(|h| !h.is_empty());
     let id = new_id();
     let now = now_ms();
     c.execute(
@@ -112,11 +132,21 @@ pub fn add_item(c: &Connection, space_id: &str, item: &PracticeItem) -> AppResul
             now
         ],
     )?;
-    Ok(PracticeItem { id, hint, created_at: now, ..item.clone() })
+    Ok(PracticeItem {
+        id,
+        hint,
+        created_at: now,
+        ..item.clone()
+    })
 }
 
 /// Recent questions in a topic, newest first, so new items don't repeat them.
-pub fn recent_questions(c: &Connection, space_id: &str, topic_key: &str, limit: i64) -> AppResult<Vec<String>> {
+pub fn recent_questions(
+    c: &Connection,
+    space_id: &str,
+    topic_key: &str,
+    limit: i64,
+) -> AppResult<Vec<String>> {
     let mut st = c.prepare("SELECT question FROM practice_items WHERE space_id=?1 AND topic_key=?2 ORDER BY created_at DESC LIMIT ?3")?;
     let rows = st.query_map(params![space_id, topic_key, limit], |r| r.get(0))?;
     Ok(rows.collect::<Result<_, _>>()?)
@@ -152,7 +182,10 @@ pub fn set_mistake_error_type(c: &Connection, id: &str, error_type: &str) -> App
     if !ERROR_TYPES.contains(&error_type) {
         return Err(invalid(format!("Unknown error type: {error_type}")));
     }
-    c.execute("UPDATE mistakes SET error_type=?2 WHERE id=?1", params![id, error_type])?;
+    c.execute(
+        "UPDATE mistakes SET error_type=?2 WHERE id=?1",
+        params![id, error_type],
+    )?;
     Ok(())
 }
 
@@ -171,7 +204,12 @@ pub fn error_patterns(c: &Connection, space_id: Option<&str>) -> AppResult<Vec<E
     )?;
     let rows = st.query_map([space_id], |r| {
         let topics: Option<String> = r.get(3)?;
-        Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?, r.get::<_, i64>(2)?, topics.unwrap_or_default()))
+        Ok((
+            r.get::<_, String>(0)?,
+            r.get::<_, i64>(1)?,
+            r.get::<_, i64>(2)?,
+            topics.unwrap_or_default(),
+        ))
     })?;
     let mut out = Vec::new();
     for row in rows {
@@ -184,7 +222,12 @@ pub fn error_patterns(c: &Connection, space_id: Option<&str>) -> AppResult<Vec<E
             }
         }
         tally.sort_by_key(|t| std::cmp::Reverse(t.1));
-        out.push(ErrorPattern { error_type, count, last_at, topics: tally.into_iter().take(3).map(|(t, _)| t).collect() });
+        out.push(ErrorPattern {
+            error_type,
+            count,
+            last_at,
+            topics: tally.into_iter().take(3).map(|(t, _)| t).collect(),
+        });
     }
     Ok(out)
 }
@@ -192,37 +235,69 @@ pub fn error_patterns(c: &Connection, space_id: Option<&str>) -> AppResult<Vec<E
 // ---------- commands ----------
 
 #[tauri::command]
-pub async fn abilities_list(state: State<'_, AppState>, space_id: String) -> AppResult<Vec<Ability>> {
+pub async fn abilities_list(
+    state: State<'_, AppState>,
+    space_id: String,
+) -> AppResult<Vec<Ability>> {
     list_abilities(&state.db.conn()?, &space_id)
 }
 
 #[tauri::command]
-pub async fn ability_get(state: State<'_, AppState>, space_id: String, topic_key: String) -> AppResult<Option<Ability>> {
+pub async fn ability_get(
+    state: State<'_, AppState>,
+    space_id: String,
+    topic_key: String,
+) -> AppResult<Option<Ability>> {
     get_ability(&state.db.conn()?, &space_id, &topic_key)
 }
 
 #[tauri::command]
-pub async fn practice_item_add(state: State<'_, AppState>, space_id: String, item: PracticeItem) -> AppResult<PracticeItem> {
+pub async fn practice_item_add(
+    state: State<'_, AppState>,
+    space_id: String,
+    item: PracticeItem,
+) -> AppResult<PracticeItem> {
     add_item(&state.db.conn()?, &space_id, &item)
 }
 
 #[tauri::command]
-pub async fn practice_recent(state: State<'_, AppState>, space_id: String, topic_key: String, limit: Option<i64>) -> AppResult<Vec<String>> {
-    recent_questions(&state.db.conn()?, &space_id, &topic_key, limit.unwrap_or(15))
+pub async fn practice_recent(
+    state: State<'_, AppState>,
+    space_id: String,
+    topic_key: String,
+    limit: Option<i64>,
+) -> AppResult<Vec<String>> {
+    recent_questions(
+        &state.db.conn()?,
+        &space_id,
+        &topic_key,
+        limit.unwrap_or(15),
+    )
 }
 
 #[tauri::command]
-pub async fn practice_attempt(state: State<'_, AppState>, space_id: String, attempt: NewAttempt) -> AppResult<Ability> {
+pub async fn practice_attempt(
+    state: State<'_, AppState>,
+    space_id: String,
+    attempt: NewAttempt,
+) -> AppResult<Ability> {
     record_attempt(&state.db.conn()?, &space_id, &attempt)
 }
 
 #[tauri::command]
-pub async fn mistake_set_error_type(state: State<'_, AppState>, id: String, error_type: String) -> AppResult<()> {
+pub async fn mistake_set_error_type(
+    state: State<'_, AppState>,
+    id: String,
+    error_type: String,
+) -> AppResult<()> {
     set_mistake_error_type(&state.db.conn()?, &id, &error_type)
 }
 
 #[tauri::command]
-pub async fn error_patterns_list(state: State<'_, AppState>, space_id: Option<String>) -> AppResult<Vec<ErrorPattern>> {
+pub async fn error_patterns_list(
+    state: State<'_, AppState>,
+    space_id: Option<String>,
+) -> AppResult<Vec<ErrorPattern>> {
     error_patterns(&state.db.conn()?, space_id.as_deref())
 }
 
@@ -237,7 +312,11 @@ mod tests {
             topic_key: "ged.math.percents".into(),
             kind: kind.into(),
             question: "15% of 80?".into(),
-            options: if kind == "mcq" { Some(vec!["8".into(), "12".into()]) } else { None },
+            options: if kind == "mcq" {
+                Some(vec!["8".into(), "12".into()])
+            } else {
+                None
+            },
             answer: "12".into(),
             solution: "0.15 × 80 = 12".into(),
             difficulty: 9.0,
@@ -251,16 +330,50 @@ mod tests {
     fn items_attempts_abilities_and_patterns() {
         let (db, _d) = test_db();
         let c = db.conn().unwrap();
-        let sp = models::create_space(&c, models::SpacePatch { name: Some("GED".into()), ..Default::default() }).unwrap();
-        assert!(add_item(&c, &sp.id, &PracticeItem { options: None, ..item("mcq") }).is_err());
+        let sp = models::create_space(
+            &c,
+            models::SpacePatch {
+                name: Some("GED".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(add_item(
+            &c,
+            &sp.id,
+            &PracticeItem {
+                options: None,
+                ..item("mcq")
+            }
+        )
+        .is_err());
         assert!(add_item(&c, &sp.id, &item("essay")).is_err());
         let it = add_item(&c, &sp.id, &item("numeric")).unwrap();
         assert!(it.hint.is_none());
-        let hinted = add_item(&c, &sp.id, &PracticeItem { hint: Some("  Convert 15% to 0.15  ".into()), ..item("numeric") }).unwrap();
+        let hinted = add_item(
+            &c,
+            &sp.id,
+            &PracticeItem {
+                hint: Some("  Convert 15% to 0.15  ".into()),
+                ..item("numeric")
+            },
+        )
+        .unwrap();
         assert_eq!(hinted.hint.as_deref(), Some("Convert 15% to 0.15"));
-        let stored: Option<String> = c.query_row("SELECT hint FROM practice_items WHERE id=?1", [&hinted.id], |r| r.get(0)).unwrap();
+        let stored: Option<String> = c
+            .query_row(
+                "SELECT hint FROM practice_items WHERE id=?1",
+                [&hinted.id],
+                |r| r.get(0),
+            )
+            .unwrap();
         assert_eq!(stored.as_deref(), Some("Convert 15% to 0.15"));
-        assert_eq!(recent_questions(&c, &sp.id, "ged.math.percents", 5).unwrap().len(), 2);
+        assert_eq!(
+            recent_questions(&c, &sp.id, "ged.math.percents", 5)
+                .unwrap()
+                .len(),
+            2
+        );
 
         let attempt = |correct: bool, before: f64, after: f64, et: Option<&str>| NewAttempt {
             item_id: it.id.clone(),
@@ -273,7 +386,8 @@ mod tests {
             error_type: et.map(Into::into),
         };
         assert!(record_attempt(&c, &sp.id, &attempt(false, 0.0, -0.5, Some("rage"))).is_err());
-        let a1 = record_attempt(&c, &sp.id, &attempt(false, 0.0, -0.5, Some("arithmetic"))).unwrap();
+        let a1 =
+            record_attempt(&c, &sp.id, &attempt(false, 0.0, -0.5, Some("arithmetic"))).unwrap();
         assert_eq!((a1.n, a1.theta), (1, -0.5));
         let a2 = record_attempt(&c, &sp.id, &attempt(true, -0.5, -0.1, None)).unwrap();
         assert_eq!(a2.n, 2);

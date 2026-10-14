@@ -7,7 +7,9 @@ use base64::Engine;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter, LogicalSize, Manager, Runtime, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{
+    AppHandle, Emitter, LogicalSize, Manager, Runtime, State, WebviewUrl, WebviewWindowBuilder,
+};
 use tauri_plugin_global_shortcut::Shortcut;
 
 pub const WINDOW_LABEL: &str = "ask";
@@ -54,8 +56,21 @@ impl AskState {
 }
 
 fn prefs(db: &Db) -> (bool, String, bool, String) {
-    let Ok(c) = db.conn() else { return (true, DEFAULT_SHORTCUT.into(), false, DEFAULT_SNIP_SHORTCUT.into()) };
-    let flag = |key: &str, default: bool| models::get_setting(&c, key).ok().flatten().and_then(|v| v.as_bool()).unwrap_or(default);
+    let Ok(c) = db.conn() else {
+        return (
+            true,
+            DEFAULT_SHORTCUT.into(),
+            false,
+            DEFAULT_SNIP_SHORTCUT.into(),
+        );
+    };
+    let flag = |key: &str, default: bool| {
+        models::get_setting(&c, key)
+            .ok()
+            .flatten()
+            .and_then(|v| v.as_bool())
+            .unwrap_or(default)
+    };
     let accel = |key: &str, default: &str| {
         models::get_setting(&c, key)
             .ok()
@@ -108,8 +123,20 @@ fn release<R: Runtime>(app: &AppHandle<R>, st: &AskStatus) {
 /// Registers on a worker thread (registration waits on the main thread, which would deadlock during setup).
 pub fn init(app: &AppHandle, db: &Db) {
     let (enabled, shortcut, snip_enabled, snip_shortcut) = prefs(db);
-    let mut st = AskStatus { enabled, shortcut, registered: false, error: None, snip_enabled, snip_shortcut, snip_registered: false, snip_error: None };
-    app.manage(AskState(Mutex::new(Inner { status: st.clone(), pending_snip: false })));
+    let mut st = AskStatus {
+        enabled,
+        shortcut,
+        registered: false,
+        error: None,
+        snip_enabled,
+        snip_shortcut,
+        snip_registered: false,
+        snip_error: None,
+    };
+    app.manage(AskState(Mutex::new(Inner {
+        status: st.clone(),
+        pending_snip: false,
+    })));
     let app = app.clone();
     std::thread::spawn(move || {
         if let Some(cap) = crate::capture::current_shortcut(&app) {
@@ -131,7 +158,9 @@ pub fn init(app: &AppHandle, db: &Db) {
 
 /// Called for every global hotkey press; true when the key belonged to the overlay.
 pub fn handle_hotkey<R: Runtime>(app: &AppHandle<R>, pressed: &Shortcut) -> bool {
-    let Some(state) = app.try_state::<AskState>() else { return false };
+    let Some(state) = app.try_state::<AskState>() else {
+        return false;
+    };
     let st = state.status();
     if st.registered && parse_shortcut(&st.shortcut).is_ok_and(|s| s == *pressed) {
         match app.get_webview_window(WINDOW_LABEL) {
@@ -198,14 +227,25 @@ pub async fn ask_configure(
     }
     if let Some(cap) = crate::capture::current_shortcut(&app) {
         if (enabled && same(&cap, &shortcut)) || (snip_enabled && same(&cap, &snip_shortcut)) {
-            return Err(invalid("That shortcut is already used by quick capture. Choose a different one."));
+            return Err(invalid(
+                "That shortcut is already used by quick capture. Choose a different one.",
+            ));
         }
     }
     let prev = ask.status();
     let db = state.db.clone();
     let next = tauri::async_runtime::spawn_blocking(move || -> AppResult<AskStatus> {
         release(&app, &prev);
-        let mut next = AskStatus { enabled, shortcut, registered: false, error: None, snip_enabled, snip_shortcut, snip_registered: false, snip_error: None };
+        let mut next = AskStatus {
+            enabled,
+            shortcut,
+            registered: false,
+            error: None,
+            snip_enabled,
+            snip_shortcut,
+            snip_registered: false,
+            snip_error: None,
+        };
         apply(&app, &mut next);
         if let Some(e) = next.error.clone().or_else(|| next.snip_error.clone()) {
             release(&app, &next);
@@ -215,9 +255,17 @@ pub async fn ask_configure(
         }
         let c = db.conn()?;
         models::set_setting(&c, KEY_ENABLED, &serde_json::Value::Bool(enabled))?;
-        models::set_setting(&c, KEY_SHORTCUT, &serde_json::Value::String(next.shortcut.clone()))?;
+        models::set_setting(
+            &c,
+            KEY_SHORTCUT,
+            &serde_json::Value::String(next.shortcut.clone()),
+        )?;
         models::set_setting(&c, KEY_SNIP_ENABLED, &serde_json::Value::Bool(snip_enabled))?;
-        models::set_setting(&c, KEY_SNIP_SHORTCUT, &serde_json::Value::String(next.snip_shortcut.clone()))?;
+        models::set_setting(
+            &c,
+            KEY_SNIP_SHORTCUT,
+            &serde_json::Value::String(next.snip_shortcut.clone()),
+        )?;
         Ok(next)
     })
     .await
@@ -251,7 +299,8 @@ pub fn clamp_height(h: f64) -> f64 {
 #[tauri::command]
 pub async fn ask_set_height(app: AppHandle, height: f64) -> AppResult<()> {
     if let Some(w) = app.get_webview_window(WINDOW_LABEL) {
-        w.set_size(LogicalSize::new(WIDTH, clamp_height(height))).map_err(|e| AppError::Other(e.to_string()))?;
+        w.set_size(LogicalSize::new(WIDTH, clamp_height(height)))
+            .map_err(|e| AppError::Other(e.to_string()))?;
     }
     Ok(())
 }
@@ -274,7 +323,8 @@ pub async fn ask_open_in_main(app: AppHandle, request: OpenRequest) -> AppResult
         let _ = w.unminimize();
         let _ = w.set_focus();
     }
-    app.emit_to("main", "ask://navigate", request).map_err(|e| AppError::Other(e.to_string()))?;
+    app.emit_to("main", "ask://navigate", request)
+        .map_err(|e| AppError::Other(e.to_string()))?;
     if let Some(w) = app.get_webview_window(WINDOW_LABEL) {
         let _ = w.close();
     }
@@ -310,19 +360,26 @@ pub fn take_snip(path: &Path) -> AppResult<Option<Vec<u8>>> {
 #[cfg(target_os = "macos")]
 fn capture_region(path: &Path) -> AppResult<()> {
     // exits without a file when the user presses Esc, so the exit status isn't an error signal
-    std::process::Command::new("/usr/sbin/screencapture").args(["-i", "-x"]).arg(path).status()?;
+    std::process::Command::new("/usr/sbin/screencapture")
+        .args(["-i", "-x"])
+        .arg(path)
+        .status()?;
     Ok(())
 }
 
 #[cfg(not(target_os = "macos"))]
 fn capture_region(_path: &Path) -> AppResult<()> {
-    Err(AppError::Other("Screen snip isn't supported on this system yet.".into()))
+    Err(AppError::Other(
+        "Screen snip isn't supported on this system yet.".into(),
+    ))
 }
 
 /// Interactive region select. The overlay hides while the user selects, then comes back.
 #[tauri::command]
 pub async fn snip_screen(app: AppHandle) -> AppResult<Option<SnipImage>> {
-    let overlay = app.get_webview_window(WINDOW_LABEL).filter(|w| w.is_visible().unwrap_or(false));
+    let overlay = app
+        .get_webview_window(WINDOW_LABEL)
+        .filter(|w| w.is_visible().unwrap_or(false));
     if let Some(w) = &overlay {
         let _ = w.hide();
     }
@@ -339,7 +396,10 @@ pub async fn snip_screen(app: AppHandle) -> AppResult<Option<SnipImage>> {
         let _ = w.show();
         let _ = w.set_focus();
     }
-    Ok(res??.map(|b| SnipImage { media_type: "image/png".into(), data: base64::engine::general_purpose::STANDARD.encode(b) }))
+    Ok(res??.map(|b| SnipImage {
+        media_type: "image/png".into(),
+        data: base64::engine::general_purpose::STANDARD.encode(b),
+    }))
 }
 
 #[cfg(test)]
@@ -352,7 +412,10 @@ mod tests {
         assert!(parse_shortcut(DEFAULT_SNIP_SHORTCUT).is_ok());
         assert!(!same(DEFAULT_SHORTCUT, DEFAULT_SNIP_SHORTCUT));
         assert!(!same(DEFAULT_SHORTCUT, crate::capture::DEFAULT_SHORTCUT));
-        assert!(!same(DEFAULT_SNIP_SHORTCUT, crate::capture::DEFAULT_SHORTCUT));
+        assert!(!same(
+            DEFAULT_SNIP_SHORTCUT,
+            crate::capture::DEFAULT_SHORTCUT
+        ));
     }
 
     #[test]
@@ -365,13 +428,29 @@ mod tests {
     #[test]
     fn prefs_default_and_ignore_invalid_saved_values() {
         let (db, _d) = crate::db::test_db();
-        assert_eq!(prefs(&db), (true, DEFAULT_SHORTCUT.into(), false, DEFAULT_SNIP_SHORTCUT.into()));
+        assert_eq!(
+            prefs(&db),
+            (
+                true,
+                DEFAULT_SHORTCUT.into(),
+                false,
+                DEFAULT_SNIP_SHORTCUT.into()
+            )
+        );
         let c = db.conn().unwrap();
         models::set_setting(&c, KEY_ENABLED, &serde_json::json!(false)).unwrap();
         models::set_setting(&c, KEY_SNIP_ENABLED, &serde_json::json!(true)).unwrap();
         models::set_setting(&c, KEY_SHORTCUT, &serde_json::json!("Control+Alt+K")).unwrap();
         models::set_setting(&c, KEY_SNIP_SHORTCUT, &serde_json::json!("K")).unwrap();
-        assert_eq!(prefs(&db), (false, "Control+Alt+K".into(), true, DEFAULT_SNIP_SHORTCUT.into()));
+        assert_eq!(
+            prefs(&db),
+            (
+                false,
+                "Control+Alt+K".into(),
+                true,
+                DEFAULT_SNIP_SHORTCUT.into()
+            )
+        );
     }
 
     #[test]
