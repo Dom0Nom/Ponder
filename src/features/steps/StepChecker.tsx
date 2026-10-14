@@ -97,7 +97,7 @@ function FirstWrong({ verdict, note }: { verdict: StepVerdict; note?: string }) 
   const [showFix, setShowFix] = useState(false);
   return (
     <div className="flex flex-col gap-1.5" data-testid="first-wrong">
-      <div className="-ml-[9px] flex gap-0.5">
+      <div className="-ms-[9px] flex gap-0.5">
         <Button variant="ghost" size="sm" aria-expanded={showHint} onClick={() => setShowHint(!showHint)}>
           <Lightbulb size={14} /> {s.steps.hint}
         </Button>
@@ -265,7 +265,7 @@ export function StepCheckerPanel({
           <div className="relative flex items-center">
             <span className={LABEL}>{s.steps.yourSteps}</span>
             {!editing && (
-              <Button variant="ghost" size="sm" className="absolute right-0 top-1/2 h-6 -translate-y-1/2 opacity-0 focus-visible:opacity-100 group-hover:opacity-100" onClick={() => setEditing(true)}>
+              <Button variant="ghost" size="sm" className="absolute end-0 top-1/2 h-6 -translate-y-1/2 opacity-0 focus-visible:opacity-100 group-hover:opacity-100" onClick={() => setEditing(true)}>
                 <Pencil size={14} /> {s.steps.edit}
               </Button>
             )}

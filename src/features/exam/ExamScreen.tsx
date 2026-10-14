@@ -65,7 +65,7 @@ function Header({ spaceId }: { spaceId?: string }) {
       <h1 className="text-page font-semibold">{s.exam.title}</h1>
       <Menu>
         <MenuTrigger asChild>
-          <Button variant="secondary" size="sm" className="ml-auto" data-testid="exam-space">
+          <Button variant="secondary" size="sm" className="ms-auto" data-testid="exam-space">
             {space?.name ?? s.exam.pickSpace}
             <ChevronDown size={14} className="text-muted" />
           </Button>
@@ -186,7 +186,7 @@ function StartView({ spaceId }: { spaceId: string }) {
           {progress ? (
             <>
               <GeneratingStatus label={progress.done ? s.exam.writing(progress.done, progress.total) : section.essayMinutes ? s.exam.writingEssay : s.exam.writing(0, progress.total)} />
-              <Button variant="ghost" size="sm" className="ml-auto" onClick={() => abort.current?.abort()}>
+              <Button variant="ghost" size="sm" className="ms-auto" onClick={() => abort.current?.abort()}>
                 {s.exam.cancel}
               </Button>
             </>
@@ -231,19 +231,19 @@ function History({ spaceId, format, query }: { spaceId: string; format: ExamForm
             const open = () => navigate({ name: "exam", spaceId, attemptId: a.id });
             return (
               <li key={a.id} className="flex items-center gap-3 px-4 py-2.5">
-                <button type="button" className="flex flex-1 items-baseline gap-3 text-left" onClick={open}>
+                <button type="button" className="flex flex-1 items-baseline gap-3 text-start" onClick={open}>
                   <span className="font-medium">{section?.title ?? a.section}</span>
                   <span className="text-label text-muted">
                     {s.exam.lengths[a.length]} · {formatDate(a.startedAt, DATE_NUMERIC)}
                   </span>
-                  <span className="ml-auto tabular-nums">
+                  <span className="ms-auto tabular-nums">
                     {a.completedAt == null ? (
                       <span className="text-muted">{s.exam.inProgress}</span>
                     ) : (
                       <>
                         {a.scaled ?? `${Math.round((a.score ?? 0) * 100)}%`}
                         {format.scale && a.scaled != null ? (
-                          <span className={cn("ml-2 text-label", a.scaled >= format.scale.pass ? "text-success" : "text-muted")}>
+                          <span className={cn("ms-2 text-label", a.scaled >= format.scale.pass ? "text-success" : "text-muted")}>
                             {a.scaled >= format.scale.pass ? s.exam.passed : s.exam.notPassed}
                           </span>
                         ) : null}
@@ -371,8 +371,9 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
       <div className="flex items-center gap-3 border-b border-border px-6 py-3">
         <h1 className="text-title font-semibold">{s.exam.resultTitle(format.title, section.title)}</h1>
         <span
-          className={cn("ml-auto tabular-nums text-title font-semibold", left < 5 * 60_000 && "text-danger")}
+          className={cn("ms-auto tabular-nums text-title font-semibold", left < 5 * 60_000 && "text-danger")}
           aria-label={s.exam.timeLeft}
+          dir="ltr"
           data-testid="exam-timer"
         >
           {clockText(left)}
@@ -402,7 +403,7 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
                 <Button
                   variant="chrome"
                   size="sm"
-                  className="ml-auto"
+                  className="ms-auto"
                   aria-pressed={data.flags[i]}
                   onClick={() => setData((d) => ({ ...d, flags: d.flags.map((x, n) => (n === i ? !x : x)) }))}
                 >
@@ -423,7 +424,7 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
                   <ChevronLeft size={14} />
                   {s.exam.prev}
                 </Button>
-                <Button variant="secondary" size="sm" className="ml-auto" disabled={i >= (essayIndex >= 0 ? essayIndex : qs.length - 1)} onClick={() => go(i + 1)}>
+                <Button variant="secondary" size="sm" className="ms-auto" disabled={i >= (essayIndex >= 0 ? essayIndex : qs.length - 1)} onClick={() => go(i + 1)}>
                   {s.exam.next}
                   <ChevronRight size={14} />
                 </Button>
@@ -431,7 +432,7 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
             </div>
           ) : null}
         </div>
-        <aside className="flex w-[208px] shrink-0 flex-col gap-3 overflow-y-auto border-l border-border px-4 py-6" data-testid="exam-navigator">
+        <aside className="flex w-[208px] shrink-0 flex-col gap-3 overflow-y-auto border-s border-border px-4 py-6" data-testid="exam-navigator">
           <p className="text-label font-semibold text-muted">{s.exam.navigator}</p>
           <p className="text-label text-muted">{s.exam.answered(qs.length - unanswered, qs.length)}</p>
           <div className="grid grid-cols-5 gap-1.5">
@@ -451,14 +452,14 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
                 )}
               >
                 {n + 1}
-                {data.flags[n] ? <span aria-hidden className="absolute right-0.5 top-0.5 size-1.5 rounded-full bg-warn" /> : null}
+                {data.flags[n] ? <span aria-hidden className="absolute end-0.5 top-0.5 size-1.5 rounded-full bg-warn" /> : null}
               </button>
             ))}
           </div>
           {data.essay ? (
             <Button variant={onEssay ? "chrome" : "secondary"} size="sm" aria-pressed={onEssay} onClick={() => setI(essayIndex)} data-testid="exam-essay-tab">
               {s.exam.essay}
-              <span className="ml-auto text-label text-muted">{s.exam.essayWords(words(data.essay.text))}</span>
+              <span className="ms-auto text-label text-muted">{s.exam.essayWords(words(data.essay.text))}</span>
             </Button>
           ) : null}
         </aside>
@@ -478,7 +479,7 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
 function EssayPart({ essay, minutes, onChange }: { essay: NonNullable<ExamData["essay"]>; minutes: number; onChange: (t: string) => void }) {
   return (
     <div className="grid h-full grid-cols-2 gap-6" data-testid="exam-essay">
-      <div className="flex flex-col gap-4 overflow-y-auto pr-2">
+      <div className="flex flex-col gap-4 overflow-y-auto pe-2">
         <p className="text-label font-semibold text-muted">{s.exam.essayPrompt}</p>
         <p className="font-medium">{essay.task.prompt}</p>
         {essay.task.passages.map((p, k) => (
@@ -546,7 +547,7 @@ function Results({ attempt, format, section, space }: { attempt: ExamAttempt; fo
     <Page>
       <div className="flex items-center gap-3">
         <h1 className="text-page font-semibold">{s.exam.resultTitle(format.title, section.title)}</h1>
-        <Button variant="ghost" size="sm" className="ml-auto" onClick={() => navigate({ name: "exam", spaceId: attempt.spaceId })}>
+        <Button variant="ghost" size="sm" className="ms-auto" onClick={() => navigate({ name: "exam", spaceId: attempt.spaceId })}>
           {s.exam.back}
         </Button>
       </div>
@@ -600,7 +601,7 @@ function Results({ attempt, format, section, space }: { attempt: ExamAttempt; fo
                 <span className="h-1.5 w-24 overflow-hidden rounded-full bg-fill-subtle">
                   <span className={cn("block h-full rounded-full", share >= 0.6 ? "bg-success" : "bg-danger")} style={{ width: `${Math.round(share * 100)}%` }} />
                 </span>
-                <span className="w-12 text-right text-label tabular-nums text-muted">
+                <span className="w-12 text-end text-label tabular-nums text-muted">
                   {t.correct}/{t.total}
                 </span>
                 <Button
@@ -621,7 +622,7 @@ function Results({ attempt, format, section, space }: { attempt: ExamAttempt; fo
           <Button variant="secondary" onClick={() => setReviewOpen(!reviewOpen)} aria-expanded={reviewOpen} data-testid="exam-review-toggle">
             {s.exam.review}
           </Button>
-          <Button variant="primary" className="ml-auto" onClick={() => navigate({ name: "exam", spaceId: attempt.spaceId })}>
+          <Button variant="primary" className="ms-auto" onClick={() => navigate({ name: "exam", spaceId: attempt.spaceId })}>
             {s.exam.again}
           </Button>
         </div>

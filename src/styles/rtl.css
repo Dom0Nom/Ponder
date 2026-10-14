@@ -1,0 +1,24 @@
+/* Right-to-left support. Layout uses logical Tailwind/CSS properties; this file covers what those cannot: slide directions, directional icons and left-to-right islands. */
+:root { --dir-x: 1; }
+html[dir="rtl"] {
+  --dir-x: -1;
+  --page-slide-distance: -8px;
+}
+
+/* Arrows and chevrons point along the reading direction */
+html[dir="rtl"] :is(.lucide-arrow-left, .lucide-arrow-right, .lucide-chevron-left, .lucide-chevron-right, .lucide-corner-down-right, .lucide-panel-left, .lucide-panel-right):not(.no-rtl-flip) {
+  transform: scaleX(-1);
+}
+html[dir="rtl"] .t-acc-chevron--right { transform: scaleX(-1); }
+html[dir="rtl"] .t-acc[data-open="true"] .t-acc-chevron--right { transform: rotate(-90deg); }
+html[dir="rtl"] .t-acc-chevron--right .lucide { transform: none; }
+
+/* Code, math, timers, plots and the calculators keep their left-to-right layout */
+html[dir="rtl"] :is(pre, code, kbd, .katex, .katex-display, .hljs) {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+html[dir="rtl"] pre { text-align: left; }
+.ltr-island { direction: ltr; unicode-bidi: isolate; }
+
+html[dir="rtl"] .slider::-webkit-slider-runnable-track { background: linear-gradient(var(--primary), var(--primary)) 100% 0 / var(--fill-pct, 0%) 100% no-repeat, var(--field); }

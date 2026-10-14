@@ -52,14 +52,14 @@ export function useImportFooter(f: ImportFooter | null) {
 const WIDTH: Record<string, number> = { lecture: 522, file: 522, paste: 522, url: 522, youtube: 522, research: 602, gdrive: 682, dropbox: 682 };
 
 const TABS = [
-  { id: "file", label: s.sources.tabs.file },
-  { id: "paste", label: s.sources.tabs.paste },
-  { id: "url", label: s.sources.tabs.url },
-  { id: "youtube", label: s.sources.tabs.youtube },
-  { id: "gdrive", label: s.sources.tabs.gdrive },
-  { id: "dropbox", label: s.sources.tabs.dropbox },
-  { id: "research", label: s.sources.tabs.research },
-  { id: "lecture", label: s.lecture.tab },
+  { id: "file", get label() { return s.sources.tabs.file; } },
+  { id: "paste", get label() { return s.sources.tabs.paste; } },
+  { id: "url", get label() { return s.sources.tabs.url; } },
+  { id: "youtube", get label() { return s.sources.tabs.youtube; } },
+  { id: "gdrive", get label() { return s.sources.tabs.gdrive; } },
+  { id: "dropbox", get label() { return s.sources.tabs.dropbox; } },
+  { id: "research", get label() { return s.sources.tabs.research; } },
+  { id: "lecture", get label() { return s.lecture.tab; } },
 ] as const;
 
 export function ImportDialog({
@@ -106,12 +106,12 @@ export function ImportDialog({
       footer={
         <>
           {warned ? (
-            <span className="mr-auto min-w-0 truncate text-danger" role="status">
+            <span className="me-auto min-w-0 truncate text-danger" role="status">
               {s.lecture.leaveWarning}
             </span>
           ) : (
             footer?.status && (
-              <span className="mr-auto min-w-0 truncate text-muted">
+              <span className="me-auto min-w-0 truncate text-muted">
                 <TextSwap text={footer.status} />
               </span>
             )

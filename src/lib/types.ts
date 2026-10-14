@@ -453,6 +453,9 @@ export interface RemoteEmbeddingModel {
 export interface AppError {
   code: string;
   message: string;
+  /** Key into `s.errors` for a translated message; `params` fill its placeholders. */
+  key?: string;
+  params?: string[];
 }
 
 // ---------- placement ----------

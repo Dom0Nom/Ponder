@@ -55,7 +55,7 @@ export function DistractionSettings() {
           <ul data-testid="distraction-apps" className="flex flex-wrap gap-1.5">
             {d.apps.length === 0 && <li className="text-caption text-muted">{s.distraction.none}</li>}
             {d.apps.map((a) => (
-              <li key={a.id} className="flex h-7 items-center gap-1 rounded-btn bg-fill pl-2.5 pr-1 text-label font-medium">
+              <li key={a.id} className="flex h-7 items-center gap-1 rounded-btn bg-fill ps-2.5 pe-1 text-label font-medium">
                 {a.name}
                 <button
                   type="button"

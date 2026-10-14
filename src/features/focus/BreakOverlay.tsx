@@ -126,7 +126,7 @@ function LockedBreak({ state }: { state: FocusState }) {
                   type="button"
                   aria-pressed={picked === item}
                   onClick={() => setPicked(item)}
-                  className="flex h-10 items-center justify-between gap-3 rounded-pane border border-border bg-surface px-3.5 text-left text-input font-medium transition-colors hover:bg-fill aria-pressed:bg-fill-active aria-pressed:font-semibold"
+                  className="flex h-10 items-center justify-between gap-3 rounded-pane border border-border bg-surface px-3.5 text-start text-input font-medium transition-colors hover:bg-fill aria-pressed:bg-fill-active aria-pressed:font-semibold"
                 >
                   <span>{item}</span>
                 </button>
@@ -144,7 +144,7 @@ function LockedBreak({ state }: { state: FocusState }) {
         )}
         {parking.isError && <p className="mt-6 text-label text-danger">{s.focus.parkingLoadFailed}</p>}
         {open.length > 0 && (
-          <div className="mt-6 w-full max-w-md text-left">
+          <div className="mt-6 w-full max-w-md text-start">
             <p className="mb-2 text-label font-semibold text-muted">{s.focus.parkingAtBreak}</p>
             <ParkingList items={open} />
           </div>
@@ -185,7 +185,7 @@ function PausedBanner({ state, open }: { state: FocusState; open: boolean }) {
       inert={!open}
       style={{ "--toast-distance": "-16px" } as CSSProperties}
       className={cn(
-        "t-toast fixed left-1/2 top-2 z-[70] flex h-10 -translate-x-1/2 items-center gap-3 rounded-pane border border-border bg-surface pl-3.5 pr-1 text-body shadow-menu",
+        "t-toast fixed left-1/2 top-2 z-[70] flex h-10 -translate-x-1/2 items-center gap-3 rounded-pane border border-border bg-surface ps-3.5 pe-1 text-body shadow-menu",
         open && "is-open",
       )}
     >

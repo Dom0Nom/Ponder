@@ -54,7 +54,7 @@ export function PracticeHub({
                   <li key={t.key}>
                     <button
                       onClick={() => onPick(t.key)}
-                      className="t-learn flex w-full items-center gap-3.5 rounded-card border border-border px-4 py-[13px] text-left hover:bg-fill-faint"
+                      className="t-learn flex w-full items-center gap-3.5 rounded-card border border-border px-4 py-[13px] text-start hover:bg-fill-faint"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-input font-semibold">{t.title}</p>

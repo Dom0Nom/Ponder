@@ -181,7 +181,7 @@ export function WatchAlong({ source, text, space }: { source: Source; text: stri
           {phase === "feedback" && feedback ? (
             <>
               <p className="text-body" data-testid="watch-feedback" data-correct={feedback.correct}>
-                {feedback.correct ? <Check size={14} className="mr-1 inline text-success-text" /> : <X size={14} className="mr-1 inline text-danger-text" />}
+                {feedback.correct ? <Check size={14} className="me-1 inline text-success-text" /> : <X size={14} className="me-1 inline text-danger-text" />}
                 {feedback.feedback}
               </p>
               {!feedback.correct && question.answer && <p className="text-body text-fg-secondary">{s.watchAlong.modelAnswer(question.answer)}</p>}
@@ -209,7 +209,7 @@ export function WatchAlong({ source, text, space }: { source: Source; text: stri
                 }}
               />
               <div className="flex items-center justify-end gap-2">
-                {phase === "checking" && <GeneratingStatus label={s.watchAlong.checking} className="mr-auto text-muted" />}
+                {phase === "checking" && <GeneratingStatus label={s.watchAlong.checking} className="me-auto text-muted" />}
                 <Button variant="ghost" size="sm" onClick={next} disabled={phase === "checking"}>
                   {s.watchAlong.skip}
                 </Button>

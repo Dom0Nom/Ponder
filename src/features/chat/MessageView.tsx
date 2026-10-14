@@ -92,8 +92,8 @@ export function AnswerBody({
     <div className="flex flex-col gap-2.5">
       {segments.map((seg, i) =>
         seg.kind === "uncited" ? (
-          <div key={i} className="relative pl-3" data-testid="uncited-block">
-            <span aria-hidden className="absolute bottom-1 left-0 top-1 w-[2px] rounded-full bg-border" />
+          <div key={i} className="relative ps-3" data-testid="uncited-block">
+            <span aria-hidden className="absolute bottom-1 start-0 top-1 w-[2px] rounded-full bg-border" />
             <Markdown text={seg.text} knownCitations={citations.length} renderCite={renderCite} streaming={streaming} />
             <p className="mt-0.5 text-kbd text-muted">{s.chat.noSourceCited}</p>
           </div>
@@ -189,7 +189,7 @@ function Thinking({ text, active, ms }: { text: string; active: boolean; ms?: nu
       {active && !open && text && <ReasoningPeek text={text} />}
       <div className="t-acc-panel" inert={!open}>
         <div className="t-acc-panel-inner">
-          <div className="mt-1.5 max-h-64 overflow-y-auto whitespace-pre-wrap border-l-2 border-border pl-3 text-label leading-relaxed text-muted">{text}</div>
+          <div className="mt-1.5 max-h-64 overflow-y-auto whitespace-pre-wrap border-s-2 border-border ps-3 text-label leading-relaxed text-muted">{text}</div>
         </div>
       </div>
     </div>
@@ -214,7 +214,7 @@ function CiteChip({ citations, inferred, spaceId, onOpen }: { citations: Citatio
             <span key={c.n} className="mb-1 block last:mb-0">
               <span className="font-medium">
                 {c.sourceTitle}
-                {c.page != null ? ` · p. ${c.page}` : ""}
+                {c.page != null ? ` · ${s.chat.pageShort(c.page)}` : ""}
               </span>
               <span className="mt-0.5 block opacity-80">{c.snippet}</span>
             </span>
@@ -229,11 +229,11 @@ function CiteChip({ citations, inferred, spaceId, onOpen }: { citations: Citatio
         aria-label={s.chat.citation(titles.join(", "))}
         onClick={() => (onOpen ? onOpen(first) : openViewer({ sourceId: first.sourceId, start: first.start, end: first.end }))}
         className={cn(
-          "ml-1 inline-flex h-5 max-w-[220px] items-center transition-colors duration-(--motion-quick) gap-[5px] whitespace-nowrap rounded-full pl-[3px] pr-2 align-[1px] text-label font-medium leading-none text-fg",
+          "ms-1 inline-flex h-5 max-w-[220px] items-center transition-colors duration-(--motion-quick) gap-[5px] whitespace-nowrap rounded-full ps-[3px] pe-2 align-[1px] text-label font-medium leading-none text-fg",
           inferred ? "border border-dashed border-control-off" : "bg-chip hover:bg-fill-active",
         )}
       >
-        <Icon size={12} className="ml-[3px] shrink-0" />
+        <Icon size={12} className="ms-[3px] shrink-0" />
         <span className="truncate">{titles[0]}</span>
         {extra > 0 && <span className="text-muted">+{extra}</span>}
       </button>

@@ -61,11 +61,11 @@ export function WorksheetView({ data, showKey }: { data: WorksheetData; showKey:
         {data.questions.map((q, i) => (
           <li key={i} className="flex break-inside-avoid flex-col gap-2">
             <p className="text-body-lg">
-              <span className="mr-1.5 font-semibold">{i + 1}.</span>
+              <span className="me-1.5 font-semibold">{i + 1}.</span>
               {q.q}
             </p>
             {q.kind === "choice" && q.options && (
-              <ul className="ml-5 flex flex-col gap-1 text-body">
+              <ul className="ms-5 flex flex-col gap-1 text-body">
                 {q.options.map((o, j) => (
                   <li key={j} className="flex items-center gap-2">
                     <span aria-hidden className="size-3.5 shrink-0 rounded-full border border-faint" />
@@ -74,7 +74,7 @@ export function WorksheetView({ data, showKey }: { data: WorksheetData; showKey:
                 ))}
               </ul>
             )}
-            {q.kind === "short" && <div aria-hidden className="ml-5 flex flex-col gap-6 pt-4"><span className="border-b border-border" /><span className="border-b border-border" /></div>}
+            {q.kind === "short" && <div aria-hidden className="ms-5 flex flex-col gap-6 pt-4"><span className="border-b border-border" /><span className="border-b border-border" /></div>}
           </li>
         ))}
       </ol>
@@ -84,7 +84,7 @@ export function WorksheetView({ data, showKey }: { data: WorksheetData; showKey:
           <ol className="flex flex-col gap-1 text-body">
             {data.questions.map((q, i) => (
               <li key={i}>
-                <span className="mr-1.5 font-semibold">{i + 1}.</span>
+                <span className="me-1.5 font-semibold">{i + 1}.</span>
                 {q.answer}
               </li>
             ))}
@@ -97,10 +97,10 @@ export function WorksheetView({ data, showKey }: { data: WorksheetData; showKey:
 
 export function TimelineView({ data }: { data: TimelineData }) {
   return (
-    <ol className="relative ml-2 flex flex-col gap-5 border-l border-border pl-6">
+    <ol className="relative ms-2 flex flex-col gap-5 border-s border-border ps-6">
       {data.events.map((e, i) => (
         <li key={i} className="relative flex break-inside-avoid flex-col gap-0.5">
-          <span aria-hidden className="absolute -left-[29.5px] top-1.5 size-2.5 rounded-full border-2 border-surface bg-fg" />
+          <span aria-hidden className="absolute -start-[29.5px] top-1.5 size-2.5 rounded-full border-2 border-surface bg-fg" />
           <span className="text-label font-semibold text-muted">{e.date}</span>
           <span className="text-title-sm font-semibold">{e.title}</span>
           {e.detail && <span className="text-body text-fg-secondary">{e.detail}</span>}
@@ -114,7 +114,7 @@ export function TableView({ data }: { data: TableData }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="overflow-x-auto rounded-card border border-border">
-        <table className="w-full border-collapse text-left text-body">
+        <table className="w-full border-collapse text-start text-body">
           <thead>
             <tr className="bg-fill-subtle">
               {data.columns.map((c, i) => (
@@ -319,7 +319,7 @@ function SlideCard({ slide, first }: { slide: SlidesData["slides"][number]; firs
     <div className="flex aspect-video w-full flex-col justify-center gap-4 rounded-card border border-border bg-surface px-[6%] py-[5%]" data-testid="slide">
       <h2 className={cn("font-semibold", titleOnly ? "text-page" : "text-title")}>{slide.title}</h2>
       {slide.bullets.length > 0 && (
-        <ul className="flex list-disc flex-col gap-2 pl-5 text-body-lg text-fg-secondary">
+        <ul className="flex list-disc flex-col gap-2 ps-5 text-body-lg text-fg-secondary">
           {slide.bullets.map((b, k) => (
             <li key={k}>{b}</li>
           ))}

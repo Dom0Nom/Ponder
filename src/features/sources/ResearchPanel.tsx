@@ -34,11 +34,11 @@ const STAGE_ORB: Record<ResearchStage, Activity> = {
 };
 
 const STAGE_LABEL: Record<ResearchStage, string> = {
-  planning: s.research.planning,
-  searching: s.research.searching,
-  fetching: s.research.fetching,
-  ranking: s.research.ranking,
-  gaps: s.research.gaps,
+  get planning() { return s.research.planning; },
+  get searching() { return s.research.searching; },
+  get fetching() { return s.research.fetching; },
+  get ranking() { return s.research.ranking; },
+  get gaps() { return s.research.gaps; },
   done: "",
 };
 
@@ -195,7 +195,7 @@ export function ResearchPanel({
         </p>
         {detail && <p className="truncate text-label text-muted">{detail}</p>}
       </div>
-      <Button size="sm" variant="ghost" className="ml-auto" onClick={() => useResearch.getState().cancel(space.id)}>
+      <Button size="sm" variant="ghost" className="ms-auto" onClick={() => useResearch.getState().cancel(space.id)}>
         {s.common.cancel}
       </Button>
     </Reveal>
@@ -220,7 +220,7 @@ export function ResearchPanel({
             placeholder={suggesting ? s.research.suggesting : s.research.placeholder}
             aria-label={s.research.placeholder}
             aria-busy={suggesting}
-            className="pr-9"
+            className="pe-9"
           />
           <button
             type="button"
@@ -228,7 +228,7 @@ export function ResearchPanel({
             title={s.research.regenerate}
             disabled={suggesting || !!stage}
             onClick={() => suggest(true)}
-            className="absolute right-1.5 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-item text-muted hover:bg-fill hover:text-fg disabled:opacity-50"
+            className="absolute end-1.5 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-item text-muted hover:bg-fill hover:text-fg disabled:opacity-50"
           >
             <RefreshCw size={13} className={suggesting ? "animate-spin" : undefined} />
           </button>

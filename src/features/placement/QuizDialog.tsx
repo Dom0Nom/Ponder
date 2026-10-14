@@ -81,7 +81,7 @@ export function QuizLayer() {
             <Button
               variant="ghost"
               size="sm"
-              className="mr-auto"
+              className="me-auto"
               onClick={() => {
                 setRevealed(true);
               }}

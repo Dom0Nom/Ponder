@@ -78,7 +78,7 @@ export function PodcastPicker({ space, feed, done }: { space: Space; feed: Feed;
                 role="radio"
                 aria-checked={picked === e.id}
                 onClick={() => setPicked(e.id)}
-                className={cn("flex w-full flex-col items-start gap-0.5 rounded-item px-2.5 py-1.5 text-left hover:bg-fill", picked === e.id && "bg-fill-active")}
+                className={cn("flex w-full flex-col items-start gap-0.5 rounded-item px-2.5 py-1.5 text-start hover:bg-fill", picked === e.id && "bg-fill-active")}
               >
                 <span className="line-clamp-1 font-medium">{e.title}</span>
                 {meta.length > 0 && <span className="text-label text-muted">{meta.join(" · ")}</span>}

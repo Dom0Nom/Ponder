@@ -128,7 +128,7 @@ export function BreakMenuPage() {
       description={s.breakMenu.body}
       footer={
         <>
-          <span className="mr-auto">
+          <span className="me-auto">
             <Button
               variant="ghost"
               size="sm"
@@ -146,7 +146,7 @@ export function BreakMenuPage() {
         </>
       }
     >
-      <ul ref={listRef} className="relative rounded-card border border-border pl-3.5 pr-2 [&>*+*]:border-t [&>*+*]:border-divider">
+      <ul ref={listRef} className="relative rounded-card border border-border ps-3.5 pe-2 [&>*+*]:border-t [&>*+*]:border-divider">
         {items.length === 0 && <li className="py-3 text-body text-faint">{s.breakMenu.empty}</li>}
         {items.map((item, i) => (
           <ItemRow

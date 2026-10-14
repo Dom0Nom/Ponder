@@ -3,6 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import * as Tip from "@radix-ui/react-tooltip";
 import { Toaster } from "sonner";
 import { queryClient } from "../lib/queries";
+import { LocaleKey } from "../lib/i18n/LocaleKey";
 import { useUi, type Route } from "../stores/ui";
 import { useApplyAppearance, useIsDark } from "./useTheme";
 import { Header } from "./Header";
@@ -126,6 +127,7 @@ export function App() {
   const isDark = useIsDark();
   return (
     <QueryClientProvider client={queryClient}>
+      <LocaleKey>
       <Tip.Provider>
         <Shell />
         <Toaster
@@ -144,6 +146,7 @@ export function App() {
           }}
         />
       </Tip.Provider>
+      </LocaleKey>
     </QueryClientProvider>
   );
 }

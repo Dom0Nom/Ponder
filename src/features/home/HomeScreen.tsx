@@ -117,7 +117,7 @@ function SpaceCard({ space, onEdit, onDelete }: { space: Space; onEdit: () => vo
               size="icon-sm"
               aria-label={s.home.spaceOptions}
               onClick={(e) => e.stopPropagation()}
-              className="-mr-1.5 -mt-1 opacity-0 transition-opacity duration-(--motion-quick) focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+              className="-me-1.5 -mt-1 opacity-0 transition-opacity duration-(--motion-quick) focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
             >
               <Ellipsis size={16} />
             </Button>

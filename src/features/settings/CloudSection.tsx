@@ -156,7 +156,7 @@ function SetupSteps({ service, redirectUri }: { service: CloudService; redirectU
         <ChevronRight size={14} className="transition-transform group-open:rotate-90" aria-hidden />
         {s.cloud.setupHelp}
       </summary>
-      <ol className="mt-2 list-decimal space-y-1.5 pl-6 text-body text-muted">
+      <ol className="mt-2 list-decimal space-y-1.5 ps-6 text-body text-muted">
         {s.cloud.steps[service].map((step, i) => (
           <li key={i}>
             {step.text}{" "}

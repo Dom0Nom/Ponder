@@ -32,7 +32,7 @@ export function CopyButton({ text, label }: { text: string; label: string }) {
 
 export function CodeBlock({ text, label, testId }: { text: string; label: string; testId?: string }) {
   return (
-    <div className="flex items-start gap-2 rounded-card border border-border bg-fill-subtle py-2 pl-3 pr-1.5">
+    <div className="flex items-start gap-2 rounded-card border border-border bg-fill-subtle py-2 ps-3 pe-1.5">
       <pre data-testid={testId} className="min-w-0 flex-1 overflow-x-auto whitespace-pre py-0.5 text-caption leading-[1.5] text-fg">
         {text}
       </pre>

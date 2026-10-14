@@ -13,6 +13,8 @@ import { useUi } from "../stores/ui";
 import { FocusHeaderTimer } from "../features/focus/FocusHeaderTimer";
 import { useActiveThread } from "../features/chat/useActiveThread";
 import { backTarget } from "./back";
+import { localeInfo } from "../lib/i18n/locales";
+import { useLocale } from "../lib/i18n/state";
 
 const Sep = () => (
   <span aria-hidden className="text-faint">
@@ -56,7 +58,7 @@ function SpaceTitle({ spaceId }: { spaceId: string }) {
       <Menu>
         <MenuTrigger asChild>
           <button
-            className="-ml-2 flex h-7 min-w-0 items-center gap-1.5 rounded-btn pl-2 pr-1.5 font-medium hover:bg-fill-active data-[state=open]:bg-fill-active"
+            className="-ms-2 flex h-7 min-w-0 items-center gap-1.5 rounded-btn ps-2 pe-1.5 font-medium hover:bg-fill-active data-[state=open]:bg-fill-active"
           >
             <span className="truncate">{active.title}</span>
             <ChevronDown size={13} className="shrink-0 text-muted" />
@@ -177,6 +179,7 @@ function PracticeCrumbs({ spaceId, topicTitle }: { spaceId: string; topicTitle?:
 
 export function Header() {
   const route = useUi((st) => st.route);
+  const rtl = localeInfo(useLocale()).dir === "rtl";
   const sidebarOpen = useUi((st) => st.sidebarOpen);
   const toggleSidebar = useUi((st) => st.toggleSidebar);
   const studioOpen = useUi((st) => st.studioOpen);
@@ -190,8 +193,8 @@ export function Header() {
   };
 
   return (
-    <header data-tauri-drag-region className="flex h-[48px] shrink-0 items-center gap-3 pl-3 pr-4">
-      {!sidebarOpen && <span className="w-[64px] shrink-0" data-tauri-drag-region />}
+    <header data-tauri-drag-region className="flex h-[48px] shrink-0 items-center gap-3 ps-3 pe-4">
+      {!rtl && !sidebarOpen && <span className="w-[64px] shrink-0" data-tauri-drag-region />}
       <Tooltip
         content={
           <>
@@ -225,7 +228,7 @@ export function Header() {
         {route.name === "practice" && <PracticeCrumbs spaceId={route.spaceId} topicTitle={route.topicTitle} />}
         {route.name === "space" && <SpaceTitle spaceId={route.spaceId} />}
       </div>
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ms-auto flex items-center gap-2">
         <FocusHeaderTimer />
         {route.name === "space" && (
           <Tooltip content={s.calc.title}>
@@ -253,6 +256,7 @@ export function Header() {
           </Button>
         )}
       </div>
+      {rtl && <span className="w-[64px] shrink-0" data-tauri-drag-region />}
     </header>
   );
 }

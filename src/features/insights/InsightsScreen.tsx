@@ -49,7 +49,7 @@ export function InsightsScreen({ spaceId }: { spaceId?: string }) {
           <h1 className="text-page font-semibold">{s.insights.title}</h1>
           <Menu>
             <MenuTrigger asChild>
-              <Button variant="secondary" size="sm" className="ml-auto" data-testid="insights-space">
+              <Button variant="secondary" size="sm" className="ms-auto" data-testid="insights-space">
                 {space?.name ?? s.insights.allSpaces}
                 <ChevronDown size={14} className="text-muted" />
               </Button>
@@ -146,7 +146,7 @@ function ActivitySections({ a, now, spaceId }: { a: InsightsActivity; now: numbe
                 <div className="h-2 overflow-hidden rounded-full bg-fill">
                   <div className="h-full rounded-full bg-primary" style={{ width: `${Math.round(b.recall * 100)}%` }} />
                 </div>
-                <span className="text-right tabular-nums text-fg-secondary">{s.insights.recalled(b.recall, b.n)}</span>
+                <span className="text-end tabular-nums text-fg-secondary">{s.insights.recalled(b.recall, b.n)}</span>
               </div>
             ))}
           </div>
@@ -308,7 +308,7 @@ function MasteryMap({ spaceId, topics, mastery }: { spaceId: string; topics: Top
                       title={m?.p == null ? s.insights.topicTip(t.title, s.insights.level[tone]) : s.insights.topicTipPct(t.title, s.insights.level[tone], m.p)}
                       onClick={() => navigate({ name: "practice", spaceId, topicKey: t.id, topicTitle: t.title })}
                       className={cn(
-                        "relative rounded-item border px-2.5 py-1.5 text-left text-label font-medium leading-snug transition-colors hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-ring",
+                        "relative rounded-item border px-2.5 py-1.5 text-start text-label font-medium leading-snug transition-colors hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-ring",
                         TONE[tone],
                       )}
                     >

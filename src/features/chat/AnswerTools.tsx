@@ -3,6 +3,7 @@ import { Brain, CheckCircle2, CircleAlert, CircleHelp, CircleX, Columns2, Scale,
 import { api } from "../../lib/ipc";
 import { queryClient, qk, useProviders, useSettings } from "../../lib/queries";
 import { s } from "../../lib/strings";
+import { getLocale } from "../../lib/i18n/state";
 import type { ClaimVerdict, Message, ModelRef, Space } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { useUi } from "../../stores/ui";
@@ -19,10 +20,10 @@ import { actionIconBtn } from "./actionButton";
 import { ModelPicker } from "../settings/ModelPicker";
 
 const VERDICT: Record<ClaimVerdict, { label: string; icon: typeof CheckCircle2; tone: string }> = {
-  supported: { label: s.check.supported, icon: CheckCircle2, tone: "text-success" },
-  partly: { label: s.check.partly, icon: CircleHelp, tone: "text-warn" },
-  unsupported: { label: s.check.unsupported, icon: CircleAlert, tone: "text-warn" },
-  contradicted: { label: s.check.contradicted, icon: CircleX, tone: "text-danger" },
+  supported: { get label() { return s.check.supported; }, icon: CheckCircle2, tone: "text-success" },
+  partly: { get label() { return s.check.partly; }, icon: CircleHelp, tone: "text-warn" },
+  unsupported: { get label() { return s.check.unsupported; }, icon: CircleAlert, tone: "text-warn" },
+  contradicted: { get label() { return s.check.contradicted; }, icon: CircleX, tone: "text-danger" },
 };
 
 export function CheckButton({ message, space }: { message: Message; space: Space }) {
@@ -61,7 +62,7 @@ export function CheckResults({ message }: { message: Message }) {
         <span className="font-normal text-faint">
           {(["supported", "partly", "unsupported", "contradicted"] as const)
             .filter((v) => counts[v])
-            .map((v) => `${counts[v]} ${VERDICT[v].label.toLowerCase()}`)
+            .map((v) => `${counts[v]} ${VERDICT[v].label.toLocaleLowerCase(getLocale())}`)
             .join(" · ")}
         </span>
       </p>
@@ -192,7 +193,7 @@ export function SecondOpinions({
               {!streaming && m.status === "complete" && (
                 <button
                   onClick={() => setCompare(m)}
-                  className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 hover:bg-fill-active hover:text-fg"
+                  className="ms-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 hover:bg-fill-active hover:text-fg"
                 >
                   <Columns2 size={13} /> {s.secondOpinion.compare}
                 </button>

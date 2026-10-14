@@ -11,7 +11,7 @@ export function OcclusionEditorButton({ spaceId, className }: { spaceId: string;
   return (
     <>
       <button
-        className={cn(panelRow, "t-learn h-[42px] w-full gap-3 text-left", className)}
+        className={cn(panelRow, "t-learn h-[42px] w-full gap-3 text-start", className)}
         data-testid="occlusion-editor-button"
         onClick={() => setOpen(true)}
       >

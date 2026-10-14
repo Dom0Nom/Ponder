@@ -185,7 +185,7 @@ function ReviewSession({ spaceId, onCard }: { spaceId?: string; onCard: (has: bo
     <div className="contents" data-testid="review-session">
       <div className="mt-2 flex items-center gap-2 text-muted">
         <span className="tabular-nums">{s.review.remaining(queue.length, done)}</span>
-        {meta.length > 0 && <span className="ml-auto truncate">{meta.join(" · ")}</span>}
+        {meta.length > 0 && <span className="ms-auto truncate">{meta.join(" · ")}</span>}
       </div>
       <div key={card.id} className="t-page-enter flex flex-col rounded-[14px] border border-border">
         <CardFace key={card.id} card={card} revealed={revealed} onPick={() => setRevealed(true)} />
@@ -256,7 +256,7 @@ function MistakeNotebook({ spaceId }: { spaceId?: string }) {
       <div className="flex items-center gap-2 text-muted">
         <span className="tabular-nums">{s.mistakes.summary(open.length, resolved.length)}</span>
         {resolved.length > 0 && (
-          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setShowResolved(!showResolved)}>
+          <Button variant="ghost" size="sm" className="ms-auto" onClick={() => setShowResolved(!showResolved)}>
             {showResolved ? s.mistakes.hideFixed : s.mistakes.showFixed}
           </Button>
         )}

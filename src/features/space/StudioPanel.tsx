@@ -84,7 +84,7 @@ function Tile({
       data-testid={testId}
       disabled={disabled}
       onClick={onClick}
-      className="flex flex-col items-start gap-2 rounded-pane border border-selected p-3 text-left text-body transition-colors hover:border-hover hover:bg-fill-subtle disabled:pointer-events-none disabled:opacity-50"
+      className="flex flex-col items-start gap-2 rounded-pane border border-selected p-3 text-start text-body transition-colors hover:border-hover hover:bg-fill-subtle disabled:pointer-events-none disabled:opacity-50"
     >
       <span className="flex h-[23.2px] items-center">
         <Icon size={16} />
@@ -173,7 +173,7 @@ function Recent({ spaceId }: { spaceId: string }) {
               <button
                 type="button"
                 onClick={() => (x.output ? navigate({ name: "output", spaceId, outputId: x.output.id }) : setStudioView(x.view))}
-                className="-mx-1 flex h-9.75 w-[calc(100%+8px)] items-center gap-2.5 border-b border-divider px-1 text-left text-body hover:bg-fill-subtle"
+                className="-mx-1 flex h-9.75 w-[calc(100%+8px)] items-center gap-2.5 border-b border-divider px-1 text-start text-body hover:bg-fill-subtle"
               >
                 <Icon size={14} className="shrink-0" />
                 <span className="min-w-0 flex-1 truncate font-medium">{x.name}</span>
@@ -193,7 +193,7 @@ function LowEnergyRow() {
     <button
       type="button"
       onClick={() => setStudioView("lowEnergy")}
-      className="t-learn mx-4 mt-4 flex min-h-13 shrink-0 items-center gap-3 rounded-card border border-border px-3.5 text-left text-body hover:bg-fill-subtle"
+      className="t-learn mx-4 mt-4 flex min-h-13 shrink-0 items-center gap-3 rounded-card border border-border px-3.5 text-start text-body hover:bg-fill-subtle"
     >
       <Leaf size={15} />
       <span className="flex min-w-0 flex-1 flex-col">
@@ -212,7 +212,7 @@ function CreateRow() {
       type="button"
       onClick={() => setStudioView("create")}
       data-testid="create-row"
-      className="mx-4 mb-4 mt-4 flex min-h-13 shrink-0 items-center gap-3 rounded-card border border-border px-3.5 text-left text-body hover:bg-fill-subtle"
+      className="mx-4 mb-4 mt-4 flex min-h-13 shrink-0 items-center gap-3 rounded-card border border-border px-3.5 text-start text-body hover:bg-fill-subtle"
     >
       <Shapes size={15} />
       <span className="flex min-w-0 flex-1 flex-col">
@@ -237,7 +237,7 @@ function MainView({ space }: { space: Space }) {
       <button
         type="button"
         onClick={() => setStudioView("settings")}
-        className="mt-auto flex shrink-0 items-center gap-2 border-t border-divider px-4 py-[10.5px] text-left text-body font-medium text-fg-secondary hover:text-fg"
+        className="mt-auto flex shrink-0 items-center gap-2 border-t border-divider px-4 py-[10.5px] text-start text-body font-medium text-fg-secondary hover:text-fg"
       >
         <SlidersHorizontal size={14} />
         {s.studio.settings}

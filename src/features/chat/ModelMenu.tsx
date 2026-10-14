@@ -27,8 +27,8 @@ import { toastError } from "../../components/ui/toast";
 import { ModelBrowser } from "./ModelBrowser";
 
 const triggerClass =
-  "flex h-7 max-w-[260px] items-center gap-1.5 rounded-btn pl-2.5 pr-2 font-medium text-muted hover:bg-fill data-[state=open]:bg-fill";
-const itemClass = "flex h-[34px] w-full items-center gap-2.5 rounded-item px-2.5 text-left hover:bg-fill";
+  "flex h-7 max-w-[260px] items-center gap-1.5 rounded-btn ps-2.5 pe-2 font-medium text-muted hover:bg-fill data-[state=open]:bg-fill";
+const itemClass = "flex h-[34px] w-full items-center gap-2.5 rounded-item px-2.5 text-start hover:bg-fill";
 
 function Segmented({
   label,
@@ -43,7 +43,7 @@ function Segmented({
 }) {
   return (
     <div>
-      <p className="pb-1 pl-3 pr-2.5 pt-2 text-label font-semibold text-muted">{label}</p>
+      <p className="pb-1 ps-3 pe-2.5 pt-2 text-label font-semibold text-muted">{label}</p>
       <div role="radiogroup" aria-label={label} className="mx-1.5 mb-1.5 mt-0.5 flex gap-0.5 rounded-btn border border-border p-0.5">
         {options.map((o) => (
           <button
@@ -161,7 +161,7 @@ export function ModelMenu({ space }: { space: Space }) {
               <button
                 aria-label={s.models.providerPicker}
                 data-testid="provider-picker"
-                className="mb-1 flex h-[34px] w-full items-center gap-2.5 rounded-item px-2.5 text-left font-semibold hover:bg-fill disabled:hover:bg-transparent data-[state=open]:bg-fill"
+                className="mb-1 flex h-[34px] w-full items-center gap-2.5 rounded-item px-2.5 text-start font-semibold hover:bg-fill disabled:hover:bg-transparent data-[state=open]:bg-fill"
               >
                 <ProviderIcon type={viewed.type} baseUrl={viewed.baseUrl} size={18} />
                 <span className="min-w-0 flex-1 truncate">{viewed.name}</span>

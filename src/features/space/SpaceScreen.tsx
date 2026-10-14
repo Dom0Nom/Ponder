@@ -50,8 +50,8 @@ export function SpaceScreen({ spaceId }: { spaceId: string }) {
   if (isLoading)
     return (
       <div className="relative h-full">
-        <Skeleton className="absolute bottom-2 left-0 right-[336px] top-0 rounded-pane" />
-        <Skeleton className="absolute bottom-0 right-0 top-0 w-[328px]" />
+        <Skeleton className="absolute bottom-2 start-0 end-[336px] top-0 rounded-pane" />
+        <Skeleton className="absolute bottom-0 end-0 top-0 w-[328px]" />
       </div>
     );
   if (error || !space)
@@ -67,7 +67,7 @@ export function SpaceScreen({ spaceId }: { spaceId: string }) {
   return (
     <div className="relative h-full">
       <AddCardDialog space={space} />
-      <ContentCard scroll={false} className={cn("border-0 after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded-pane after:border after:border-border transition-[left,right] duration-200", studioOpen ? "right-[336px]" : "right-2")}>
+      <ContentCard scroll={false} className={cn("border-0 after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded-pane after:border after:border-border transition-[left,right] duration-200", studioOpen ? "end-[336px]" : "end-2")}>
         <section aria-label={s.panes.chat} data-testid="pane-chat" className="relative flex h-full min-w-0 flex-col">
           <div className="t-page-slide min-h-0 flex-1" data-page={page}>
             <div className="t-page flex flex-col" data-page-id="1" inert={page === 2}>
@@ -78,7 +78,7 @@ export function SpaceScreen({ spaceId }: { spaceId: string }) {
                 className="t-page flex flex-col transition-[padding] duration-200"
                 data-page-id="2"
                 inert={page === 1}
-                style={{ paddingLeft: sourcesOpen ? 340 : 0 }}
+                style={{ paddingInlineStart: sourcesOpen ? 340 : 0 }}
               >
                 <SourceViewer key={viewerTarget.sourceId} target={viewerTarget} />
               </div>
@@ -94,8 +94,8 @@ export function SpaceScreen({ spaceId }: { spaceId: string }) {
           data-testid="pane-studio"
           data-open={studioOpen}
           inert={!studioOpen}
-          style={{ "--panel-translate-x": "16px", "--panel-translate-y": "0px" } as CSSProperties}
-          className="t-panel-slide absolute bottom-0 right-0 top-0 flex w-[328px] flex-col overflow-hidden border-l border-t border-border bg-surface"
+          style={{ "--panel-translate-x": "calc(16px * var(--dir-x))", "--panel-translate-y": "0px" } as CSSProperties}
+          className="t-panel-slide absolute bottom-0 end-0 top-0 flex w-[328px] flex-col overflow-hidden border-s border-t border-border bg-surface"
         >
           <StudioPanel space={space} />
         </section>

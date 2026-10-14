@@ -180,6 +180,7 @@ export const en = {
     page: msg<[n: number]>("Page {0}"),
     embedderDownloading: msg<[p: number]>("Downloading the search model… {0, percent}"),
     embedderError: "The local search model couldn't load",
+    openFailed: "Couldn't open this source",
   },
   watch: {
     open: "Watched folders",
@@ -621,6 +622,7 @@ export const en = {
     sourceSearchFailed: msg<[e: string]>("Source search failed for this answer: {0}"),
     interrupted: "The app closed while this answer was being written.",
     citation: msg<[titles: string]>("Citation: {0}"),
+    pageShort: msg<[n: number]>("p. {0}"),
     stopped: "Stopped.",
   },
   check: {
@@ -799,6 +801,7 @@ export const en = {
     types: { basic: "Question & answer", cloze: "Cloze (fill the gap)" },
     front: "Front",
     back: "Back",
+    backOptional: "Back (optional)",
     clozeText: "Text with gaps",
     clozeHelp: "Select words and press “Make gap”, or type {{c1::answer}}. Each gap becomes its own card.",
     makeGap: "Make gap",
@@ -975,6 +978,7 @@ export const en = {
     appearance: "Appearance",
     theme: "Theme",
     themes: { system: "System", light: "Light", dark: "Dark" },
+    language: "Language",
     font: "Font",
     fonts: { default: "IBM Plex Sans", dyslexic: "OpenDyslexic" },
     fontOptions: "IBM Plex Sans / OpenDyslexic",
@@ -1060,6 +1064,7 @@ export const en = {
     deviceStarting: "Getting a code…",
     copyCode: "Copy code",
     tryAgain: "Try again",
+    codeLabel: "Sign-in code",
   },
   models: {
     provider: "Provider",

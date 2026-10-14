@@ -51,8 +51,8 @@ export function NotesScreen({ spaceId, noteId }: { spaceId: string; noteId?: str
 
   return (
     <div className="flex h-full" data-testid="notes-screen">
-      <aside className="flex w-[260px] shrink-0 flex-col gap-2 border-r border-divider p-3" aria-label={s.notes.listLabel}>
-        <Button variant="ghost-muted" size="sm" className="-ml-1 justify-start" onClick={() => navigate({ name: "space", spaceId })}>
+      <aside className="flex w-[260px] shrink-0 flex-col gap-2 border-e border-divider p-3" aria-label={s.notes.listLabel}>
+        <Button variant="ghost-muted" size="sm" className="-ms-1 justify-start" onClick={() => navigate({ name: "space", spaceId })}>
           <ArrowLeft size={14} />
           {space.data ? s.common.backTo(space.data.name) : s.common.back}
         </Button>
@@ -82,7 +82,7 @@ export function NotesScreen({ spaceId, noteId }: { spaceId: string; noteId?: str
                   aria-current={n.id === active?.id}
                   data-note-id={n.id}
                   className={cn(
-                    "flex h-9 w-full items-center gap-2 rounded-control px-2.5 text-left font-medium hover:bg-fill",
+                    "flex h-9 w-full items-center gap-2 rounded-control px-2.5 text-start font-medium hover:bg-fill",
                     n.id === active?.id && "bg-fill-active",
                   )}
                 >

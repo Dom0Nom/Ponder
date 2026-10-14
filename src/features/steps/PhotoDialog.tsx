@@ -245,7 +245,7 @@ export function PhotoDialog({
         {photo ? (
           <Reveal className="relative">
             <img src={photo.url} alt={s.steps.photoAlt} className="max-h-72 w-full rounded-card bg-fill-subtle object-contain" data-testid="photo-preview" />
-            <div className="absolute right-2 top-2 flex gap-1">
+            <div className="absolute end-2 top-2 flex gap-1">
               <Button size="icon-sm" variant="secondary" className="bg-surface" aria-label={tab === "camera" ? s.steps.retake : s.steps.removeImage} onClick={() => setPhoto(null)}>
                 {tab === "camera" ? <RotateCcw size={14} /> : <X size={14} />}
               </Button>

@@ -167,7 +167,7 @@ export function SpaceSettingsPanel({ space, onBack }: { space: Space; onBack: ()
         </div>
       </div>
       <div className="flex shrink-0 gap-2 border-t border-divider px-4 py-3">
-        <span className="mr-auto">
+        <span className="me-auto">
           <Button variant="secondary" className="text-danger" onClick={() => setDeleting(true)}>
             <Trash2 size={15} />
             {s.space.deleteSpace}

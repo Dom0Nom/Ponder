@@ -20,7 +20,7 @@ export const PLAIN_SEARCH_THRESHOLD = 8;
 
 const scrollClass = "min-h-[72px] flex-1 overflow-y-auto";
 const wrapClass = "flex min-h-0 flex-1 flex-col";
-const rowClass = "flex h-[34px] w-full items-center gap-2.5 rounded-item px-2.5 text-left outline-none hover:bg-fill focus-visible:bg-fill";
+const rowClass = "flex h-[34px] w-full items-center gap-2.5 rounded-item px-2.5 text-start outline-none hover:bg-fill focus-visible:bg-fill";
 
 export const providerModels = (p: Provider) =>
   (p.config.models ?? (p.config.defaultModel ? [p.config.defaultModel] : [])).filter((m) => !/embed/i.test(m));
@@ -43,7 +43,7 @@ function Row({ id, on, author, onPick }: { id: string; on: boolean; author?: str
 }
 
 const Heading = ({ children }: { children: string }) => (
-  <p className="pb-1 pl-3 pr-2.5 pt-2 text-label font-semibold text-muted">{children}</p>
+  <p className="pb-1 ps-3 pe-2.5 pt-2 text-label font-semibold text-muted">{children}</p>
 );
 
 function SearchBox({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {

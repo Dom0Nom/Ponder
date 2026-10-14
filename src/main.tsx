@@ -26,6 +26,8 @@ async function boot() {
     const { installMockBackend } = await import("./test/mockBackend");
     installMockBackend();
   }
+  const { initLocale } = await import("./lib/i18n/init");
+  await initLocale();
   const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement);
   if (await isCalculatorWindow(mock)) {
     const { CalculatorWindow } = await import("./features/calculator/CalculatorWindow");

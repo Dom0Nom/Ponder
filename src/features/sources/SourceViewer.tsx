@@ -151,7 +151,7 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
         onClick={() => setTools((t) => !t)}
         data-testid="reading-tools-toggle"
         className={cn(
-          "absolute right-4 top-14 z-10 flex h-7.5 items-center gap-1.5 rounded-btn border border-border bg-surface px-2.5 font-medium shadow-float transition-opacity hover:bg-fill focus-visible:opacity-100 group-hover/viewer:opacity-100",
+          "absolute end-4 top-14 z-10 flex h-7.5 items-center gap-1.5 rounded-btn border border-border bg-surface px-2.5 font-medium shadow-float transition-opacity hover:bg-fill focus-visible:opacity-100 group-hover/viewer:opacity-100",
           !tools && "opacity-0",
         )}
       >
@@ -169,7 +169,7 @@ export function SourceViewer({ target }: { target: { sourceId: string; start?: n
         )}
         {(source.error || text.error) && (
           <ErrorState
-            title="Couldn't open this source"
+            title={s.sources.openFailed}
             error={source.error ?? text.error}
             onRetry={() => {
               source.refetch();
@@ -373,7 +373,7 @@ function SelectionActions({ source, st, paged }: { source: Source; st: SourceTex
             >
               <Layers size={13} /> {s.cards.makeFromSelection}
             </button>
-            <div className="absolute left-full top-0 pl-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/sel:opacity-100">{highlightBtn}</div>
+            <div className="absolute start-full top-0 ps-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/sel:opacity-100">{highlightBtn}</div>
           </>
         ) : (
           highlightBtn

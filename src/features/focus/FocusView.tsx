@@ -68,7 +68,7 @@ function Idle({ elsewhere }: { elsewhere: boolean }) {
   return (
     <>
       {elsewhere && <p className="text-body text-muted">{s.focus.otherSpace}</p>}
-      <p className="text-timer font-medium tabular-nums opacity-40">{formatDuration(25 * 60_000)}</p>
+      <p dir="ltr" className="text-timer font-medium tabular-nums opacity-40">{formatDuration(25 * 60_000)}</p>
       {!elsewhere && (
         <Button variant="primary" className="self-start" onClick={() => open(true)}>
           <Play size={15} /> {s.focus.begin}

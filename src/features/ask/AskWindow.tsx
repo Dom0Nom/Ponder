@@ -12,6 +12,7 @@ import { threadTitleFrom } from "../../lib/chat/context";
 import { describeSnip, imageFromSnip, snipPreviewUrl } from "../../lib/ask/snip";
 import { looksVisionCapable, resolveVisionModel } from "../../lib/steps/vision";
 import { s } from "../../lib/strings";
+import { LocaleKey } from "../../lib/i18n/LocaleKey";
 import type { Citation, Message, SnipImage } from "../../lib/types";
 import { useChatStream } from "../../stores/chatStream";
 import { Button } from "../../components/ui/button";
@@ -37,9 +38,11 @@ export function AskWindow() {
   useApplyAppearance();
   return (
     <QueryClientProvider client={queryClient}>
-      <Tip.Provider>
-        <AskCard />
-      </Tip.Provider>
+      <LocaleKey>
+        <Tip.Provider>
+          <AskCard />
+        </Tip.Provider>
+      </LocaleKey>
     </QueryClientProvider>
   );
 }
@@ -334,7 +337,7 @@ function AskCard() {
               ))}
             </NativeSelect>
           )}
-          <Button size="lg" variant="ghost" className="ml-auto" disabled={snipping || busy} onClick={takeSnip}>
+          <Button size="lg" variant="ghost" className="ms-auto" disabled={snipping || busy} onClick={takeSnip}>
             {snipping ? <Spinner /> : <Crop size={15} />} {snipping ? s.ask.snipping : s.ask.snip}
           </Button>
         </div>
@@ -345,7 +348,7 @@ function AskCard() {
             <Button size="sm" variant="secondary" disabled={savingSource || !space} onClick={saveAsSource}>
               {savingSource ? <Spinner /> : <FilePlus2 size={14} />} {savingSource ? s.ask.savingSource : s.ask.saveAsSource}
             </Button>
-            <Button size="icon-sm" variant="ghost-muted" className="ml-auto" aria-label={s.ask.removeSnip} onClick={() => setSnip(null)}>
+            <Button size="icon-sm" variant="ghost-muted" className="ms-auto" aria-label={s.ask.removeSnip} onClick={() => setSnip(null)}>
               <X size={14} />
             </Button>
           </div>
