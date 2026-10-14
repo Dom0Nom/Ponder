@@ -1156,13 +1156,54 @@ const answerCheckEval: Task = {
           check("ran", !!verdict, err),
           check("verdict", verdict === want, verdict),
           check("ends with JSON", /\{\s*"correct"\s*:\s*\[[^\]]*\]\s*\}\s*$/.test(out)),
+const worksheetEval: Task = {
+  id: "worksheets",
+  purpose: "Worksheets from the learner's own material in several task types (choice with several correct answers, true/false with corrections, gap text with and without word bank, matching, ordering, tables, calculations, open questions with operators and rubric, reading comprehension). German sheets use the German style names, instructions and Operatoren. JSON output, graded by code (answer keys, point sums) and the judge.",
+  dims: ["grounding", "calibration", "format"],
+  cases: (
+    [
+      ["international", "en", {}],
+      ["arbeitsblatt", "de", {}],
+      ["klassenarbeit", "de", { mode: "points", totalPoints: 40 }],
+      ["ihk", "de", { mode: "points", totalPoints: 100 }],
+      ["ged", "en", {}],
+      ["us", "en", { multiCorrect: true, optionCount: 5, labelStyle: "ABC" }],
+    ] as ["international" | "arbeitsblatt" | "klassenarbeit" | "ihk" | "ged" | "us", "en" | "de", Record<string, unknown>][]
+  ).map(([preset, l, patch]) => ({
+    name: `${preset} ${l}`,
+    run: async () => {
+      const g = await lib("worksheets/generate.ts");
+      const pr = await lib("worksheets/presets.ts");
+      const m = studioMaterial[l];
+      const o = pr.optionsFor(preset, l, { ...patch, taskTypes: pr.ALL_TASK_TYPES });
+      let sheet: { title: string; tasks: { type: string; points: number; parts: { kind: string; options?: string[]; answers?: number[]; blanks?: unknown[] }[]; bank?: string[] }[] } | null = null;
+      let err = "";
+      try {
+        sheet = await g.generateSheet(gen, o, { text: g.materialText(m), sources: m.sources });
+      } catch (e) {
+        err = String(e);
+      }
+      const tasks = sheet?.tasks ?? [];
+      const text = JSON.stringify(tasks);
+      const total = tasks.reduce((n, x) => n + x.points, 0);
+      const choiceParts = tasks.filter((x) => x.type === "choice").flatMap((x) => x.parts);
+      return {
+        output: cur().at(-1)?.output ?? err,
+        expect: `A ${l === "de" ? "German" : "English"} ${preset} worksheet from the material only${o.mode === "points" ? `, ${o.totalPoints} points in total` : ""}; every key unambiguous.`,
+        checks: [
+          check("parsed", !!sheet, err),
+          check("tasks", tasks.length >= 3, String(tasks.length)),
+          check("points add up", o.mode !== "points" || total === o.totalPoints, `${total}`),
+          check("language", l === "en" ? lang(text) !== "de" : lang(text + " und die der") === "de", lang(text)),
+          check("choice option count", choiceParts.every((p) => p.options?.length === o.optionCount), choiceParts.map((p) => p.options?.length).join(",")),
+          check("multi has several keys", !o.multiCorrect || choiceParts.every((p) => p.kind !== "multi" || (p.answers?.length ?? 0) >= 2)),
         ],
       };
     },
   })),
 };
 
-const TASKS: Task[] = [tutor, voiceTutor, buddy, micro, quiz, practice, grade, classify, cards, selfcheck, stepcheck, researchQuery, researchPlan, researchRank, summary, curriculum, examTask, answerCheckEval, essayTaskEval, essayGradeEval, studioOutputs];
+const TASKS: Task[] = [] = [tutor, voiceTutor, buddy, micro, quiz, practice, grade, classify, cards, selfcheck, stepcheck, researchQuery, researchPlan, researchRank, summary, curriculum, examTask, answerCheckEval, essayTaskEval, essayGradeEval, studioOutputs, worksheetEval];
 
 // ---------- judge ----------
 async function judge(task: Task, caseName: string, r: CaseResult, prompt: string): Promise<Record<string, number> & { rationale?: unknown }> {

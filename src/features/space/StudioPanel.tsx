@@ -1,3 +1,4 @@
+import { WorksheetBuilder } from "../worksheets/WorksheetBuilder";
 import { FeynmanPanel } from "../feynman/FeynmanPanel";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -271,6 +272,8 @@ function SubView({ space, view }: { space: Space; view: StudioView }) {
       return <CoursePanel space={space} onBack={back} />;
     case "create":
       return <CreatePanel space={space} onBack={back} />;
+    case "worksheet":
+      return <WorksheetBuilder space={space} onBack={back} />;
     case "feynman":
       return <FeynmanPanel space={space} onBack={back} />;
     case "calculator":

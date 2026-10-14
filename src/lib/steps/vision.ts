@@ -65,13 +65,13 @@ export const TRANSCRIBE_PROMPT = [
 ].join("\n");
 
 /** Reads handwritten steps from a photo with a vision-capable model. */
-export async function transcribeSteps(llm: ResolvedModel, image: ImageInput, opts: { signal?: AbortSignal } = {}): Promise<Transcription> {
+export async function transcribeSteps(llm: ResolvedModel, image: ImageInput, opts: { signal?: AbortSignal; prompt?: string } = {}): Promise<Transcription> {
   const text = await generateNoThinking(llm, {
     messages: [
       {
         role: "user",
         content: [
-          { type: "text", text: TRANSCRIBE_PROMPT },
+          { type: "text", text: opts.prompt ?? TRANSCRIBE_PROMPT },
           { type: "file", data: image.data, mediaType: image.mediaType },
         ],
       },

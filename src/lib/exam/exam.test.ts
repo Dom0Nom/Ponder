@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TopicRef } from "../types";
-import { GED, batches, distribute, scaledScore, sectionTopics } from "./formats";
+import { GED, SAT, batches, distribute, scaledScore, sectionTopics } from "./formats";
 import { capByQuota, examQuestionPrompt } from "./generate";
 import { parseEssayGrade, parseEssayTask, repeatsIssue, tooShort } from "./essay";
 import { clockText, examResult, weakTopics } from "./attempt";
@@ -45,7 +45,9 @@ describe("exam questions", () => {
   it("states per-topic counts and the calculator rule", () => {
     const math = GED.sections[0];
     const p = examQuestionPrompt(GED, math, [{ topic: t("a"), n: 3 }, { topic: t("b"), n: 2 }]);
-    expect(p.startsWith("Write multiple-choice questions for a timed GED Mathematical Reasoning")).toBe(true);
+    expect(p.startsWith("Write questions of several kinds for a timed GED Mathematical Reasoning")).toBe(true);
+    expect(p).toContain('"hotspot"');
+    expect(examQuestionPrompt(SAT, SAT.sections[0], [{ topic: t("a"), n: 1 }]).startsWith("Write multiple-choice questions for a timed SAT")).toBe(true);
     expect(p).toContain("5 in total");
     expect(p).toContain('id "a"');
     expect(p).toContain("calculator is allowed");

@@ -1,3 +1,4 @@
+import { WorksheetScreen } from "../features/worksheets/WorksheetScreen";
 import { useRef, type CSSProperties } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import * as Tip from "@radix-ui/react-tooltip";
@@ -65,6 +66,12 @@ function RouteScreen({ route }: { route: Route }) {
     return (
       <ContentCard scroll={false}>
         <OutputScreen key={route.outputId} spaceId={route.spaceId} outputId={route.outputId} />
+      </ContentCard>
+    );
+  if (route.name === "worksheet")
+    return (
+      <ContentCard scroll={false}>
+        <WorksheetScreen key={route.worksheetId} spaceId={route.spaceId} worksheetId={route.worksheetId} />
       </ContentCard>
     );
   if (route.name === "notes")

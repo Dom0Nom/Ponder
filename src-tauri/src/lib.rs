@@ -39,6 +39,7 @@ mod proxy;
 mod retrieval;
 mod secrets;
 mod studio;
+mod worksheets;
 mod watch;
 
 use db::Db;
@@ -158,6 +159,10 @@ pub fn run() {
             exams::exams_list,
             exams::exam_get,
             exams::exam_delete,
+            worksheets::worksheet_save,
+            worksheets::worksheets_list,
+            worksheets::worksheet_get,
+            worksheets::worksheet_delete,
             studio::output_save,
             studio::outputs_list,
             studio::output_get,

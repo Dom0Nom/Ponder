@@ -31,7 +31,7 @@ async function script(app: Page) {
     const passage = (side: string) => `${side} `.repeat(10) + "Evidence and claims about the issue. ".repeat(30);
     (window as any).__mock.setScript(({ messages }: any) => {
       const p = text(messages[messages.length - 1]);
-      if (p.startsWith("Write multiple-choice questions for a timed")) {
+      if (p.startsWith("Write multiple-choice questions for a timed") || p.startsWith("Write questions of several kinds for a timed")) {
         const ids = [...p.matchAll(/id "([^"]+)": [^\n]*: (\d+)/g)];
         const qs = ids.flatMap(([, id, n]) =>
           Array.from({ length: Number(n) }, (_, i) => ({ topicId: id, question: `${id} question ${i + 1}?`, options: ["Right", "Wrong A", "Wrong B", "Wrong C"], answer: 0, explanation: "Because." })),

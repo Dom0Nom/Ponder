@@ -6,6 +6,7 @@
 import { studioReply } from "./studioFixtures";
 import { tinyPdf } from "./tinyPdf";
 import { notesReply } from "./notesFixtures";
+import type { WorksheetDoc } from "../lib/worksheets/types";
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { emit } from "@tauri-apps/api/event";
 import type * as T from "../lib/types";
@@ -67,6 +68,7 @@ export interface DB {
   reviews?: T.ReviewRow[];
   exams?: Row<T.ExamAttempt>;
   outputs?: Row<T.StudioOutput>;
+  worksheets?: Row<WorksheetDoc>;
   notes?: Row<T.Note>;
   glossaries?: Row<T.Glossary>;
   rewrites?: T.PassageRewrite[];
@@ -2229,6 +2231,22 @@ const handlers: Record<string, (a: Args) => unknown> = {
   output_get: (a) => db.outputs?.[a.id as string] ?? null,
   output_delete: (a) => {
     delete db.outputs?.[a.id as string];
+  },
+  worksheet_save: (a) => {
+    const x = structuredClone(a.worksheet as WorksheetDoc);
+    if (!x.id) x.id = id();
+    if (!x.createdAt) x.createdAt = now();
+    x.updatedAt = Math.max(now(), (db.worksheets?.[x.id]?.updatedAt ?? 0) + 1);
+    (db.worksheets ??= {})[x.id] = x;
+    return x;
+  },
+  worksheets_list: (a) =>
+    Object.values(db.worksheets ?? {})
+      .filter((x) => x.spaceId === a.spaceId)
+      .sort((x, y) => y.updatedAt - x.updatedAt),
+  worksheet_get: (a) => db.worksheets?.[a.id as string] ?? null,
+  worksheet_delete: (a) => {
+    delete db.worksheets?.[a.id as string];
   },
   notes_list: (a) =>
     Object.values(db.notes ?? {})

@@ -1,3 +1,4 @@
+import type { QuestionKind } from "../questions/types";
 import type { TopicRef } from "../types";
 
 export type ExamLength = "short" | "full";
@@ -31,6 +32,8 @@ export interface ExamSection {
   formulaSheet?: FormulaSheetId;
   /** extended response: minutes inside the section's time */
   essayMinutes?: Record<ExamLength, number>;
+  /** question kinds this section uses besides multiple choice; unset = multiple choice only */
+  kinds?: QuestionKind[];
 }
 
 export interface ExamTier {
@@ -55,7 +58,7 @@ export interface ExamFormat {
 
 /**
  * GED: times and question counts follow the published test format (ged.com, 2026). Questions are
- * multiple choice; the real test also uses drag-and-drop, hot spots and fill-ins.
+ * multiple choice; sections list the other kinds the real test uses (drag-and-drop, hot spots, fill-ins, drop-downs).
  */
 export const GED: ExamFormat = {
   id: "ged",
@@ -79,6 +82,7 @@ export const GED: ExamFormat = {
       calculator: true,
       parts: [{ questions: 5, calculator: false }, { calculator: true }],
       formulaSheet: "math",
+      kinds: ["mc", "fill", "multi", "drag", "hotspot"],
     },
     {
       id: "rla",
@@ -88,9 +92,10 @@ export const GED: ExamFormat = {
       questions: { short: 10, full: 46 },
       calculator: false,
       essayMinutes: { short: 25, full: 45 },
+      kinds: ["mc", "dropdown", "drag", "multi"],
     },
-    { id: "science", title: "Science", group: "Science", minutes: { short: 25, full: 90 }, questions: { short: 10, full: 34 }, calculator: true, formulaSheet: "science" },
-    { id: "social", title: "Social Studies", group: "Social Studies", minutes: { short: 20, full: 70 }, questions: { short: 10, full: 35 }, calculator: true },
+    { id: "science", title: "Science", group: "Science", minutes: { short: 25, full: 90 }, questions: { short: 10, full: 34 }, calculator: true, formulaSheet: "science", kinds: ["mc", "fill", "multi", "drag", "hotspot", "dropdown"] },
+    { id: "social", title: "Social Studies", group: "Social Studies", minutes: { short: 20, full: 70 }, questions: { short: 10, full: 35 }, calculator: true, kinds: ["mc", "multi", "drag", "dropdown", "hotspot"] },
   ],
 };
 

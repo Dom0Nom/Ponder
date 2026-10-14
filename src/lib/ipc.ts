@@ -2,6 +2,7 @@ import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { s } from "./strings";
 import type * as T from "./types";
+import type { WorksheetDoc } from "./worksheets/types";
 
 /** The translated text for an error that carries a message key, else the English message from Rust. */
 export function localizedError(e: T.AppError): string {
@@ -207,6 +208,10 @@ export const api = {
   outputsList: (spaceId: string) => call<T.StudioOutput[]>("outputs_list", { spaceId }),
   outputGet: (id: string) => call<T.StudioOutput | null>("output_get", { id }),
   outputDelete: (id: string) => call<void>("output_delete", { id }),
+  worksheetSave: (worksheet: Omit<WorksheetDoc, "id" | "createdAt" | "updatedAt"> & Partial<WorksheetDoc>) => call<WorksheetDoc>("worksheet_save", { worksheet: { id: "", createdAt: 0, updatedAt: 0, ...worksheet } }),
+  worksheetsList: (spaceId: string) => call<WorksheetDoc[]>("worksheets_list", { spaceId }),
+  worksheetGet: (id: string) => call<WorksheetDoc | null>("worksheet_get", { id }),
+  worksheetDelete: (id: string) => call<void>("worksheet_delete", { id }),
   notesList: (spaceId: string) => call<T.Note[]>("notes_list", { spaceId }),
   noteGet: (id: string) => call<T.Note | null>("note_get", { id }),
   noteSave: (note: Omit<T.Note, "id" | "sourceId" | "createdAt" | "updatedAt"> & Partial<T.Note>, sync = true) => call<T.Note>("note_save", { note, sync }),

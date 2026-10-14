@@ -153,12 +153,15 @@ export function PhotoDialog({
   spaceId,
   initialImage,
   onRead,
+  prompt,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   spaceId: string;
   initialImage?: Blob | null;
   onRead: (t: Transcription) => void;
+  /** replaces the handwritten-math instruction, e.g. to read a filled worksheet */
+  prompt?: string;
 }) {
   const space = useSpace(spaceId);
   const settings = useSettings();
@@ -209,7 +212,7 @@ export function PhotoDialog({
     abort.current = ac;
     try {
       const llm = await resolveVisionModel(space.data);
-      const t = await transcribeSteps(llm, photo, { signal: ac.signal });
+      const t = await transcribeSteps(llm, photo, { signal: ac.signal, prompt });
       if (ac.signal.aborted) return;
       onRead(t);
       onOpenChange(false);

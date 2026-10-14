@@ -14,11 +14,13 @@ import { examById, examFor, hasCalculator, resolveParts, sectionTopics, type Exa
 import { newStats, resolveSolver } from "../../lib/quality/answerCheck";
 import { generateExamQuestions } from "../../lib/exam/generate";
 import { generateEssayTask, gradeEssay } from "../../lib/exam/essay";
-import { clockText, examResult, partClock, remainingMs, weakTopics, type ExamData } from "../../lib/exam/attempt";
+import { answeredAt, clockText, examResult, partClock, remainingMs, weakTopics, type ExamData } from "../../lib/exam/attempt";
 import { scoreBand } from "../../lib/exam/band";
 import { examPatterns } from "../../lib/insights/patterns";
 import { ScoreBandView } from "./ScoreBandView";
 import { InsightSection, PatternList } from "../insights/LearningSections";
+import type { Response } from "../../lib/questions/types";
+import { QuestionView } from "../../components/questions/QuestionView";
 import { useUi } from "../../stores/ui";
 import { Button } from "../../components/ui/button";
 import { ChoiceOption } from "../../components/ui/choice";
@@ -141,6 +143,7 @@ function StartView({ spaceId }: { spaceId: string }) {
       const data: ExamData = {
         questions,
         answers: questions.map(() => null),
+        responses: questions.some((q) => q.rich) ? questions.map(() => null) : undefined,
         flags: questions.map(() => false),
         topics: topics.map((t) => ({ id: t.id, title: t.title })),
         essay: task ? { task, text: "" } : undefined,
@@ -322,7 +325,7 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
   const parts = useMemo(() => resolveParts(section, attempt.length), [section, attempt.length]);
   const [i, setI] = useState(() => {
     const p = parts[Math.min(attempt.data.partStarts?.length ?? 0, parts.length - 1)];
-    return Math.max(p.from, attempt.data.answers.findIndex((x, n) => x == null && n >= p.from));
+    return Math.max(p.from, attempt.data.questions.findIndex((_, n) => n >= p.from && !answeredAt(attempt.data, n)));
   });
   const [confirm, setConfirm] = useState(false);
   const [confirmPart, setConfirmPart] = useState(false);
@@ -344,8 +347,8 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
   const qs = data.questions;
   const essayIndex = data.essay ? qs.length : -1;
   const onEssay = i === essayIndex;
-  const unanswered = data.answers.filter((x) => x == null).length;
-  const partUnanswered = data.answers.filter((x, n) => x == null && n >= part.from && n < part.to).length;
+  const unanswered = qs.filter((_, n) => !answeredAt(data, n)).length;
+  const partUnanswered = qs.filter((_, n) => n >= part.from && n < part.to && !answeredAt(data, n)).length;
   const lastIndex = lastPart && essayIndex >= 0 ? essayIndex : part.to - 1;
 
   const nextPart = (auto = false) => {
@@ -401,6 +404,7 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
     }
   });
 
+  const respond = (r: Response) => setData((d) => ({ ...d, responses: qs.map((_, n) => (n === i ? r : (d.responses?.[n] ?? null))) }));
   const pick = (k: number) => setData((d) => ({ ...d, answers: d.answers.map((x, n) => (n === i ? k : x)) }));
   const go = (n: number) => setI(Math.max(part.from, Math.min(n, lastIndex)));
 
@@ -408,7 +412,7 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
     const onKey = (e: KeyboardEvent) => {
       if (onEssay || e.metaKey || e.ctrlKey || e.altKey || (e.target as HTMLElement)?.closest("input, textarea, [contenteditable]")) return;
       const k = "1234abcd".indexOf(e.key.toLowerCase());
-      if (k >= 0 && qs[i] && k % 4 < qs[i].options.length) pick(k % 4);
+      if (k >= 0 && qs[i] && !qs[i].rich && k % 4 < qs[i].options.length) pick(k % 4);
       else if (e.key === "ArrowRight") go(i + 1);
       else if (e.key === "ArrowLeft") go(i - 1);
     };
@@ -492,14 +496,20 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
                   {data.flags[i] ? s.exam.flagged : s.exam.flag}
                 </Button>
               </div>
-              <div className="text-title font-medium">
-                <Markdown text={q.question} />
-              </div>
-              <div role="radiogroup" aria-label={s.exam.question(i + 1, qs.length)} className="flex flex-col gap-3">
-                {q.options.map((o, k) => (
-                  <ChoiceOption key={k} label={<Markdown text={o} />} selected={data.answers[i] === k} onClick={() => pick(k)} />
-                ))}
-              </div>
+              {q.rich ? (
+                <QuestionView key={i} q={q.rich} value={data.responses?.[i]} onChange={respond} />
+              ) : (
+                <>
+                  <div className="text-title font-medium">
+                    <Markdown text={q.question} />
+                  </div>
+                  <div role="radiogroup" aria-label={s.exam.question(i + 1, qs.length)} className="flex flex-col gap-3">
+                    {q.options.map((o, k) => (
+                      <ChoiceOption key={k} label={<Markdown text={o} />} selected={data.answers[i] === k} onClick={() => pick(k)} />
+                    ))}
+                  </div>
+                </>
+              )}
               <div className="mt-2 flex gap-2">
                 <Button variant="secondary" size="sm" disabled={i <= part.from} onClick={() => go(i - 1)}>
                   <ChevronLeft size={14} />
@@ -526,12 +536,12 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
                 disabled={n < part.from || n >= part.to}
                 aria-current={n === i ? "step" : undefined}
                 aria-label={s.exam.question(n + 1, qs.length)}
-                data-answered={data.answers[n] != null}
+                data-answered={answeredAt(data, n)}
                 data-flagged={data.flags[n]}
                 className={cn(
                   "relative flex h-8 items-center justify-center rounded-item border text-label tabular-nums disabled:opacity-40",
                   n === i ? "border-fg" : "border-control",
-                  data.answers[n] != null ? "bg-fill-subtle font-semibold" : "text-muted",
+                  answeredAt(data, n) ? "bg-fill-subtle font-semibold" : "text-muted",
                 )}
               >
                 {n + 1}
@@ -750,6 +760,15 @@ function Results({ attempt, format, section, space }: { attempt: ExamAttempt; fo
           <ol className="flex flex-col gap-4 pt-2" data-testid="exam-review">
             {attempt.data.questions.map((q, n) => {
               const a = attempt.data.answers[n];
+              if (q.rich)
+                return (
+                  <li key={n} className="flex flex-col gap-2 rounded-card border border-border px-4 py-3" data-testid="exam-review-rich">
+                    <span className="text-label font-semibold text-muted">{s.exam.question(n + 1, attempt.data.questions.length)}</span>
+                    <QuestionView q={q.rich} value={attempt.data.responses?.[n]} onChange={() => undefined} reveal disabled />
+                    {!answeredAt(attempt.data, n) ? <span className="text-label text-muted">{s.exam.noAnswer}</span> : null}
+                    {q.explanation ? <p className="text-fg-secondary">{q.explanation}</p> : null}
+                  </li>
+                );
               return (
                 <li key={n} className="flex flex-col gap-2 rounded-card border border-border px-4 py-3">
                   <span className="text-label font-semibold text-muted">{s.exam.question(n + 1, attempt.data.questions.length)}</span>
