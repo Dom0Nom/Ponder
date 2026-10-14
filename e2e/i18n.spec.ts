@@ -35,6 +35,13 @@ test("Arabic is right-to-left with the sidebar on the right and the calculator l
   const side = await app.getByRole("complementary").first().boundingBox();
   const viewport = app.viewportSize()!;
   expect(side!.x).toBeGreaterThan(viewport.width / 2);
+
+  const arrow = app.locator(".lucide-arrow-left").first();
+  await expect(arrow).toBeVisible();
+  expect(await arrow.evaluate((el) => getComputedStyle(el).transform)).toBe("matrix(-1, 0, 0, 1, 0, 0)");
+  await app.getByLabel("لغة").or(app.getByLabel("Language")).selectOption("en");
+  await expect(app.locator("html")).toHaveAttribute("dir", "ltr");
+  expect(await app.locator(".lucide-arrow-left").first().evaluate((el) => getComputedStyle(el).transform)).toBe("none");
 });
 
 test("the calculator stays left-to-right in a right-to-left app", async ({ app }) => {
