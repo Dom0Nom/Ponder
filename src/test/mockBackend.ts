@@ -69,6 +69,7 @@ export interface DB {
   exams?: Row<T.ExamAttempt>;
   outputs?: Row<T.StudioOutput>;
   worksheets?: Row<WorksheetDoc>;
+  projects?: Row<T.Project>;
   notes?: Row<T.Note>;
   glossaries?: Row<T.Glossary>;
   rewrites?: T.PassageRewrite[];
@@ -2246,6 +2247,78 @@ const handlers: Record<string, (a: Args) => unknown> = {
   exam_get: (a) => db.exams?.[a.id as string] ?? null,
   exam_delete: (a) => {
     delete db.exams?.[a.id as string];
+  },
+  run_c: (a) => {
+    const code = String(a.code ?? "");
+    const stdin = String(a.stdin ?? "");
+    const base = { ok: false, stage: "run" as const, output: "", diagnostics: [], compiler: "clang", exitCode: 0, timedOut: false, truncated: false, compileMs: 40, runMs: 3 };
+    if (code.includes("int x = ;")) {
+      const line = code.split("\n").findIndex((l) => l.includes("int x = ;")) + 1;
+      return { ...base, stage: "compile", exitCode: null, output: `main.c:${line}:11: error: expected expression`, diagnostics: [{ line, column: 11, severity: "error", message: "expected expression" }] };
+    }
+    if (/for\s*\(;;\)|while\s*\(1\)/.test(code)) return { ...base, timedOut: true, exitCode: null };
+    const out = [...code.matchAll(/(?:puts|printf)\("([^"]*)"/g)].map((m) => m[1].replace(/\\n/g, "\n")).join("");
+    return { ...base, ok: true, output: stdin ? `${out}${stdin}` : out };
+  },
+  projects_list: (a) =>
+    Object.values(db.projects ?? {})
+      .filter((x) => x.spaceId === a.spaceId)
+      .sort((x, y) => y.updatedAt - x.updatedAt),
+  project_save: (a) => {
+    const input = a.project as T.Project;
+    if (!input.title?.trim()) err("invalid", "A project needs a title");
+    const cur = input.id ? db.projects?.[input.id] : undefined;
+    const t = now();
+    const p: T.Project = {
+      id: cur?.id ?? (input.id || id()),
+      spaceId: input.spaceId,
+      title: input.title.trim(),
+      goal: (input.goal ?? "").trim(),
+      createdAt: cur?.createdAt ?? t,
+      updatedAt: Math.max(t, (cur?.updatedAt ?? 0) + 1),
+      milestones: cur?.milestones ?? [],
+      log: cur?.log ?? [],
+    };
+    (db.projects ??= {})[p.id] = p;
+    return structuredClone(p);
+  },
+  project_delete: (a) => {
+    delete db.projects?.[a.id as string];
+  },
+  milestone_save: (a) => {
+    const input = a.milestone as T.ProjectMilestone;
+    const p = db.projects?.[input.projectId] ?? err("not_found", "project not found");
+    if (!input.title?.trim()) err("invalid", "A milestone needs a title");
+    const cur = input.id ? p.milestones.find((m) => m.id === input.id) : undefined;
+    const m: T.ProjectMilestone = {
+      id: cur?.id ?? id(),
+      projectId: p.id,
+      title: input.title.trim(),
+      topicIds: input.topicIds ?? cur?.topicIds ?? [],
+      position: cur?.position ?? Math.max(0, ...p.milestones.map((x) => x.position)) + 1,
+      doneAt: cur?.doneAt ?? null,
+    };
+    p.milestones = [...p.milestones.filter((x) => x.id !== m.id), m].sort((x, y) => x.position - y.position);
+    p.updatedAt = now();
+    return structuredClone(m);
+  },
+  milestone_delete: (a) => {
+    for (const p of Object.values(db.projects ?? {})) p.milestones = p.milestones.filter((m) => m.id !== a.id);
+  },
+  milestone_done: (a) => {
+    for (const p of Object.values(db.projects ?? {})) for (const m of p.milestones) if (m.id === a.id) m.doneAt = a.done ? now() : null;
+  },
+  log_add: (a) => {
+    const input = a.entry as T.ProjectLogEntry;
+    const p = db.projects?.[input.projectId] ?? err("not_found", "project not found");
+    if (!input.body?.trim() && !input.photo && !input.code) err("invalid", "A log entry needs text, a photo or code");
+    const e: T.ProjectLogEntry = { id: id(), projectId: p.id, body: (input.body ?? "").trim(), photo: input.photo ?? null, code: input.code ?? null, codeResult: input.codeResult ?? null, createdAt: now() };
+    p.log = [e, ...p.log];
+    p.updatedAt = now();
+    return structuredClone(e);
+  },
+  log_delete: (a) => {
+    for (const p of Object.values(db.projects ?? {})) p.log = p.log.filter((l) => l.id !== a.id);
   },
   output_save: (a) => {
     const x = structuredClone(a.output as T.StudioOutput);

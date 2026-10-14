@@ -33,7 +33,8 @@ export type StudioView =
   | "calculator"
   | "create"
   | "worksheet"
-  | "feynman";
+  | "feynman"
+  | "projects";
 export type ThemePref = "system" | "light" | "dark";
 export type FontPref = "default" | "dyslexic";
 

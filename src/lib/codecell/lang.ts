@@ -1,4 +1,4 @@
-export type CellLang = "js" | "python";
+export type CellLang = "js" | "python" | "c";
 
 const ALIASES: Record<string, CellLang> = {
   js: "js",
@@ -7,6 +7,7 @@ const ALIASES: Record<string, CellLang> = {
   python: "python",
   py: "python",
   python3: "python",
+  c: "c",
 };
 
 export function cellLang(className?: string): CellLang | null {
@@ -18,6 +19,8 @@ export interface CellResult {
   ok: boolean;
   output: string;
   error?: string;
+  /** PNG figures (base64) the code drew with Matplotlib */
+  images?: string[];
   ms: number;
 }
 

@@ -27,6 +27,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("019_questions_worksheets.sql"),
     include_str!("020_learning.sql"),
     include_str!("021_goals.sql"),
+    include_str!("022_projects.sql"),
 ];
 
 pub fn schema_version() -> i64 {

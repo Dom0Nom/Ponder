@@ -1,5 +1,6 @@
 import { WorksheetBuilder } from "../worksheets/WorksheetBuilder";
 import { FeynmanPanel } from "../feynman/FeynmanPanel";
+import { ProjectsPanel } from "../projects/ProjectsPanel";
 import { useQuery } from "@tanstack/react-query";
 import {
   FileText,
@@ -276,6 +277,8 @@ function SubView({ space, view }: { space: Space; view: StudioView }) {
       return <WorksheetBuilder space={space} onBack={back} />;
     case "feynman":
       return <FeynmanPanel space={space} onBack={back} />;
+    case "projects":
+      return <ProjectsPanel space={space} onBack={back} />;
     case "calculator":
       return (
         <div className="flex h-full min-h-0 flex-col">

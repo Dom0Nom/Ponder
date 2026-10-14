@@ -173,7 +173,7 @@ export async function checkSteps(
   const steps = input.steps.map((x) => x.trim()).filter(Boolean);
   if (!steps.length) throw new Error(s.steps.needSteps);
   const v = await import("./verify");
-  const calc = v.verifySteps(input.problem, steps);
+  const calc = await (await import("./sympyCheck")).sympyVerify(input.problem, steps, v.verifySteps(input.problem, steps));
   const final = v.verifyFinal(input.problem, steps, input.expectedAnswer);
   const clean = { ...input, steps };
 

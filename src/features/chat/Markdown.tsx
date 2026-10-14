@@ -9,6 +9,7 @@ import { remarkCitations } from "./remarkCitations";
 import { remarkHtmlBreaks } from "./remarkHtmlBreaks";
 import { remarkPlainMath } from "./remarkPlainMath";
 import { CodeCell } from "./CodeCell";
+import { CCodeCell } from "./CCodeCell";
 import { cellLang } from "../../lib/codecell/lang";
 
 interface HastNode {
@@ -45,8 +46,15 @@ export const Markdown = memo(function Markdown({
       const cls = code?.properties?.className;
       const lang = !streaming && code ? cellLang(Array.isArray(cls) ? cls.join(" ") : cls) : null;
       if (!lang || !code) return <pre>{children}</pre>;
+      const text = hastText(code).replace(/\n$/, "");
+      if (lang === "c")
+        return (
+          <CCodeCell code={text}>
+            <pre>{children}</pre>
+          </CCodeCell>
+        );
       return (
-        <CodeCell lang={lang} code={hastText(code).replace(/\n$/, "")}>
+        <CodeCell lang={lang} code={text}>
           <pre>{children}</pre>
         </CodeCell>
       );

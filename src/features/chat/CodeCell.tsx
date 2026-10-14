@@ -5,14 +5,14 @@ import { CellTimeout, runCell } from "../../lib/codecell/run";
 import { s } from "../../lib/strings";
 import { actionTextBtn } from "./actionButton";
 
-type State = { status: "idle" } | { status: "running"; booting: boolean } | { status: "done"; result: CellResult };
+type State = { status: "idle" } | { status: "running"; booting: boolean; packages?: boolean } | { status: "done"; result: CellResult };
 
 let pythonLoaded = false;
 
 export function CodeCell({ lang, code, children }: { lang: CellLang; code: string; children: ReactNode }) {
   const [state, setState] = useState<State>({ status: "idle" });
   const run = async () => {
-    setState({ status: "running", booting: lang === "python" && !pythonLoaded });
+    setState({ status: "running", booting: lang === "python" && !pythonLoaded, packages: lang === "python" && /^\s*(import|from)\s+(numpy|matplotlib|sympy)\b/m.test(code) });
     try {
       const result = await runCell(lang, code);
       if (lang === "python") pythonLoaded = true;
@@ -42,7 +42,7 @@ export function CodeCell({ lang, code, children }: { lang: CellLang; code: strin
       </div>
       {state.status === "running" && (
         <p className="mt-1.5 text-[12px] text-muted" role="status">
-          {state.booting ? s.codeCell.booting : s.codeCell.running}
+          {state.packages ? s.codeCell.packages : state.booting ? s.codeCell.booting : s.codeCell.running}
         </p>
       )}
       {result && (
@@ -57,8 +57,11 @@ export function CodeCell({ lang, code, children }: { lang: CellLang; code: strin
             {result.output && <span>{result.output}</span>}
             {result.output && result.error && "\n"}
             {result.error && <span className="text-danger">{result.error}</span>}
-            {!result.output && !result.error && <span className="text-muted">{s.codeCell.noOutput}</span>}
+            {!result.output && !result.error && !result.images?.length && <span className="text-muted">{s.codeCell.noOutput}</span>}
           </div>
+          {result.images?.map((b64, i) => (
+            <img key={i} src={`data:image/png;base64,${b64}`} alt={s.codeCell.figure(i + 1)} className="m-2 max-w-full rounded-item bg-white" data-testid="cell-figure" />
+          ))}
         </div>
       )}
     </div>

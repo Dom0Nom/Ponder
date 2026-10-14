@@ -1,6 +1,7 @@
 import type { CellLang, CellResult } from "./lang";
+import { cellResultFromC, runC } from "./c";
 
-export const RUN_TIMEOUT_MS = { js: 5_000, python: 20_000 } as const;
+export const RUN_TIMEOUT_MS = { js: 5_000, python: 20_000, c: 10_000 } as const;
 const BOOT_TIMEOUT_MS = 90_000;
 
 export class CellTimeout extends Error {
@@ -13,9 +14,13 @@ const pyBase = () => new URL(`${import.meta.env.BASE_URL}pyodide/`, location.hre
 
 let py: Worker | null = null;
 let pyBooted = false;
+const pyPackagesLoaded = new Set<string>();
+const PACKAGE_TIMEOUT_MS = 90_000;
+const heavyImports = (code: string) => [...code.matchAll(/^\s*(?:import|from)\s+(numpy|matplotlib|sympy)\b/gm)].map((m) => m[1]);
+const needsLoading = (code: string) => heavyImports(code).some((p) => !pyPackagesLoaded.has(p));
 let pyQueue: Promise<unknown> = Promise.resolve();
 
-function newWorker(lang: CellLang): Worker {
+function newWorker(lang: "js" | "python"): Worker {
   return lang === "js"
     ? new Worker(new URL("./jsWorker.ts", import.meta.url), { type: "module" })
     : new Worker(new URL("./pyWorker.ts", import.meta.url), { type: "module" });
@@ -23,15 +28,16 @@ function newWorker(lang: CellLang): Worker {
 
 /** JS runs in a fresh worker per run; Python keeps one worker so later cells see earlier definitions, one run at a time. */
 export function runCell(lang: CellLang, code: string): Promise<CellResult> {
+  if (lang === "c") return runC(code).then(cellResultFromC);
   if (lang === "js") return runOnce(lang, code);
   const next = pyQueue.then(() => runOnce(lang, code));
   pyQueue = next.catch(() => undefined);
   return next;
 }
 
-function runOnce(lang: CellLang, code: string): Promise<CellResult> {
+function runOnce(lang: "js" | "python", code: string): Promise<CellResult> {
   const w = lang === "js" ? newWorker("js") : (py ??= newWorker("python"));
-  const limit = RUN_TIMEOUT_MS[lang] + (lang === "python" && !pyBooted ? BOOT_TIMEOUT_MS : 0);
+  const limit = RUN_TIMEOUT_MS[lang] + (lang === "python" && !pyBooted ? BOOT_TIMEOUT_MS : 0) + (lang === "python" && needsLoading(code) ? PACKAGE_TIMEOUT_MS : 0);
   return new Promise((resolve, reject) => {
     const done = () => {
       clearTimeout(timer);
@@ -43,6 +49,7 @@ function runOnce(lang: CellLang, code: string): Promise<CellResult> {
       if (lang === "python") {
         py = null;
         pyBooted = false;
+        pyPackagesLoaded.clear();
       }
     };
     const timer = setTimeout(() => {
@@ -53,7 +60,10 @@ function runOnce(lang: CellLang, code: string): Promise<CellResult> {
     w.onmessage = (e: MessageEvent<CellResult & { bootMs?: number; bootFailed?: boolean }>) => {
       done();
       if (e.data.bootFailed) kill();
-      else if (lang === "python") pyBooted = true;
+      else if (lang === "python") {
+        pyBooted = true;
+        if (e.data.ok) heavyImports(code).forEach((p) => pyPackagesLoaded.add(p));
+      }
       resolve(e.data);
     };
     w.onerror = (e) => {
@@ -69,4 +79,5 @@ export function resetPython() {
   py?.terminate();
   py = null;
   pyBooted = false;
+  pyPackagesLoaded.clear();
 }

@@ -1,5 +1,6 @@
 import type { AudioLine, AudioStyle, OutputKind } from "./kinds";
 import { languageInstruction } from "../i18n/language";
+import { LAB_SHAPE, LAB_TASK } from "./lab";
 
 export interface Material {
   /** Source titles; passages refer to them by 1-based number. */
@@ -20,9 +21,10 @@ const NOUN: Record<OutputKind, string> = {
   infographic: "one-page infographic",
   audio: "two-host audio overview script",
   explainer: "small interactive explainer",
+  lab: "lab card",
 };
 
-const TASK: Record<Exclude<OutputKind, "explainer">, string[]> = {
+const TASK: Record<Exclude<OutputKind, "explainer" | "lab">, string[]> = {
   report: [
     "Write a structured report in Markdown, 400–700 words, or shorter when the material is short (never repeat a fact or pad to reach a length): a one-paragraph overview, then 3–5 `##` sections, then `## Key takeaways` with 3–5 bullets.",
     "Cite the material with [n] markers right after the sentence they support, where n is a source number from SOURCES. Every section has at least one citation. Only use numbers that exist in SOURCES.",
@@ -98,6 +100,7 @@ const SHAPE: Record<OutputKind, string> = {
   infographic: '{"title": "…", "subtitle": "…", "stats": [{"value": "…", "label": "…"}], "sections": [{"heading": "…", "points": ["…"]}], "takeaway": "…"}',
   audio: '{"title": "…", "lines": [{"host": "A", "text": "…"}, {"host": "B", "text": "…"}]}',
   explainer: "TITLE: …\n```html\n…\n```",
+  lab: LAB_SHAPE,
 };
 
 /** First line is stable per kind: the mock backend and the eval harness match it. */
@@ -111,7 +114,7 @@ export function outputPrompt(kind: OutputKind, m: Material, focus?: string, styl
     summaries ? `SUMMARIES\n"""\n${summaries}\n"""` : "",
     `PASSAGES (each starts with its source number)\n"""\n${passages}\n"""`,
     focus?.trim() ? `Focus on: ${focus.trim()}. Leave out material that doesn't relate to it.` : "Cover the material's most important ideas.",
-    ...(kind === "explainer" ? EXPLAINER_TASK : TASK[kind]),
+    ...(kind === "explainer" ? EXPLAINER_TASK : kind === "lab" ? LAB_TASK : TASK[kind]),
     kind === "audio" ? AUDIO_STYLE[style] : "",
     `Use only facts from the material above. ${languageInstruction(language)} That includes the title; keep technical terms as the material spells them.`,
     "title is at most 8 words.",

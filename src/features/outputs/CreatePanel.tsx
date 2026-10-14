@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { AiBeam } from "../../components/fx/AiBeam";
 import { ActivityOrb } from "../../components/motion/ActivityOrb";
-import { FileText, MessageSquareText } from "lucide-react";
+import { FileText, Hammer, MessageSquareText } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input, fieldLabel } from "../../components/ui/input";
 import { ErrorState, Skeleton } from "../../components/ui/misc";
@@ -129,6 +129,18 @@ export function CreatePanel({ space, onBack }: { space: Space; onBack: () => voi
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="font-medium">{s.feynman.title}</span>
           <span className="truncate text-label text-muted">{s.feynman.meta}</span>
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={() => useUi.getState().setStudioView("projects")}
+        data-testid="create-projects"
+        className="-mx-1 -mt-1.5 flex w-[calc(100%+8px)] items-center gap-3 border-b border-divider px-1 py-2 text-start hover:bg-fill-subtle"
+      >
+        <Hammer size={15} className="shrink-0" />
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="font-medium">{s.projects.title}</span>
+          <span className="truncate text-label text-muted">{s.projects.meta}</span>
         </span>
       </button>
       <h3 className="pt-2 text-label font-semibold text-muted">{s.outputs.saved}</h3>

@@ -29,6 +29,7 @@ import { qkOutput, qkOutputs, useOutputJobs } from "../../stores/outputJobs";
 import { useUi } from "../../stores/ui";
 import { AudioView } from "./AudioView";
 import { currentExplainerDoc, ExplainerView } from "./ExplainerView";
+import { LabView } from "./LabView";
 import { KIND_ICON } from "./kindIcons";
 import { CheatsheetView, DiagramView, InfographicView, MindmapView, ReportView, SlidesView, TableView, TimelineView, WorksheetView } from "./Renderers";
 
@@ -46,6 +47,7 @@ const FORMATS: Record<StudioOutput["kind"], Format[]> = {
   infographic: ["png", "svg"],
   audio: ["mp3", "md"],
   explainer: ["html"],
+  lab: [],
 };
 
 const svgSize = (svg: string) => {
@@ -255,6 +257,8 @@ export function OutputScreen({ spaceId, outputId }: { spaceId: string; outputId:
         return <InfographicView ref={svgRef} title={out.title} data={out.data as OutputDataMap["infographic"]} />;
       case "explainer":
         return <ExplainerView data={out.data as OutputDataMap["explainer"]} />;
+      case "lab":
+        return <LabView data={out.data as OutputDataMap["lab"]} onChange={(d) => persist({ ...out, data: d })} />;
       case "audio":
         return <AudioView id={out.id} title={out.title} data={out.data as OutputDataMap["audio"]} space={space.data} />;
     }
