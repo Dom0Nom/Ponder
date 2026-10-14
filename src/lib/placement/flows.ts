@@ -153,7 +153,7 @@ export async function checkLesson(space: Space, course: Course, lesson: Lesson):
     const { text } = await api.getSourceText(course.sourceId);
     const chapter = text.slice(lesson.startOffset, lesson.endOffset);
     const topic: TopicRef = { id: lesson.id, title: lesson.title, description: `chapter of ${course.title}`, group: course.title };
-    const questions = (await generateQuiz(llm, { topics: [topic], perTopic: 3, context: chapter, purpose: "check understanding of this chapter" })).slice(0, 3);
+    const questions = (await generateQuiz(llm, { topics: [topic], perTopic: 3, context: chapter, purpose: "check understanding of this chapter", language: space.language })).slice(0, 3);
     const assessment = await api.assessmentCreate(space.id, "lesson", null, `Lesson: ${lesson.title}`, questions);
     const answers = await quiz.ask(`Check: ${lesson.title}`, questions);
     if (!answers) return null;

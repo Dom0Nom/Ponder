@@ -119,7 +119,7 @@ function StartView({ spaceId }: { spaceId: string }) {
       const llm = await resolveChatModel(space.data);
       const pastIssues = (history.data ?? []).flatMap((a) => (a.data.essay ? [a.data.essay.task.issue] : []));
       const [questions, task] = await Promise.all([
-        generateExamQuestions(llm, format, section, topics, count, { signal: ctrl.signal, onProgress: (done, total) => setProgress({ done, total }) }),
+        generateExamQuestions(llm, format, section, topics, count, { signal: ctrl.signal, language: space.data?.language, onProgress: (done, total) => setProgress({ done, total }) }),
         section.essayMinutes ? generateEssayTask(llm, pastIssues, ctrl.signal) : Promise.resolve(undefined),
       ]);
       const data: ExamData = {
@@ -521,7 +521,7 @@ function Results({ attempt, format, section, space }: { attempt: ExamAttempt; fo
     setGradeError(null);
     try {
       const llm = await resolveChatModel(space);
-      const g = await gradeEssay(llm, essay.task, essay.text);
+      const g = await gradeEssay(llm, essay.task, essay.text, undefined, space.language);
       const data = { ...attempt.data, essay: { ...essay, grade: g } };
       const nr = examResult(format, data);
       const saved = await api.examSave({ ...attempt, data, score: nr.share, scaled: nr.scaled });

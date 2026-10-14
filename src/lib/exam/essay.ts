@@ -1,4 +1,5 @@
 import { s } from "../strings";
+import { languageInstruction } from "../i18n/language";
 import { generateText } from "ai";
 import { extractJson } from "../chat/json";
 import type { ResolvedModel } from "../chat/llm";
@@ -103,7 +104,7 @@ export async function generateEssayTask(llm: ResolvedModel, avoid: string[] = []
   throw new Error(s.exam.essayTaskFailed);
 }
 
-export function essayGradePrompt(task: EssayTask, essay: string): string {
+export function essayGradePrompt(task: EssayTask, essay: string, language?: string | null): string {
   const rubric = TRAITS.map((t) => [`Trait ${t.trait}: ${t.name}`, ...t.levels.map((l, i) => `  ${i}: ${l}`)].join("\n")).join("\n");
   return [
     "You score a GED-style extended response essay against the rubric below, the way a trained GED scorer would.",
@@ -117,6 +118,7 @@ export function essayGradePrompt(task: EssayTask, essay: string): string {
       "- An essay that is blank, off-topic, not in English, or mostly copied from the passages scores 0 on every trait.",
       "- Each reason is one or two sentences to the learner, naming a concrete spot in the essay (quote a few words) and what would raise the score. No praise phrases.",
       "- summary: one sentence with the most useful next step.",
+      `- ${languageInstruction(language)} That applies to the reasons and the summary; the essay itself is judged as English.`,
     ].join("\n"),
     'Return JSON only: {"traits": [{"trait": 1, "score": 0, "reason": "…"}, {"trait": 2, "score": 0, "reason": "…"}, {"trait": 3, "score": 0, "reason": "…"}], "summary": "…"}',
   ].join("\n\n");
@@ -140,7 +142,7 @@ export function tooShort(essay: string): boolean {
   return essay.trim().split(/\s+/).filter(Boolean).length < 30;
 }
 
-export async function gradeEssay(llm: ResolvedModel, task: EssayTask, essay: string, signal?: AbortSignal): Promise<EssayGrade> {
+export async function gradeEssay(llm: ResolvedModel, task: EssayTask, essay: string, signal?: AbortSignal, language?: string | null): Promise<EssayGrade> {
   if (tooShort(essay))
     return {
       traits: TRAITS.map((t) => ({ trait: t.trait, score: 0, reason: "" })),
@@ -148,7 +150,7 @@ export async function gradeEssay(llm: ResolvedModel, task: EssayTask, essay: str
       summary: s.exam.essayTooShort,
     };
   for (let i = 0; i < 2; i++) {
-    const r = await generateText({ model: llm.model, prompt: essayGradePrompt(task, essay), abortSignal: signal, ...llm.options({ thinking: false }) });
+    const r = await generateText({ model: llm.model, prompt: essayGradePrompt(task, essay, language), abortSignal: signal, ...llm.options({ thinking: false }) });
     const g = parseEssayGrade(r.text);
     if (g) return g;
   }

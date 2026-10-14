@@ -3,8 +3,9 @@ import type { ResolvedModel } from "../chat/llm";
 import type { QuizQuestion, TopicRef } from "../types";
 import { parseQuiz, shuffleOptions } from "../placement/logic";
 import { batches, distribute, type ExamFormat, type ExamSection } from "./formats";
+import { languageInstruction } from "../i18n/language";
 
-export function examQuestionPrompt(format: ExamFormat, section: ExamSection, batch: { topic: TopicRef; n: number }[], avoid: string[] = []): string {
+export function examQuestionPrompt(format: ExamFormat, section: ExamSection, batch: { topic: TopicRef; n: number }[], avoid: string[] = [], language?: string | null): string {
   const total = batch.reduce((n, b) => n + b.n, 0);
   return [
     `Write multiple-choice questions for a timed ${format.title} ${section.title} practice test.`,
@@ -12,7 +13,7 @@ export function examQuestionPrompt(format: ExamFormat, section: ExamSection, bat
     batch.map((b) => `- id "${b.topic.id}": ${b.topic.title} (${b.topic.description}): ${b.n}`).join("\n"),
     `Match the real ${format.title} test's difficulty and style: mostly medium, some hard, applied to realistic situations. Where the real test gives a short passage, quote, table or scenario, include it in the question text (under 120 words; tables in Markdown; math in LaTeX inside $…$).`,
     section.calculator ? "A scientific calculator is allowed, so numbers may need one." : "No calculator is allowed, so keep any arithmetic simple.",
-    "Each question has exactly 4 options and one correct answer (0-based index). Wrong options are plausible mistakes, not jokes. The explanation is one sentence on why the answer is right. Questions must be answerable without a picture. Avoid 'all of the above'.",
+    `Each question has exactly 4 options and one correct answer (0-based index). Wrong options are plausible mistakes, not jokes. The explanation is one sentence on why the answer is right, and ${languageInstruction(language)} Questions must be answerable without a picture. Avoid 'all of the above'.`,
     avoid.length ? `Don't repeat these questions:\n${avoid.slice(-20).map((q) => `- ${q.slice(0, 100)}`).join("\n")}` : "",
     'Return JSON only: [{"topicId": "…", "question": "…", "options": ["…","…","…","…"], "answer": 0, "explanation": "…"}]',
   ]
@@ -38,11 +39,12 @@ async function runBatch(
   batch: { topic: TopicRef; n: number }[],
   avoid: string[],
   signal?: AbortSignal,
+  language?: string | null,
 ): Promise<QuizQuestion[]> {
   const quota = new Map(batch.map((b) => [b.topic.id, b.n]));
   const r = await generateText({
     model: llm.model,
-    prompt: examQuestionPrompt(format, section, batch, avoid),
+    prompt: examQuestionPrompt(format, section, batch, avoid, language),
     abortSignal: signal,
     ...llm.options({ thinking: false }),
   });
@@ -59,7 +61,7 @@ export async function generateExamQuestions(
   section: ExamSection,
   topics: TopicRef[],
   count: number,
-  opts: { signal?: AbortSignal; onProgress?: (done: number, total: number) => void } = {},
+  opts: { signal?: AbortSignal; onProgress?: (done: number, total: number) => void; language?: string | null } = {},
 ): Promise<QuizQuestion[]> {
   const plan = distribute(topics, count);
   const jobs = batches(plan);
@@ -69,7 +71,7 @@ export async function generateExamQuestions(
   const worker = async () => {
     while (next < jobs.length) {
       const i = next++;
-      results[i] = await runBatch(llm, format, section, jobs[i], [], opts.signal).catch((e) => {
+      results[i] = await runBatch(llm, format, section, jobs[i], [], opts.signal, opts.language).catch((e) => {
         if (opts.signal?.aborted) throw e;
         return [];
       });
@@ -84,7 +86,7 @@ export async function generateExamQuestions(
     for (const q of all) have.set(q.topicId!, (have.get(q.topicId!) ?? 0) + 1);
     const missing = plan.map((p) => ({ topic: p.topic, n: p.n - (have.get(p.topic.id) ?? 0) })).filter((p) => p.n > 0);
     for (const b of batches(missing)) {
-      const more = await runBatch(llm, format, section, b, all.map((q) => q.question), opts.signal).catch((e) => {
+      const more = await runBatch(llm, format, section, b, all.map((q) => q.question), opts.signal, opts.language).catch((e) => {
         if (opts.signal?.aborted) throw e;
         return [];
       });

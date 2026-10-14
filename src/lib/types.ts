@@ -13,6 +13,8 @@ export interface Space {
   tutorStyle: TutorStyle;
   strictGrounding: boolean;
   modelOverride: ModelRef | null;
+  /** BCP-47 code the tutor and generated material use; null follows the app language */
+  language: string | null;
   createdAt: number;
   updatedAt: number;
   lastOpenedAt: number | null;
@@ -27,6 +29,7 @@ export interface SpacePatch {
   tutorStyle?: TutorStyle;
   strictGrounding?: boolean;
   modelOverride?: ModelRef | null;
+  language?: string | null;
   recap?: string;
 }
 

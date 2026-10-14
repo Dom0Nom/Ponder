@@ -1,7 +1,7 @@
 //! Automatic local backups: a consistent SQLite snapshot plus app-owned files in one zip,
 //! pruned to the newest N, restored by staging the snapshot and swapping it in on next start.
 use crate::db::{self, models, now_ms, Db};
-use crate::error::{invalid, AppError, AppResult};
+use crate::error::{invalid, invalid_key, AppError, AppResult};
 use crate::AppState;
 use rusqlite::{Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
@@ -234,7 +234,7 @@ pub fn create_backup(
     let name = file_name_for(now);
     let final_path = dest.join(&name);
     if final_path.exists() {
-        return Err(invalid("A backup was just made. Try again in a moment."));
+        return Err(invalid_key("backupJustMade", "A backup was just made. Try again in a moment."));
     }
     let tmp_snapshot = dest.join(format!(".{name}.db.tmp"));
     let tmp_zip = dest.join(format!(".{name}.tmp"));
@@ -468,9 +468,9 @@ fn backup_path(cfg: &BackupConfig, name: &str) -> AppResult<PathBuf> {
     let folder = cfg
         .folder
         .as_deref()
-        .ok_or_else(|| invalid("Choose a backup folder first."))?;
+        .ok_or_else(|| invalid_key("chooseBackupFolder", "Choose a backup folder first."))?;
     if parse_name(name).is_none() {
-        return Err(invalid("Not a backup file."));
+        return Err(invalid_key("notBackupFile", "Not a backup file."));
     }
     let p = Path::new(folder).join(name);
     if !p.is_file() {
@@ -506,7 +506,7 @@ impl BackupService {
         let folder = cfg
             .folder
             .clone()
-            .ok_or_else(|| invalid("Choose a backup folder first."))?;
+            .ok_or_else(|| invalid_key("chooseBackupFolder", "Choose a backup folder first."))?;
         let res = create_backup(db, data_dir, Path::new(&folder), version).and_then(|b| {
             prune(Path::new(&folder), cfg.keep)?;
             Ok(b)
@@ -566,7 +566,7 @@ pub async fn backup_configure(
     let c = state.db.conn()?;
     let mut cfg = load_config(&c);
     if enabled && cfg.folder.is_none() {
-        return Err(invalid("Choose a backup folder first."));
+        return Err(invalid_key("chooseBackupFolder", "Choose a backup folder first."));
     }
     cfg.enabled = enabled;
     cfg.frequency = frequency;
@@ -586,6 +586,7 @@ pub async fn backup_choose_folder(
         .dialog()
         .file()
         .set_parent(&window)
+        .set_title(crate::i18n::t("native.dialog.backupFolder"))
         .blocking_pick_folder();
     if let Some(p) = picked {
         let p = p.into_path().map_err(|e| AppError::Other(e.to_string()))?;

@@ -1,3 +1,4 @@
+import { languageInstruction } from "../i18n/language";
 export interface GapSource {
   title: string;
   summary: string;
@@ -53,7 +54,7 @@ export interface ReportSource {
 export const REPORT_CHARS_PER_SOURCE = 5000;
 export const REPORT_CHARS_TOTAL = 60000;
 
-export function reportPrompt(question: string, sources: ReportSource[]): string {
+export function reportPrompt(question: string, sources: ReportSource[], language?: string | null): string {
   const each = Math.min(REPORT_CHARS_PER_SOURCE, Math.floor(REPORT_CHARS_TOTAL / Math.max(1, sources.length)));
   const docs = sources
     .map((s, i) => `<source n="${i + 1}" title="${s.title.replace(/"/g, "'")}" url="${s.url}">\n${s.markdown.slice(0, each)}\n</source>`)
@@ -74,7 +75,7 @@ Rules:
 - Do not write a source list; the app adds it.
 - The last section is "## Not covered": which parts of the question the sources don't answer, or "Nothing important" if they cover it all.
 - If the sources don't answer the question at all, say so in two sentences and suggest what to search for instead.
-- Write in the language of the question. Quote at most a short phrase from any source.
+- ${languageInstruction(language)} Quote at most a short phrase from any source.
 
 Return the Markdown report only.`;
 }

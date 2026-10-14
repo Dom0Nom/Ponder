@@ -1175,6 +1175,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
       tutorStyle: input.tutorStyle ?? "mixed",
       strictGrounding: input.strictGrounding ?? false,
       modelOverride: input.modelOverride ?? null,
+      language: input.language ?? null,
       createdAt: now(),
       updatedAt: now(),
       lastOpenedAt: null,

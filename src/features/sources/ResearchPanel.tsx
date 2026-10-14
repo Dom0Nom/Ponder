@@ -81,7 +81,7 @@ export function ResearchPanel({
         api.listThreads(space.id),
         api.curriculumGet(space.id),
       ]);
-      const ctx = { name: space.name, sources, curriculum, threads: [...threads].sort((a, b) => b.updatedAt - a.updatedAt) };
+      const ctx = { name: space.name, language: space.language, sources, curriculum, threads: [...threads].sort((a, b) => b.updatedAt - a.updatedAt) };
       const key = contextKey(ctx, `${llm.provider.id}/${llm.modelId}|${systemPrompt}`);
       const text = (!force && queryCache.get(space.id, key)) || (await sharedQuery(space.id, key, () => generateResearchQuery(ctx, { llm, systemPrompt })));
       queryCache.set(space.id, key, text);
@@ -126,7 +126,7 @@ export function ResearchPanel({
     try {
       const { llm, systemPrompt } = await resolveResearch(space);
       const picks = found.filter((f) => selected.has(f.id));
-      const r = await writeReport(run?.query ?? q, picks, { llm, systemPrompt, signal: ctrl.signal });
+      const r = await writeReport(run?.query ?? q, picks, { llm, systemPrompt, signal: ctrl.signal, language: space.language });
       if (!ctrl.signal.aborted) setReport(r);
     } catch (e) {
       if (ctrl.signal.aborted) return;

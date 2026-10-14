@@ -6,7 +6,11 @@ import type * as T from "./types";
 /** The translated text for an error that carries a message key, else the English message from Rust. */
 export function localizedError(e: T.AppError): string {
   const entry = e.key ? (s.errors as Record<string, unknown>)[e.key] : undefined;
-  if (typeof entry === "function") return String(entry(...(e.params ?? [])));
+  if (typeof entry === "function") {
+    const params = e.params ?? [];
+    if (e.key === "notFound") return String(entry(s.errors.things[params[0]] ?? params[0]));
+    return String(entry(...params));
+  }
   if (typeof entry === "string") return entry;
   return String(e.message);
 }

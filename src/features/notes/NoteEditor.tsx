@@ -221,7 +221,7 @@ export function NoteEditor({
       const passages: Passage[] = all
         .filter((_, i) => i % step === 0)
         .map((p) => ({ sourceId: note.sourceId ?? "", sourceTitle: title, text: p.text, start: p.start, end: p.end }));
-      const made = await generateCards(llm, passages, { count: 6, only: "cloze", existingFronts: (cards.data ?? []).map((c) => c.front) });
+      const made = await generateCards(llm, passages, { count: 6, only: "cloze", existingFronts: (cards.data ?? []).map((c) => c.front), language: space?.language });
       const linked = made.map((c) => ({
         ...c,
         sourceId: note.sourceId,

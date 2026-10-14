@@ -1,6 +1,6 @@
 //! OS keychain wrapper. Values are never logged.
 
-use crate::error::{invalid, AppError, AppResult};
+use crate::error::{invalid, invalid_key, AppError, AppResult};
 
 pub const SERVICE: &str = "dev.ponder.app";
 
@@ -206,7 +206,7 @@ impl SecretStore for MemoryStore {
 pub fn set_api_key(store: &dyn SecretStore, provider_id: &str, value: &str) -> AppResult<()> {
     let v = value.trim();
     if v.is_empty() {
-        return Err(invalid("Key can't be empty"));
+        return Err(invalid_key("keyEmpty", "Key can't be empty"));
     }
     if provider_id.trim().is_empty() {
         return Err(invalid("Missing provider"));

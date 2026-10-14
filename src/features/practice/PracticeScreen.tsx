@@ -132,7 +132,7 @@ function Session({
       api.searchChunks(space.id, `${topic.title} ${topic.description}`, 4).catch(() => []),
     ]);
     const context = hits.length ? hits.map((h) => h.text).join("\n\n") : undefined;
-    return api.practiceItemAdd(space.id, await generateProblem(llm, { topic, level: levelFor(targetDifficulty(atTheta)), avoid, context, language }));
+    return api.practiceItemAdd(space.id, await generateProblem(llm, { topic, level: levelFor(targetDifficulty(atTheta)), avoid, context, language: language ?? space.language }));
   };
 
   const load = async (variation?: VariationMode) => {

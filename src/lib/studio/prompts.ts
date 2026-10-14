@@ -1,4 +1,5 @@
 import type { AudioLine, AudioStyle, OutputKind } from "./kinds";
+import { languageInstruction } from "../i18n/language";
 
 export interface Material {
   /** Source titles; passages refer to them by 1-based number. */
@@ -100,7 +101,7 @@ const SHAPE: Record<OutputKind, string> = {
 };
 
 /** First line is stable per kind: the mock backend and the eval harness match it. */
-export function outputPrompt(kind: OutputKind, m: Material, focus?: string, style: AudioStyle = "deepDive"): string {
+export function outputPrompt(kind: OutputKind, m: Material, focus?: string, style: AudioStyle = "deepDive", language?: string | null): string {
   const sources = m.sources.map((t, i) => `[${i + 1}] ${t}`).join("\n");
   const summaries = m.summaries.map((x) => `[${x.source}] ${x.summary}`).join("\n\n");
   const passages = m.passages.map((p) => `[${p.source}] ${p.text}`).join("\n\n");
@@ -112,7 +113,7 @@ export function outputPrompt(kind: OutputKind, m: Material, focus?: string, styl
     focus?.trim() ? `Focus on: ${focus.trim()}. Leave out material that doesn't relate to it.` : "Cover the material's most important ideas.",
     ...(kind === "explainer" ? EXPLAINER_TASK : TASK[kind]),
     kind === "audio" ? AUDIO_STYLE[style] : "",
-    "Use only facts from the material above. Write in the same language as the material, including the title; keep technical terms as the material spells them.",
+    `Use only facts from the material above. ${languageInstruction(language)} That includes the title; keep technical terms as the material spells them.`,
     "title is at most 8 words.",
     kind === "explainer" ? `Return exactly this and nothing else:\n${SHAPE[kind]}` : `Return JSON only:\n${SHAPE[kind]}`,
   ]
@@ -123,7 +124,7 @@ export function outputPrompt(kind: OutputKind, m: Material, focus?: string, styl
 export const outputPromptStart = (kind: OutputKind) => `Create a ${NOUN[kind]} for a learner`;
 
 /** First line is stable: the mock backend matches it. */
-export function audioAnswerPrompt(m: Material, title: string, recent: AudioLine[], question: string): string {
+export function audioAnswerPrompt(m: Material, title: string, recent: AudioLine[], question: string, language?: string | null): string {
   const passages = m.passages.map((p) => `[${p.source}] ${p.text}`).join("\n\n");
   const said = recent.map((l) => `${l.host === 1 ? "B" : "A"}: ${l.text}`).join("\n");
   return [
@@ -132,7 +133,7 @@ export function audioAnswerPrompt(m: Material, title: string, recent: AudioLine[
     `MATERIAL\n"""\n${passages}\n"""`,
     `QUESTION\n"""\n${question.trim()}\n"""`,
     "Answer as the hosts, in 1–3 short spoken lines (at most 70 words in total): host A answers from the material, host B may add a one-sentence link back to where the overview was. If the material doesn't cover the question, say so plainly instead of guessing.",
-    "Write for the ear: no Markdown, no citations, no lists. Use the language of the question.",
+    `Write for the ear: no Markdown, no citations, no lists. ${languageInstruction(language)}`,
     'Return JSON only:\n{"lines": [{"host": "A", "text": "…"}]}',
   ].join("\n\n");
 }

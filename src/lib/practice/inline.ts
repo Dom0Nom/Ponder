@@ -44,7 +44,7 @@ export function splitDisplayMath(question: string): { kind: "text" | "math"; tex
 /** Writes and stores one problem for an inline practice card, based on the answer it follows. */
 export async function makeInlineProblem(opts: {
   spaceId: string;
-  space: Parameters<typeof resolveChatModel>[0];
+  space: (Parameters<typeof resolveChatModel>[0] & { language?: string | null }) | null | undefined;
   topic: TopicSpec;
   context: string;
 }): Promise<PracticeItem> {
@@ -58,6 +58,7 @@ export async function makeInlineProblem(opts: {
     level: levelFor(targetDifficulty(ability?.theta ?? 0)),
     context: opts.context,
     avoid,
+    language: opts.space?.language,
   });
   return api.practiceItemAdd(opts.spaceId, item);
 }

@@ -72,7 +72,7 @@ export function AudioView({ id, title, data, space }: { id: string; title: strin
     setThinking(true);
     try {
       const [llm, material] = await Promise.all([resolveChatModel(space), gatherMaterial(space.id, q)]);
-      const prompt = audioAnswerPrompt(material, title, data.lines.slice(Math.max(0, at - 3), at + 1), q);
+      const prompt = audioAnswerPrompt(material, title, data.lines.slice(Math.max(0, at - 3), at + 1), q, space.language);
       const r = await generateText({ model: llm.model, prompt, abortSignal: ac.signal, ...llm.options({ thinking: false }) });
       if (ac.signal.aborted) return;
       const lines = parseAudioAnswer(r.text);

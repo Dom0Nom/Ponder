@@ -169,14 +169,11 @@ fn notify(app: &AppHandle, n: &Nudge) {
     let _ = app.emit("focus://distraction", n);
     let mins = n.remaining_ms.map(|ms| (ms + 59_999) / 60_000);
     let body = match mins {
-        Some(m) if m > 0 => format!(
-            "{} is open during your focus block. {m} min left. Back to it?",
-            n.app.name
+        Some(m) if m > 0 => crate::i18n::t_args(
+            "native.notification.distractionLeft",
+            &[&n.app.name, &m.to_string()],
         ),
-        _ => format!(
-            "{} is open during your focus block. Back to it?",
-            n.app.name
-        ),
+        _ => crate::i18n::t_args("native.notification.distraction", &[&n.app.name]),
     };
     use tauri_plugin_notification::NotificationExt;
     if let Err(e) = app

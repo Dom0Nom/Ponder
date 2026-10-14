@@ -262,10 +262,10 @@ export async function deepResearch(question: string, deps: ResearchDeps): Promis
 export async function writeReport(
   question: string,
   sources: FoundSource[],
-  deps: AskDeps & Pick<ResearchDeps, "signal">,
+  deps: AskDeps & Pick<ResearchDeps, "signal"> & { language?: string | null },
 ): Promise<FinishedReport> {
   if (!sources.length) throw new Error("Pick at least one source for the report.");
-  const text = await ask(deps, reportPrompt(question, sources), deps.signal);
+  const text = await ask(deps, reportPrompt(question, sources, deps.language), deps.signal);
   if (!text.trim()) throw new Error("The model returned an empty report. Try again.");
   return finishReport(text, sources);
 }

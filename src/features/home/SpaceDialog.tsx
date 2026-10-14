@@ -14,6 +14,8 @@ import { useUi } from "../../stores/ui";
 import { NativeSelect } from "../settings/NativeSelect";
 import { CURRICULA, curriculumById } from "../../lib/placement/curricula";
 import { runPlacement } from "../../lib/placement/flows";
+import { LanguageSelect } from "../space/LanguageSelect";
+import { getLocale } from "../../lib/i18n/state";
 
 export function SpaceDialog({
   open,
@@ -28,6 +30,7 @@ export function SpaceDialog({
   const [icon, setIcon] = useState(space?.icon ?? "calculator");
   const [busy, setBusy] = useState(false);
   const [curriculum, setCurriculum] = useState("");
+  const [language, setLanguage] = useState<string | null>(space ? space.language : getLocale());
   const qc = useQueryClient();
   const navigate = useUi((st) => st.navigate);
 
@@ -36,6 +39,7 @@ export function SpaceDialog({
       setName(space?.name ?? "");
       setIcon(space?.icon ?? "calculator");
       setCurriculum("");
+      setLanguage(space ? space.language : getLocale());
     }
   }, [open, space]);
 
@@ -44,11 +48,11 @@ export function SpaceDialog({
     setBusy(true);
     try {
       if (space) {
-        const updated = await api.updateSpace(space.id, { name, icon });
+        const updated = await api.updateSpace(space.id, { name, icon, language });
         qc.setQueryData(qk.space(space.id), updated);
         toast.success(s.space.saved);
       } else {
-        const created = await api.createSpace({ name, icon, color: "slate" });
+        const created = await api.createSpace({ name, icon, color: "slate", language });
         navigate({ name: "space", spaceId: created.id });
         const cur = curriculumById(curriculum);
         if (cur) {
@@ -119,6 +123,10 @@ export function SpaceDialog({
             </NativeSelect>
           </div>
         )}
+        <div>
+          <Label htmlFor="space-language">{s.space.language}</Label>
+          <LanguageSelect id="space-language" value={language} onChange={setLanguage} />
+        </div>
         <div>
           <Label>{s.space.icon}</Label>
           <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={s.space.icon}>

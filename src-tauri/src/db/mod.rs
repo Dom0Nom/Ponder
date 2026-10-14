@@ -22,6 +22,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("014_notes.sql"),
     include_str!("015_annotations.sql"),
     include_str!("016_inbox.sql"),
+    include_str!("018_space_language.sql"),
 ];
 
 pub fn schema_version() -> i64 {
@@ -101,6 +102,10 @@ const DETECTED: &[(usize, &str)] = &[
         14,
         "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'annotations'",
     ),
+    (
+        16,
+        "SELECT 1 FROM pragma_table_info('spaces') WHERE name = 'language'",
+    ),
 ];
 
 fn migrate(conn: &Connection) -> AppResult<()> {
@@ -163,6 +168,24 @@ mod tests {
         assert_eq!(uv as usize, MIGRATIONS.len());
         // reopening must not re-run migrations
         Db::open(db.path()).unwrap();
+    }
+
+    #[test]
+    fn adds_the_space_language_column_once() {
+        let (db, _dir) = test_db();
+        let c = db.conn().unwrap();
+        let has = |c: &Connection| -> i64 {
+            c.query_row(
+                "SELECT count(*) FROM pragma_table_info('spaces') WHERE name = 'language'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap()
+        };
+        assert_eq!(has(&c), 1);
+        drop(c);
+        Db::open(db.path()).unwrap();
+        assert_eq!(has(&db.conn().unwrap()), 1);
     }
 
     #[test]

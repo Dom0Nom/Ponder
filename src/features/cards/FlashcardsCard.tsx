@@ -147,6 +147,7 @@ function GenerateCardsDialog({ space, open, onOpenChange }: { space: Space; open
         count: Number(count),
         focus: focus.trim() || undefined,
         existingFronts: (cards.data ?? []).map((c) => c.front),
+        language: space.language,
       });
       const added = await api.cardsAdd(space.id, made.flatMap((c) => expandCloze(c)));
       invalidateCards(space.id);

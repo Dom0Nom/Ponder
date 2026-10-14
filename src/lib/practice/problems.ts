@@ -4,6 +4,7 @@ import type { ResolvedModel } from "../chat/llm";
 import type { ErrorType, PracticeItem, PracticeKind } from "../types";
 import { difficultyFor, LEVEL_WORDS, levelFor } from "./irt";
 import { numbersMatch, parseNumber } from "./grade";
+import { languageInstruction } from "../i18n/language";
 
 export interface TopicSpec {
   key: string;
@@ -57,7 +58,7 @@ const FORMAT =
 
 export async function generateProblem(
   llm: ResolvedModel,
-  opts: { topic: TopicSpec; level: number; context?: string; avoid?: string[]; language?: string; signal?: AbortSignal },
+  opts: { topic: TopicSpec; level: number; context?: string; avoid?: string[]; language?: string | null; signal?: AbortSignal },
 ): Promise<NewItem> {
   const prompt = [
     `Write ONE practice problem on "${opts.topic.title}" (${opts.topic.description}) at difficulty ${opts.level}/5: ${LEVEL_WORDS[opts.level]}.`,
@@ -65,7 +66,7 @@ export async function generateProblem(
     "Ask exactly one question. Harder means deeper reasoning, not more text, extra conditions or several sub-questions. Keep it under 80 words.",
     opts.context ? `Base it on this material:\n"""\n${opts.context.slice(0, 6000)}\n"""` : "",
     opts.avoid?.length ? `Make it different from these recent problems:\n${opts.avoid.slice(0, 10).map((q) => `- ${q}`).join("\n")}` : "",
-    opts.language && opts.language !== "en" ? `Write in the language with ISO code "${opts.language}".` : "",
+    languageInstruction(opts.language),
     FORMAT,
   ]
     .filter(Boolean)

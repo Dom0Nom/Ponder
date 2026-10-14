@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 import type { ResolvedModel } from "../chat/llm";
 import type { Source, SpaceCurriculum, Thread } from "../types";
+import { languageInstruction } from "../i18n/language";
 
 export const DEFAULT_RESEARCH_SYSTEM_PROMPT = `You are a research assistant that finds study sources for a learner.
 Prefer free, trustworthy learning material: textbooks, encyclopedias, university pages and peer-reviewed papers. Avoid content farms, forums and ads.
@@ -13,6 +14,7 @@ export interface SpaceContext {
   curriculum?: Pick<SpaceCurriculum, "title" | "topics"> | null;
   sources?: Pick<Source, "title">[];
   threads?: Pick<Thread, "title">[];
+  language?: string | null;
 }
 
 const list = (items: string[]) => items.map((t) => `- ${t}`).join("\n");
@@ -31,7 +33,7 @@ export function buildQueryPrompt(ctx: SpaceContext): string {
     .map((t) => t.title);
   if (threads.length) parts.push(`Recent chats:\n${list(threads)}`);
   parts.push(
-    `Write one or two short lines (at most 30 words) saying what this learner should find new study sources about. Infer the subject from the space name, curriculum and existing sources, and ask for material that adds to them instead of repeating them. Write in the language of the space name and titles. Return only that text, no quotes.`,
+    `Write one or two short lines (at most 30 words) saying what this learner should find new study sources about. Infer the subject from the space name, curriculum and existing sources, and ask for material that adds to them instead of repeating them. ${languageInstruction(ctx.language)} Return only that text, no quotes.`,
   );
   return parts.join("\n\n");
 }
@@ -60,7 +62,7 @@ export async function generateResearchQuery(
 
 /** Changes whenever the space's name, curriculum, source list or research model changes. */
 export function contextKey(ctx: SpaceContext, modelKey: string): string {
-  return JSON.stringify([ctx.name, ctx.curriculum?.title ?? "", (ctx.sources ?? []).map((x) => x.title), modelKey]);
+  return JSON.stringify([ctx.name, ctx.curriculum?.title ?? "", (ctx.sources ?? []).map((x) => x.title), modelKey, ctx.language ?? ""]);
 }
 
 const cache = new Map<string, { key: string; query: string }>();

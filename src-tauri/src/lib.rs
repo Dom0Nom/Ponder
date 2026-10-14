@@ -12,6 +12,7 @@ mod deeplink;
 mod error;
 mod exams;
 mod focus;
+mod i18n;
 mod icons;
 mod inbox;
 mod ingest;
@@ -82,6 +83,7 @@ pub fn run() {
                 Err(e) => log::error!("restoring the backup failed: {e}"),
             }
             let db = Db::open(data_dir.join("app.db"))?;
+            i18n::init(app.handle(), &db);
             ingest::start(app.handle(), db.clone(), data_dir.clone());
             focus::start(app.handle(), db.clone());
             watch::start(app.handle(), db.clone());
@@ -133,6 +135,7 @@ pub fn run() {
             commands::core::add_journal,
             commands::core::get_settings,
             commands::core::set_setting,
+            i18n::set_locale,
             focus::distraction::running_apps,
             music::music_status,
             music::music_test,

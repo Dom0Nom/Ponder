@@ -2,6 +2,7 @@ import { generateText } from "ai";
 import { extractJson } from "../chat/json";
 import type { ResolvedModel } from "../chat/llm";
 import type { NewCard, SearchHit } from "../types";
+import { languageInstruction } from "../i18n/language";
 
 export interface Passage {
   sourceId: string;
@@ -70,7 +71,7 @@ export function parseCards(text: string, passages: Passage[]): NewCard[] {
 export async function generateCards(
   llm: ResolvedModel,
   passages: Passage[],
-  opts: { count: number; focus?: string; existingFronts?: string[]; signal?: AbortSignal; only?: "cloze" },
+  opts: { count: number; focus?: string; existingFronts?: string[]; signal?: AbortSignal; only?: "cloze"; language?: string | null },
 ): Promise<NewCard[]> {
   const listing = passages.map((p, i) => `[${i + 1}] (${p.sourceTitle})\n${p.text}`).join("\n\n");
   const prompt = [
@@ -78,7 +79,7 @@ export async function generateCards(
     opts.only === "cloze"
       ? "Make only cloze cards: {\"type\":\"cloze\",\"text\":a sentence with the key term as {{c1::term}}}."
       : "Mix two types: question/answer cards ({\"type\":\"basic\",\"front\":question,\"back\":short answer}) and cloze cards ({\"type\":\"cloze\",\"text\":a sentence with the key term as {{c1::term}}}).",
-    "Rules: one fact per card; answers short; test understanding, not trivia like page numbers; only use facts that the passages state; write in the passages' language.",
+    `Rules: one fact per card; answers short; test understanding, not trivia like page numbers; only use facts that the passages state; ${languageInstruction(opts.language)}`,
     "For every card give the passage number it comes from and a short exact quote (5–20 words) from that passage that supports it.",
     opts.existingFronts?.length ? `Don't repeat these existing cards:\n${opts.existingFronts.slice(0, 40).map((f) => `- ${f}`).join("\n")}` : "",
     `PASSAGES:\n${listing}`,

@@ -1,5 +1,5 @@
 use super::{new_id, now_ms};
-use crate::error::{invalid, AppError, AppResult};
+use crate::error::{invalid, invalid_key, AppError, AppResult};
 use rusqlite::{params, Connection, OptionalExtension, Row};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -28,6 +28,7 @@ pub struct Space {
     pub tutor_style: String,
     pub strict_grounding: bool,
     pub model_override: Option<Value>,
+    pub language: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
     pub last_opened_at: Option<i64>,
@@ -47,6 +48,9 @@ pub struct SpacePatch {
     #[serde(default, deserialize_with = "deserialize_some")]
     pub model_override: Option<Option<Value>>,
     pub recap: Option<String>,
+    /// BCP-47 code the tutor answers in; `null` follows the app language
+    #[serde(default, deserialize_with = "deserialize_some")]
+    pub language: Option<Option<String>>,
 }
 
 fn deserialize_some<'de, D, T>(d: D) -> Result<Option<T>, D::Error>
@@ -59,6 +63,13 @@ where
 
 const TUTOR_STYLES: &[&str] = &["direct", "socratic", "mixed"];
 
+/// A BCP-47 language tag such as "de" or "pt-BR".
+fn valid_language(tag: &str) -> bool {
+    !tag.is_empty()
+        && tag.len() <= 16
+        && tag.split('-').all(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_alphanumeric()))
+}
+
 fn space_from_row(r: &Row) -> rusqlite::Result<Space> {
     Ok(Space {
         id: r.get("id")?,
@@ -68,6 +79,7 @@ fn space_from_row(r: &Row) -> rusqlite::Result<Space> {
         tutor_style: r.get("tutor_style")?,
         strict_grounding: r.get::<_, i64>("strict_grounding")? != 0,
         model_override: json_col(r, "model_override")?,
+        language: r.get("language")?,
         created_at: r.get("created_at")?,
         updated_at: r.get("updated_at")?,
         last_opened_at: r.get("last_opened_at")?,
@@ -99,13 +111,13 @@ pub fn get_space(c: &Connection, id: &str) -> AppResult<Space> {
 pub fn create_space(c: &Connection, p: SpacePatch) -> AppResult<Space> {
     let name = p.name.as_deref().map(str::trim).unwrap_or("");
     if name.is_empty() {
-        return Err(invalid("Space name can't be empty"));
+        return Err(invalid_key("spaceNameEmpty", "Space name can't be empty"));
     }
     let id = new_id();
     let now = now_ms();
     c.execute(
-        "INSERT INTO spaces (id, name, icon, color, tutor_style, strict_grounding, model_override, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)",
+        "INSERT INTO spaces (id, name, icon, color, tutor_style, strict_grounding, model_override, language, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?9, ?8, ?8)",
         params![
             id,
             name,
@@ -114,7 +126,8 @@ pub fn create_space(c: &Connection, p: SpacePatch) -> AppResult<Space> {
             p.tutor_style.unwrap_or_else(|| "mixed".into()),
             p.strict_grounding.unwrap_or(false) as i64,
             p.model_override.flatten().as_ref().map(|v| v.to_string()),
-            now
+            now,
+            p.language.flatten().filter(|l| valid_language(l))
         ],
     )?;
     get_space(c, &id)
@@ -124,7 +137,7 @@ pub fn update_space(c: &Connection, id: &str, p: SpacePatch) -> AppResult<Space>
     let cur = get_space(c, id)?;
     let name = p.name.map(|n| n.trim().to_string()).unwrap_or(cur.name);
     if name.is_empty() {
-        return Err(invalid("Space name can't be empty"));
+        return Err(invalid_key("spaceNameEmpty", "Space name can't be empty"));
     }
     let tutor = p.tutor_style.unwrap_or(cur.tutor_style);
     if !TUTOR_STYLES.contains(&tutor.as_str()) {
@@ -134,8 +147,12 @@ pub fn update_space(c: &Connection, id: &str, p: SpacePatch) -> AppResult<Space>
         Some(v) => v,
         None => cur.model_override,
     };
+    let language = match p.language {
+        Some(v) => v.filter(|l| valid_language(l)),
+        None => cur.language,
+    };
     c.execute(
-        "UPDATE spaces SET name=?2, icon=?3, color=?4, tutor_style=?5, strict_grounding=?6, model_override=?7, recap=?8, updated_at=?9 WHERE id=?1",
+        "UPDATE spaces SET name=?2, icon=?3, color=?4, tutor_style=?5, strict_grounding=?6, model_override=?7, recap=?8, updated_at=?9, language=?10 WHERE id=?1",
         params![
             id,
             name,
@@ -145,7 +162,8 @@ pub fn update_space(c: &Connection, id: &str, p: SpacePatch) -> AppResult<Space>
             p.strict_grounding.unwrap_or(cur.strict_grounding) as i64,
             json_str(&model),
             p.recap.or(cur.recap),
-            now_ms()
+            now_ms(),
+            language
         ],
     )?;
     get_space(c, id)
@@ -748,6 +766,27 @@ pub fn set_setting(c: &Connection, key: &str, value: &Value) -> AppResult<()> {
 mod tests {
     use super::*;
     use crate::db::test_db;
+
+    #[test]
+    fn space_language_can_be_set_changed_and_cleared() {
+        let (db, _d) = test_db();
+        let c = db.conn().unwrap();
+        let patch = |v: serde_json::Value| -> SpacePatch { serde_json::from_value(v).unwrap() };
+        let s = create_space(&c, patch(serde_json::json!({"name": "Bio", "language": "de"}))).unwrap();
+        assert_eq!(s.language.as_deref(), Some("de"));
+        let plain = create_space(&c, patch(serde_json::json!({"name": "Chem"}))).unwrap();
+        assert_eq!(plain.language, None);
+        let kept = update_space(&c, &s.id, patch(serde_json::json!({"name": "Biology"}))).unwrap();
+        assert_eq!(kept.language.as_deref(), Some("de"));
+        let changed = update_space(&c, &s.id, patch(serde_json::json!({"language": "pt-BR"}))).unwrap();
+        assert_eq!(changed.language.as_deref(), Some("pt-BR"));
+        let bad = update_space(&c, &s.id, patch(serde_json::json!({"language": "not a tag!"}))).unwrap();
+        assert_eq!(bad.language, None);
+        update_space(&c, &s.id, patch(serde_json::json!({"language": "fr"}))).unwrap();
+        let cleared = update_space(&c, &s.id, patch(serde_json::json!({"language": null}))).unwrap();
+        assert_eq!(cleared.language, None);
+        assert_eq!(get_space(&c, &s.id).unwrap().language, None);
+    }
 
     #[test]
     fn space_crud_and_cascade() {

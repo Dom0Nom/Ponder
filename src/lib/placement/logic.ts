@@ -2,6 +2,7 @@ import { generateText } from "ai";
 import { extractJson } from "../chat/json";
 import type { ResolvedModel } from "../chat/llm";
 import type { QuizQuestion, TopicCoverage, TopicLevelValue, TopicRef } from "../types";
+import { languageInstruction } from "../i18n/language";
 
 export type CoverageLevel = "covered" | "partial" | "missing";
 
@@ -46,7 +47,7 @@ export function parseQuiz(text: string, topicIds: string[]): QuizQuestion[] {
 
 export async function generateQuiz(
   llm: ResolvedModel,
-  opts: { topics: TopicRef[]; perTopic: number; context?: string; language?: string; purpose: string; signal?: AbortSignal },
+  opts: { topics: TopicRef[]; perTopic: number; context?: string; language?: string | null; purpose: string; signal?: AbortSignal },
 ): Promise<QuizQuestion[]> {
   const topicList = opts.topics.map((t) => `- id "${t.id}": ${t.title} (${t.description})`).join("\n");
   const prompt = [
@@ -55,7 +56,7 @@ export async function generateQuiz(
     topicList,
     opts.context ? `Base the questions on this material:\n"""\n${opts.context.slice(0, 9000)}\n"""` : "",
     "Each question has exactly 4 options, one correct answer (0-based index), and a one-sentence explanation. Questions must be answerable without seeing a picture. Avoid 'all of the above'.",
-    opts.language && opts.language !== "en" ? `Write the quiz in the language with ISO code "${opts.language}".` : "",
+    `${languageInstruction(opts.language)} That includes the explanations.`,
     'Return JSON only: [{"topicId": "…", "question": "…", "options": ["…","…","…","…"], "answer": 0, "explanation": "…"}]',
   ]
     .filter(Boolean)
