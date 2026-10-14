@@ -50,7 +50,7 @@ function Card({ title, index, facts, children, testId }: { title: string; index:
 function TestLine({ state, error }: { state: "idle" | "testing" | "ok" | "error"; error?: string }) {
   if (state === "testing")
     return (
-      <p role="status" className="flex items-center gap-2 text-body text-muted">
+      <p className="flex items-center gap-2 text-body text-muted">
         <ActivityOrb activity="research" size={20} />
         <ThinkingLine label={s.onboarding.ai.testing} />
       </p>
@@ -162,7 +162,7 @@ function SubscriptionCard({ index, providers }: { index: number; providers: Prov
         </div>
       )}
       {pending && (
-        <p role="status" className="flex items-center gap-2 text-body text-muted">
+        <p className="flex items-center gap-2 text-body text-muted">
           <ActivityOrb activity="research" size={20} />
           <ThinkingLine label={ai.waitingBrowser} />
         </p>
@@ -326,7 +326,7 @@ function LocalCard({ index, providers }: { index: number; providers: Provider[] 
         </Button>
       </div>
       {scanning && (
-        <p role="status" className="flex items-center gap-2 text-body text-muted">
+        <p className="flex items-center gap-2 text-body text-muted">
           <ActivityOrb activity="search" size={20} />
           <ThinkingLine label={ai.local.scanning} />
         </p>

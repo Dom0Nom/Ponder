@@ -108,7 +108,7 @@ export function OnboardingHost() {
   const qc = useQueryClient();
   const open = useUi((st) => st.onboardingOpen);
   const [latched, setLatched] = useState(false);
-  const first = settings.isSuccess && spaces.isSuccess && !settings.data[OB.done] && spaces.data.length === 0;
+  const first = settings.isSuccess && spaces.isSuccess && !settings.data[OB.done] && (spaces.data.length === 0 || typeof settings.data[OB.step] === "number");
   useEffect(() => {
     if (first) setLatched(true);
   }, [first]);

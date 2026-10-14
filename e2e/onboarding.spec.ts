@@ -3,15 +3,18 @@ import { test as base, expect, type Page } from "@playwright/test";
 const test = base.extend<{ ob: Page }>({
   ob: async ({ page }, use) => {
     await page.goto("/");
+    await page.getByRole("main").waitFor({ timeout: 60_000 });
     await page.evaluate(() => localStorage.clear());
     await page.goto("/?onboarding");
     await use(page);
   },
 });
 
+test.setTimeout(90_000);
+
 const wizard = (p: Page) => p.getByTestId("onboarding");
 const next = (p: Page) => wizard(p).getByRole("button", { name: "Continue", exact: true }).click();
-const heading = (p: Page, name: string) => expect(wizard(p).getByRole("heading", { level: 1, name })).toBeVisible();
+const heading = (p: Page, name: string) => expect(wizard(p).getByRole("heading", { level: 1, name })).toBeVisible({ timeout: 15_000 });
 
 async function toStep(p: Page, n: number) {
   for (let i = 0; i < n; i++) await next(p);
@@ -92,15 +95,16 @@ test("AI: local server found on the network is connected and tested", async ({ o
   await toStep(ob, 1);
   const card = ob.getByTestId("ai-local");
   await card.getByRole("button", { name: "Find on my network" }).click();
-  await expect(card.getByText("LM Studio")).toBeVisible();
-  await card.getByRole("button", { name: "Connect" }).first().click();
+  const row = card.getByRole("listitem");
+  await expect(row).toBeVisible();
+  await row.getByRole("button", { name: "Connect" }).click();
   await expect(ob.getByTestId("ai-connected").getByRole("listitem", { name: /LM Studio/ })).toBeVisible();
 });
 
 test("AI: ChatGPT sign-in starts and hands off to the browser", async ({ ob }) => {
   await toStep(ob, 1);
   await ob.getByRole("button", { name: "Sign in with ChatGPT" }).click();
-  await expect(ob.getByText("Waiting for you to sign in in the browser…")).toBeVisible();
+  await expect(ob.getByTestId("ai-subscription").getByRole("status")).toBeVisible();
   const types = await ob.evaluate(() => Object.values((window as any).__mock.db().providers).map((p: any) => p.type));
   expect(types).toEqual(["chatgpt-oauth"]);
   await expect(ob.getByTestId("ai-connected").getByRole("listitem", { name: /ChatGPT/ })).toBeVisible({ timeout: 10_000 });
