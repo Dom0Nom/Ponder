@@ -585,6 +585,7 @@ function Results({ attempt, format, section, space }: { attempt: ExamAttempt; fo
                 ))}
               </ul>
               {essay.grade.summary ? <p className="text-fg-secondary">{essay.grade.summary}</p> : null}
+              {essay.grade.passes ? <p className="text-caption text-muted">{essay.grade.passes === 3 ? s.essayCal.thirdRead : s.essayCal.checkedTwice}</p> : null}
             </>
           ) : null}
         </section>

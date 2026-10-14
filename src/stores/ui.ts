@@ -48,6 +48,8 @@ interface UiState {
   /** Where Practice/Review was opened from, for the header back button. */
   backRoute: Route | null;
   spaceDialogOpen: boolean;
+  /** space the goal wizard is open for. Not persisted. */
+  goalWizard: string | null;
   renamingThreadId: string | null;
   justAddedProvider: string | null;
   /** Studio sub-view; null is the main Studio view. Not persisted. */
@@ -82,6 +84,7 @@ interface UiState {
   setVisualEffects: (v: boolean) => void;
   toggleSidebar: () => void;
   setSpaceDialogOpen: (o: boolean) => void;
+  setGoalWizard: (spaceId: string | null) => void;
   setRenamingThread: (id: string | null) => void;
   setJustAddedProvider: (id: string | null) => void;
   setStudioView: (v: StudioView | null, from?: StudioView | null) => void;
@@ -110,6 +113,7 @@ export const useUi = create<UiState>()(
       settingsReturn: { name: "home" },
       backRoute: null,
       spaceDialogOpen: false,
+      goalWizard: null,
       renamingThreadId: null,
       justAddedProvider: null,
       studioView: null,
@@ -157,6 +161,7 @@ export const useUi = create<UiState>()(
       setVisualEffects: (visualEffects) => set({ visualEffects }),
       toggleSidebar: () => set((st) => ({ sidebarOpen: !st.sidebarOpen })),
       setSpaceDialogOpen: (spaceDialogOpen) => set({ spaceDialogOpen }),
+      setGoalWizard: (goalWizard) => set({ goalWizard }),
       setRenamingThread: (id) => set({ renamingThreadId: id, sidebarOpen: id ? true : get().sidebarOpen }),
       setJustAddedProvider: (justAddedProvider) => set({ justAddedProvider }),
       setStudioView: (studioView, from = null) => set({ studioView, studioFrom: studioView ? from : null }),

@@ -9,6 +9,7 @@ import { useCourses, useCurriculum, useStudyPlan } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { PlanTask, Space, StudyPlanBundle } from "../../lib/types";
 import { cn } from "../../lib/utils";
+import { TextSwap } from "../../components/motion/TextSwap";
 import { Button } from "../../components/ui/button";
 import { ConfirmDialog } from "../../components/ui/dialog";
 import { Input, Label } from "../../components/ui/input";
@@ -64,7 +65,7 @@ function ScheduleForm({
 }) {
   const today = todayDate();
   const [goal, setGoal] = useState(existing?.plan.goal ?? curriculumTitle ?? space.name);
-  const [examDate, setExamDate] = useState(existing?.plan.examDate ?? addDays(today, 28));
+  const [examDate, setExamDate] = useState(existing ? existing.plan.examDate : addDays(today, 28));
   const [hours, setHours] = useState(existing ? String(existing.plan.weeklyMinutes / 60) : "5");
   const [days, setDays] = useState<number[]>(existing?.plan.studyDays ?? DEFAULT_DAYS);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +77,6 @@ function ScheduleForm({
     const e = s.plan.schedule.errors;
     const weeklyMinutes = Math.round(Number(hours) * 60);
     if (!goal.trim()) return setError(e.noGoal);
-    if (!examDate) return setError(e.badDate);
     if (!(weeklyMinutes > 0)) return setError(e.noMinutes);
     if (days.length === 0) return setError(e.noStudyDays);
     setError(null);
@@ -122,7 +122,7 @@ function ScheduleForm({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label htmlFor="plan-exam">{s.plan.schedule.examDate}</Label>
+          <Label htmlFor="plan-exam">{existing && !existing.plan.examDate ? s.goal.dateLabel : s.plan.schedule.examDate}</Label>
           <Input id="plan-exam" type="date" min={addDays(today, 1)} value={examDate} onChange={(ev) => setExamDate(ev.target.value)} />
         </div>
         <div>
@@ -214,7 +214,13 @@ function PlanView({ space, bundle, onEdit }: { space: Space; bundle: StudyPlanBu
     <>
       <div className="flex flex-col gap-1">
         <p className="font-semibold" data-testid="plan-week">
-          {s.plan.schedule.weekOf(week.current, week.total)} · {s.plan.schedule.examIn(week.daysLeft)}
+          <TextSwap
+            text={
+              week.daysLeft == null
+                ? `${s.goal.schedule.weekOnly(week.current)} · ${s.goal.schedule.perWeek(String(Math.round(plan.weeklyMinutes / 6) / 10))}`
+                : `${s.plan.schedule.weekOf(week.current, week.total)} · ${s.plan.schedule.examIn(week.daysLeft)}`
+            }
+          />
         </p>
         <p className="truncate text-muted">{plan.goal}</p>
       </div>

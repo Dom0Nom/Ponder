@@ -26,6 +26,8 @@ export interface EssayGrade {
   /** 0–6; the GED counts each point twice */
   total: number;
   summary: string;
+  /** how many scoring passes produced this grade (2, or 3 when the first two differed by more than a point) */
+  passes?: 2 | 3;
 }
 
 /**
@@ -158,7 +160,7 @@ export function mergeGrades(passes: EssayGrade[]): EssayGrade {
     return { trait: t.trait, score, reason: from.reason };
   });
   const summary = (passes.find((g) => g.total === traits.reduce((n, t) => n + t.score, 0)) ?? a).summary;
-  return { traits, total: traits.reduce((n, t) => n + t.score, 0), summary };
+  return { traits, total: traits.reduce((n, t) => n + t.score, 0), summary, passes: passes.length === 3 ? 3 : 2 };
 }
 
 async function onePass(llm: ResolvedModel, task: EssayTask, essay: string, signal?: AbortSignal, language?: string | null): Promise<EssayGrade> {

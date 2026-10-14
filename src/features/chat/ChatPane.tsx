@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Plus, Sparkles } from "lucide-react";
+import { Plus, Sparkles, Target } from "lucide-react";
 import { useMessages, useSources, useThreads } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Space, Thread } from "../../lib/types";
@@ -35,6 +35,7 @@ export function ChatPane({ space }: { space: Space }) {
 
 function NewChatState({ hasSources, sourcesOpen, space }: { hasSources: boolean; sourcesOpen: boolean; space: Space }) {
   const setImportDialog = useUi((st) => st.setImportDialog);
+  const setGoalWizard = useUi((st) => st.setGoalWizard);
   const low = useLowEnergy(space.id);
   return (
     <div className="t-stagger is-shown flex min-h-full flex-1 flex-col items-center justify-center gap-2.5 p-10 text-center" data-testid="chat-empty">
@@ -50,6 +51,9 @@ function NewChatState({ hasSources, sourcesOpen, space }: { hasSources: boolean;
           </Button>
           <Button variant="primary" className="absolute left-1/2 top-full mt-3 -translate-x-1/2 font-semibold" disabled={low.active} title={low.reason} onClick={() => setImportDialog({ open: true, tab: "research" })}>
             <Sparkles size={15} /> {s.sources.findSources}
+          </Button>
+          <Button variant="ghost" className="absolute left-1/2 top-full mt-[68px] -translate-x-1/2 whitespace-nowrap font-semibold" onClick={() => setGoalWizard(space.id)} data-testid="goal-start">
+            <Target size={15} /> {s.goal.start}
           </Button>
         </div>
       )}

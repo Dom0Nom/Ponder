@@ -321,6 +321,19 @@ const defaultScript: Script = ({ messages, body }) => {
       ]),
     };
   }
+  if (/^A learner wants to learn:/.test(lastText)) {
+    return {
+      content: JSON.stringify({
+        title: "Robot arm",
+        topics: [
+          { id: "t1", title: "Electronics basics", description: "circuits, voltage", group: "Hardware", prereqs: [] },
+          { id: "t2", title: "Motors and servos", description: "dc motors, servo control", group: "Hardware", prereqs: ["t1"] },
+          { id: "t3", title: "Kinematics", description: "joint angles, reach", group: "Software", prereqs: ["t2"] },
+          { id: "t4", title: "Control loops", description: "pid, feedback", group: "Software", prereqs: ["t3"] },
+        ],
+      }),
+    };
+  }
   if (/^A learner wants study sources/.test(lastText)) {
     return { content: '{"language":"en","queries":["cell biology"]}' };
   }

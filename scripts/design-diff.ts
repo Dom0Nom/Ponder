@@ -202,6 +202,7 @@ const USER_DEVIATIONS: (Mask & { screens?: number[] })[] = [
   { x: 380, y: 732, w: 270, h: 36, screens: [2, 38], reason: "model logo in the composer button, requested by the user 2026-10-07" },
   { x: 320, y: 56, w: 98, h: 34, screens: [27], reason: "prominent deep research entry in the sources panel header, requested by the user 2026-10-07" },
   { x: 686, y: 457, w: 132, h: 39, screens: [38], reason: "prominent deep research entry in the empty space state, requested by the user 2026-10-07" },
+  { x: 660, y: 508, w: 190, h: 44, screens: [38], reason: "Start from a goal entry in the empty space state (goal wizard, requested in the overnight brief 2026-10-14)" },
   { x: 931, y: 468, w: 341, h: 324, screens: [20], reason: "study schedule section (spec: study plans, requested in the overnight brief 2026-10-11)" },
   { x: 968, y: 696, w: 300, h: 56, screens: [2], reason: "Studio Create row (spec: Text Studio outputs, requested in the overnight brief 2026-10-11)" },
   { x: 900, y: 56, w: 326, h: 38, screens: [6], reason: "Pages toggle for PDF sources in the source viewer header (original PDF view, approved by the user 2026-10-12)" },
