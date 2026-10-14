@@ -140,3 +140,20 @@ Unchanged prompts moved by up to ±0.36 between runs (micro-steps 4.47 → 4.83,
 Two-host script (`audio` kind, styles deep dive, brief, critique, debate) plus the "ask the hosts" interruption prompt. `prompt-eval --only studio-outputs` with deepseek-v4.1-flash, judged by claude-haiku-4.5: 13 cases, checks 98%, judge 4.74. Audio cases: brief en 5/3/5 (grounding/calibration/format; packs in two extra topics), deep dive de 5/5/5, debate en 5/5/5. The deep dive on the short German material came out at 431 words; the prompt now allows shorter deep dives for short material instead of padding, and the check accepts 300–1600 words.
 
 Open findings for later passes: classify-error labels "15% of 80 = 1200" inconsistently (concept/procedure/units); practice-problem hints sometimes name an intermediate number; research-query scores low because the judge wants more specific queries than a ≤30-word suggestion allows; studio table sometimes mixes item types with deepseek-v4.1-flash.
+
+## Context builder eval (2026-10-14)
+
+`scripts/context-eval.ts` runs 43 questions on a copy of the real GED (221 sources), Robotics (240) and C (295) spaces through the old pipeline (latest message → 8 passages of ~800 chars, last 12 turns, passages in the system prompt) and the new one (`src/lib/context/`: source map, planned search, section/neighbour expansion, chapter references, reading tools, compaction). Same answer model (`deepseek/deepseek-v4.1-flash`, cost cap 200k tokens), judge `anthropic/claude-haiku-4.5`. Cases: 6 follow-ups, 7 "summarize chapter N / section N.M", 5 comparisons, 5 questions no keyword matches, 4 table/page facts, 12 plain, 3 threads of 30+ turns that refer back to turn 2, and one 200-turn thread across two compactions (cap 12k tokens) asking about turn 3. 9 cases are German.
+
+| pipeline | correctness | source recall | citations valid | prompt tokens | $/answer | s/answer |
+|---|---|---|---|---|---|---|
+| old | 0.746 | 0.907 | 0.837 | 2.1k | 0.0006 | 6.7 |
+| new (first run) | 0.895 | 1.000 | 0.883 | 106k | 0.016 | 21.6 |
+| new + fixes (kept) | **0.947** | **1.000** | **0.898** | 107k | 0.017 | 20.2 |
+| new + fixes, passages capped at 30k | 0.903 | 1.000 | 0.868 | 50k | 0.008 | 15.2 |
+
+Per kind (old → kept): follow-ups 0.83 → 0.97, chapters 0.72 → 0.95, comparisons 0.91 → 0.98, no-keyword 0.81 → 0.97, tables 0.69 → 0.81, plain 0.84 → 0.94, long threads 0.21 → 1.00, 200-turn compaction 0.00 → 1.00.
+
+Fixes after the first run: the learner's message is marked "My message (answer this)" after the passages (a follow-up was answered as the previous question), and source names with numbers ("University Physics Volume 1" vs "Volume 2") are told apart when resolving chapters. The 30k passage cap was cheaper and faster but lost on chapters and long threads, so the cap isn't used; the per-message cost cap (Settings → Models, default 200k for paid API models) is the limit.
+
+Latency: building the context took 3–6 s in a debug build (remote query embedding 1–3 s, range reads ~1 s after batching per source; they were 4–6 s before), plus ~2 s for the search plan on follow-ups; the first answer token came 1–5 s later with ~110k-token prompts.
