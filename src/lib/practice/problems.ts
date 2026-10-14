@@ -4,6 +4,7 @@ import type { ResolvedModel } from "../chat/llm";
 import type { ErrorType, PracticeItem, PracticeKind } from "../types";
 import { difficultyFor, LEVEL_WORDS, levelFor } from "./irt";
 import { numbersMatch, parseNumber } from "./grade";
+import { sameStep, type LadderProblem } from "./ladder";
 import { languageInstruction } from "../i18n/language";
 import { s } from "../strings";
 
@@ -194,4 +195,89 @@ export async function classifyError(llm: ResolvedModel, item: { question: string
   const o = extractJson<{ errorType?: unknown; note?: unknown }>(text);
   const errorType = ERROR_TYPES.includes(o?.errorType as ErrorType) ? (o!.errorType as ErrorType) : "other";
   return { errorType, note: typeof o?.note === "string" ? o.note : null };
+}
+
+export function parseLadderProblem(text: string): LadderProblem {
+  const o = extractJson<{ question?: unknown; steps?: unknown; answer?: unknown }>(text);
+  const steps = Array.isArray(o?.steps) ? o.steps.map((x) => String(x).trim()).filter(Boolean) : [];
+  const question = String(o?.question ?? "").trim();
+  const answer = String(o?.answer ?? "").trim();
+  if (!question || !answer || steps.length < 2) throw new Error(s.ladder.badProblem);
+  return { question, steps: steps.slice(0, 8), answer };
+}
+
+const LADDER_FORMAT = 'Return JSON only: {"question": "…", "steps": ["each step of the solution, one short line, LaTeX in $…$"], "answer": "the final answer, short", "level": 1-5}';
+
+/** `like` is the previous rung's problem: the next one keeps its structure and changes the numbers or context. */
+export async function generateLadderProblem(
+  llm: ResolvedModel,
+  opts: { topic: TopicSpec; rung: number; like?: LadderProblem; level?: number; language?: string | null; signal?: AbortSignal },
+): Promise<LadderProblem> {
+  const prompt = [
+    `Write ONE worked example problem on "${opts.topic.title}" (${opts.topic.description}) at difficulty ${opts.level ?? 2}/5, for the ladder step ${opts.rung}.`,
+    "The solution is 3 to 5 short steps; the last step states the final result. One clearly correct answer, no picture needed, under 60 words.",
+    opts.like
+      ? `Make it near-identical in structure to this problem, with different numbers or context:\n"""\n${opts.like.question}\n"""\nIts steps:\n${opts.like.steps.map((x, i) => `${i + 1}. ${x}`).join("\n")}`
+      : "",
+    languageInstruction(opts.language),
+    LADDER_FORMAT,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return parseLadderProblem(await ask(llm, prompt, opts.signal));
+    } catch (e) {
+      if (opts.signal?.aborted) throw e;
+      lastError = e;
+    }
+  }
+  throw lastError;
+}
+
+/** One verdict per blank, in order. Exact matches are accepted without the model. */
+export async function gradeBlanks(
+  llm: ResolvedModel,
+  problem: LadderProblem,
+  blanks: { index: number; response: string }[],
+  signal?: AbortSignal,
+): Promise<boolean[]> {
+  const pending = blanks.filter((b) => !sameStep(problem.steps[b.index], b.response));
+  const verdict = new Map<number, boolean>();
+  if (pending.length) {
+    const text = await ask(
+      llm,
+      [
+        "Grade a learner's filled-in steps of a worked solution. A step is correct if it says the same thing as the model step (equivalent wording or algebra is fine); wrong or missing content is incorrect.",
+        `Problem: ${problem.question}`,
+        `Model solution:\n${problem.steps.map((x, i) => `${i + 1}. ${x}`).join("\n")}`,
+        ...pending.map((b, k) => `BLANK ${k + 1} (model step ${b.index + 1}): ${b.response.trim() || "(empty)"}`),
+        'Return JSON only: {"results": [true|false, …]} with one entry per BLANK, in order.',
+      ].join("\n\n"),
+      signal,
+    );
+    const o = extractJson<{ results?: unknown }>(text);
+    if (!o || !Array.isArray(o.results)) throw new Error(s.failures.theAnswerCouldnTBe);
+    const res = o.results as unknown[];
+    pending.forEach((b, k) => verdict.set(b.index, res[k] === true));
+  }
+  return blanks.map((b) => verdict.get(b.index) ?? true);
+}
+
+/** Grades the cold rung's final answer the same way ordinary practice does. */
+export function ladderAsItem(p: LadderProblem, topicKey: string): PracticeItem {
+  return {
+    id: "ladder",
+    topicKey,
+    kind: parseNumber(p.answer) != null ? "numeric" : "short",
+    question: p.question,
+    options: null,
+    answer: p.answer,
+    solution: p.steps.join("\n"),
+    difficulty: 0,
+    parentId: null,
+    hint: null,
+    createdAt: 0,
+  } as PracticeItem;
 }

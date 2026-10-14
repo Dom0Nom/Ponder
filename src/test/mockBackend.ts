@@ -232,6 +232,22 @@ const defaultScript: Script = ({ messages, body }) => {
     const n = Number(lastText.match(/10% of (\d+)/)?.[1] ?? 0);
     return { content: `$0.1 \\cdot ${n} = ${n / 10}$\n{"answer": ${n / 10}}` };
   }
+  if (/Write ONE worked example problem/i.test(lastText)) {
+    const rung = Number(lastText.match(/ladder step (\d)/)?.[1] ?? 0);
+    const n = 20 + rung * 10;
+    return {
+      content: JSON.stringify({
+        question: `What is 10% of ${n * 10}?`,
+        steps: ["Write 10% as 0.1", `Multiply 0.1 by ${n * 10}`, `The result is ${n}`],
+        answer: String(n),
+        level: 2,
+      }),
+    };
+  }
+  if (/Grade a learner's filled-in steps/i.test(lastText)) {
+    const n = [...lastText.matchAll(/^BLANK \d+/gm)].length;
+    return { content: JSON.stringify({ results: Array.from({ length: n }, () => false) }) };
+  }
   if (/Write ONE (practice|new) problem/i.test(lastText)) {
     const level = Number(lastText.match(/difficulty (\d)\/5/)?.[1] ?? 3);
     const n = 10 + level * 5 + (/new problem/.test(lastText) ? 1 : 0);

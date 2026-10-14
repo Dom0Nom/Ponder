@@ -24,6 +24,7 @@ import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { toastError } from "../../components/ui/toast";
 import { Markdown } from "../chat/Markdown";
 import { StepCheckerPanel } from "../steps/StepChecker";
+import { LadderSession } from "./LadderSession";
 import { PracticeHub } from "./PracticeHub";
 
 const qkAbilities = (spaceId: string) => ["abilities", spaceId] as const;
@@ -33,6 +34,7 @@ export function PracticeScreen({ spaceId, topicKey }: { spaceId: string; topicKe
   const curriculum = useCurriculum(spaceId);
   const abilities = useQuery({ queryKey: qkAbilities(spaceId), queryFn: () => api.abilitiesList(spaceId) });
   const navigate = useUi((st) => st.navigate);
+  const [ladder, setLadder] = useState(false);
 
   const topics: TopicSpec[] = useMemo(
     () => (curriculum.data?.topics ?? []).map((t) => ({ key: t.id, title: t.title, description: t.description })),
@@ -67,6 +69,8 @@ export function PracticeScreen({ spaceId, topicKey }: { spaceId: string; topicKe
     return <ErrorState className="pt-24" title={s.practice.loadFailed} error={abilities.error} onRetry={() => abilities.refetch()} />;
   }
 
+  if (selected && ladder)
+    return <LadderSession key={selected.key} space={space.data} topic={selected} language={curriculumById(curriculum.data?.curriculumId ?? "")?.language} onExit={() => setLadder(false)} />;
   if (!selected) return <PracticeHub spaceId={spaceId} topics={all} abilityByKey={abilityByKey} onPick={pick} />;
   return (
     <Session
@@ -76,6 +80,7 @@ export function PracticeScreen({ spaceId, topicKey }: { spaceId: string; topicKe
       ability={abilityByKey.get(selected.key) ?? null}
       language={curriculumById(curriculum.data?.curriculumId ?? "")?.language}
       isCurriculumTopic={topics.some((t) => t.key === selected.key)}
+      onLadder={() => setLadder(true)}
     />
   );
 }
@@ -94,12 +99,14 @@ function Session({
   ability,
   language,
   isCurriculumTopic,
+  onLadder,
 }: {
   space: Space;
   topic: TopicSpec;
   ability: Ability | null;
   language?: string;
   isCurriculumTopic: boolean;
+  onLadder: () => void;
 }) {
   const qc = useQueryClient();
   const [item, setItem] = useState<PracticeItem | null>(null);
@@ -256,7 +263,10 @@ function Session({
             <span className="text-muted" data-testid="practice-skill">
               {s.practice.problems(n)}
             </span>
-            <Button variant="ghost" size="sm" className="ms-auto" onClick={() => load()} disabled={busy != null}>
+            <Button variant="ghost" size="sm" className="ms-auto" onClick={onLadder} data-testid="open-ladder">
+              {s.ladder.open}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => load()} disabled={busy != null}>
               {s.practice.skip}
             </Button>
           </div>
