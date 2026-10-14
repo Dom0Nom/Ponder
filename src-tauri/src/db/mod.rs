@@ -24,6 +24,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("016_inbox.sql"),
     include_str!("017_context.sql"),
     include_str!("018_space_language.sql"),
+    include_str!("019_questions_worksheets.sql"),
 ];
 
 pub fn schema_version() -> i64 {

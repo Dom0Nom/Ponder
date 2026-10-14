@@ -1,5 +1,42 @@
 /** Canned model replies for Studio outputs, keyed by the prompt's first line. */
-const OUTPUTS: [RegExp, object | string][] = [
+const OUTPUTS: [RegExp, object | string | ((prompt: string) => object | string)][] = [
+  [
+    /^Write a worksheet for a learner/,
+    (prompt) =>
+      /write everything in German/.test(prompt)
+        ? {
+            title: "Fotosynthese Arbeitsblatt",
+            instructions: "Bearbeite alle Aufgaben.",
+            tasks: [
+              { type: "choice", points: 2, parts: [{ kind: "mc", prompt: "Wo findet die Fotosynthese statt?", options: ["Chloroplast", "Zellkern", "Ribosom"], answer: 0 }] },
+              { type: "truefalse", points: 2, parts: [{ statement: "Sauerstoff entsteht aus Wasser.", answer: true }, { statement: "Pflanzen brauchen kein Licht.", answer: false, correction: "Pflanzen brauchen Licht." }] },
+              { type: "cloze", points: 2, bank: ["Licht", "Wasser", "Wind"], parts: [{ text: "Die Pflanze nutzt {1} und {2}.", blanks: [{ accepted: ["Licht"] }, { accepted: ["Wasser"] }] }] },
+              { type: "open", points: 4, parts: [{ prompt: "Erkläre die Lichtreaktion.", operator: "Erkläre", level: 2, lines: 3, key: "Licht spaltet Wasser, dabei entstehen ATP und Sauerstoff.", rubric: ["Licht spaltet Wasser", "ATP entsteht"] }] },
+            ],
+          }
+        : {
+            title: "Photosynthesis worksheet",
+            instructions: "Work through every task.",
+            tasks: [
+              { type: "choice", points: 4, parts: [{ kind: "mc", prompt: "Where does photosynthesis happen?", options: ["Chloroplast", "Nucleus", "Ribosome", "Vacuole"], answer: 0 }, { kind: "multi", prompt: "Which are products?", options: ["Oxygen", "Glucose", "Nitrogen", "Helium"], answers: [0, 1] }] },
+              { type: "truefalse", points: 2, parts: [{ statement: "Oxygen comes from split water.", answer: true }, { statement: "Plants need no light.", answer: false, correction: "Plants need light." }] },
+              { type: "cloze", points: 2, parts: [{ text: "The Calvin cycle fixes {1}.", blanks: [{ accepted: ["carbon dioxide", "CO2"] }] }] },
+              { type: "open", points: 4, parts: [{ prompt: "Explain the light reactions.", operator: "Explain", level: 2, lines: 3, key: "Light splits water and makes ATP and oxygen.", rubric: ["Light splits water", "ATP is made"] }] },
+            ],
+          },
+  ],
+  [
+    /^Rewrite ONE task of a worksheet/,
+    {
+      type: "choice",
+      points: 4,
+      parts: [{ kind: "mc", prompt: "Which pigment absorbs light?", options: ["Chlorophyll", "Keratin", "Insulin", "Hemoglobin"], answer: 0 }],
+    },
+  ],
+  [
+    /^You grade open answers on a worksheet/,
+    (prompt) => [...prompt.matchAll(/^ID (\S+) \(max ([\d.]+) points\)/gm)].map((m) => ({ id: m[1], points: Math.max(0, Number(m[2]) - 1), reason: "ATP is missing from your answer." })),
+  ],
   [
     /^A learner explains[\s\S]*THEIR ANSWER TO YOUR LAST QUESTION/,
     {
@@ -172,5 +209,7 @@ const OUTPUTS: [RegExp, object | string][] = [
 
 export function studioReply(prompt: string): string | null {
   const hit = OUTPUTS.find(([re]) => re.test(prompt));
-  return hit ? (typeof hit[1] === "string" ? hit[1] : JSON.stringify(hit[1])) : null;
+  if (!hit) return null;
+  const v = typeof hit[1] === "function" ? hit[1](prompt) : hit[1];
+  return typeof v === "string" ? v : JSON.stringify(v);
 }

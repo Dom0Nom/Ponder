@@ -90,47 +90,60 @@ function stimulusBlocks(part: Part): Block[] {
   return [];
 }
 
+export function taskBlocks(sheet: Sheet, ti: number, withKey: boolean): Block[] {
+  const l = sheetLabels(sheet.options.language);
+  const style = sheet.options.labelStyle;
+  const task = sheet.tasks[ti];
+  const out: Block[] = [];
+  out.push({ t: "h", text: `${l.task} ${ti + 1}: ${l.types[task.type]} (${pts(task.points)} ${l.points})` });
+  out.push({ t: "p", text: task.correctFalse ? `${task.instruction} ${l.correctFalse}` : task.instruction, italic: true });
+  if (task.passage) out.push({ t: "p", text: task.passage });
+  if (task.bank?.length) out.push({ t: "p", text: `${l.wordBank}: ${[...task.bank].sort((a, b) => a.localeCompare(b)).join(" · ")}` });
+  task.parts.forEach((part, pi) => {
+    out.push(...stimulusBlocks(part));
+    const num = task.parts.length > 1 ? `${ti + 1}.${pi + 1}` : `${ti + 1}.`;
+    out.push(...partBlocks(part, l, style, withKey, task, num));
+    if (task.correctFalse && !withKey) out.push({ t: "p", text: `${l.correct}:` }, { t: "lines", n: 1 });
+    if (withKey && "explanation" in part && part.explanation && part.kind !== "fill") out.push({ t: "p", text: part.explanation, italic: true });
+  });
+  return out;
+}
+
+export function headBlocks(sheet: Sheet, key: boolean): Block[] {
+  const l = sheetLabels(sheet.options.language);
+  const total = totalPoints(sheet.tasks);
+  if (key) return [{ t: "title", text: `${sheet.title}: ${l.keyTitle}` }, { t: "p", text: `${l.total}: ${pts(total)} ${l.points}`, italic: true }];
+  const out: Block[] = [{ t: "title", text: sheet.title }, { t: "meta", fields: [l.name, l.className, l.date] }];
+  if (sheet.instructions) out.push({ t: "p", text: sheet.instructions });
+  out.push({ t: "p", text: `${l.total}: ____ ${l.from} ${pts(total)} ${l.points}`, italic: true });
+  return out;
+}
+
+/** Printed Notenschlüssel / grading table under the sheet. */
+export function footBlocks(sheet: Sheet): Block[] {
+  const l = sheetLabels(sheet.options.language);
+  const rows = scaleRows(sheet.options.scale, totalPoints(sheet.tasks));
+  if (!rows.length) return [];
+  return [{ t: "h", text: l.gradeScale }, { t: "table", rows: [[l.grade, l.scaleHeader], ...rows.map((r) => [r.grade, r.min === r.max ? pts(r.min) : `${pts(r.min)} – ${pts(r.max)}`])] }];
+}
+
 export interface BlockOptions {
   key?: boolean;
-  /** the sheet itself, the key sheet, or both (key starts on a new page) */
+  /** with `key`: put the sheet first and the key on a new page */
   withSheet?: boolean;
 }
 
 export function sheetBlocks(sheet: Sheet, opts: BlockOptions = {}): Block[] {
-  const l = sheetLabels(sheet.options.language);
-  const style = sheet.options.labelStyle;
-  const total = totalPoints(sheet.tasks);
   const out: Block[] = [];
-  const body = (withKey: boolean) => {
-    sheet.tasks.forEach((task, ti) => {
-      out.push({ t: "h", text: `${l.task} ${ti + 1}: ${l.types[task.type]} (${pts(task.points)} ${l.points})` });
-      out.push({ t: "p", text: task.correctFalse ? `${task.instruction} ${l.correctFalse}` : task.instruction, italic: true });
-      if (task.passage) out.push({ t: "p", text: task.passage });
-      if (task.bank?.length) out.push({ t: "p", text: `${l.wordBank}: ${[...task.bank].sort((a, b) => a.localeCompare(b)).join(" · ")}` });
-      task.parts.forEach((part, pi) => {
-        out.push(...stimulusBlocks(part));
-        const num = task.parts.length > 1 ? `${ti + 1}.${pi + 1}` : `${ti + 1}.`;
-        out.push(...partBlocks(part, l, style, withKey, task, num));
-        if (task.correctFalse && !withKey) out.push({ t: "p", text: `${l.correct}:` }, { t: "lines", n: 1 });
-        if (withKey && "explanation" in part && part.explanation && part.kind !== "fill") out.push({ t: "p", text: part.explanation, italic: true });
-      });
-    });
-  };
-  if (opts.withSheet !== false && !opts.key) {
-    out.push({ t: "title", text: sheet.title });
-    out.push({ t: "meta", fields: [l.name, l.className, l.date] });
-    if (sheet.instructions) out.push({ t: "p", text: sheet.instructions });
-    out.push({ t: "p", text: `${l.total}: ____ ${l.from} ${pts(total)} ${l.points}`, italic: true });
-    body(false);
-    const rows = scaleRows(sheet.options.scale, total);
-    if (rows.length) out.push({ t: "h", text: l.gradeScale }, { t: "table", rows: [[l.grade, l.scaleHeader], ...rows.map((r) => [r.grade, r.min === r.max ? pts(r.min) : `${pts(r.min)} – ${pts(r.max)}`])] });
+  if (!opts.key) {
+    out.push(...headBlocks(sheet, false));
+    sheet.tasks.forEach((_, ti) => out.push(...taskBlocks(sheet, ti, false)));
+    out.push(...footBlocks(sheet));
+    return out;
   }
-  if (opts.key) {
-    if (opts.withSheet !== false) out.push({ t: "break" });
-    out.push({ t: "title", text: `${sheet.title}: ${l.keyTitle}` });
-    out.push({ t: "p", text: `${l.total}: ${pts(total)} ${l.points}`, italic: true });
-    body(true);
-  }
+  if (opts.withSheet !== false) out.push({ t: "break" });
+  out.push(...headBlocks(sheet, true));
+  sheet.tasks.forEach((_, ti) => out.push(...taskBlocks(sheet, ti, true)));
   return out;
 }
 
