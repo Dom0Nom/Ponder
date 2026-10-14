@@ -4052,6 +4052,7 @@ dependencies = [
  "futures-util",
  "if-addrs",
  "keyring",
+ "libc",
  "log",
  "lopdf",
  "notify",

@@ -2,6 +2,7 @@ mod annotations;
 mod ask;
 mod backup;
 mod calculator;
+mod ccode;
 mod capture;
 mod context;
 #[cfg(debug_assertions)]
@@ -34,6 +35,7 @@ pub mod paths;
 mod placement;
 mod plans;
 mod practice;
+mod projects;
 mod proxy;
 mod retrieval;
 mod secrets;
@@ -157,6 +159,15 @@ pub fn run() {
             exams::exams_list,
             exams::exam_get,
             exams::exam_delete,
+            ccode::run_c,
+            projects::projects_list,
+            projects::project_save,
+            projects::project_delete,
+            projects::milestone_save,
+            projects::milestone_delete,
+            projects::milestone_done,
+            projects::log_add,
+            projects::log_delete,
             studio::output_save,
             studio::outputs_list,
             studio::output_get,
