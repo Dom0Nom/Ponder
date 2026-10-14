@@ -177,7 +177,7 @@ describe("solver model choice", () => {
 
 describe("exam generation with the answer check", () => {
   const topic = { id: "t1", title: "Topic", description: "d", group: "Math" } as TopicRef;
-  const section = { ...GED.sections[1], parts: undefined } as (typeof GED.sections)[number];
+  const section = { ...GED.sections[1], parts: undefined, kinds: undefined } as (typeof GED.sections)[number];
   const json = (names: string[]) =>
     JSON.stringify(names.map((n) => ({ topicId: "t1", question: n, options: ["Right", "Wrong A", "Wrong B", "Wrong C"], answer: 0, explanation: "." })));
   const letterOf = (prompt: string, want: string) => {
