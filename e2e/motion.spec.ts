@@ -68,6 +68,31 @@ test("reduced motion: key elements have no animation or transition", async ({ ap
   expect(pill).toBeLessThan(0.001);
 });
 
+test("reduced motion: prominent-motion classes end instantly", async ({ app }) => {
+  const res = await app.evaluate(() => {
+    const host = document.createElement("div");
+    host.className = "m-stagger";
+    host.innerHTML = '<div id="a"></div><div id="b"></div><i class="t-reel-col" style="--n:3;--k:0"></i><b class="t-shimmer">x</b><u class="t-toggle-thumb"></u><s class="m-press"></s><span class="t-like" data-pop="true"><svg></svg></span>';
+    document.body.append(host);
+    const out: Record<string, { anim: number; trans: number }> = {};
+    for (const sel of ["#b", ".t-reel-col", ".t-shimmer", ".t-toggle-thumb", ".m-press", ".t-like svg"]) {
+      const c = getComputedStyle(host.querySelector(sel)!);
+      out[sel] = { anim: Math.max(...c.animationDuration.split(",").map(parseFloat)), trans: Math.max(...c.transitionDuration.split(",").map(parseFloat)) };
+    }
+    host.remove();
+    return out;
+  });
+  for (const [sel, v] of Object.entries(res)) {
+    expect(v.anim, sel).toBeLessThan(0.001);
+    expect(v.trans, sel).toBeLessThan(0.001);
+  }
+});
+
+test("reduced motion: spinning counter shows the final value as plain text", async ({ app }) => {
+  await app.getByRole("button", { name: "Settings" }).click();
+  await expect(app.locator(".t-reel")).toHaveCount(0);
+});
+
 test.describe("motion allowed", () => {
   test.use({ reducedMotion: "no-preference" });
 

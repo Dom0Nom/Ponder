@@ -17,9 +17,16 @@ Page side-by-side, Panel reveal, Reasoning stream, Skeleton loader and reveal,
 Streaming text, Success check, Tabs sliding, Text states swap, Texts reveal,
 Thinking states, Toast open / close, Tooltip open/close.
 
-## thinking-orbs, border-beam, metal-fx (MIT)
+Re-picked snippets (07-motion-prominent): Card resize, Avatar group hover, Input clear dissolve, Shimmer text,
+Card tilt, Plus menu morph, Like button, Spinning counter, Toggle, Matrix loader, Banner stacking. The ones in
+use (Spinning counter, Toggle, Shimmer text, Like button, Card tilt, Avatar group hover) are written to the
+snippets' documented knobs in `src/styles/app-motion.css`, not copied from the originals.
 
-Copyright (c) 2026 Jakub Antalik
+## thinking-orbs, border-beam, metal-fx, voice-glow, liquid-gooey, img-fx, bot-avatars (MIT)
+
+Copyright (c) 2026 Jakub Antalik (liquid-gooey: Jakub)
+
+`three` (img-fx peer dependency) is MIT, Copyright (c) 2010-2026 three.js authors.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

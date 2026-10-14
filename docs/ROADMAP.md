@@ -22,6 +22,8 @@ Outside the app: take the official GED Ready test per subject (ged.com) for a re
 14. Lab cards
 
 
+> Animation lines in this file are the minimum. `docs/redesign/07-motion-prominent.md` supersedes them (orbs for waits over 0.5 s, Libraries.dev effects per section 3, re-picked snippets, one metal CTA per screen).
+
 ## Animation sources
 
 Same rules as `docs/redesign/04-motion.md`: one pick per spot, durations and easings from `--motion-*`, Reduce motion removes everything.

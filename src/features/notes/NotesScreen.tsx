@@ -74,7 +74,7 @@ export function NotesScreen({ spaceId, noteId }: { spaceId: string; noteId?: str
         ) : list.length === 0 ? (
           <p className="px-1 text-body text-muted">{s.notes.emptyTitle}</p>
         ) : (
-          <ul className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto" data-testid="notes-list">
+          <ul className="m-stagger m-stagger-sm flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto" data-testid="notes-list">
             {list.map((n) => (
               <li key={n.id}>
                 <button
