@@ -1,7 +1,8 @@
 import { extractJson } from "../chat/json";
 import { parseExplainerReply } from "./explainer";
+import { parseLab, type LabData } from "./lab";
 
-export const OUTPUT_KINDS = ["report", "cheatsheet", "worksheet", "timeline", "table", "mindmap", "diagram", "slides", "infographic", "audio", "explainer"] as const;
+export const OUTPUT_KINDS = ["report", "cheatsheet", "worksheet", "timeline", "table", "mindmap", "diagram", "slides", "infographic", "audio", "explainer", "lab"] as const;
 export type OutputKind = (typeof OUTPUT_KINDS)[number];
 
 export interface ReportData {
@@ -87,6 +88,7 @@ export interface OutputDataMap {
   infographic: InfographicData;
   audio: AudioData;
   explainer: ExplainerData;
+  lab: LabData;
 }
 export type OutputData = OutputDataMap[OutputKind];
 
@@ -147,6 +149,7 @@ export function parseOutput<K extends OutputKind>(kind: K, text: string): Parsed
     const e = parseExplainerReply(text);
     return e ? ({ title: e.title, data: { html: e.html } } as Parsed<K>) : null;
   }
+  if (kind === "lab") return parseLab(text) as Parsed<K> | null;
   const o = extractJson<Record<string, unknown>>(text);
   if (!o || Array.isArray(o)) return null;
   const title = str(o.title);

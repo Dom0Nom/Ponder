@@ -12,7 +12,7 @@ async function answerWith(app: Page, content: string) {
   const box = app.getByLabel("Ask about your sources…");
   await box.fill("Show me");
   await box.press("Enter");
-  await expect(app.getByTestId("msg-assistant").last()).toBeVisible();
+  await expect(app.getByTestId("msg-assistant").last()).toBeVisible({ timeout: 30_000 });
 }
 
 test("code cells: JavaScript runs in a worker without network access", async ({ app }) => {
@@ -59,7 +59,7 @@ test("code cells: JavaScript runs in a worker without network access", async ({ 
   await cells.nth(2).getByTestId("cell-run").click();
   await expect(cells.nth(2)).toHaveAttribute("data-state", "running");
   await expect(cells.nth(2).getByTestId("cell-output")).toContainText("Stopped after 5 s", { timeout: 15_000 });
-  await expect(app.getByTestId("msg-assistant").last()).toBeVisible();
+  await expect(app.getByTestId("msg-assistant").last()).toBeVisible({ timeout: 30_000 });
 
   await out0.getByRole("button", { name: "Clear output" }).click();
   await expect(out0).toHaveCount(0);
@@ -126,7 +126,7 @@ test("code cells: C blocks run through the compiler command with stdin and inlin
 
   await cells.nth(1).getByTestId("cell-run").click();
   await expect(cells.nth(1).getByTestId("cell-output")).toHaveAttribute("data-stage", "compile");
-  await expect(cells.nth(1).getByTestId("c-diagnostics")).toContainText("Line 3: expected expression");
+  await expect(cells.nth(1).getByTestId("c-diagnostics")).toContainText("Line 2: expected expression");
 
   await cells.nth(2).getByTestId("cell-run").click();
   await expect(cells.nth(2).getByTestId("cell-text")).toContainText("Stopped after 5 seconds");

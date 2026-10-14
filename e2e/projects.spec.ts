@@ -61,3 +61,33 @@ test("projects: create, log an entry, and a blocked milestone points at the topi
   await app.getByRole("button", { name: "Back" }).click();
   await expect(app.getByTestId("project-card")).toContainText("Line-following robot");
 });
+
+test("lab cards: make one, move a slider, save a version, reopen it", async ({ app }) => {
+  await app.getByRole("button", { name: "New space" }).first().click();
+  await app.getByLabel("Name").fill("Control");
+  await app.getByRole("button", { name: "Create" }).click();
+  await app.getByRole("button", { name: "Add source" }).click();
+  await app.getByRole("tab", { name: "Paste text" }).click();
+  await app.getByLabel("Title").fill("Control notes");
+  await app.getByRole("textbox", { name: "Text", exact: true }).fill("A second-order system overshoots when damping is low.\n\nGain scales the final value.");
+  await app.getByRole("button", { name: "Import" }).click();
+  await expect(app.locator('[data-testid="source-row"][data-status="ready"]')).toHaveCount(1);
+
+  await app.getByTestId("create-row").click();
+  await app.getByTestId("create-panel").locator('[data-kind="lab"]').click();
+  const screen = app.getByTestId("output-screen");
+  await expect(screen.getByRole("heading", { level: 1 })).toHaveText("Damped step response", { timeout: 30_000 });
+  const plot = screen.getByTestId("lab-plot");
+  const before = await plot.textContent();
+
+  await screen.getByLabel("Gain").fill("2.5");
+  await expect(plot).not.toHaveText(before!);
+  await screen.getByTestId("lab-save-version").click();
+  await expect(screen.getByTestId("lab-version")).toHaveCount(1);
+
+  await app.keyboard.press("Escape");
+  await screen.getByRole("button", { name: "Back to Control" }).click();
+  await app.getByTestId("outputs-list").getByRole("button", { name: /Damped step response/ }).click();
+  await expect(app.getByTestId("output-screen").getByLabel("Gain")).toHaveValue("2.5");
+  await expect(app.getByTestId("lab-version")).toHaveCount(1);
+});

@@ -159,6 +159,22 @@ const OUTPUTS: [RegExp, object | string][] = [
     ].join("\n"),
   ],
   [
+    /^Create a lab card/,
+    {
+      title: "Damped step response",
+      description: "Move the sliders and watch how fast the output settles and whether it overshoots.",
+      xLabel: "Time (s)",
+      yLabel: "Output",
+      xMin: 0,
+      xMax: 10,
+      params: [
+        { id: "k", label: "Gain", unit: "", min: 0.5, max: 3, step: 0.1, value: 1 },
+        { id: "z", label: "Damping", unit: "", min: 0.1, max: 0.9, step: 0.05, value: 0.5 },
+      ],
+      curves: [{ label: "Step response", expr: "k*(1 - exp(-z*x)*cos(2*x))" }],
+    },
+  ],
+  [
     /^A listener interrupts an audio overview/,
     { lines: [{ host: "A", text: "Good question. The Calvin cycle happens in the stroma, the fluid around the thylakoids." }] },
   ],
