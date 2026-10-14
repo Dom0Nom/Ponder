@@ -3,6 +3,7 @@ import { LearnChevron } from "../../components/motion/LearnChevron";
 import { s } from "../../lib/strings";
 import type { Ability } from "../../lib/types";
 import { skillPercent } from "../../lib/practice/irt";
+import { MIXED_KEY } from "../../lib/practice/mix";
 import type { TopicSpec } from "../../lib/practice/problems";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -44,7 +45,16 @@ export function PracticeHub({
         </form>
         <div className="mt-2 grid grid-cols-[minmax(0,1fr)_260px] gap-8">
           <section className="flex flex-col gap-2.5">
-            <h2 className="text-title font-semibold">{s.practice.pickTitle}</h2>
+            {topics.length > 0 && (
+              <div className="mb-3 flex flex-col gap-2.5 rounded-card border border-border bg-surface px-4 py-4" data-testid="practice-mixed">
+                <h2 className="text-title font-semibold">{s.session.mixedTitle}</h2>
+                <p className="text-body leading-[1.5] text-muted [text-wrap:pretty]">{s.session.mixedBody}</p>
+                <Button variant="primary" className="self-start" onClick={() => onPick(MIXED_KEY)}>
+                  {s.session.mixedStart}
+                </Button>
+              </div>
+            )}
+            <h2 className="text-title font-semibold">{topics.length > 0 ? s.session.singleTitle : s.practice.pickTitle}</h2>
             <p className="text-body leading-[1.5] text-muted [text-wrap:pretty]">{s.practice.pickBody}</p>
             {topics.length === 0 && <p className="text-body text-muted">{s.practice.noTopics}</p>}
             <ul className="flex flex-col gap-2.5" data-testid="practice-topics">

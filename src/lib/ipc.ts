@@ -232,7 +232,6 @@ export const api = {
   practiceAttempt: (spaceId: string, attempt: T.NewAttempt) => call<T.Ability>("practice_attempt", { spaceId, attempt }),
   masteryList: (spaceId: string) => call<T.MasteryRow[]>("mastery_list", { spaceId }),
   masteryUpsert: (spaceId: string, row: T.MasteryRow) => call<null>("mastery_upsert", { spaceId, row }),
-  clockNow: () => call<number>("clock_now"),
   mistakeSetErrorType: (id: string, errorType: T.ErrorType) => call<void>("mistake_set_error_type", { id, errorType }),
   errorPatterns: (spaceId?: string | null) => call<T.ErrorPattern[]>("error_patterns_list", { spaceId: spaceId ?? null }),
 

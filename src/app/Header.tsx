@@ -11,6 +11,7 @@ import { qk, usePinThread, useSpace, useThreads } from "../lib/queries";
 import { s } from "../lib/strings";
 import { useUi } from "../stores/ui";
 import { FocusHeaderTimer } from "../features/focus/FocusHeaderTimer";
+import { NextHeaderButton } from "../features/session/NextCard";
 import { useActiveThread } from "../features/chat/useActiveThread";
 import { backTarget } from "./back";
 import { localeInfo } from "../lib/i18n/locales";
@@ -230,6 +231,7 @@ export function Header() {
       </div>
       <div className="ms-auto flex items-center gap-2">
         <FocusHeaderTimer />
+        {route.name === "space" && <NextHeaderButton spaceId={route.spaceId} />}
         {route.name === "space" && (
           <Tooltip content={s.calc.title}>
             <Button

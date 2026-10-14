@@ -21,7 +21,7 @@ describe("mixer", () => {
     let seed = 1;
     const rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     for (let i = 0; i < 200; i++) {
-      const k = pickTopic(cands, last, rng)!;
+      const k: string = pickTopic(cands, last, rng)!;
       expect(k).not.toBe(last);
       last = k;
     }

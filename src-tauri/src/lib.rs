@@ -199,7 +199,6 @@ pub fn run() {
             practice::practice_attempt,
             mastery::mastery_list,
             mastery::mastery_upsert,
-            mastery::clock_now,
             practice::mistake_set_error_type,
             practice::error_patterns_list,
             placement::curriculum_get,

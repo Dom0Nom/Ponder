@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Command } from "cmdk";
 import * as D from "@radix-ui/react-dialog";
-import { BarChart3, Brain, CalendarCheck, Download, FilePlus2, FolderSync, Gauge, GraduationCap, House, Layers, MessageSquareText, Notebook, NotebookPen, PencilLine, Plus, Search, Settings, Shapes, Sparkles, SquarePen, SunMoon, Timer, Upload, Zap } from "lucide-react";
+import { ArrowRight, BarChart3, Brain, CalendarCheck, Download, FilePlus2, FolderSync, Gauge, GraduationCap, House, Layers, MessageSquareText, Notebook, NotebookPen, PencilLine, Plus, Search, Settings, Shapes, Sparkles, SquarePen, SunMoon, Timer, Upload, Zap } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces, qk, useCaptureStatus } from "../../lib/queries";
 import { splitShortcut } from "../../lib/capture/shortcut";
@@ -14,6 +14,8 @@ import { Kbd } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
 import { useLowEnergy } from "../focus/useLowEnergy";
 import { useHasPlan } from "../plan/TodaySection";
+import { useNextSpace } from "../session/NextCard";
+import { startNext } from "../session/sessionStore";
 import { exportStudyPack, importStudyPack } from "../packs/studyPack";
 
 const item =
@@ -30,6 +32,7 @@ export function CommandPalette() {
   const spaceId = ui.route.name === "space" ? ui.route.spaceId : null;
   const { data: capture } = useCaptureStatus();
   const hasPlan = useHasPlan();
+  const nextSpace = useNextSpace();
   const low = useLowEnergy(spaceId ?? undefined);
   const lowNote = low.active && <span className="text-label font-normal text-muted">{low.reason}</span>;
   const [query, setQuery] = useState("");
@@ -145,6 +148,13 @@ export function CommandPalette() {
                       <span className="flex-1">{s.palette.feynman}</span>
                     </Command.Item>
                   </>
+                )}
+                {nextSpace && (
+                  <Command.Item className={item} onSelect={() => run(() => void startNext(nextSpace))} keywords={["next", "session", "study", "what now", "start"]}>
+                    <ArrowRight size={15} />
+                    <span className="flex-1">{s.session.next}</span>
+                    <span className="text-label text-muted">{s.session.paletteHint}</span>
+                  </Command.Item>
                 )}
                 <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "home" }))}>
                   <House size={15} />

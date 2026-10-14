@@ -5,7 +5,8 @@ import { BookOpen, Check, CircleCheck, Layers, RotateCcw, Trash2 } from "lucide-
 import { api } from "../../lib/ipc";
 import { invalidateCards, qk, useDueCounts, useMistakes, useSpaces } from "../../lib/queries";
 import { s } from "../../lib/strings";
-import type { Card } from "../../lib/types";
+import type { Card, Confidence } from "../../lib/types";
+import { confidenceDue, confidenceRating } from "../../lib/srs/confidence";
 import { cn, relativeShort } from "../../lib/utils";
 import { GRADES, previewIntervals, schedule } from "../../lib/srs/scheduler";
 import { useUi } from "../../stores/ui";
@@ -21,6 +22,8 @@ import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, Skeleton } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
 import { CardFace } from "../cards/CardFace";
+import { ConfidencePicker } from "../practice/ConfidencePicker";
+import { useLowEnergy } from "../focus/useLowEnergy";
 
 const SEGMENT =
   "t-tab flex h-7.5 items-center justify-center whitespace-nowrap rounded-item px-2.5 font-medium text-fg hover:bg-fill data-[state=active]:font-semibold";
@@ -95,6 +98,8 @@ function ReviewSession({ spaceId, onCard }: { spaceId?: string; onCard: (has: bo
   const navigate = useUi((st) => st.navigate);
   const openViewer = useUi((st) => st.openViewer);
   const locked = useFocusStore((st) => st.breakLocked);
+  const [confidence, setConfidence] = useState<Confidence | null>(null);
+  const lowEnergy = useLowEnergy(spaceId ?? queue?.[0]?.spaceId).active;
 
   useEffect(() => {
     if (due.data && !due.isFetching && queue == null) setQueue(due.data);
@@ -111,6 +116,7 @@ function ReviewSession({ spaceId, onCard }: { spaceId?: string; onCard: (has: bo
   useEffect(() => {
     shownAt.current = Date.now();
     setRevealed(false);
+    setConfidence(null);
   }, [card?.id, seq]);
 
   const rate = useCallback(
@@ -118,8 +124,10 @@ function ReviewSession({ spaceId, onCard }: { spaceId?: string; onCard: (has: bo
       if (!card || busy) return;
       setBusy(true);
       try {
-        const next = schedule(card, rating as 1 | 2 | 3 | 4);
-        await api.cardReview(card.id, rating, next.fsrs, next.due, next.state, Date.now() - shownAt.current, next.log);
+        const given = confidenceRating(rating, confidence);
+        const next = schedule(card, given as 1 | 2 | 3 | 4);
+        next.due = confidenceDue(next.due, given, confidence, Date.now());
+        await api.cardReview(card.id, given, next.fsrs, next.due, next.state, Date.now() - shownAt.current, next.log, confidence);
         setDone((d) => d + 1);
         setSeq((n) => n + 1);
         // cards still due within this session (learning steps) go to the back of the queue
@@ -134,7 +142,7 @@ function ReviewSession({ spaceId, onCard }: { spaceId?: string; onCard: (has: bo
         setBusy(false);
       }
     },
-    [card, busy],
+    [card, busy, confidence],
   );
 
   useEffect(() => {
@@ -207,6 +215,7 @@ function ReviewSession({ spaceId, onCard }: { spaceId?: string; onCard: (has: bo
           </div>
         )}
       </div>
+      {!revealed && !lowEnergy && <ConfidencePicker value={confidence} onChange={setConfidence} />}
       <Reveal key={String(revealed)} className="grid grid-cols-4 gap-2.5">
         {!revealed ? (
           <button

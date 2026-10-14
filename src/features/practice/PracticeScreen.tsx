@@ -2,17 +2,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, CircleX, Lightbulb, ListChecks, TrendingDown, TrendingUp } from "lucide-react";
 import { api } from "../../lib/ipc";
+import { appNow } from "../../lib/plan/clock";
 import { gatherForTask } from "../../lib/context/task";
 import { invalidateCards, qk, useCurriculum, useSpace } from "../../lib/queries";
 import { s } from "../../lib/strings";
-import type { Ability, ErrorType, PracticeItem, Space } from "../../lib/types";
+import type { Ability, Confidence, ErrorType, PracticeItem, Space } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
+import { MIXED_KEY, mixWeight, pickTopic } from "../../lib/practice/mix";
 import { levelFor, levelFromTheta, skillPercent, targetDifficulty, updateTheta } from "../../lib/practice/irt";
 import { classifyError, generateProblem, generateVariation, gradeResponse, type Grade, type TopicSpec, type VariationMode } from "../../lib/practice/problems";
 import { curriculumById } from "../../lib/placement/curricula";
 import { useUi } from "../../stores/ui";
 import { NumberPop } from "../../components/motion/NumberPop";
+import { TextSwap } from "../../components/motion/TextSwap";
 import { Collapse, Reveal } from "../../components/motion/Reveal";
 import { SuccessCircleCheck } from "../../components/motion/SuccessCheck";
 import { useShake } from "../../components/motion/useShake";
@@ -25,6 +28,11 @@ import { toastError } from "../../components/ui/toast";
 import { Markdown } from "../chat/Markdown";
 import { StepCheckerPanel } from "../steps/StepChecker";
 import { PracticeHub } from "./PracticeHub";
+import { ConfidencePicker } from "./ConfidencePicker";
+import { useLowEnergy } from "../focus/useLowEnergy";
+import { noteLearned, noteRetestAnswer } from "../session/mastery";
+import { statusOf } from "../../lib/insights/mastery";
+import { overconfidentTopics } from "../../lib/insights/calibration";
 
 const qkAbilities = (spaceId: string) => ["abilities", spaceId] as const;
 
@@ -45,7 +53,8 @@ export function PracticeScreen({ spaceId, topicKey }: { spaceId: string; topicKe
   const all = [...topics, ...freeTopics];
   const selected = all.find((t) => t.key === topicKey) ?? (topicKey?.startsWith("free:") ? { key: topicKey, title: topicKey.slice(5), description: topicKey.slice(5) } : undefined);
 
-  const selectedTitle = selected?.title;
+  const mixed = topicKey === MIXED_KEY;
+  const selectedTitle = mixed ? s.session.mixedTitle : selected?.title;
   useEffect(() => {
     useUi.setState((st) =>
       st.route.name === "practice" && selectedTitle && st.route.topicTitle !== selectedTitle
@@ -58,24 +67,26 @@ export function PracticeScreen({ spaceId, topicKey }: { spaceId: string; topicKe
   if (space.error || !space.data) return <ErrorState className="pt-24" title={s.space.notFound} error={space.error} />;
 
   const pick = (key: string) => {
+    if (key === MIXED_KEY) return navigate({ name: "practice", spaceId, topicKey: MIXED_KEY, topicTitle: s.session.mixedTitle });
     const t = all.find((x) => x.key === key);
     navigate({ name: "practice", spaceId, topicKey: key, topicTitle: t?.title ?? (key.startsWith("free:") ? key.slice(5) : undefined) });
   };
 
-  if (selected && abilities.isLoading) return <Skeleton className="m-6 h-64 rounded-pane" />;
-  if (selected && abilities.error && !abilities.data) {
+  if ((selected || mixed) && abilities.isLoading) return <Skeleton className="m-6 h-64 rounded-pane" />;
+  if ((selected || mixed) && abilities.error && !abilities.data) {
     return <ErrorState className="pt-24" title={s.practice.loadFailed} error={abilities.error} onRetry={() => abilities.refetch()} />;
   }
 
-  if (!selected) return <PracticeHub spaceId={spaceId} topics={all} abilityByKey={abilityByKey} onPick={pick} />;
+  if (!selected && !(mixed && all.length > 0)) return <PracticeHub spaceId={spaceId} topics={all} abilityByKey={abilityByKey} onPick={pick} />;
   return (
     <Session
-      key={selected.key}
+      key={mixed ? MIXED_KEY : selected!.key}
       space={space.data}
-      topic={selected}
-      ability={abilityByKey.get(selected.key) ?? null}
+      topics={all}
+      fixed={mixed ? null : selected!}
+      abilityByKey={abilityByKey}
       language={curriculumById(curriculum.data?.curriculumId ?? "")?.language}
-      isCurriculumTopic={topics.some((t) => t.key === selected.key)}
+      curriculumKeys={new Set(topics.map((t) => t.key))}
     />
   );
 }
@@ -90,16 +101,18 @@ interface Result {
 
 function Session({
   space,
-  topic,
-  ability,
+  topics,
+  fixed,
+  abilityByKey,
   language,
-  isCurriculumTopic,
+  curriculumKeys,
 }: {
   space: Space;
-  topic: TopicSpec;
-  ability: Ability | null;
+  topics: TopicSpec[];
+  fixed: TopicSpec | null;
+  abilityByKey: Map<string, Ability>;
   language?: string;
-  isCurriculumTopic: boolean;
+  curriculumKeys: Set<string>;
 }) {
   const qc = useQueryClient();
   const [item, setItem] = useState<PracticeItem | null>(null);
@@ -108,12 +121,17 @@ function Session({
   const shake = useShake();
   const [busy, setBusy] = useState<"new" | "grade" | null>(null);
   const [error, setError] = useState<unknown>(null);
-  const [theta, setTheta] = useState(ability?.theta ?? 0);
-  const [n, setN] = useState(ability?.n ?? 0);
+  const [topic, setTopic] = useState<TopicSpec | null>(fixed);
+  const abil = useRef(new Map([...abilityByKey].map(([k, a]) => [k, { theta: a.theta, n: a.n }])));
+  const ab = (k: string) => abil.current.get(k) ?? { theta: 0, n: 0 };
+  const [answered, setAnswered] = useState(0);
+  const [confidence, setConfidence] = useState<Confidence | null>(null);
+  const lowEnergy = useLowEnergy(space.id).active;
+  const n = fixed ? ab(fixed.key).n : answered;
   const [stepsOpen, setStepsOpen] = useState(false);
   const [showHint, setShowHint] = useState(false);
 
-  const prefetched = useRef<Promise<PracticeItem> | null>(null);
+  const prefetched = useRef<{ topic: TopicSpec; p: Promise<PracticeItem> } | null>(null);
   const progress = useRef<{
     itemId: string;
     response: string;
@@ -126,7 +144,22 @@ function Session({
     levelSet?: boolean;
   } | null>(null);
 
-  const makeNext = async (atTheta: number) => {
+  const focusKeys = useQuery({
+    queryKey: ["mixFocus", space.id],
+    enabled: !fixed,
+    staleTime: 0,
+    queryFn: async () => {
+      const [rows, now, act] = await Promise.all([api.masteryList(space.id), Promise.resolve(appNow()), api.insightsActivity(space.id, 0)]);
+      return new Set([...rows.filter((r) => statusOf(r, now) === "retest").map((r) => r.topicKey), ...overconfidentTopics(act.attempts)]);
+    },
+  });
+
+  const chooseTopic = (last: string | null): TopicSpec =>
+    fixed ??
+    topics.find((t) => t.key === pickTopic(topics.map((x) => ({ key: x.key, weight: mixWeight(abil.current.get(x.key), focusKeys.data?.has(x.key) ?? false) })), last)) ??
+    topics[0];
+
+  const makeNext = async (topic: TopicSpec, atTheta: number) => {
     const llm = await resolveChatModel(space);
     const [avoid, hits] = await Promise.all([
       api.practiceRecent(space.id, topic.key, 10),
@@ -138,12 +171,20 @@ function Session({
     return api.practiceItemAdd(space.id, await generateProblem(llm, { topic, level: levelFor(targetDifficulty(atTheta)), avoid, context, language: language ?? space.language }));
   };
 
+  const prefetch = (last: string | null) => {
+    const t = chooseTopic(last);
+    const p = makeNext(t, ab(t.key).theta);
+    p.catch(() => {});
+    prefetched.current = { topic: t, p };
+  };
+
   const load = async (variation?: VariationMode) => {
     setBusy("new");
     setError(null);
     setResult(null);
     shake.reset();
     setResponse("");
+    setConfidence(null);
     setShowHint(false);
     const pending = prefetched.current;
     prefetched.current = null;
@@ -152,7 +193,10 @@ function Session({
         const llm = await resolveChatModel(space);
         setItem(await api.practiceItemAdd(space.id, await generateVariation(llm, item, variation)));
       } else {
-        setItem(await (pending?.catch(() => makeNext(theta)) ?? makeNext(theta)));
+        const t = pending?.topic ?? chooseTopic(topic?.key ?? null);
+        setTopic(t);
+        const th = ab(t.key).theta;
+        setItem(await (pending?.p.catch(() => makeNext(t, th)) ?? makeNext(t, th)));
       }
     } catch (e) {
       setError(e instanceof NoModelError ? new Error(s.chat.noModel) : e);
@@ -167,7 +211,8 @@ function Session({
   }, []);
 
   const submit = async () => {
-    if (!item || !response.trim()) return;
+    if (!item || !topic || !response.trim()) return;
+    const { theta, n } = ab(topic.key);
     setBusy("grade");
     try {
       const givenText = item.kind === "mcq" ? item.options![Number(response)] ?? response : response.trim();
@@ -197,6 +242,7 @@ function Session({
           thetaBefore: theta,
           thetaAfter: after,
           errorType,
+          confidence,
         });
         p.attempted = true;
       }
@@ -221,8 +267,10 @@ function Session({
           p.errorTypeSet = true;
         }
       }
-      if (isCurriculumTopic) {
+      void noteRetestAnswer(space.id, topic.key, topic.title, grade.correct);
+      if (curriculumKeys.has(topic.key)) {
         const level = levelFromTheta(after, n + 1);
+        if (level === "ok" || level === "strong") void noteLearned(space.id, topic.key);
         if (level !== "unknown" && !p.levelSet) {
           await api.topicLevelSet(space.id, topic.key, level, `practice: ${skillPercent(after)}/100 after ${n + 1} problems`);
           p.levelSet = true;
@@ -233,10 +281,9 @@ function Session({
       qc.invalidateQueries({ queryKey: ["errorPatterns"] });
       setResult({ grade, before: theta, after, errorType, errorNote });
       if (!grade.correct) shake.shake();
-      prefetched.current = makeNext(after);
-      prefetched.current.catch(() => {});
-      setTheta(after);
-      setN(n + 1);
+      abil.current.set(topic.key, { theta: after, n: n + 1 });
+      setAnswered((a) => a + 1);
+      prefetch(topic.key);
     } catch (e) {
       toastError(s.practice.gradeFailed, e, submit);
     } finally {
@@ -256,6 +303,7 @@ function Session({
             <span className="text-muted" data-testid="practice-skill">
               {s.practice.problems(n)}
             </span>
+            {!fixed && topic && <TextSwap text={topic.title} className="rounded-btn bg-fill px-2 py-0.5 text-label text-fg-secondary" />}
             <Button variant="ghost" size="sm" className="ms-auto" onClick={() => load()} disabled={busy != null}>
               {s.practice.skip}
             </Button>
@@ -274,6 +322,7 @@ function Session({
               <div className="practice-question text-[1.125rem] font-medium leading-[1.5] [&_.prose-chat]:leading-[1.5]" data-testid="practice-question">
                 <Markdown text={item.question} />
               </div>
+              {!result && !lowEnergy && <ConfidencePicker value={confidence} onChange={setConfidence} />}
               {item.kind === "mcq" ? (
                 <>
                   <div className="flex flex-col gap-2" role="radiogroup" aria-label={item.question}>

@@ -1884,7 +1884,6 @@ const handlers: Record<string, (a: Args) => unknown> = {
     save();
     return null;
   },
-  clock_now: () => now(),
   mistake_set_error_type: (a) => {
     const m = db.mistakes[a.id as string];
     if (m) m.errorType = a.errorType as T.ErrorType;

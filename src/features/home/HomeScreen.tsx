@@ -18,6 +18,7 @@ import { toastError } from "../../components/ui/toast";
 import { TodaySection } from "../plan/TodaySection";
 import { BriefingButton } from "../speech/BriefingButton";
 import { SpaceDialog } from "./SpaceDialog";
+import { NextCard, useNextSpace } from "../session/NextCard";
 
 export function HomeScreen() {
   const { data, isLoading, error, refetch } = useSpaces();
@@ -26,6 +27,7 @@ export function HomeScreen() {
   const [deleting, setDeleting] = useState<Space | null>(null);
   const deleteSpace = useDeleteSpace();
   const gridRef = useRef<HTMLDivElement>(null);
+  const nextSpace = useNextSpace();
   const isFresh = useFreshKeys(data?.map((x) => x.id));
   useFlip(gridRef, [data]);
 
@@ -64,6 +66,7 @@ export function HomeScreen() {
             {s.home.newSpace}
           </Button>
         </div>
+        {nextSpace && <NextCard spaceId={nextSpace} />}
         <TodaySection />
         {isLoading && (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">

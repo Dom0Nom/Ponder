@@ -58,11 +58,6 @@ pub async fn mastery_upsert(state: State<'_, AppState>, space_id: String, row: M
     upsert(&state.db.conn()?, &space_id, &row)
 }
 
-#[tauri::command]
-pub async fn clock_now() -> i64 {
-    now_ms()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
