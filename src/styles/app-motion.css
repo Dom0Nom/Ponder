@@ -54,6 +54,71 @@
 .m-stagger > :nth-child(n+11) { animation-delay: calc(9 * var(--m-step)); }
 
 /* Press: scale down on buttons and rows, back out slower */
-.m-press { transition: transform var(--motion-quick) var(--motion-ease-smooth); }
+.m-press { transition: color var(--motion-quick), background-color var(--motion-quick), border-color var(--motion-quick), opacity var(--motion-quick), box-shadow var(--motion-quick), transform var(--motion-quick) var(--motion-ease-smooth); }
 .m-press:active { transform: scale(var(--motion-press-scale)); transition-duration: var(--motion-micro); }
 [data-motion="reduce"] .m-press:active { transform: none; }
+@media (prefers-reduced-motion: reduce) { .m-press:active { transform: none; } }
+
+/* ---- 07 §2 snippet equivalents ----
+   transitions.dev's source for these could not be fetched; they are written to the same knobs and names
+   (--reel-*, --toggle-*, --shimmer-*, --like-*, --tilt-*, --avatar-*). Replace with the originals (and attribution headers) when available. */
+:root {
+  --reel-dur: 1100ms; --reel-stagger: 70ms; --reel-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --toggle-dur: 350ms; --toggle-ease: cubic-bezier(0.34, 1.9, 0.5, 1); --toggle-track: 120ms;
+  --shimmer-dur: 1600ms; --shimmer-base: var(--muted); --shimmer-highlight: var(--fg); --shimmer-band: 400%;
+  --like-pop: 380ms; --like-fill: 150ms; --like-particle-dur: 520ms; --like-particle-dist: 16px;
+  --tilt-perspective: 1000px; --tilt-follow: 300ms; --tilt-return: 700ms;
+  --avatar-lift: -3px; --avatar-scale: 1.1; --avatar-falloff: 0.45; --avatar-dur: 320ms;
+}
+
+/* spinning-counter: digits roll up a 0..n column; non-digits stay */
+.t-reel { display: inline-flex; align-items: baseline; font-variant-numeric: tabular-nums; }
+.t-reel-d { display: inline-block; height: var(--reel-cell, 1em); overflow: hidden; line-height: var(--reel-cell, 1em); vertical-align: bottom; }
+.t-reel-col { display: flex; flex-direction: column; transform: translateY(calc(var(--n) * var(--reel-cell, 1em) * -1)); animation: t-reel var(--reel-dur) var(--reel-ease) backwards; animation-delay: calc(var(--k) * var(--reel-stagger)); }
+@keyframes t-reel { from { transform: translateY(0); } }
+
+/* toggle: thumb overshoots, track fades fast */
+.t-toggle { transition: background-color var(--toggle-track) linear; }
+.t-toggle-thumb { transition: transform var(--toggle-dur) var(--toggle-ease); }
+
+/* shimmer-text */
+.t-shimmer {
+  background: linear-gradient(110deg, var(--shimmer-base) 42%, var(--shimmer-highlight) 50%, var(--shimmer-base) 58%) 100% 0 / var(--shimmer-band) 100%;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  animation: t-shimmer var(--shimmer-dur) linear infinite;
+}
+@keyframes t-shimmer { to { background-position: 0% 0; } }
+[data-motion="reduce"] .t-shimmer, [data-fx="off"] .t-shimmer { background: none; -webkit-text-fill-color: var(--shimmer-base); animation: none; }
+@media (prefers-reduced-motion: reduce) { .t-shimmer { background: none; -webkit-text-fill-color: var(--shimmer-base); animation: none; } }
+
+/* like-button: fill, pop, particles (gray, no hue) */
+.t-like { position: relative; }
+.t-like svg { transition: fill var(--like-fill) linear; fill: transparent; }
+.t-like[data-on="true"] svg { fill: currentColor; }
+.t-like[data-pop="true"] svg { animation: t-like-pop var(--like-pop) cubic-bezier(0.34, 1.6, 0.64, 1); }
+.t-like[data-pop="true"]::after {
+  content: ""; position: absolute; inset-inline-start: 50%; top: 50%; width: 2px; height: 2px; margin: -1px; border-radius: 50%; color: var(--muted);
+  box-shadow: 0 0 0 0, 0 0 0 0, 0 0 0 0, 0 0 0 0, 0 0 0 0, 0 0 0 0; opacity: 0; pointer-events: none;
+  animation: t-like-burst var(--like-particle-dur) var(--motion-ease-smooth);
+}
+@keyframes t-like-pop { 0% { transform: scale(0.6); } 100% { transform: scale(1); } }
+@keyframes t-like-burst {
+  0% { opacity: 1; box-shadow: 0 0 currentColor, 0 0 currentColor, 0 0 currentColor, 0 0 currentColor, 0 0 currentColor, 0 0 currentColor; }
+  100% { opacity: 0; box-shadow: 0 calc(var(--like-particle-dist) * -1) currentColor, var(--like-particle-dist) calc(var(--like-particle-dist) * -0.5) currentColor, var(--like-particle-dist) calc(var(--like-particle-dist) * 0.5) currentColor, 0 var(--like-particle-dist) currentColor, calc(var(--like-particle-dist) * -1) calc(var(--like-particle-dist) * 0.5) currentColor, calc(var(--like-particle-dist) * -1) calc(var(--like-particle-dist) * -0.5) currentColor; }
+}
+
+/* card-tilt: set by useTilt (pointer only) */
+.t-tilt { transform: perspective(var(--tilt-perspective)) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); transition: transform var(--tilt-return) var(--motion-ease-smooth), background-color var(--motion-quick), border-color var(--motion-quick); }
+.t-tilt[data-tilting="true"] { transition-duration: var(--tilt-follow); }
+.t-tilt::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity var(--motion-quick);
+  background: radial-gradient(circle at var(--tilt-gx, 50%) var(--tilt-gy, 0%), var(--tilt-glare, rgb(0 0 0 / 0.05)), transparent 60%); }
+.t-tilt[data-tilting="true"]::after { opacity: 1; }
+[data-theme="dark"] .t-tilt { --tilt-glare: rgb(255 255 255 / 0.2); }
+
+/* avatar-group-hover: hovered item lifts, neighbours follow with falloff */
+.t-ag > button, .t-ag > a, .t-ag > span.t-ag-item { transition: transform var(--avatar-dur) cubic-bezier(0.34, 1.56, 0.64, 1); }
+.t-ag > button:hover, .t-ag > a:hover { transform: translateY(var(--avatar-lift)) scale(var(--avatar-scale)); }
+.t-ag > button:hover + button, .t-ag > button:has(+ button:hover),
+.t-ag > a:hover + a, .t-ag > a:has(+ a:hover) { transform: translateY(calc(var(--avatar-lift) * var(--avatar-falloff))) scale(calc(1 + (var(--avatar-scale) - 1) * var(--avatar-falloff))); }
+[data-motion="reduce"] .t-tilt, [data-motion="reduce"] .t-ag > * { transform: none !important; }
+[data-motion="reduce"] .t-like svg { animation: none !important; }

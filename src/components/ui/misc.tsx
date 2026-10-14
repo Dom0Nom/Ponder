@@ -30,14 +30,14 @@ export function Switch({
       aria-label={label}
       disabled={disabled}
       className={cn(
-        "relative inline-flex shrink-0 cursor-pointer items-center rounded-full transition-colors duration-150 data-[state=checked]:bg-primary data-[state=unchecked]:bg-control-off disabled:cursor-default disabled:opacity-50",
+        "relative inline-flex shrink-0 cursor-pointer items-center rounded-full t-toggle data-[state=checked]:bg-primary data-[state=unchecked]:bg-control-off disabled:cursor-default disabled:opacity-50",
         sm ? "h-4 w-7" : "h-4.5 w-7.5",
         className,
       )}
     >
       <Sw.Thumb
         className={cn(
-          "block translate-x-[calc(0.125rem*var(--dir-x))] rounded-full bg-surface transition-transform duration-150 data-[state=checked]:translate-x-[calc(0.875rem*var(--dir-x))]",
+          "block translate-x-[calc(0.125rem*var(--dir-x))] rounded-full bg-surface t-toggle-thumb data-[state=checked]:translate-x-[calc(0.875rem*var(--dir-x))]",
           sm ? "size-3" : "size-3.5",
         )}
       />

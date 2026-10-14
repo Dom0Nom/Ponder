@@ -1,3 +1,4 @@
+import { SpinCounter } from "../../components/motion/SpinCounter";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { Calculator, ChevronDown, ChevronLeft, ChevronRight, Flag, GraduationCap, Trash2 } from "lucide-react";
@@ -553,7 +554,9 @@ function Results({ attempt, format, section, space }: { attempt: ExamAttempt; fo
       </div>
       <section className="flex items-center gap-6 rounded-card border border-border px-6 py-5" data-testid="exam-result">
         <div className="flex flex-col">
-          <span className="text-timer font-semibold tabular-nums">{r.scaled ?? `${Math.round(r.share * 100)}%`}</span>
+          <span className="text-timer font-semibold tabular-nums">
+            <SpinCounter value={r.scaled ?? `${Math.round(r.share * 100)}%`} cell={56} />
+          </span>
           <span className={cn("text-label font-semibold", r.passed ? "text-success" : "text-muted")}>{r.passed ? s.exam.passed : s.exam.notPassed}</span>
         </div>
         <div className="flex flex-col gap-0.5 text-fg-secondary">

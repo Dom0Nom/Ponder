@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useTilt } from "../../components/motion/useTilt";
 import { Reveal } from "../../components/motion/Reveal";
 import { useFlip } from "../../lib/useFlip";
 import { useFreshKeys } from "../../lib/useFreshKeys";
@@ -99,13 +100,16 @@ export function HomeScreen() {
 
 function SpaceCard({ space, onEdit, onDelete }: { space: Space; onEdit: () => void; onDelete: () => void }) {
   const navigate = useUi((st) => st.navigate);
+  const tilt = useTilt();
   return (
     <div
+      onPointerMove={tilt.onPointerMove}
+      onPointerLeave={tilt.onPointerLeave}
       role="button"
       tabIndex={0}
       onClick={() => navigate({ name: "space", spaceId: space.id })}
       onKeyDown={(e) => e.key === "Enter" && navigate({ name: "space", spaceId: space.id })}
-      className="group relative flex h-[168px] cursor-pointer flex-col rounded-card border border-border bg-surface p-4.5 transition-colors hover:bg-fill-faint has-[[data-state=open]]:bg-fill-faint"
+      className={`group relative flex h-[168px] cursor-pointer flex-col rounded-card border border-border bg-surface p-4.5 transition-colors hover:bg-fill-faint has-[[data-state=open]]:bg-fill-faint ${tilt.className}`}
       data-testid="space-card"
     >
       <div className="flex items-start justify-between">

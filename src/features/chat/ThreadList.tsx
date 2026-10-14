@@ -13,6 +13,7 @@ import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../../c
 import { Skeleton, Tooltip } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
 import { useFlip } from "../../lib/useFlip";
+import { LikeIcon } from "../../components/motion/LikeIcon";
 import { useFreshKeys } from "../../lib/useFreshKeys";
 import { useActiveThread, useNewThread } from "./useActiveThread";
 
@@ -113,7 +114,9 @@ function ThreadRow({ thread, spaceId, active, fresh, onDelete }: { thread: Threa
               }}
               className={cn(iconBtn, thread.pinned ? "flex" : "hidden opacity-50 group-hover:flex", menuOpen && "flex")}
             >
-              <Pin size={14} />
+              <LikeIcon on={thread.pinned}>
+                <Pin size={14} />
+              </LikeIcon>
             </button>
           </Tooltip>
           <Menu open={menuOpen} onOpenChange={setMenuOpen}>
