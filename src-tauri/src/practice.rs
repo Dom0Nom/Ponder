@@ -389,6 +389,7 @@ mod tests {
             theta_before: before,
             theta_after: after,
             error_type: et.map(Into::into),
+            confidence: None,
         };
         assert!(record_attempt(&c, &sp.id, &attempt(false, 0.0, -0.5, Some("rage"))).is_err());
         let a1 =
