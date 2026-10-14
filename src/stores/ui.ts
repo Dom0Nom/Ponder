@@ -62,6 +62,9 @@ interface UiState {
   /** goal the next Focus start dialog opens with; consumed on open */
   focusGoalPreset: string | null;
   captureOpen: boolean;
+  /** setup wizard opened on purpose (Run setup again); first launch is decided from settings */
+  onboardingOpen: boolean;
+  tourOpen: boolean;
   watchDialogOpen: boolean;
   importDialog: { open: boolean; tab?: string; query?: string; found?: FoundSource[]; url?: string; file?: string };
   /** active thread per space */
@@ -91,6 +94,8 @@ interface UiState {
   setFocusDialogOpen: (o: boolean) => void;
   openFocusDialog: (goal?: string) => void;
   setCaptureOpen: (o: boolean) => void;
+  setOnboardingOpen: (o: boolean) => void;
+  setTourOpen: (o: boolean) => void;
   setWatchDialogOpen: (o: boolean) => void;
   setImportDialog: (d: { open: boolean; tab?: string; query?: string; url?: string; file?: string }) => void;
   setActiveThread: (spaceId: string, threadId: string) => void;
@@ -120,6 +125,8 @@ export const useUi = create<UiState>()(
       focusDialogOpen: false,
       focusGoalPreset: null,
       captureOpen: false,
+      onboardingOpen: false,
+      tourOpen: false,
       watchDialogOpen: false,
       importDialog: { open: false },
       activeThread: {},
@@ -166,6 +173,8 @@ export const useUi = create<UiState>()(
       setFocusDialogOpen: (focusDialogOpen) => set({ focusDialogOpen }),
       openFocusDialog: (goal) => set({ focusDialogOpen: true, focusGoalPreset: goal ?? null }),
       setCaptureOpen: (captureOpen) => set({ captureOpen }),
+      setOnboardingOpen: (onboardingOpen) => set({ onboardingOpen }),
+      setTourOpen: (tourOpen) => set({ tourOpen }),
       setWatchDialogOpen: (watchDialogOpen) => set({ watchDialogOpen }),
       setImportDialog: (importDialog) => set({ importDialog }),
       setActiveThread: (spaceId, threadId) =>

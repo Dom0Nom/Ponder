@@ -14,6 +14,7 @@ import { Kbd } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
 import { useLowEnergy } from "../focus/useLowEnergy";
 import { useHasPlan } from "../plan/TodaySection";
+import { startTour } from "../onboarding/startTour";
 import { exportStudyPack, importStudyPack } from "../packs/studyPack";
 
 const item =
@@ -223,6 +224,10 @@ export function CommandPalette() {
                 >
                   <Brain size={15} />
                   <span className="flex-1">{s.memory.title}</span>
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(startTour)} keywords={["help", "guide", "intro", "walkthrough"]}>
+                  <Sparkles size={15} />
+                  <span className="flex-1">{s.onboarding.tour.open}</span>
                 </Command.Item>
                 <Command.Item
                   className={item}

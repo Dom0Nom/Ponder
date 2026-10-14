@@ -471,6 +471,10 @@ async function httpStream(request: T.ProxyRequest, channel: { id: number }) {
     send({ type: "error", message: "Not signed in. Sign in again in Settings." });
     return;
   }
+  if (url.hostname === "down.local") {
+    send({ type: "error", message: "Connection refused" });
+    return;
+  }
   if (url.pathname.endsWith("/models")) {
     send({ type: "head", status: 200, headers: { "content-type": "application/json" } });
     const list = url.hostname.startsWith("generativelanguage")
@@ -1928,7 +1932,8 @@ const handlers: Record<string, (a: Args) => unknown> = {
     save();
     return null;
   },
-  get_settings: () => db.settings,
+  // other specs start already set up; `?onboarding` shows the first-run wizard
+  get_settings: () => (new URLSearchParams(location.search).has("onboarding") ? db.settings : { onboardingDone: true, ...db.settings }),
   set_locale: (a) => {
     db.settings.locale = a.locale;
     save();

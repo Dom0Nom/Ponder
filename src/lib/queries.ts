@@ -97,6 +97,13 @@ export function usePinThread(spaceId: string) {
   });
 }
 
+/** One settings key as [value, save]. */
+export function useSetting<T>(key: string) {
+  const { data } = useSettings();
+  const set = useSetSetting();
+  return [data?.[key] as T | undefined, (value: T | null) => set.mutateAsync({ key, value })] as const;
+}
+
 export function useSetSetting() {
   const qc = useQueryClient();
   return useMutation({
