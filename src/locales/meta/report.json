@@ -76,11 +76,11 @@
     "driftFixed": 0
   },
   "hi": {
-    "at": "2026-10-14T22:23:39.456Z",
-    "keys": 2067,
-    "of": 2067,
+    "at": "2026-10-14T23:53:16.824Z",
+    "keys": 2602,
+    "of": 2602,
     "failing": [],
-    "driftChecked": 80,
+    "driftChecked": 40,
     "driftFixed": 0
   },
   "zh-Hant": {
@@ -92,50 +92,50 @@
     "driftFixed": 1
   },
   "id": {
-    "at": "2026-10-14T22:23:50.180Z",
-    "keys": 2066,
-    "of": 2067,
+    "at": "2026-10-14T23:53:26.095Z",
+    "keys": 2601,
+    "of": 2602,
     "failing": [
       "plan.levels.unknown"
     ],
-    "driftChecked": 80,
-    "driftFixed": 10
+    "driftChecked": 40,
+    "driftFixed": 0
   },
   "ko": {
-    "at": "2026-10-14T22:23:50.606Z",
-    "keys": 2066,
-    "of": 2067,
+    "at": "2026-10-14T23:53:23.179Z",
+    "keys": 2601,
+    "of": 2602,
     "failing": [
       "plan.levels.unknown"
     ],
-    "driftChecked": 80,
-    "driftFixed": 10
+    "driftChecked": 40,
+    "driftFixed": 0
   },
   "fr": {
-    "at": "2026-10-14T22:24:11.634Z",
-    "keys": 2067,
-    "of": 2067,
+    "at": "2026-10-14T23:53:22.830Z",
+    "keys": 2602,
+    "of": 2602,
     "failing": [],
-    "driftChecked": 80,
-    "driftFixed": 4
+    "driftChecked": 40,
+    "driftFixed": 1
   },
   "it": {
-    "at": "2026-10-14T22:24:19.011Z",
-    "keys": 2067,
-    "of": 2067,
+    "at": "2026-10-14T23:53:37.556Z",
+    "keys": 2602,
+    "of": 2602,
     "failing": [],
-    "driftChecked": 80,
-    "driftFixed": 3
+    "driftChecked": 40,
+    "driftFixed": 0
   },
   "ru": {
-    "at": "2026-10-14T22:24:19.327Z",
-    "keys": 2066,
-    "of": 2067,
+    "at": "2026-10-14T23:53:40.339Z",
+    "keys": 2601,
+    "of": 2602,
     "failing": [
       "plan.levels.unknown"
     ],
-    "driftChecked": 80,
-    "driftFixed": 44
+    "driftChecked": 40,
+    "driftFixed": 40
   },
   "fa": {
     "at": "2026-10-14T23:53:11.344Z",
@@ -146,19 +146,27 @@
     "driftFixed": 1
   },
   "ar": {
-    "at": "2026-10-14T22:25:00.997Z",
-    "keys": 2067,
-    "of": 2067,
-    "failing": [],
-    "driftChecked": 80,
-    "driftFixed": 5
+    "at": "2026-10-14T23:53:28.629Z",
+    "keys": 2595,
+    "of": 2602,
+    "failing": [
+      "answerCheck.replaced",
+      "onboarding.ai.recommendedModel",
+      "onboarding.ai.waitingBrowser",
+      "onboarding.ai.deviceCode",
+      "onboarding.ai.openLink",
+      "onboarding.ai.testing",
+      "onboarding.space.sourceCount"
+    ],
+    "driftChecked": 40,
+    "driftFixed": 1
   },
   "ur": {
-    "at": "2026-10-14T22:26:28.915Z",
-    "keys": 2067,
-    "of": 2067,
+    "at": "2026-10-14T23:54:01.486Z",
+    "keys": 2602,
+    "of": 2602,
     "failing": [],
-    "driftChecked": 80,
-    "driftFixed": 49
+    "driftChecked": 40,
+    "driftFixed": 2
   }
 }
