@@ -7,6 +7,7 @@ use scraper::{ElementRef, Html, Node};
 use std::io::Read;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::Path;
+use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Extracted {
@@ -30,9 +31,25 @@ pub fn kind_for_path(path: &Path) -> Option<&'static str> {
     })
 }
 
+#[cfg(test)]
 pub fn extract_file(path: &Path, kind: &str) -> ExtractResult<Extracted> {
+    extract_file_with(path, kind, &mut |_| {})
+}
+
+/// Like `extract_file`; `progress` gets 0..1 while a PDF's pages are read.
+pub fn extract_file_with(
+    path: &Path,
+    kind: &str,
+    progress: &mut dyn FnMut(f64),
+) -> ExtractResult<Extracted> {
     let bytes = std::fs::read(path).map_err(|e| format!("Couldn't read the file: {e}"))?;
-    let res = catch_unwind(AssertUnwindSafe(|| extract_bytes(&bytes, kind)));
+    let res = catch_unwind(AssertUnwindSafe(|| {
+        if kind == "pdf" {
+            extract_pdf_with(&bytes, progress)
+        } else {
+            extract_bytes(&bytes, kind)
+        }
+    }));
     let out = match res {
         Ok(r) => r?,
         Err(_) => {
@@ -88,8 +105,22 @@ pub fn normalize_newlines(s: &str) -> String {
 // ---------- PDF ----------
 
 pub fn extract_pdf(bytes: &[u8]) -> ExtractResult<Extracted> {
-    let mut doc = pdf_extract::Document::load_mem(bytes)
-        .map_err(|e| format!("Couldn't read this PDF: {e}"))?;
+    extract_pdf_with(bytes, &mut |_| {})
+}
+
+pub fn extract_pdf_with(bytes: &[u8], progress: &mut dyn FnMut(f64)) -> ExtractResult<Extracted> {
+    // Parsing a big file takes tens of seconds with no hook, so a ticker estimates progress for it.
+    let started = Instant::now();
+    let loaded = std::thread::scope(|s| {
+        let h = s.spawn(|| pdf_extract::Document::load_mem(bytes));
+        while !h.is_finished() {
+            std::thread::sleep(Duration::from_millis(250));
+            let t = started.elapsed().as_secs_f64();
+            progress(0.5 * (1.0 - (-t / 20.0).exp()));
+        }
+        h.join().unwrap_or_else(|p| std::panic::resume_unwind(p))
+    });
+    let mut doc = loaded.map_err(|e| format!("Couldn't read this PDF: {e}"))?;
     if doc.is_encrypted() && doc.decrypt("").is_err() {
         return Err("This PDF is password-protected.".into());
     }
@@ -100,7 +131,8 @@ pub fn extract_pdf(bytes: &[u8]) -> ExtractResult<Extracted> {
     let mut text = String::new();
     let mut byte_starts = Vec::with_capacity(page_nums.len());
     let mut failed = 0;
-    for &n in &page_nums {
+    for (i, &n) in page_nums.iter().enumerate() {
+        progress(0.5 + 0.5 * i as f64 / page_nums.len() as f64);
         let raw = catch_unwind(AssertUnwindSafe(|| {
             let mut s = String::new();
             let mut out = pdf_extract::PlainTextOutput::new(&mut s);

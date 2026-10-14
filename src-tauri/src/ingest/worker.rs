@@ -13,6 +13,8 @@ use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+/// Chunk rows written per transaction, so a huge source never holds the write lock for long.
+const CHUNK_INSERT_BATCH: usize = 2000;
 const PROGRESS_INTERVAL: Duration = Duration::from_millis(250);
 /// `{id, tries}` of the source being read; left behind when the app dies mid-read.
 pub const SETTING_READING: &str = "ingestReading";
@@ -157,6 +159,28 @@ impl Worker {
         self.emit_source(c, id);
     }
 
+    /// Extraction takes the first tenth of the progress bar, so big files don't sit at 0%.
+    fn extract_with_progress(
+        &self,
+        c: &Connection,
+        id: &str,
+        path: &std::path::Path,
+        kind: &str,
+    ) -> Result<Extracted, String> {
+        let mut last = Instant::now();
+        extract::extract_file_with(path, kind, &mut |p| {
+            if last.elapsed() < PROGRESS_INTERVAL {
+                return;
+            }
+            last = Instant::now();
+            let _ = c.execute(
+                "UPDATE sources SET progress=?2, updated_at=?3 WHERE id=?1",
+                params![id, p * 0.1, now_ms()],
+            );
+            self.emit_source(c, id);
+        })
+    }
+
     fn load_input(
         &self,
         c: &Connection,
@@ -164,7 +188,7 @@ impl Worker {
         input: Input,
     ) -> Result<Extracted, String> {
         match input {
-            Input::File(path, kind) => extract::extract_file(&path, &kind),
+            Input::File(path, kind) => self.extract_with_progress(c, &src.id, &path, &kind),
             #[cfg(test)]
             Input::Text(t) => Ok(Extracted {
                 text: extract::normalize_newlines(&t),
@@ -195,7 +219,7 @@ impl Worker {
                     .flatten();
                 match (local.or_else(|| src.origin.clone()), src.kind.as_str()) {
                     (Some(path), "pdf" | "epub" | "docx" | "markdown" | "text") => {
-                        extract::extract_file(&PathBuf::from(path), &src.kind)
+                        self.extract_with_progress(c, &src.id, &PathBuf::from(path), &src.kind)
                     }
                     _ => {
                         Err("The original text of this source is missing. Import it again.".into())
@@ -219,24 +243,30 @@ impl Worker {
 
         let chunks = chunk_text(&ex.text, ex.pages.as_deref());
         let mut ids = Vec::with_capacity(chunks.len());
-        {
+        let mut parts: Vec<&[_]> = chunks.chunks(CHUNK_INSERT_BATCH).collect();
+        if parts.is_empty() {
+            parts.push(&[]);
+        }
+        for (bi, part) in parts.iter().enumerate() {
             let tx = c
                 .transaction_with_behavior(TransactionBehavior::Immediate)
                 .map_err(db_err)?;
             if models::get_source(&tx, source_id).is_err() {
                 return Ok(Outcome::Gone);
             }
-            let pages = ex
-                .pages
-                .as_ref()
-                .map(|p| serde_json::to_string(p).unwrap_or_default());
-            tx.execute(
-                "INSERT OR REPLACE INTO source_texts (source_id, text, pages) VALUES (?1, ?2, ?3)",
-                params![source_id, ex.text, pages],
-            )
-            .map_err(db_err)?;
-            tx.execute("DELETE FROM chunks WHERE source_id=?1", [source_id])
+            if bi == 0 {
+                let pages = ex
+                    .pages
+                    .as_ref()
+                    .map(|p| serde_json::to_string(p).unwrap_or_default());
+                tx.execute(
+                    "INSERT OR REPLACE INTO source_texts (source_id, text, pages) VALUES (?1, ?2, ?3)",
+                    params![source_id, ex.text, pages],
+                )
                 .map_err(db_err)?;
+                tx.execute("DELETE FROM chunks WHERE source_id=?1", [source_id])
+                    .map_err(db_err)?;
+            }
             {
                 let mut st = tx
                     .prepare(
@@ -244,11 +274,11 @@ impl Worker {
                          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
                     )
                     .map_err(db_err)?;
-                for (i, ch) in chunks.iter().enumerate() {
+                for (i, ch) in part.iter().enumerate() {
                     st.execute(params![
                         source_id,
                         src.space_id,
-                        i as i64,
+                        (bi * CHUNK_INSERT_BATCH + i) as i64,
                         ch.text,
                         ch.start,
                         ch.end,
