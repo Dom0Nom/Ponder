@@ -1,13 +1,15 @@
 import { createEmptyCard, fsrs, generatorParameters, Rating, type Card as FsrsCard, type Grade } from "ts-fsrs";
 import type { Card } from "../types";
+import { formatUnit } from "../i18n/format";
+import { s } from "../strings";
 
 export const scheduler = fsrs(generatorParameters({ request_retention: 0.9, maximum_interval: 3650, enable_fuzz: true }));
 
-export const GRADES: { rating: Grade; label: string; key: string }[] = [
-  { rating: Rating.Again, label: "Again", key: "1" },
-  { rating: Rating.Hard, label: "Hard", key: "2" },
-  { rating: Rating.Good, label: "Good", key: "3" },
-  { rating: Rating.Easy, label: "Easy", key: "4" },
+export const GRADES: { rating: Grade; readonly label: string; key: string }[] = [
+  { rating: Rating.Again, get label() { return s.review.grades.again; }, key: "1" },
+  { rating: Rating.Hard, get label() { return s.review.grades.hard; }, key: "2" },
+  { rating: Rating.Good, get label() { return s.review.grades.good; }, key: "3" },
+  { rating: Rating.Easy, get label() { return s.review.grades.easy; }, key: "4" },
 ];
 
 /** Stored JSON → ts-fsrs card (dates come back as numbers). */
@@ -52,12 +54,12 @@ export function previewIntervals(card: Pick<Card, "fsrs" | "due">, now = new Dat
 
 export function formatInterval(ms: number): string {
   const min = Math.max(1, Math.round(ms / 60_000));
-  if (min < 60) return `${min}m`;
+  if (min < 60) return formatUnit(min, "minute", "narrow");
   const h = Math.round(min / 60);
-  if (h < 24) return `${h}h`;
+  if (h < 24) return formatUnit(h, "hour", "narrow");
   const d = Math.round(h / 24);
-  if (d < 31) return `${d}d`;
+  if (d < 31) return formatUnit(d, "day", "narrow");
   const mo = Math.round(d / 30);
-  if (mo < 12) return `${mo}mo`;
-  return `${(d / 365).toFixed(1)}y`;
+  if (mo < 12) return formatUnit(mo, "month", "short");
+  return formatUnit(d / 365, "year", "short");
 }

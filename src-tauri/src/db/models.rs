@@ -67,7 +67,9 @@ const TUTOR_STYLES: &[&str] = &["direct", "socratic", "mixed"];
 fn valid_language(tag: &str) -> bool {
     !tag.is_empty()
         && tag.len() <= 16
-        && tag.split('-').all(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_alphanumeric()))
+        && tag
+            .split('-')
+            .all(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_alphanumeric()))
 }
 
 fn space_from_row(r: &Row) -> rusqlite::Result<Space> {
@@ -772,18 +774,29 @@ mod tests {
         let (db, _d) = test_db();
         let c = db.conn().unwrap();
         let patch = |v: serde_json::Value| -> SpacePatch { serde_json::from_value(v).unwrap() };
-        let s = create_space(&c, patch(serde_json::json!({"name": "Bio", "language": "de"}))).unwrap();
+        let s = create_space(
+            &c,
+            patch(serde_json::json!({"name": "Bio", "language": "de"})),
+        )
+        .unwrap();
         assert_eq!(s.language.as_deref(), Some("de"));
         let plain = create_space(&c, patch(serde_json::json!({"name": "Chem"}))).unwrap();
         assert_eq!(plain.language, None);
         let kept = update_space(&c, &s.id, patch(serde_json::json!({"name": "Biology"}))).unwrap();
         assert_eq!(kept.language.as_deref(), Some("de"));
-        let changed = update_space(&c, &s.id, patch(serde_json::json!({"language": "pt-BR"}))).unwrap();
+        let changed =
+            update_space(&c, &s.id, patch(serde_json::json!({"language": "pt-BR"}))).unwrap();
         assert_eq!(changed.language.as_deref(), Some("pt-BR"));
-        let bad = update_space(&c, &s.id, patch(serde_json::json!({"language": "not a tag!"}))).unwrap();
+        let bad = update_space(
+            &c,
+            &s.id,
+            patch(serde_json::json!({"language": "not a tag!"})),
+        )
+        .unwrap();
         assert_eq!(bad.language, None);
         update_space(&c, &s.id, patch(serde_json::json!({"language": "fr"}))).unwrap();
-        let cleared = update_space(&c, &s.id, patch(serde_json::json!({"language": null}))).unwrap();
+        let cleared =
+            update_space(&c, &s.id, patch(serde_json::json!({"language": null}))).unwrap();
         assert_eq!(cleared.language, None);
         assert_eq!(get_space(&c, &s.id).unwrap().language, None);
     }

@@ -9,6 +9,7 @@ import { baseUrlOf, capabilitiesOf, catalog, pickDefaultModel } from "./catalog"
 import { effortRank, resolveModelCaps, type Effort, type Verbosity } from "./modelCaps";
 import { cachedOpenRouterModel } from "./openrouter";
 import { createProxyFetch } from "./proxyFetch";
+import { s } from "../strings";
 
 export type ChatModel = Exclude<LanguageModel, string>;
 
@@ -227,7 +228,7 @@ export interface ConnectionResult {
 /** Lists models to prove the base URL and credential work. */
 export async function testConnection(provider: Provider, opts: ModelFactoryOptions = {}): Promise<ConnectionResult> {
   const models = await listModels(provider, opts);
-  if (models.length === 0) throw new Error("Connected, but the server reported no models");
+  if (models.length === 0) throw new Error(s.failures.connectedButTheServerReported);
   return { models, defaultModel: pickDefaultModel(models, provider.config.defaultModel) };
 }
 

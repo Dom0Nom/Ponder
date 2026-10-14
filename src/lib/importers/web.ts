@@ -130,7 +130,7 @@ export const webImporter: Importer<string> = {
   canHandle: (input) => !!normalizeUrl(input) && !isYouTubeUrl(input),
   async import(spaceId, input): Promise<Source> {
     const url = normalizeUrl(input);
-    if (!url) throw new Error("That doesn't look like a web address.");
+    if (!url) throw new Error(s.failures.thatDoesnTLookLike);
     const page = await fetchReadable(url);
     const header = [page.byline, page.siteName].filter(Boolean).join(" · ");
     const text = `# ${page.title}\n\n${header ? `${header}\n\n` : ""}${page.markdown}`;

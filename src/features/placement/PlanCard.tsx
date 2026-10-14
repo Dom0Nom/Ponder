@@ -135,7 +135,7 @@ function CustomCurriculumDialog({
           group: String(t.group ?? "Topics").trim(),
           prereqs: i > 0 ? [`custom.${i}`] : undefined,
         }));
-      if (topics.length < 2) throw new Error("Couldn't find a topic list in that text.");
+      if (topics.length < 2) throw new Error(s.failures.couldnTFindATopic);
       await api.curriculumSet(space.id, "custom", parsed?.title?.trim() || space.name, topics);
       toast.success(s.plan.customSaved(topics.length));
       onOpenChange(false);

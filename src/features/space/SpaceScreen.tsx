@@ -22,9 +22,9 @@ async function writeRecap(spaceId: string) {
   let recap: string | null = null;
   if (lastJournal && (!lastThread || lastJournal.createdAt >= lastThread.updatedAt)) {
     const line = lastJournal.content.split("\n").find((l) => /^[-*] /.test(l.trim()));
-    recap = line ? `Last session: ${line.trim().replace(/^[-*] /, "")}` : `Last session ${relativeTime(lastJournal.createdAt)}`;
+    recap = line ? s.space.recapSessionNote(line.trim().replace(/^[-*] /, "")) : s.space.recapSessionAt(relativeTime(lastJournal.createdAt));
   } else if (lastThread && lastThread.title !== "New chat") {
-    recap = `Last chat: “${lastThread.title}” · ${relativeTime(lastThread.updatedAt)}`;
+    recap = s.space.recapChat(lastThread.title, relativeTime(lastThread.updatedAt));
   }
   if (recap) {
     await api.updateSpace(spaceId, { recap });

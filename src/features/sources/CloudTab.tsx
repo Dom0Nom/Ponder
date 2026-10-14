@@ -139,7 +139,7 @@ function CloudBrowser({ service, space, done }: { service: CloudService; space: 
   });
 
   useImportFooter({
-    label: s.cloud.importN(selected.size),
+    label: selected.size <= 1 ? s.sources.import : s.cloud.importN(selected.size),
     disabled: !selected.size,
     busy: importSel.isPending,
     status: selected.size ? s.cloud.selected(selected.size) : s.cloud.supportedHint,

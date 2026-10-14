@@ -234,7 +234,10 @@ mod tests {
         assert!(should_nudge(Some(before), after, 0));
         assert!(!should_nudge(Some(after), after, 0));
         assert!(should_nudge(Some(after), after, RENUDGE_POLLS));
-        let done = Signature { pending: 0, ..after };
+        let done = Signature {
+            pending: 0,
+            ..after
+        };
         assert!(!should_nudge(Some(done), done, RENUDGE_POLLS));
         assert!(!should_nudge(None, after, 0));
     }

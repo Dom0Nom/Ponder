@@ -141,7 +141,7 @@ function SpaceCard({ space, onEdit, onDelete }: { space: Space; onEdit: () => vo
       </div>
       <h2 className="mt-3.5 truncate text-title font-semibold">{space.name}</h2>
       <p className="mt-0.75 line-clamp-2 text-body text-muted">
-        {space.recap ?? (space.lastOpenedAt ? `${s.home.lastOpened} ${relativeTime(space.lastOpenedAt)}` : s.home.never)}
+        {space.recap ?? (space.lastOpenedAt ? s.home.lastOpenedAt(relativeTime(space.lastOpenedAt)) : s.home.never)}
       </p>
       <p className="mt-auto text-label text-muted">{s.home.sources(space.sourceCount)}</p>
     </div>

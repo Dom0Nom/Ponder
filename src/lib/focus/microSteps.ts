@@ -3,6 +3,7 @@ import { extractJson } from "../chat/json";
 import type { ResolvedModel } from "../chat/llm";
 import { api } from "../ipc";
 import type { NewMicroStep } from "../types";
+import { s } from "../strings";
 
 export const MIN_STEP_MINUTES = 2;
 export const MAX_STEP_MINUTES = 5;
@@ -74,7 +75,7 @@ export async function generateMicroSteps(
     ...llm.options({ thinking: false }),
   });
   const steps = parseMicroSteps(r.text);
-  if (!steps.length) throw new Error("The model didn't return any steps. Try again.");
+  if (!steps.length) throw new Error(s.failures.theModelDidnTReturn4);
   return steps;
 }
 

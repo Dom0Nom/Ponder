@@ -28,9 +28,21 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         true,
         None::<&str>,
     )?;
-    let pause = MenuItem::with_id(app, "focus-pause", t("native.tray.pause"), false, None::<&str>)?;
+    let pause = MenuItem::with_id(
+        app,
+        "focus-pause",
+        t("native.tray.pause"),
+        false,
+        None::<&str>,
+    )?;
     let end = MenuItem::with_id(app, "focus-end", t("native.tray.end"), false, None::<&str>)?;
-    let capture = MenuItem::with_id(app, "capture-open", t("native.tray.capture"), true, None::<&str>)?;
+    let capture = MenuItem::with_id(
+        app,
+        "capture-open",
+        t("native.tray.capture"),
+        true,
+        None::<&str>,
+    )?;
     let show = MenuItem::with_id(app, "focus-show", t("native.tray.show"), true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "focus-quit", t("native.tray.quit"), true, None::<&str>)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
@@ -145,7 +157,9 @@ pub fn update(app: &AppHandle, state: Option<&FocusState>) {
     };
     let (pause_text, pause_enabled) = match state {
         None => (t("native.tray.pause"), false),
-        Some(s) if s.pause_reason == Some(PauseReason::NeedApp) => (t("native.tray.resumeBreak"), true),
+        Some(s) if s.pause_reason == Some(PauseReason::NeedApp) => {
+            (t("native.tray.resumeBreak"), true)
+        }
         Some(s) if s.paused => (t("native.tray.resume"), true),
         Some(s) if s.phase == Phase::Work => (t("native.tray.pause"), true),
         Some(_) => (t("native.tray.pause"), false),

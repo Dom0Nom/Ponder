@@ -8,7 +8,7 @@ import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Tooltip } from "../../../components/ui/misc";
 import { toastError } from "../../../components/ui/toast";
-import { DEFAULT_BREAK_MENU, useFocusPrefs, useSetFocusPref } from "../../../lib/focusPrefs";
+import { defaultBreakMenu, useFocusPrefs, useSetFocusPref } from "../../../lib/focusPrefs";
 import { s } from "../../../lib/strings";
 import { useUi } from "../../../stores/ui";
 import { SubPage } from "../SubPage";
@@ -134,7 +134,7 @@ export function BreakMenuPage() {
               size="sm"
               onClick={() => {
                 setHint(null);
-                save(DEFAULT_BREAK_MENU);
+                save(defaultBreakMenu());
               }}
             >
               {s.breakMenu.reset}

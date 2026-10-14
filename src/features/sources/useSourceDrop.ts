@@ -26,7 +26,7 @@ export function useSourceDrop(spaceId: string) {
           setDragging(false);
           for (const path of e.payload.paths) {
             if (!fileImporter.canHandle(path)) {
-              toastError(s.sources.importFailed, new Error(`Unsupported file: ${path.split("/").pop()}`));
+              toastError(s.sources.importFailed, new Error(s.failures.unsupportedFile(path.split("/").pop() ?? path)));
               continue;
             }
             try {

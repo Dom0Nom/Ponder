@@ -318,7 +318,7 @@ function SourceRow({ source, fresh }: { source: Source; fresh: boolean }) {
             await api.deleteSource(source.id);
             refresh();
             qc.invalidateQueries({ queryKey: qk.spaces });
-            toast.success(`Deleted “${source.title}”`);
+            toast.success(s.sources.deletedSource(source.title));
           } catch (e) {
             toastError(s.errors.generic, e);
           }

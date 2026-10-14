@@ -13,8 +13,8 @@ use tauri::{AppHandle, Emitter, State, Wry};
 include!(concat!(env!("OUT_DIR"), "/locales.rs"));
 
 pub const SUPPORTED: &[&str] = &[
-    "en", "zh-Hans", "zh-Hant", "hi", "es", "fr", "ar", "bn", "pt-BR", "ru", "ur", "id", "de", "ja",
-    "tr", "ko", "vi", "it", "pl", "fa",
+    "en", "zh-Hans", "zh-Hant", "hi", "es", "fr", "ar", "bn", "pt-BR", "ru", "ur", "id", "de",
+    "ja", "tr", "ko", "vi", "it", "pl", "fa",
 ];
 
 type Table = Arc<HashMap<String, String>>;
@@ -149,27 +149,58 @@ pub fn init(app: &AppHandle, db: &crate::db::Db) {
 /// The application menu with every label in the current language.
 pub fn app_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let name = app.package_info().name.clone();
-    let name = if name.is_empty() { "Ponder".to_string() } else { name };
+    let name = if name.is_empty() {
+        "Ponder".to_string()
+    } else {
+        name
+    };
     let n = name.as_str();
     let sep = || PredefinedMenuItem::separator(app);
 
     let edit = SubmenuBuilder::new(app, t("native.menu.edit"))
-        .item(&PredefinedMenuItem::undo(app, Some(&t("native.menu.undo")))?)
-        .item(&PredefinedMenuItem::redo(app, Some(&t("native.menu.redo")))?)
+        .item(&PredefinedMenuItem::undo(
+            app,
+            Some(&t("native.menu.undo")),
+        )?)
+        .item(&PredefinedMenuItem::redo(
+            app,
+            Some(&t("native.menu.redo")),
+        )?)
         .item(&sep()?)
         .item(&PredefinedMenuItem::cut(app, Some(&t("native.menu.cut")))?)
-        .item(&PredefinedMenuItem::copy(app, Some(&t("native.menu.copy")))?)
-        .item(&PredefinedMenuItem::paste(app, Some(&t("native.menu.paste")))?)
-        .item(&PredefinedMenuItem::select_all(app, Some(&t("native.menu.selectAll")))?)
+        .item(&PredefinedMenuItem::copy(
+            app,
+            Some(&t("native.menu.copy")),
+        )?)
+        .item(&PredefinedMenuItem::paste(
+            app,
+            Some(&t("native.menu.paste")),
+        )?)
+        .item(&PredefinedMenuItem::select_all(
+            app,
+            Some(&t("native.menu.selectAll")),
+        )?)
         .build()?;
     let view = SubmenuBuilder::new(app, t("native.menu.view"))
-        .item(&PredefinedMenuItem::fullscreen(app, Some(&t("native.menu.fullscreen")))?)
+        .item(&PredefinedMenuItem::fullscreen(
+            app,
+            Some(&t("native.menu.fullscreen")),
+        )?)
         .build()?;
     let window = SubmenuBuilder::new(app, t("native.menu.window"))
-        .item(&PredefinedMenuItem::minimize(app, Some(&t("native.menu.minimize")))?)
-        .item(&PredefinedMenuItem::maximize(app, Some(&t("native.menu.zoom")))?)
+        .item(&PredefinedMenuItem::minimize(
+            app,
+            Some(&t("native.menu.minimize")),
+        )?)
+        .item(&PredefinedMenuItem::maximize(
+            app,
+            Some(&t("native.menu.zoom")),
+        )?)
         .item(&sep()?)
-        .item(&PredefinedMenuItem::close_window(app, Some(&t("native.menu.closeWindow")))?)
+        .item(&PredefinedMenuItem::close_window(
+            app,
+            Some(&t("native.menu.closeWindow")),
+        )?)
         .build()?;
 
     #[cfg(target_os = "macos")]
@@ -178,16 +209,34 @@ pub fn app_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         let app_menu = SubmenuBuilder::new(app, n)
             .item(&PredefinedMenuItem::about(app, Some(&about), None)?)
             .item(&sep()?)
-            .item(&PredefinedMenuItem::services(app, Some(&t("native.menu.services")))?)
+            .item(&PredefinedMenuItem::services(
+                app,
+                Some(&t("native.menu.services")),
+            )?)
             .item(&sep()?)
-            .item(&PredefinedMenuItem::hide(app, Some(&t_args("native.menu.hide", &[n])))?)
-            .item(&PredefinedMenuItem::hide_others(app, Some(&t("native.menu.hideOthers")))?)
-            .item(&PredefinedMenuItem::show_all(app, Some(&t("native.menu.showAll")))?)
+            .item(&PredefinedMenuItem::hide(
+                app,
+                Some(&t_args("native.menu.hide", &[n])),
+            )?)
+            .item(&PredefinedMenuItem::hide_others(
+                app,
+                Some(&t("native.menu.hideOthers")),
+            )?)
+            .item(&PredefinedMenuItem::show_all(
+                app,
+                Some(&t("native.menu.showAll")),
+            )?)
             .item(&sep()?)
-            .item(&PredefinedMenuItem::quit(app, Some(&t_args("native.menu.quit", &[n])))?)
+            .item(&PredefinedMenuItem::quit(
+                app,
+                Some(&t_args("native.menu.quit", &[n])),
+            )?)
             .build()?;
         let file = SubmenuBuilder::new(app, t("native.menu.file"))
-            .item(&PredefinedMenuItem::close_window(app, Some(&t("native.menu.closeWindow")))?)
+            .item(&PredefinedMenuItem::close_window(
+                app,
+                Some(&t("native.menu.closeWindow")),
+            )?)
             .build()?;
         MenuBuilder::new(app)
             .items(&[&app_menu, &file, &edit, &view, &window])
@@ -196,7 +245,10 @@ pub fn app_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     #[cfg(not(target_os = "macos"))]
     {
         let file = SubmenuBuilder::new(app, t("native.menu.file"))
-            .item(&PredefinedMenuItem::quit(app, Some(&t_args("native.menu.quit", &[n])))?)
+            .item(&PredefinedMenuItem::quit(
+                app,
+                Some(&t_args("native.menu.quit", &[n])),
+            )?)
             .build()?;
         MenuBuilder::new(app)
             .items(&[&file, &edit, &view, &window])
@@ -218,7 +270,11 @@ pub fn refresh(app: &AppHandle) {
 }
 
 #[tauri::command]
-pub async fn set_locale(app: AppHandle, state: State<'_, AppState>, locale: String) -> AppResult<()> {
+pub async fn set_locale(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    locale: String,
+) -> AppResult<()> {
     if !SUPPORTED.contains(&locale.as_str()) {
         return Err(invalid(format!("Unsupported language: {locale}")));
     }
@@ -249,7 +305,10 @@ mod tests {
 
     #[test]
     fn fills_placeholders() {
-        assert_eq!(fill("{0} is open. {1} min left.", &["Safari", "5"]), "Safari is open. 5 min left.");
+        assert_eq!(
+            fill("{0} is open. {1} min left.", &["Safari", "5"]),
+            "Safari is open. 5 min left."
+        );
         assert_eq!(fill("{1, minutes} / {0}", &["a", "b"]), "b / a");
         assert_eq!(fill("no args {2}", &["a"]), "no args {2}");
         assert_eq!(fill("open { brace", &[]), "open { brace");
@@ -260,7 +319,11 @@ mod tests {
         assert_eq!(lookup("en", "native.tray.quit"), "Quit");
         assert_eq!(lookup("de", "native.tray.quit"), "Beenden");
         assert_eq!(lookup("de", "native.tray.show"), "App anzeigen");
-        assert_eq!(lookup("fr", "native.tray.quit"), "Quit", "missing languages fall back to English");
+        assert_eq!(
+            lookup("fr", "native.tray.quit"),
+            "Quit",
+            "missing languages fall back to English"
+        );
         assert_eq!(lookup("en", "native.nope"), "native.nope");
     }
 

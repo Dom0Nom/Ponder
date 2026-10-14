@@ -32,7 +32,7 @@ export function PodcastPicker({ space, feed, done }: { space: Space; feed: Feed;
       const { text } = await episodeText(ep, {
         getText: async (url) => {
           const page = await api.httpGetText(url);
-          if (page.status >= 400) throw new Error(`HTTP ${page.status}`);
+          if (page.status >= 400) throw new Error(s.failures.http(page.status));
           return page.body;
         },
         getBytes: (url) => api.httpBytes({ id: crypto.randomUUID(), url, method: "GET", headers: {} }),

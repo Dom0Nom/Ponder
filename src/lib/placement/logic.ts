@@ -3,6 +3,7 @@ import { extractJson } from "../chat/json";
 import type { ResolvedModel } from "../chat/llm";
 import type { QuizQuestion, TopicCoverage, TopicLevelValue, TopicRef } from "../types";
 import { languageInstruction } from "../i18n/language";
+import { s } from "../strings";
 
 export type CoverageLevel = "covered" | "partial" | "missing";
 
@@ -28,7 +29,7 @@ export const topicQuery = (t: TopicRef) => `${t.title}: ${t.description}`;
 export function parseQuiz(text: string, topicIds: string[]): QuizQuestion[] {
   const raw = extractJson<unknown>(text);
   const list = Array.isArray(raw) ? raw : raw && typeof raw === "object" && Array.isArray((raw as { questions?: unknown }).questions) ? (raw as { questions: unknown[] }).questions : null;
-  if (!list) throw new Error("The model didn't return a usable quiz. Try again.");
+  if (!list) throw new Error(s.failures.theModelDidnTReturn5);
   const out: QuizQuestion[] = [];
   for (const q of list) {
     if (!q || typeof q !== "object") continue;
@@ -41,7 +42,7 @@ export function parseQuiz(text: string, topicIds: string[]): QuizQuestion[] {
     const topicId = typeof o.topicId === "string" && topicIds.includes(o.topicId) ? o.topicId : topicIds.length === 1 ? topicIds[0] : null;
     out.push({ topicId, question: o.question.trim(), options, answer, explanation: typeof o.explanation === "string" ? o.explanation.trim() : "" });
   }
-  if (!out.length) throw new Error("The model's quiz had no valid questions. Try again.");
+  if (!out.length) throw new Error(s.failures.theModelSQuizHad);
   return out;
 }
 

@@ -6,6 +6,7 @@ import type { HttpFn } from "../importers/youtube";
 import { DEFAULT_RESEARCH_SYSTEM_PROMPT } from "./prompts";
 import { finishReport, gapPrompt, parseGaps, reportPrompt, type FinishedReport, type Gaps } from "./reportPrompts";
 import { buildEngines, DEFAULT_SEARCH, normalizeForDedupe, type SearchConfig, type SearchResult } from "./search";
+import { s } from "../strings";
 
 export type ResearchStage = "planning" | "searching" | "fetching" | "ranking" | "gaps" | "done";
 
@@ -83,11 +84,11 @@ export async function searchAll(
     const run = (q: string) => Promise.resolve().then(() => e.run(q));
     for (const q of e.perQuery ? queries : queries.slice(0, 1)) jobs.push(run(q));
   }
-  if (!jobs.length) throw new Error("No search engine is turned on. Turn one on in Settings.");
+  if (!jobs.length) throw new Error(s.failures.noSearchEngineIsTurned);
   const settled = await Promise.allSettled(jobs);
   const ok = settled.filter((s): s is PromiseFulfilledResult<SearchResult[]> => s.status === "fulfilled");
   for (const s of settled) if (s.status === "rejected") console.warn("search engine failed", s.reason);
-  if (!ok.length) throw new Error("Every search engine failed. Check your internet connection.");
+  if (!ok.length) throw new Error(s.failures.everySearchEngineFailedCheck);
   const seen = new Set<string>(skip);
   const out: SearchResult[] = [];
   // interleave engines so one engine can't crowd out the rest
@@ -264,8 +265,8 @@ export async function writeReport(
   sources: FoundSource[],
   deps: AskDeps & Pick<ResearchDeps, "signal"> & { language?: string | null },
 ): Promise<FinishedReport> {
-  if (!sources.length) throw new Error("Pick at least one source for the report.");
+  if (!sources.length) throw new Error(s.failures.pickAtLeastOneSource);
   const text = await ask(deps, reportPrompt(question, sources, deps.language), deps.signal);
-  if (!text.trim()) throw new Error("The model returned an empty report. Try again.");
+  if (!text.trim()) throw new Error(s.failures.theModelReturnedAnEmpty);
   return finishReport(text, sources);
 }

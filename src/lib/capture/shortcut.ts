@@ -1,3 +1,5 @@
+import { s } from "../strings";
+import { DATE_MEDIUM, formatDate } from "../i18n/format";
 /** Global shortcut accelerators in the Tauri format, e.g. `Alt+CommandOrControl+N`. */
 
 export const DEFAULT_SHORTCUT = "Alt+CommandOrControl+N";
@@ -85,8 +87,8 @@ export function parseShortcut(accel: string): ParsedShortcut | null {
 /** Error message, or null when the shortcut is usable as a global hotkey. */
 export function validateShortcut(accel: string): string | null {
   const p = parseShortcut(accel);
-  if (!p) return "That isn't a shortcut the app can use.";
-  if (!p.mods.some((m) => m !== "Shift")) return "Add ⌘, ⌥ or ⌃ so the shortcut doesn't get in the way of typing.";
+  if (!p) return s.capture.shortcutInvalid;
+  if (!p.mods.some((m) => m !== "Shift")) return s.capture.shortcutNeedsModifier;
   return null;
 }
 
@@ -143,7 +145,7 @@ export function captureTitle(text: string, now = new Date()): string {
     .map((l) => l.replace(/^#{1,6}\s+/, "").trim())
     .find(Boolean);
   if (first && first.length <= 80) return first;
-  return `Quick note · ${now.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+  return s.capture.noteTitle(formatDate(now, DATE_MEDIUM));
 }
 
 /** True when both accelerators parse to the same key combination. */

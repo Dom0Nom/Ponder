@@ -142,7 +142,7 @@ function GenerateCardsDialog({ space, open, onOpenChange }: { space: Space; open
       const llm = await resolveChatModel(space);
       const query = focus.trim() || ready.map((x) => x.title).join(" ") || space.name;
       const hits = await api.searchChunks(space.id, query, Number(count) >= 20 ? 12 : 8);
-      if (!hits.length) throw new Error("No passages found. Add sources or change the focus.");
+      if (!hits.length) throw new Error(s.failures.noPassagesFoundAddSources);
       const made = await generateCards(llm, hitsToPassages(hits), {
         count: Number(count),
         focus: focus.trim() || undefined,

@@ -2,6 +2,7 @@ import { generateText } from "ai";
 import { extractJson } from "../chat/json";
 import type { ResolvedModel } from "../chat/llm";
 import type { TopicRef } from "../types";
+import { s } from "../strings";
 
 export function customCurriculumPrompt(text: string): string {
   return `Turn this syllabus or topic list into a study curriculum of 5 to 25 topics, in learning order, in the syllabus's language. Group related topics.\n\n"""\n${text.slice(0, 12000)}\n"""\n\nReturn JSON only: {"title": "…", "topics": [{"title": "…", "description": "a few keywords of what it covers", "group": "…"}]}`;
@@ -19,7 +20,7 @@ export function parseCustomCurriculum(text: string): { title: string | null; top
       group: String(t.group ?? "Topics").trim(),
       prereqs: i > 0 ? [`custom.${i}`] : undefined,
     }));
-  if (topics.length < 2) throw new Error("Couldn't find a topic list in that text.");
+  if (topics.length < 2) throw new Error(s.failures.couldnTFindATopic);
   return { title: parsed?.title?.trim() || null, topics };
 }
 

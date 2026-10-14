@@ -4,6 +4,7 @@ import type { QuizQuestion, TopicRef } from "../types";
 import { parseQuiz, shuffleOptions } from "../placement/logic";
 import { batches, distribute, type ExamFormat, type ExamSection } from "./formats";
 import { languageInstruction } from "../i18n/language";
+import { s } from "../strings";
 
 export function examQuestionPrompt(format: ExamFormat, section: ExamSection, batch: { topic: TopicRef; n: number }[], avoid: string[] = [], language?: string | null): string {
   const total = batch.reduce((n, b) => n + b.n, 0);
@@ -94,7 +95,7 @@ export async function generateExamQuestions(
       opts.onProgress?.(Math.min(all.length, count), count);
     }
   }
-  if (!all.length) throw new Error("The model didn't return usable exam questions. Try again or pick another model.");
+  if (!all.length) throw new Error(s.failures.theModelDidnTReturn3);
   const order = new Map(topics.map((t, i) => [t.id, i]));
   return all.slice(0, count).sort((a, b) => (order.get(a.topicId!) ?? 0) - (order.get(b.topicId!) ?? 0));
 }

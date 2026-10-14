@@ -2,6 +2,7 @@ import { api } from "../ipc";
 import type { CloudImportResult, CloudItem, CloudService, Source, SourceKind } from "../types";
 import { FILE_EXTENSIONS } from "./files";
 import type { Importer } from "./types";
+import { s } from "../strings";
 
 /** Google Workspace files are exported to text by the backend. */
 export const GOOGLE_EXPORTS: Record<string, { kind: SourceKind; label: string }> = {
@@ -46,12 +47,12 @@ const MIME_LABELS: Record<string, string> = {
 };
 
 export function typeLabel(item: Pick<CloudItem, "name" | "folder" | "mimeType">): string {
-  if (item.folder) return "Folder";
+  if (item.folder) return s.cloud.typeFolder;
   const g = item.mimeType ? GOOGLE_EXPORTS[item.mimeType] : undefined;
   if (g) return g.label;
-  if (item.mimeType?.startsWith("application/vnd.google-apps.")) return "Google file";
+  if (item.mimeType?.startsWith("application/vnd.google-apps.")) return s.cloud.typeGoogleFile;
   const ext = extensionOf(item.name) || MIME_LABELS[item.mimeType ?? ""] || "";
-  return ext ? ext.toUpperCase() : "File";
+  return ext ? ext.toUpperCase() : s.cloud.typeFile;
 }
 
 export function formatSize(bytes: number | null | undefined): string {

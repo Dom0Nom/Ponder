@@ -2,6 +2,7 @@ import { generateText } from "ai";
 import { extractJson } from "../chat/json";
 import type { ResolvedModel } from "../chat/llm";
 import type { GlossaryEntry } from "../types";
+import { s } from "../strings";
 
 export const MAX_TERMS = 15;
 const MAX_CHARS = 14_000;
@@ -72,5 +73,5 @@ export async function generateGlossary(llm: ResolvedModel, text: string, signal?
     if (last?.length) return last;
   }
   if (last) return last;
-  throw new Error("The model didn't return a usable glossary.");
+  throw new Error(s.failures.theModelDidnTReturn2);
 }

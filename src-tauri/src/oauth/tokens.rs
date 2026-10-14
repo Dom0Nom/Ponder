@@ -182,9 +182,14 @@ impl TokenManager {
     {
         let lock = self.lock_for(provider_id);
         let _guard = lock.lock().await;
-        let ts = self
-            .load(provider_id)?
-            .ok_or_else(|| crate::error::keyed("other", "notSignedIn", Vec::new(), "Not signed in. Sign in again in Settings."))?;
+        let ts = self.load(provider_id)?.ok_or_else(|| {
+            crate::error::keyed(
+                "other",
+                "notSignedIn",
+                Vec::new(),
+                "Not signed in. Sign in again in Settings.",
+            )
+        })?;
         if !ts.needs_refresh(now_ms(), skew_ms(&ts)) {
             return Ok(ts);
         }

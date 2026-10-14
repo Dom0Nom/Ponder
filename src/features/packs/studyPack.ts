@@ -3,6 +3,7 @@ import { queryClient, qk } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import { useUi } from "../../stores/ui";
 import { toast, toastError } from "../../components/ui/toast";
+import { formatList } from "../../lib/i18n/format";
 
 // sonner drops a dismiss that lands before the toast has mounted
 const dismissLater = (id: string | number) => setTimeout(() => toast.dismiss(id), 120);
@@ -12,7 +13,7 @@ export async function exportStudyPack(spaceId: string, spaceName: string) {
   try {
     const res = await api.packExport(spaceId);
     if (!res) dismissLater(id);
-    else toast.success(s.pack.exported(res.counts.sources, res.counts.cards, res.counts.notes), { id, description: res.path });
+    else toast.success(s.pack.exported(formatList([s.pack.nSources(res.counts.sources), s.pack.nCards(res.counts.cards), s.pack.nNotes(res.counts.notes)], "unit")), { id, description: res.path });
   } catch (e) {
     dismissLater(id);
     toastError(s.pack.exportFailed, e, () => void exportStudyPack(spaceId, spaceName));

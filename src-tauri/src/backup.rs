@@ -234,7 +234,10 @@ pub fn create_backup(
     let name = file_name_for(now);
     let final_path = dest.join(&name);
     if final_path.exists() {
-        return Err(invalid_key("backupJustMade", "A backup was just made. Try again in a moment."));
+        return Err(invalid_key(
+            "backupJustMade",
+            "A backup was just made. Try again in a moment.",
+        ));
     }
     let tmp_snapshot = dest.join(format!(".{name}.db.tmp"));
     let tmp_zip = dest.join(format!(".{name}.tmp"));
@@ -566,7 +569,10 @@ pub async fn backup_configure(
     let c = state.db.conn()?;
     let mut cfg = load_config(&c);
     if enabled && cfg.folder.is_none() {
-        return Err(invalid_key("chooseBackupFolder", "Choose a backup folder first."));
+        return Err(invalid_key(
+            "chooseBackupFolder",
+            "Choose a backup folder first.",
+        ));
     }
     cfg.enabled = enabled;
     cfg.frequency = frequency;

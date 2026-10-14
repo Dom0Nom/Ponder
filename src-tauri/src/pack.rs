@@ -372,7 +372,10 @@ pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResul
             .map_err(|_| invalid_key("notStudyPack", "This isn't a Ponder study pack."))?
     };
     if manifest.app != "ponder" {
-        return Err(invalid_key("notStudyPack", "This isn't a Ponder study pack."));
+        return Err(invalid_key(
+            "notStudyPack",
+            "This isn't a Ponder study pack.",
+        ));
     }
     if manifest.format > FORMAT {
         return Err(invalid(

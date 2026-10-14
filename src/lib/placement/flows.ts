@@ -10,6 +10,7 @@ import { useFocusStore } from "../../features/focus/focusStore";
 import { generateQuiz, gradeQuiz, pickPlacementTopics, type TopicResult } from "./logic";
 import { curriculumById } from "./curricula";
 import { recordQuizMistakes } from "../srs/mistakes";
+import { s } from "../strings";
 
 const lang = (c: SpaceCurriculum) => curriculumById(c.curriculumId)?.language ?? "en";
 
@@ -41,7 +42,7 @@ export function summarizeLevels(results: TopicResult[], topics: TopicRef[]): { s
 /** Diagnostic test across the curriculum; stores a level per tested topic. Returns null if cancelled. */
 export async function runPlacement(space: Space, curriculum: SpaceCurriculum): Promise<TopicResult[] | null> {
   const quiz = useQuiz.getState();
-  quiz.setPreparing("Writing your placement questions…");
+  quiz.setPreparing(s.failures.writingYourPlacementQuestions);
   try {
     const llm = await resolveChatModel(space);
     const topics = pickPlacementTopics(curriculum.topics, 8);
@@ -88,7 +89,7 @@ export async function startTopic(space: Space, curriculum: SpaceCurriculum, topi
   const quiz = useQuiz.getState();
   const prereqs = (topic.prereqs ?? []).map((id) => curriculum.topics.find((t) => t.id === id)).filter((t): t is TopicRef => !!t);
   const checkTopics = prereqs.length ? prereqs.slice(0, 3) : [{ ...topic, title: `Foundations needed for ${topic.title}` }];
-  quiz.setPreparing("Writing a quick prerequisite check…");
+  quiz.setPreparing(s.failures.writingAQuickPrerequisiteCheck);
   let teachFirst: string[] = [];
   try {
     const llm = await resolveChatModel(space);
@@ -147,7 +148,7 @@ export async function studyLesson(space: Space, course: Course, lesson: Lesson):
 /** Three questions on the chapter; ≥ 2 right marks the lesson done. */
 export async function checkLesson(space: Space, course: Course, lesson: Lesson): Promise<number | null> {
   const quiz = useQuiz.getState();
-  quiz.setPreparing("Writing questions on this chapter…");
+  quiz.setPreparing(s.failures.writingQuestionsOnThisChapter);
   try {
     const llm = await resolveChatModel(space);
     const { text } = await api.getSourceText(course.sourceId);

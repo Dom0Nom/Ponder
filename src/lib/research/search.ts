@@ -1,5 +1,6 @@
 import { proxyHttpFor } from "../importers/http";
 import type { HttpFn } from "../importers/youtube";
+import { s } from "../../lib/strings";
 
 export const FREE_ENGINES = ["duckduckgo", "wikipedia", "arxiv", "openalex", "openstax"] as const;
 export type FreeEngine = (typeof FREE_ENGINES)[number];
@@ -57,7 +58,7 @@ export function parseArxiv(xml: string): SearchResult[] {
 
 async function json<T>(http: HttpFn, url: string): Promise<T> {
   const r = await http(url, { method: "GET", headers: { Accept: "application/json" } });
-  if (r.status >= 400) throw new Error(`HTTP ${r.status}`);
+  if (r.status >= 400) throw new Error(s.failures.http(r.status));
   return JSON.parse(r.body) as T;
 }
 
@@ -66,7 +67,7 @@ type EngineFn = (http: HttpFn, q: string) => Promise<SearchResult[]>;
 export const engines: Record<FreeEngine, EngineFn> = {
   duckduckgo: async (http, q) => {
     const r = await http(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, { method: "GET" });
-    if (r.status >= 400) throw new Error(`HTTP ${r.status}`);
+    if (r.status >= 400) throw new Error(s.failures.http(r.status));
     return parseDuckDuckGo(r.body).slice(0, 6);
   },
   wikipedia: (http, q) => wikipediaIn("en")(http, q),
@@ -75,7 +76,7 @@ export const engines: Record<FreeEngine, EngineFn> = {
       `https://export.arxiv.org/api/query?max_results=3&search_query=all:${encodeURIComponent(q)}`,
       { method: "GET" },
     );
-    if (r.status >= 400) throw new Error(`HTTP ${r.status}`);
+    if (r.status >= 400) throw new Error(s.failures.http(r.status));
     return parseArxiv(r.body);
   },
   openalex: async (http, q) => {

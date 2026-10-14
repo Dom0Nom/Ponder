@@ -2,6 +2,7 @@ import { generateText } from "ai";
 import type { Citation, ClaimVerdict, SelfCheck } from "../types";
 import { extractJson } from "./json";
 import type { ResolvedModel } from "./llm";
+import { s } from "../strings";
 
 const VERDICTS: ClaimVerdict[] = ["supported", "partly", "unsupported", "contradicted"];
 
@@ -21,7 +22,7 @@ export function checkPrompt(answer: string, citations: Citation[]): string {
 
 export function parseCheck(text: string, known: number): SelfCheck["items"] {
   const raw = extractJson<unknown[]>(text);
-  if (!Array.isArray(raw)) throw new Error("The checking model didn't return a usable result.");
+  if (!Array.isArray(raw)) throw new Error(s.failures.theCheckingModelDidnT);
   return raw
     .filter((x): x is Record<string, unknown> => !!x && typeof x === "object")
     .map((x) => ({

@@ -390,7 +390,10 @@ pub fn store_image(dir: &std::path::Path, src: &std::path::Path) -> AppResult<St
         .unwrap_or("")
         .to_ascii_lowercase();
     if !["png", "jpg", "jpeg", "webp", "gif"].contains(&ext.as_str()) {
-        return Err(invalid_key("imageType", "Use a PNG, JPEG, WebP or GIF image"));
+        return Err(invalid_key(
+            "imageType",
+            "Use a PNG, JPEG, WebP or GIF image",
+        ));
     }
     let len = std::fs::metadata(src)?.len() as usize;
     if len > MAX_IMAGE_BYTES {

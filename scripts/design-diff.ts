@@ -205,6 +205,8 @@ const USER_DEVIATIONS: (Mask & { screens?: number[] })[] = [
   { x: 931, y: 468, w: 341, h: 324, screens: [20], reason: "study schedule section (spec: study plans, requested in the overnight brief 2026-10-11)" },
   { x: 968, y: 696, w: 300, h: 56, screens: [2], reason: "Studio Create row (spec: Text Studio outputs, requested in the overnight brief 2026-10-11)" },
   { x: 900, y: 56, w: 326, h: 38, screens: [6], reason: "Pages toggle for PDF sources in the source viewer header (original PDF view, approved by the user 2026-10-12)" },
+  { x: 392, y: 253, w: 722, h: 547, screens: [5], reason: "Language row in Appearance shifts the rest of Settings down (translation groundwork, requested 2026-10-14)" },
+  { x: 940, y: 480, w: 332, h: 100, screens: [23], reason: "Language select at the end of the space settings form (translation groundwork, requested 2026-10-14)" },
 ];
 const deviationsFor = (n: number) => USER_DEVIATIONS.filter((m) => !m.screens || m.screens.includes(n));
 

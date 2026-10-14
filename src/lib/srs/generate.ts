@@ -3,6 +3,7 @@ import { extractJson } from "../chat/json";
 import type { ResolvedModel } from "../chat/llm";
 import type { NewCard, SearchHit } from "../types";
 import { languageInstruction } from "../i18n/language";
+import { s } from "../strings";
 
 export interface Passage {
   sourceId: string;
@@ -40,7 +41,7 @@ interface RawCard {
 export function parseCards(text: string, passages: Passage[]): NewCard[] {
   const raw = extractJson<unknown>(text);
   const list = (Array.isArray(raw) ? raw : (raw as { cards?: unknown[] } | null)?.cards) as RawCard[] | undefined;
-  if (!Array.isArray(list)) throw new Error("The model didn't return usable cards. Try again.");
+  if (!Array.isArray(list)) throw new Error(s.failures.theModelDidnTReturn);
   const seen = new Set<string>();
   const out: NewCard[] = [];
   for (const c of list) {
@@ -64,7 +65,7 @@ export function parseCards(text: string, passages: Passage[]): NewCard[] {
       origin: "generated",
     });
   }
-  if (!out.length) throw new Error("No usable cards came back. Try again or pick other sources.");
+  if (!out.length) throw new Error(s.failures.noUsableCardsCameBack);
   return out;
 }
 

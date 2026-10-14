@@ -69,7 +69,10 @@ pub fn add(
         return Err(invalid_key("selectText", "Select some text to highlight."));
     }
     if quote.trim().is_empty() || quote.len() > MAX_QUOTE {
-        return Err(invalid_key("highlightTooLong", "Highlights can be up to 20,000 characters."));
+        return Err(invalid_key(
+            "highlightTooLong",
+            "Highlights can be up to 20,000 characters.",
+        ));
     }
     if note.len() > MAX_NOTE {
         return Err(invalid("Notes can be up to 10,000 characters."));

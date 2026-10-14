@@ -8,6 +8,7 @@ import { describeError, FramePainter } from "./runner";
 import { resolveChatModel } from "./llm";
 import { extractFollowUps, stripMarkers } from "./followUps";
 import { extractMemories } from "./memory";
+import { s } from "../strings";
 
 /**
  * Asks another model the same question with the same passages and history, and stores the reply
@@ -19,7 +20,7 @@ export async function secondOpinion(space: Space, original: Message, model: Mode
   const idx = all.findIndex((m) => m.id === original.id);
   const before = all.slice(0, idx);
   const lastUser = [...before].reverse().find((m) => m.role === "user");
-  if (!lastUser) throw new Error("There's no question to ask again.");
+  if (!lastUser) throw new Error(s.failures.thereSNoQuestionTo);
   const priorTurns = before.slice(0, before.lastIndexOf(lastUser));
   const citations = original.citations ?? [];
   const memory = await api.listMemory().catch(() => []);
