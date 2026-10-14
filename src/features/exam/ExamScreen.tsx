@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import { Calculator, ChevronDown, ChevronLeft, ChevronRight, Flag, GraduationCap, Trash2 } from "lucide-react";
+import { Calculator, ChevronDown, ChevronLeft, ChevronRight, Flag, GraduationCap, Lock, Sigma, Trash2 } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { useCurriculum, useSpace, useSpaces } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { ExamAttempt, Space, TopicRef } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
-import { examById, examFor, sectionTopics, type ExamFormat, type ExamLength, type ExamSection } from "../../lib/exam/formats";
+import { examById, examFor, hasCalculator, resolveParts, sectionTopics, type ExamFormat, type ExamLength, type ExamSection } from "../../lib/exam/formats";
+import { newStats, resolveSolver } from "../../lib/quality/answerCheck";
 import { generateExamQuestions } from "../../lib/exam/generate";
 import { generateEssayTask, gradeEssay } from "../../lib/exam/essay";
-import { clockText, examResult, remainingMs, type ExamData } from "../../lib/exam/attempt";
+import { clockText, examResult, partClock, remainingMs, type ExamData } from "../../lib/exam/attempt";
 import { useUi } from "../../stores/ui";
 import { Button } from "../../components/ui/button";
 import { ChoiceOption } from "../../components/ui/choice";
@@ -20,6 +21,11 @@ import { Menu, MenuContent, MenuRadioGroup, MenuRadioItem, MenuTrigger } from ".
 import { EmptyState, ErrorState, Skeleton } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
+import { ActivityOrb } from "../../components/motion/ActivityOrb";
+import { IconSwap } from "../../components/motion/IconSwap";
+import { NumberPop } from "../../components/motion/NumberPop";
+import { TextSwap } from "../../components/motion/TextSwap";
+import { FormulaSheet } from "./FormulaSheet";
 import { Collapse } from "../../components/motion/Reveal";
 import { Markdown } from "../chat/Markdown";
 
@@ -93,6 +99,7 @@ function StartView({ spaceId }: { spaceId: string }) {
   const [sectionId, setSectionId] = useState<string | null>(null);
   const [length, setLength] = useState<ExamLength>("short");
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [phase, setPhase] = useState<"writing" | "checking">("writing");
   const [error, setError] = useState<unknown>(null);
   const abort = useRef<AbortController | null>(null);
   useEffect(() => () => abort.current?.abort(), []);
@@ -114,11 +121,14 @@ function StartView({ spaceId }: { spaceId: string }) {
     const topics = sectionTopics(section, curriculum.data!.topics);
     const count = section.questions[length];
     setProgress({ done: 0, total: count });
+    setPhase("writing");
     try {
       const llm = await resolveChatModel(space.data);
+      const solver = await resolveSolver(llm, space.data);
+      const stats = newStats();
       const pastIssues = (history.data ?? []).flatMap((a) => (a.data.essay ? [a.data.essay.task.issue] : []));
       const [questions, task] = await Promise.all([
-        generateExamQuestions(llm, format, section, topics, count, { signal: ctrl.signal, onProgress: (done, total) => setProgress({ done, total }) }),
+        generateExamQuestions(llm, format, section, topics, count, { signal: ctrl.signal, solver, stats, onPhase: setPhase, onProgress: (done, total) => setProgress({ done, total }) }),
         section.essayMinutes ? generateEssayTask(llm, pastIssues, ctrl.signal) : Promise.resolve(undefined),
       ]);
       const data: ExamData = {
@@ -127,6 +137,7 @@ function StartView({ spaceId }: { spaceId: string }) {
         flags: questions.map(() => false),
         topics: topics.map((t) => ({ id: t.id, title: t.title })),
         essay: task ? { task, text: "" } : undefined,
+        replaced: stats.replaced || undefined,
       };
       const saved = await api.examSave({
         id: "",
@@ -184,7 +195,14 @@ function StartView({ spaceId }: { spaceId: string }) {
         <div className="mt-2 flex items-center gap-3">
           {progress ? (
             <>
-              <GeneratingStatus label={progress.done ? s.exam.writing(progress.done, progress.total) : section.essayMinutes ? s.exam.writingEssay : s.exam.writing(0, progress.total)} />
+              {phase === "checking" ? (
+                <span className="flex items-center gap-2 text-muted" aria-live="polite" data-testid="exam-checking">
+                  <ActivityOrb activity="grade" size={32} />
+                  <TextSwap text={s.answerCheck.checking} />
+                </span>
+              ) : (
+                <GeneratingStatus label={progress.done ? s.exam.writing(progress.done, progress.total) : section.essayMinutes ? s.exam.writingEssay : s.exam.writing(0, progress.total)} />
+              )}
               <Button variant="ghost" size="sm" className="ml-auto" onClick={() => abort.current?.abort()}>
                 {s.exam.cancel}
               </Button>
@@ -290,8 +308,15 @@ function AttemptView({ spaceId, id }: { spaceId: string; id: string }) {
 function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: ExamFormat; section: ExamSection }) {
   const qc = useQueryClient();
   const [data, setData] = useState<ExamData>(attempt.data);
-  const [i, setI] = useState(() => Math.max(0, attempt.data.answers.findIndex((x) => x == null)));
+  const parts = useMemo(() => resolveParts(section, attempt.length), [section, attempt.length]);
+  const [i, setI] = useState(() => {
+    const p = parts[Math.min(attempt.data.partStarts?.length ?? 0, parts.length - 1)];
+    return Math.max(p.from, attempt.data.answers.findIndex((x, n) => x == null && n >= p.from));
+  });
   const [confirm, setConfirm] = useState(false);
+  const [confirmPart, setConfirmPart] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const advanced = useRef(-1);
   const [, tick] = useState(0);
   const startedAt = useRef(Date.now());
   const usedBefore = useRef(attempt.timeUsedMs);
@@ -301,10 +326,25 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
 
   const used = () => usedBefore.current + (Date.now() - startedAt.current);
   const left = remainingMs(section, attempt.length, used());
+  const clock = partClock(section, attempt.length, data.partStarts, used());
+  const part = parts[clock.index];
+  const lastPart = clock.index === parts.length - 1;
+  const calcLocked = !part.calculator;
   const qs = data.questions;
   const essayIndex = data.essay ? qs.length : -1;
   const onEssay = i === essayIndex;
   const unanswered = data.answers.filter((x) => x == null).length;
+  const partUnanswered = data.answers.filter((x, n) => x == null && n >= part.from && n < part.to).length;
+  const lastIndex = lastPart && essayIndex >= 0 ? essayIndex : part.to - 1;
+
+  const nextPart = (auto = false) => {
+    if (lastPart || advanced.current === clock.index) return;
+    advanced.current = clock.index;
+    const at = used();
+    setData((d) => ({ ...d, partStarts: [...(d.partStarts ?? []), at] }));
+    setI(parts[clock.index + 1].from);
+    if (auto) toast(s.gedExam.partTimeUp(clock.index + 1));
+  };
 
   const persist = async (patch: Partial<ExamAttempt> = {}) => {
     const { data: d, attempt: a } = latest.current;
@@ -342,6 +382,7 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
 
   const timeUp = useRef(false);
   useEffect(() => {
+    if (clock.expired && !finished.current) nextPart(true);
     if (left <= 0 && !finished.current && !timeUp.current) {
       timeUp.current = true;
       toast(s.exam.timeUp);
@@ -350,7 +391,7 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
   });
 
   const pick = (k: number) => setData((d) => ({ ...d, answers: d.answers.map((x, n) => (n === i ? k : x)) }));
-  const go = (n: number) => setI(Math.max(0, Math.min(n, (essayIndex >= 0 ? essayIndex : qs.length - 1))));
+  const go = (n: number) => setI(Math.max(part.from, Math.min(n, lastIndex)));
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -369,22 +410,52 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
     <div className="flex h-full flex-col" data-testid="exam-runner">
       <div className="flex items-center gap-3 border-b border-border px-6 py-3">
         <h1 className="text-title font-semibold">{s.exam.resultTitle(format.title, section.title)}</h1>
+        {data.replaced ? (
+          <span className="text-label text-muted" data-testid="exam-replaced">
+            <NumberPop text={String(data.replaced)} popKey={data.replaced} onMount />{" "}
+            <TextSwap text={s.answerCheck.replaced(data.replaced)} />
+          </span>
+        ) : null}
+        {parts.length > 1 ? (
+          <span className="text-label text-muted" data-testid="exam-part">
+            <TextSwap text={s.gedExam.partLabel(clock.index + 1, parts.length, part.calculator)} />
+          </span>
+        ) : null}
         <span
-          className={cn("ml-auto tabular-nums text-title font-semibold", left < 5 * 60_000 && "text-danger")}
+          className={cn("ms-auto tabular-nums text-title font-semibold", clock.remainingMs < 5 * 60_000 && "text-danger")}
           aria-label={s.exam.timeLeft}
           data-testid="exam-timer"
         >
-          {clockText(left)}
+          <NumberPop text={clockText(clock.remainingMs)} popKey={clock.index} />
         </span>
-        {section.calculator ? (
-          <Button variant="secondary" size="sm" onClick={() => api.openCalculatorWindow(s.exam.calculatorTitle).catch((e) => toastError(s.exam.calculator, e))}>
-            <Calculator size={14} />
-            {s.exam.calculator}
+        {section.formulaSheet ? (
+          <Button variant="secondary" size="sm" aria-pressed={sheetOpen} onClick={() => setSheetOpen(!sheetOpen)} data-testid="formula-sheet-toggle">
+            <Sigma size={14} />
+            {s.gedExam.sheet.title}
           </Button>
         ) : null}
-        <Button variant="primary" size="sm" onClick={() => (unanswered ? setConfirm(true) : void finish())} data-testid="exam-finish">
-          {s.exam.finish}
-        </Button>
+        {hasCalculator(section) ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={calcLocked}
+            data-testid="exam-calculator"
+            data-locked={calcLocked}
+            onClick={() => api.openCalculatorWindow(s.exam.calculatorTitle).catch((e) => toastError(s.exam.calculator, e))}
+          >
+            <IconSwap value={calcLocked ? "lock" : "calc"} icons={{ lock: Lock, calc: Calculator }} size={14} />
+            <TextSwap text={calcLocked ? s.gedExam.calculatorLocked : s.exam.calculator} />
+          </Button>
+        ) : null}
+        {lastPart ? (
+          <Button variant="primary" size="sm" onClick={() => (unanswered ? setConfirm(true) : void finish())} data-testid="exam-finish">
+            {s.exam.finish}
+          </Button>
+        ) : (
+          <Button variant="primary" size="sm" onClick={() => setConfirmPart(true)} data-testid="exam-next-part">
+            {s.gedExam.nextPart(clock.index + 2)}
+          </Button>
+        )}
       </div>
       <div className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1 overflow-y-auto px-10 py-8">
@@ -418,11 +489,11 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
                 ))}
               </div>
               <div className="mt-2 flex gap-2">
-                <Button variant="secondary" size="sm" disabled={i === 0} onClick={() => go(i - 1)}>
+                <Button variant="secondary" size="sm" disabled={i <= part.from} onClick={() => go(i - 1)}>
                   <ChevronLeft size={14} />
                   {s.exam.prev}
                 </Button>
-                <Button variant="secondary" size="sm" className="ml-auto" disabled={i >= (essayIndex >= 0 ? essayIndex : qs.length - 1)} onClick={() => go(i + 1)}>
+                <Button variant="secondary" size="sm" className="ml-auto" disabled={i >= lastIndex} onClick={() => go(i + 1)}>
                   {s.exam.next}
                   <ChevronRight size={14} />
                 </Button>
@@ -430,6 +501,7 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
             </div>
           ) : null}
         </div>
+        {sheetOpen && section.formulaSheet ? <FormulaSheet sheet={section.formulaSheet} onClose={() => setSheetOpen(false)} /> : null}
         <aside className="flex w-[208px] shrink-0 flex-col gap-3 overflow-y-auto border-l border-border px-4 py-6" data-testid="exam-navigator">
           <p className="text-label font-semibold text-muted">{s.exam.navigator}</p>
           <p className="text-label text-muted">{s.exam.answered(qs.length - unanswered, qs.length)}</p>
@@ -439,12 +511,13 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
                 key={n}
                 type="button"
                 onClick={() => go(n)}
+                disabled={n < part.from || n >= part.to}
                 aria-current={n === i ? "step" : undefined}
                 aria-label={s.exam.question(n + 1, qs.length)}
                 data-answered={data.answers[n] != null}
                 data-flagged={data.flags[n]}
                 className={cn(
-                  "relative flex h-8 items-center justify-center rounded-item border text-label tabular-nums",
+                  "relative flex h-8 items-center justify-center rounded-item border text-label tabular-nums disabled:opacity-40",
                   n === i ? "border-fg" : "border-control",
                   data.answers[n] != null ? "bg-fill-subtle font-semibold" : "text-muted",
                 )}
@@ -462,6 +535,14 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
           ) : null}
         </aside>
       </div>
+      <ConfirmDialog
+        open={confirmPart}
+        onOpenChange={setConfirmPart}
+        title={s.gedExam.nextPart(clock.index + 2)}
+        body={s.gedExam.nextPartConfirm(partUnanswered)}
+        confirmLabel={s.gedExam.nextPart(clock.index + 2)}
+        onConfirm={() => nextPart()}
+      />
       <ConfirmDialog
         open={confirm}
         onOpenChange={setConfirm}

@@ -2,7 +2,8 @@ import { generateText } from "ai";
 import type { ResolvedModel } from "../chat/llm";
 import type { QuizQuestion, TopicRef } from "../types";
 import { parseQuiz, shuffleOptions } from "../placement/logic";
-import { batches, distribute, type ExamFormat, type ExamSection } from "./formats";
+import { repairQuestions, type CheckStats, type Solver } from "../quality/answerCheck";
+import { batches, distribute, partRanges, type ExamFormat, type ExamSection } from "./formats";
 
 export function examQuestionPrompt(format: ExamFormat, section: ExamSection, batch: { topic: TopicRef; n: number }[], avoid: string[] = []): string {
   const total = batch.reduce((n, b) => n + b.n, 0);
@@ -31,7 +32,19 @@ export function capByQuota<T extends { topicId: string | null }>(qs: T[], quota:
   });
 }
 
-async function runBatch(
+export interface GenerateOptions {
+  signal?: AbortSignal;
+  onProgress?: (done: number, total: number) => void;
+  /** when set, every question is solved blind and failures are rewritten once */
+  solver?: Solver | null;
+  stats?: CheckStats;
+  /** "checking" while any batch is being solved, else "writing" */
+  onPhase?: (phase: "writing" | "checking") => void;
+  /** @internal shared between the parts of one section */
+  active?: { checks: number };
+}
+
+async function writeBatch(
   llm: ResolvedModel,
   format: ExamFormat,
   section: ExamSection,
@@ -49,6 +62,31 @@ async function runBatch(
   return capByQuota(parseQuiz(r.text, [...quota.keys()]), quota).map((q) => shuffleOptions(q));
 }
 
+async function runBatch(
+  llm: ResolvedModel,
+  format: ExamFormat,
+  section: ExamSection,
+  batch: { topic: TopicRef; n: number }[],
+  avoid: string[],
+  opts: GenerateOptions,
+  checking: (d: number) => void,
+): Promise<QuizQuestion[]> {
+  const qs = await writeBatch(llm, format, section, batch, avoid, opts.signal);
+  if (!opts.solver) return qs;
+  return repairQuestions(qs, {
+    solver: opts.solver,
+    signal: opts.signal,
+    stats: opts.stats,
+    onChecking: (active) => checking(active ? 1 : -1),
+    regenerate: (bad) => {
+      const per = new Map<string, number>();
+      for (const q of bad) per.set(q.topicId!, (per.get(q.topicId!) ?? 0) + 1);
+      const plan = batch.map((b) => ({ topic: b.topic, n: per.get(b.topic.id) ?? 0 })).filter((b) => b.n > 0);
+      return writeBatch(llm, format, section, plan, [...avoid, ...qs.map((q) => q.question)], opts.signal);
+    },
+  });
+}
+
 /**
  * Generates a section's questions in batches (3 at a time), then tops up once for any shortfall.
  * Throws only when nothing usable came back.
@@ -59,8 +97,30 @@ export async function generateExamQuestions(
   section: ExamSection,
   topics: TopicRef[],
   count: number,
-  opts: { signal?: AbortSignal; onProgress?: (done: number, total: number) => void } = {},
+  opts: GenerateOptions = {},
 ): Promise<QuizQuestion[]> {
+  const active = opts.active ?? { checks: 0 };
+  const parts = partRanges(section.parts, section.calculator, count);
+  if (parts.length > 1) {
+    const done = parts.map(() => 0);
+    const chunks = await Promise.all(
+      parts.map((p, k) =>
+        generateExamQuestions(llm, format, { ...section, parts: undefined, calculator: p.calculator }, topics, p.to - p.from, {
+          ...opts,
+          active,
+          onProgress: (d) => {
+            done[k] = d;
+            opts.onProgress?.(done.reduce((a, b) => a + b, 0), count);
+          },
+        }),
+      ),
+    );
+    return chunks.flat();
+  }
+  const checking = (d: number) => {
+    active.checks += d;
+    opts.onPhase?.(active.checks > 0 ? "checking" : "writing");
+  };
   const plan = distribute(topics, count);
   const jobs = batches(plan);
   const results: QuizQuestion[][] = new Array(jobs.length);
@@ -69,7 +129,7 @@ export async function generateExamQuestions(
   const worker = async () => {
     while (next < jobs.length) {
       const i = next++;
-      results[i] = await runBatch(llm, format, section, jobs[i], [], opts.signal).catch((e) => {
+      results[i] = await runBatch(llm, format, section, jobs[i], [], opts, checking).catch((e) => {
         if (opts.signal?.aborted) throw e;
         return [];
       });
@@ -84,7 +144,7 @@ export async function generateExamQuestions(
     for (const q of all) have.set(q.topicId!, (have.get(q.topicId!) ?? 0) + 1);
     const missing = plan.map((p) => ({ topic: p.topic, n: p.n - (have.get(p.topic.id) ?? 0) })).filter((p) => p.n > 0);
     for (const b of batches(missing)) {
-      const more = await runBatch(llm, format, section, b, all.map((q) => q.question), opts.signal).catch((e) => {
+      const more = await runBatch(llm, format, section, b, all.map((q) => q.question), opts, checking).catch((e) => {
         if (opts.signal?.aborted) throw e;
         return [];
       });

@@ -1,12 +1,16 @@
 import type { QuizQuestion, TopicRef } from "../types";
 import type { EssayGrade, EssayTask } from "./essay";
-import { scaledScore, type ExamFormat, type ExamSection } from "./formats";
+import { resolveParts, scaledScore, type ExamFormat, type ExamLength, type ExamSection } from "./formats";
 
 export interface ExamData {
   questions: QuizQuestion[];
   answers: (number | null)[];
   flags: boolean[];
   topics: Pick<TopicRef, "id" | "title">[];
+  /** time used (ms) when each part after the first began; its length is the current part index */
+  partStarts?: number[];
+  /** questions swapped out because the answer-key check disagreed with the key */
+  replaced?: number;
   essay?: { task: EssayTask; text: string; grade?: EssayGrade };
 }
 
@@ -73,4 +77,22 @@ export function clockText(ms: number) {
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
   return h ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}` : `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+export interface PartClock {
+  index: number;
+  count: number;
+  remainingMs: number;
+  /** a part before the last one has run out of time */
+  expired: boolean;
+}
+
+/** Clock for the current part: earlier parts have a fixed share, the last one gets all the time that is left. */
+export function partClock(section: ExamSection, length: ExamLength, partStarts: number[] | undefined, usedMs: number): PartClock {
+  const parts = resolveParts(section, length);
+  const index = Math.min(partStarts?.length ?? 0, parts.length - 1);
+  if (index === parts.length - 1) return { index, count: parts.length, remainingMs: remainingMs(section, length, usedMs), expired: false };
+  const start = index === 0 ? 0 : partStarts![index - 1];
+  const left = Math.max(0, start + parts[index].minutes * 60_000 - usedMs);
+  return { index, count: parts.length, remainingMs: left, expired: left <= 0 };
 }

@@ -4,6 +4,7 @@ import type { ResolvedModel } from "../chat/llm";
 import type { ErrorType, PracticeItem, PracticeKind } from "../types";
 import { difficultyFor, LEVEL_WORDS, levelFor } from "./irt";
 import { numbersMatch, parseNumber } from "./grade";
+import { checkChoice, checkNumber, makeSolver, parseSolvedAnswer, type Solver } from "../quality/answerCheck";
 
 export interface TopicSpec {
   key: string;
@@ -57,7 +58,7 @@ const FORMAT =
 
 export async function generateProblem(
   llm: ResolvedModel,
-  opts: { topic: TopicSpec; level: number; context?: string; avoid?: string[]; language?: string; signal?: AbortSignal },
+  opts: { topic: TopicSpec; level: number; context?: string; avoid?: string[]; language?: string; signal?: AbortSignal; solver?: Solver | null },
 ): Promise<NewItem> {
   const prompt = [
     `Write ONE practice problem on "${opts.topic.title}" (${opts.topic.description}) at difficulty ${opts.level}/5: ${LEVEL_WORDS[opts.level]}.`,
@@ -70,33 +71,23 @@ export async function generateProblem(
   ]
     .filter(Boolean)
     .join("\n\n");
-  return checked(llm, prompt, (text) => parseProblem(text, opts.topic.key, opts.level), opts.signal);
+  return checked(llm, prompt, (text) => parseProblem(text, opts.topic.key, opts.level), opts.signal, opts.solver);
 }
 
 export type VariationMode = "same" | "easier" | "harder";
 
 /** "More like this": same skill and structure, new numbers or context. */
-export async function generateVariation(llm: ResolvedModel, item: PracticeItem, mode: VariationMode, signal?: AbortSignal): Promise<NewItem> {
+export async function generateVariation(llm: ResolvedModel, item: PracticeItem, mode: VariationMode, signal?: AbortSignal, solver?: Solver | null): Promise<NewItem> {
   const level = Math.max(1, Math.min(5, levelFor(item.difficulty) + (mode === "harder" ? 1 : mode === "easier" ? -1 : 0)));
   const prompt = [
     `Here is a practice problem:\n"""\n${item.question}\n"""\nIts solution:\n"""\n${item.solution}\n"""`,
     `Write ONE new problem that practises exactly the same skill${mode === "same" ? " at the same difficulty" : mode === "harder" ? ", one step harder" : ", one step easier"} (difficulty ${level}/5), with different numbers or context. Keep the same answer type (${item.kind}) and the same language.`,
     FORMAT,
   ].join("\n\n");
-  return checked(llm, prompt, (text) => parseProblem(text, item.topicKey, level, item.id), signal);
+  return checked(llm, prompt, (text) => parseProblem(text, item.topicKey, level, item.id), signal, solver);
 }
 
-/** Last `{"answer": …}` in a worked solution; earlier braces may be LaTeX. */
-export function parseSolvedAnswer(text: string): string | null {
-  const all = [...text.replace(/<think>[\s\S]*?<\/think>/g, "").matchAll(/\{\s*"answer"\s*:\s*("(?:[^"\\]|\\.)*"|-?[\d.,]+)\s*\}/g)];
-  const last = all.at(-1)?.[1];
-  if (last == null) return null;
-  try {
-    return String(last.startsWith('"') ? JSON.parse(last) : last).trim();
-  } catch {
-    return null;
-  }
-}
+export { parseSolvedAnswer };
 
 export function answersAgree(item: Pick<PracticeItem, "kind" | "answer" | "options">, solved: string): boolean {
   if (item.kind === "numeric") {
@@ -112,26 +103,25 @@ export function answersAgree(item: Pick<PracticeItem, "kind" | "answer" | "optio
   return true;
 }
 
-async function solveIndependently(llm: ResolvedModel, item: NewItem, signal?: AbortSignal): Promise<string | null> {
-  const opts = item.kind === "mcq" ? `\nOptions:\n${item.options!.map((o, i) => `${i}: ${o}`).join("\n")}` : "";
-  const want = item.kind === "mcq" ? "the index of the correct option" : "the final number only, no units";
-  const text = await ask(
-    llm,
-    `Solve this problem carefully, step by step. Check each calculation.\n"""\n${item.question}${opts}\n"""\nEnd with one line of JSON: {"answer": ${want}}`,
-    signal,
-  );
-  return parseSolvedAnswer(text);
-}
-
 /** Generated answers are wrong often enough that each problem is re-solved without its answer; disagreements are regenerated. */
-async function checked(llm: ResolvedModel, prompt: string, parse: (text: string) => NewItem, signal?: AbortSignal): Promise<NewItem> {
+async function checked(
+  llm: ResolvedModel,
+  prompt: string,
+  parse: (text: string) => NewItem,
+  signal?: AbortSignal,
+  solver?: Solver | null,
+): Promise<NewItem> {
+  const s = solver === undefined ? makeSolver(llm) : solver;
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const item = parse(await ask(llm, prompt, signal));
-      if (item.kind === "short") return item;
-      const solved = await solveIndependently(llm, item, signal);
-      if (solved == null || answersAgree(item, solved)) return item;
+      if (!s || item.kind === "short") return item;
+      const verdict =
+        item.kind === "mcq"
+          ? await checkChoice(s, { question: item.question, options: item.options!, answer: Number(item.answer) }, signal)
+          : await checkNumber(s, item, signal);
+      if (verdict === "ok" || verdict === "unknown") return item;
       lastError = new Error("The model's answer didn't hold up when checked. Try again.");
     } catch (e) {
       if (signal?.aborted) throw e;

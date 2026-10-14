@@ -121,6 +121,15 @@ export function SettingsScreen() {
               setSetting.mutate({ key: "defaultModel", value: v }, { onError: (e) => toastError(s.errors.generic, e) })
             }
           />
+          <SettingsGroup className="mt-3">
+            <SettingsRow title={s.answerCheck.setting} description={s.answerCheck.settingBody}>
+              <Switch
+                checked={settings?.checkAnswerKeys !== false}
+                onCheckedChange={(v) => setSetting.mutate({ key: "checkAnswerKeys", value: v }, { onError: (e) => toastError(s.errors.generic, e) })}
+                label={s.answerCheck.setting}
+              />
+            </SettingsRow>
+          </SettingsGroup>
         </SettingsSection>
         <SettingsSection id="settings-research" title={s.research.settingsTitle} body={s.research.settingsBody}>
           <ResearchSection />
