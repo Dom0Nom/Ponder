@@ -89,3 +89,45 @@ test("code cells: Python runs offline in Pyodide and keeps state between cells",
   await expect(cells.nth(2).getByTestId("cell-text")).toContainText("ZeroDivisionError");
   expect(external).toEqual([]);
 });
+
+test("code cells: C blocks run through the compiler command with stdin and inline errors", async ({ app }) => {
+  await space(app);
+  await answerWith(
+    app,
+    [
+      "Hello:",
+      "```c",
+      "#include <stdio.h>",
+      'int main(void) { printf("hello\\n"); return 0; }',
+      "```",
+      "Broken:",
+      "```c",
+      "int main(void) {",
+      "  int x = ;",
+      "  return 0;",
+      "}",
+      "```",
+      "Never ends:",
+      "```c",
+      "int main(void) { for (;;) {} }",
+      "```",
+    ].join("\n"),
+  );
+  const cells = app.getByTestId("code-cell");
+  await expect(cells).toHaveCount(3);
+  await expect(cells.nth(0)).toHaveAttribute("data-lang", "c");
+
+  await cells.nth(0).getByTestId("c-input-toggle").click();
+  await cells.nth(0).getByTestId("c-stdin").fill("typed input");
+  await cells.nth(0).getByTestId("cell-run").click();
+  await expect(cells.nth(0).getByTestId("cell-output")).toHaveAttribute("data-ok", "true");
+  await expect(cells.nth(0).getByTestId("cell-text")).toContainText("hello");
+  await expect(cells.nth(0).getByTestId("cell-text")).toContainText("typed input");
+
+  await cells.nth(1).getByTestId("cell-run").click();
+  await expect(cells.nth(1).getByTestId("cell-output")).toHaveAttribute("data-stage", "compile");
+  await expect(cells.nth(1).getByTestId("c-diagnostics")).toContainText("Line 3: expected expression");
+
+  await cells.nth(2).getByTestId("cell-run").click();
+  await expect(cells.nth(2).getByTestId("cell-text")).toContainText("Stopped after 5 seconds");
+});

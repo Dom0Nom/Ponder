@@ -1,6 +1,7 @@
 import type { CellLang, CellResult } from "./lang";
+import { cellResultFromC, runC } from "./c";
 
-export const RUN_TIMEOUT_MS = { js: 5_000, python: 20_000 } as const;
+export const RUN_TIMEOUT_MS = { js: 5_000, python: 20_000, c: 10_000 } as const;
 const BOOT_TIMEOUT_MS = 90_000;
 
 export class CellTimeout extends Error {
@@ -15,7 +16,7 @@ let py: Worker | null = null;
 let pyBooted = false;
 let pyQueue: Promise<unknown> = Promise.resolve();
 
-function newWorker(lang: CellLang): Worker {
+function newWorker(lang: "js" | "python"): Worker {
   return lang === "js"
     ? new Worker(new URL("./jsWorker.ts", import.meta.url), { type: "module" })
     : new Worker(new URL("./pyWorker.ts", import.meta.url), { type: "module" });
@@ -23,13 +24,14 @@ function newWorker(lang: CellLang): Worker {
 
 /** JS runs in a fresh worker per run; Python keeps one worker so later cells see earlier definitions, one run at a time. */
 export function runCell(lang: CellLang, code: string): Promise<CellResult> {
+  if (lang === "c") return runC(code).then(cellResultFromC);
   if (lang === "js") return runOnce(lang, code);
   const next = pyQueue.then(() => runOnce(lang, code));
   pyQueue = next.catch(() => undefined);
   return next;
 }
 
-function runOnce(lang: CellLang, code: string): Promise<CellResult> {
+function runOnce(lang: "js" | "python", code: string): Promise<CellResult> {
   const w = lang === "js" ? newWorker("js") : (py ??= newWorker("python"));
   const limit = RUN_TIMEOUT_MS[lang] + (lang === "python" && !pyBooted ? BOOT_TIMEOUT_MS : 0);
   return new Promise((resolve, reject) => {

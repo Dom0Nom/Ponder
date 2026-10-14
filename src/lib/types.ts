@@ -1067,3 +1067,53 @@ export interface McpCallResult {
   text: string;
   isError: boolean;
 }
+
+export interface CDiagnostic {
+  line: number;
+  column: number;
+  severity: "error" | "warning" | "note";
+  message: string;
+}
+
+export interface CRun {
+  ok: boolean;
+  stage: "compile" | "run" | "none";
+  output: string;
+  diagnostics: CDiagnostic[];
+  compiler: string | null;
+  exitCode: number | null;
+  timedOut: boolean;
+  truncated: boolean;
+  compileMs: number;
+  runMs: number;
+}
+
+export interface ProjectMilestone {
+  id: string;
+  projectId: string;
+  title: string;
+  topicIds: string[];
+  position: number;
+  doneAt: number | null;
+}
+
+export interface ProjectLogEntry {
+  id: string;
+  projectId: string;
+  body: string;
+  photo: string | null;
+  code: string | null;
+  codeResult: string | null;
+  createdAt: number;
+}
+
+export interface Project {
+  id: string;
+  spaceId: string;
+  title: string;
+  goal: string;
+  createdAt: number;
+  updatedAt: number;
+  milestones: ProjectMilestone[];
+  log: ProjectLogEntry[];
+}

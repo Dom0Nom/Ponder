@@ -1,4 +1,4 @@
-export type CellLang = "js" | "python";
+export type CellLang = "js" | "python" | "c";
 
 const ALIASES: Record<string, CellLang> = {
   js: "js",
@@ -7,6 +7,7 @@ const ALIASES: Record<string, CellLang> = {
   python: "python",
   py: "python",
   python3: "python",
+  c: "c",
 };
 
 export function cellLang(className?: string): CellLang | null {
