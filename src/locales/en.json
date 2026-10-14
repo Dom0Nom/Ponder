@@ -2229,6 +2229,8 @@
   "context.modes.fullHelp": "The whole source, as far as it fits",
   "context.modes.off": "Off",
   "context.modes.offHelp": "Not used in chat",
+  "context.settings.title": "Context",
+  "context.settings.body": "How much of your sources and the chat the model reads per message.",
   "context.settings.maxContext": "Max context per message",
   "context.settings.maxContextHelp": "For paid API models. Subscriptions, free and local models use their full window.",
   "context.settings.maxContextCost": "About {0} per message with {1}",

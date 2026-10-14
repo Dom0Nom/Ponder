@@ -3,7 +3,6 @@ import { ArrowUp, Camera, ChevronDown, FileUp, Library, Plus, Square } from "luc
 import { storedControls } from "../../lib/chat/controls";
 import { runTurn, TurnBusyError } from "../../lib/chat/runner";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
-import { useUpdateSpace } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Space, Thread, TutorStyle } from "../../lib/types";
 import { cn } from "../../lib/utils";
@@ -22,6 +21,10 @@ import { VoiceButton } from "../voice/VoiceButton";
 import { useVoice } from "../../stores/voice";
 import { toast, toastError } from "../../components/ui/toast";
 import { ModelMenu } from "./ModelMenu";
+import { ContextMeter } from "./ContextMeter";
+import { compactChat, parseCompactCommand } from "../../lib/chat/compactChat";
+import { api } from "../../lib/ipc";
+import { queryClient, qk, useMessages, useUpdateSpace } from "../../lib/queries";
 
 const iconBtn = "flex size-7 shrink-0 items-center justify-center rounded-btn text-fg hover:bg-fill";
 const textBtn = "flex h-7 items-center gap-1.5 rounded-btn px-2.5 font-medium hover:bg-fill";
@@ -57,9 +60,37 @@ export function Composer({
   const low = useLowEnergy(space.id);
   const voiceOn = useVoice((st) => st.phase !== "off" && st.spaceId === space.id);
 
+  const messages = useMessages(thread?.id);
+  const lastCtx = [...(messages.data ?? [])].reverse().find((m) => m.role === "assistant" && m.meta?.context)?.meta?.context;
+  const compact = async (focus?: string) => {
+    if (!thread) return toast.info(s.chat.nothingToCompact);
+    setBusy(true);
+    try {
+      const done = await compactChat(space, thread.id, focus);
+      if (done) toast.success(s.chat.compacted);
+      else toast.info(s.chat.nothingToCompact);
+    } catch (e) {
+      toastError(s.chat.compactFailed, e);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const setAuto = (on: boolean) => {
+    if (!thread) return;
+    api
+      .setThreadAutoCompact(thread.id, on)
+      .then(() => queryClient.invalidateQueries({ queryKey: qk.threads(space.id) }))
+      .catch((e) => toastError(s.errors.generic, e));
+  };
+
   const send = async (override?: string) => {
     const msg = (override ?? text).trim();
     if (!msg || busy || running || pending) return;
+    const cmd = parseCompactCommand(msg);
+    if (cmd) {
+      if (override === undefined) setDraftText(draftKey, "");
+      return compact(cmd.focus);
+    }
     setBusy(true);
     let key = draftKey;
     let saved = false;
@@ -198,6 +229,7 @@ export function Composer({
           </Tooltip>
         )}
         <div className="ms-auto flex items-center gap-1">
+          {lastCtx && <ContextMeter ctx={lastCtx} thread={thread} busy={busy} onCompact={() => compact()} onToggleAuto={setAuto} />}
           <DictateButton
             className={iconBtn}
             onText={(t) => {

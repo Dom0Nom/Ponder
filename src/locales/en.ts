@@ -2212,6 +2212,8 @@ saveFailed: "Couldn't save the distraction nudge",
       offHelp: "Not used in chat",
     },
     settings: {
+      title: "Context",
+      body: "How much of your sources and the chat the model reads per message.",
       maxContext: "Max context per message",
       maxContextHelp: "For paid API models. Subscriptions, free and local models use their full window.",
       maxContextCost: msg<[cost: string, model: string]>("About {0} per message with {1}"),

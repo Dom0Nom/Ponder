@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Ellipsis, Pencil, Pin, PinOff, Plus, Trash2 } from "lucide-react";
+import { Check, Ellipsis, Layers, Pencil, Pin, PinOff, Plus, Trash2 } from "lucide-react";
 import { api } from "../../lib/ipc";
 import { qk, usePinThread, useThreads } from "../../lib/queries";
 import { s } from "../../lib/strings";
@@ -11,7 +11,8 @@ import { discardThread, undiscardThread } from "../../stores/chatStream";
 import { ConfirmDialog } from "../../components/ui/dialog";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../../components/ui/menu";
 import { Skeleton, Tooltip } from "../../components/ui/misc";
-import { toastError } from "../../components/ui/toast";
+import { toast, toastError } from "../../components/ui/toast";
+import { compactChat } from "../../lib/chat/compactChat";
 import { useFlip } from "../../lib/useFlip";
 import { useFreshKeys } from "../../lib/useFreshKeys";
 import { useActiveThread, useNewThread } from "./useActiveThread";
@@ -73,6 +74,7 @@ function ThreadRow({ thread, spaceId, active, fresh, onDelete }: { thread: Threa
   const renaming = useUi((st) => st.renamingThreadId === thread.id);
   const setRenaming = useUi((st) => st.setRenamingThread);
   const pin = usePinThread(spaceId);
+  const qc = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
   const togglePin = () => pin.mutate({ id: thread.id, pinned: !thread.pinned });
   const pinLabel = thread.pinned ? s.chat.unpin : s.chat.pin;
@@ -130,7 +132,7 @@ function ThreadRow({ thread, spaceId, active, fresh, onDelete }: { thread: Threa
             </Tooltip>
             <MenuContent
               align="end"
-              className="w-[148px]"
+              className="w-[176px]"
               onClick={(e) => e.stopPropagation()}
               onCloseAutoFocus={(e) => e.preventDefault()}
             >
@@ -139,6 +141,25 @@ function ThreadRow({ thread, spaceId, active, fresh, onDelete }: { thread: Threa
               </MenuItem>
               <MenuItem onSelect={togglePin}>
                 {thread.pinned ? <PinOff size={14} /> : <Pin size={14} />} {pinLabel}
+              </MenuItem>
+              <MenuItem
+                onSelect={() =>
+                  compactChat(spaceId, thread.id)
+                    .then((t) => (t ? toast.success(s.chat.compacted) : toast.info(s.chat.nothingToCompact)))
+                    .catch((e) => toastError(s.chat.compactFailed, e))
+                }
+              >
+                <Layers size={14} /> {s.context.compactNow}
+              </MenuItem>
+              <MenuItem
+                onSelect={() =>
+                  api
+                    .setThreadAutoCompact(thread.id, thread.autoCompact === false)
+                    .then(() => qc.invalidateQueries({ queryKey: qk.threads(spaceId) }))
+                    .catch((e) => toastError(s.errors.generic, e))
+                }
+              >
+                <span className="flex size-[14px] items-center justify-center">{thread.autoCompact === false && <Check size={14} />}</span> {s.context.dontCompact}
               </MenuItem>
               <MenuSeparator />
               <MenuItem danger onSelect={onDelete}>

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef } from "react";
-import { Plus, Sparkles } from "lucide-react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, Layers, Plus, Sparkles } from "lucide-react";
 import { useMessages, useSources, useThreads } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { Space, Thread } from "../../lib/types";
@@ -62,6 +62,7 @@ function ThreadView({ space, thread, ensureThread }: { space: Space; thread?: Th
   const sources = useSources(space.id);
   const live = useChatStream((st) => st.live);
   const phase = useChatStream((st) => (thread ? st.phase[thread.id] : undefined));
+  const activity = useChatStream((st) => (thread ? st.activity[thread.id] : undefined));
   const sourcesOpen = useUi((st) => st.sourcesOpen[space.id] === true);
   const scroller = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
@@ -69,6 +70,7 @@ function ThreadView({ space, thread, ensureThread }: { space: Space; thread?: Th
   const list = useMemo(() => messages.data ?? [], [messages.data]);
   const visible = useMemo(() => list.filter((m) => !m.meta?.secondOpinionOf), [list]);
   const latestAnswerId = [...visible].reverse().find((m) => m.role === "assistant")?.id;
+  const dividerAfter = thread?.summary && thread.summaryUntil != null ? [...visible].reverse().find((m) => m.createdAt <= thread.summaryUntil!)?.id : undefined;
   const liveLen = Object.values(live).reduce((n, l) => n + l.content.length + l.reasoning.length, 0);
 
   useEffect(() => {
@@ -113,23 +115,25 @@ function ThreadView({ space, thread, ensureThread }: { space: Space; thread?: Th
           )}
           {messages.error && <ErrorState title={s.errors.generic} error={messages.error} onRetry={() => messages.refetch()} />}
           {empty && <NewChatState hasSources={ready.length > 0} sourcesOpen={sourcesOpen} space={space} />}
-          {phase && (
-            <span className="inline-flex items-center gap-2 text-label font-medium text-fg-secondary">
-              <ActivityOrb activity="search" size={16} />
-              <ThinkingLine label={s.chat.searchingSources} />
+          {visible.map((m) => (
+            <Fragment key={m.id}>
+              <MessageView
+                message={m}
+                space={space}
+                live={live[m.id]}
+                seconds={list.filter((x) => x.meta?.secondOpinionOf === m.id)}
+                allLive={live}
+                latest={m.id === latestAnswerId}
+              />
+              {m.id === dividerAfter && thread?.summary && <CompactionDivider summary={thread.summary} />}
+            </Fragment>
+          ))}
+          {(phase || activity) && (
+            <span data-testid="chat-status" className="inline-flex items-center gap-2 text-label font-medium text-fg-secondary">
+              <ActivityOrb activity={phase === "compact" ? "write" : activity ? "read" : "search"} size={16} />
+              <ThinkingLine label={phase === "compact" ? s.chat.compacting : phase === "plan" ? s.chat.planningSearch : (activity ?? s.chat.searchingSources)} />
             </span>
           )}
-          {visible.map((m) => (
-            <MessageView
-              key={m.id}
-              message={m}
-              space={space}
-              live={live[m.id]}
-              seconds={list.filter((x) => x.meta?.secondOpinionOf === m.id)}
-              allLive={live}
-              latest={m.id === latestAnswerId}
-            />
-          ))}
         </div>
       </div>
       <div className={cn("shrink-0 pe-6 transition-[padding] duration-200", empty ? "pb-6" : "pb-[18px]")} style={{ paddingInlineStart: sourcesOpen ? 364 : 24 }}>
@@ -139,6 +143,29 @@ function ThreadView({ space, thread, ensureThread }: { space: Space; thread?: Th
           ensureThread={ensureThread}
           sources={{ ready: ready.length, inChat: inChat.length }}
         />
+      </div>
+    </div>
+  );
+}
+
+/** Marks where a compaction summary stands in for earlier messages; expands to show it. */
+function CompactionDivider({ summary }: { summary: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div data-testid="compaction-divider" className="flex flex-col gap-2">
+      <button aria-expanded={open} onClick={() => setOpen(!open)} className="group flex items-center gap-3 text-label font-medium text-muted hover:text-fg-secondary">
+        <span className="h-px flex-1 bg-border" />
+        <Layers size={13} />
+        {s.chat.earlierSummarized}
+        <ChevronDown size={13} className={cn("transition-transform duration-[var(--motion-quick)]", open && "rotate-180")} />
+        <span className="h-px flex-1 bg-border" />
+      </button>
+      <div className="t-acc" data-open={open ? "true" : "false"}>
+        <div className="t-acc-panel">
+          <div className="overflow-hidden">
+            <p className="whitespace-pre-wrap rounded-card bg-fill px-4 py-3 text-body text-fg-secondary">{summary}</p>
+          </div>
+        </div>
       </div>
     </div>
   );

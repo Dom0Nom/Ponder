@@ -4,7 +4,7 @@ import { Ellipsis, FileText, FolderSync, Plus, RotateCcw, Sparkles } from "lucid
 import { api, events } from "../../lib/ipc";
 import { qk, useSources, useWatchedFolders } from "../../lib/queries";
 import { s } from "../../lib/strings";
-import type { EmbedderStatus, Source, Space } from "../../lib/types";
+import type { ContextMode, EmbedderStatus, Source, Space } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { useResearch } from "../../stores/research";
 import { useUi } from "../../stores/ui";
@@ -17,7 +17,7 @@ import { Button } from "../../components/ui/button";
 import { Checkbox16 } from "../../components/ui/checkbox";
 import { ConfirmDialog, Dialog } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
-import { Menu, MenuContent, MenuItem, MenuTrigger } from "../../components/ui/menu";
+import { Menu, MenuContent, MenuItem, MenuLabel, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "../../components/ui/menu";
 import { ErrorState, Skeleton, Spinner, Tooltip } from "../../components/ui/misc";
 import { toast, toastError } from "../../components/ui/toast";
 import { ImportDialog } from "./ImportDialog";
@@ -226,6 +226,18 @@ function SourceRow({ source, fresh }: { source: Source; fresh: boolean }) {
       toastError(s.errors.generic, e);
     }
   };
+  const setMode = async (m: ContextMode | "off") => {
+    try {
+      if (m === "off") await api.updateSource(source.id, { useInChat: false });
+      else {
+        if (!source.useInChat) await api.updateSource(source.id, { useInChat: true });
+        if ((source.contextMode ?? "auto") !== m) await api.setSourceContextMode(source.id, m);
+      }
+      refresh();
+    } catch (e) {
+      toastError(s.errors.generic, e);
+    }
+  };
   const retry = async () => {
     try {
       await api.reindexSource(source.id);
@@ -275,7 +287,19 @@ function SourceRow({ source, fresh }: { source: Source; fresh: boolean }) {
             <Ellipsis size={14} />
           </button>
         </MenuTrigger>
-        <MenuContent align="end">
+        <MenuContent align="end" className="w-[240px]">
+          <MenuLabel>{s.context.modes.title}</MenuLabel>
+          <MenuRadioGroup value={source.useInChat ? (source.contextMode ?? "auto") : "off"} onValueChange={(v) => setMode(v as ContextMode | "off")}>
+            {(["auto", "summary", "full", "off"] as const).map((m) => (
+              <MenuRadioItem key={m} value={m} className="h-auto items-start py-1.5">
+                <span className="flex flex-col">
+                  <span className="font-medium">{s.context.modes[m]}</span>
+                  <span className="text-label font-normal text-fg-secondary">{s.context.modes[`${m}Help`]}</span>
+                </span>
+              </MenuRadioItem>
+            ))}
+          </MenuRadioGroup>
+          <MenuSeparator />
           <MenuItem onSelect={() => setRenaming(true)}>{s.common.rename}</MenuItem>
           <MenuItem danger onSelect={() => setDeleting(true)}>
             {s.common.delete}

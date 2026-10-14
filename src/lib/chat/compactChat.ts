@@ -7,7 +7,8 @@ import { resolveChatModel, resolveHelperModel } from "./llm";
 import { useChatStream } from "../../stores/chatStream";
 
 /** `/compact [focus]` and "Compact chat": summarizes all but the last turns now. Null when there was nothing to compact. */
-export async function compactChat(space: Space, threadId: string, focus?: string): Promise<Thread | null> {
+export async function compactChat(spaceOrId: Space | string, threadId: string, focus?: string): Promise<Thread | null> {
+  const space = typeof spaceOrId === "string" ? await api.getSpace(spaceOrId) : spaceOrId;
   const stream = useChatStream.getState();
   stream.setPhase(threadId, "compact");
   try {
@@ -23,7 +24,6 @@ export async function compactChat(space: Space, threadId: string, focus?: string
     });
     if (next) {
       queryClient.invalidateQueries({ queryKey: qk.threads(space.id) });
-      queryClient.invalidateQueries({ queryKey: qk.thread(threadId) });
     }
     return next;
   } finally {

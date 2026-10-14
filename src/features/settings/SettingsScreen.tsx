@@ -10,6 +10,7 @@ import { useLocale } from "../../lib/i18n/state";
 import { changeLocale } from "../../lib/i18n/init";
 import { ProvidersSection } from "./ProvidersSection";
 import { ModelPicker } from "./ModelPicker";
+import { ContextSection } from "./ContextSection";
 import { ResearchSection } from "./ResearchSection";
 import { MemorySection } from "./MemorySection";
 import { CaptureSection } from "./CaptureSection";
@@ -143,6 +144,9 @@ export function SettingsScreen() {
         </SettingsSection>
         <SettingsSection id="settings-research" title={s.research.settingsTitle} body={s.research.settingsBody}>
           <ResearchSection />
+        </SettingsSection>
+        <SettingsSection id="settings-context" title={s.context.settings.title} body={s.context.settings.body}>
+          <ContextSection />
         </SettingsSection>
         <SettingsSection id="settings-providers" title={s.settings.providers} body={s.settings.providersBody}>
           <ProvidersSection />
