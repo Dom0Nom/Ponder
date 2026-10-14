@@ -1,7 +1,7 @@
 import JSZip from "jszip";
 import { partKey } from "./grade";
 import { optionLabel, sheetLabels, type SheetLabels } from "./labels";
-import { gradeFor, scaleRows } from "./presets";
+import { gradeFor, isBound, scaleRows } from "./presets";
 import { totalPoints } from "./parse";
 import type { LabelStyle, Part, Sheet, Task } from "./types";
 
@@ -95,6 +95,8 @@ export function taskBlocks(sheet: Sheet, ti: number, withKey: boolean): Block[] 
   const style = sheet.options.labelStyle;
   const task = sheet.tasks[ti];
   const out: Block[] = [];
+  if (sheet.options.preset === "ihk" && (ti === 0 || isBound(sheet.tasks[ti - 1].type) !== isBound(task.type)))
+    out.push({ t: "h", text: isBound(task.type) ? "Teil A: Gebundene Aufgaben" : "Teil B: Ungebundene Aufgaben" });
   out.push({ t: "h", text: `${l.task} ${ti + 1}: ${l.types[task.type]} (${pts(task.points)} ${l.points})` });
   out.push({ t: "p", text: task.correctFalse ? `${task.instruction} ${l.correctFalse}` : task.instruction, italic: true });
   if (task.passage) out.push({ t: "p", text: task.passage });

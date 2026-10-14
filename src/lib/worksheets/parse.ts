@@ -1,6 +1,7 @@
 import { extractJson } from "../chat/json";
 import { parseQuestion } from "../questions/parse";
 import { sheetLabels } from "./labels";
+import { isBound } from "./presets";
 import type { ClozePart, OpenPart, Part, Sheet, SheetOptions, Task, TablePart, TaskType } from "./types";
 import { TASK_TYPES } from "./types";
 
@@ -123,6 +124,7 @@ export function parseSheet(text: string, options: SheetOptions): Sheet {
   if (!o || !list) throw new Error("no tasks");
   let tasks = list.map((t, i) => parseTask(t, options.language, i)).filter((t): t is Task => !!t);
   if (!tasks.length) throw new Error("no usable tasks");
+  if (options.preset === "ihk") tasks = [...tasks.filter((t) => isBound(t.type)), ...tasks.filter((t) => !isBound(t.type))];
   tasks = tasks.map((t, i) => ({ ...t, id: `t${i + 1}` }));
   if (options.mode === "points") tasks = normalizePoints(tasks, options.totalPoints);
   return { title: str(o.title) || "Worksheet", instructions: str(o.instructions), tasks, options };

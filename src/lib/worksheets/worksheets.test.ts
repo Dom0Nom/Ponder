@@ -254,6 +254,19 @@ describe("export", () => {
   });
 });
 
+describe("IHK layout", () => {
+  it("puts gebundene Aufgaben first and labels both parts", () => {
+    const ihk = optionsFor("ihk", "de");
+    const s = parseSheet(JSON.stringify({ tasks: [tasksJson[6], tasksJson[0], tasksJson[7], tasksJson[2]] }), { ...ihk, mode: "length" });
+    expect(s.tasks.map((t) => t.type)).toEqual(["choice", "cloze", "calc", "open"]);
+    const md = toMarkdown(s, { key: false });
+    expect(md).toContain("## Teil A: Gebundene Aufgaben");
+    expect(md).toContain("## Teil B: Ungebundene Aufgaben");
+    expect(md.indexOf("Teil A")).toBeLessThan(md.indexOf("Teil B"));
+    expect(toMarkdown(parseSheet(JSON.stringify({ tasks: [tasksJson[0]] }), de), { key: false })).not.toContain("Teil A");
+  });
+});
+
 describe("paper sheet", () => {
   it("reads answers from a photo's lines", () => {
     const s = sheetOf();
