@@ -160,7 +160,7 @@ Not used anywhere new: the 11 rejected TD snippets (§7.1 of `04-motion.md`), in
 - **What:**
   - A Goal is an exam with a date or a skill without one ("build a robot arm"). Without a date, the schedule runs on weekly minutes and milestones instead of a countdown.
   - "What do you want to learn?": one sentence → the model proposes a skill graph (topics with prerequisites, from fundamentals up) → you edit it (remove, rename, mark "I know this") → each topic gets "Find sources" via deep research, preferring free material (OpenStax, MIT OCW, official docs). Bundled curricula and pasted syllabi become two more ways to seed the same graph.
-- **Where:** `src/lib/plan/schedule.ts` (date optional), `src/lib/placement/` (merge `curricula.ts` and the custom syllabus path into one graph builder), new `src/features/goal/GoalWizard.tsx` (from the empty space state and New space), migration `019_goals.sql`.
+- **Where:** `src/lib/plan/schedule.ts` (date optional), `src/lib/placement/` (merge `curricula.ts` and the custom syllabus path into one graph builder), new `src/features/goal/GoalWizard.tsx` (from the empty space state and New space), migration `021_goals.sql`.
 - **Animation:**
   - Wizard: TD `modal`; its steps TD `page-side-by-side`.
   - Building the graph: TO `plan` (weaving), same as the syllabus plan today.

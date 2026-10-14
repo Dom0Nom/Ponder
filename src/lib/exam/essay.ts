@@ -26,6 +26,8 @@ export interface EssayGrade {
   /** 0–6; the GED counts each point twice */
   total: number;
   summary: string;
+  /** how many scoring passes produced this grade (2, or 3 when the first two differed by more than a point) */
+  passes?: 2 | 3;
 }
 
 /**
@@ -142,6 +144,34 @@ export function tooShort(essay: string): boolean {
   return essay.trim().split(/\s+/).filter(Boolean).length < 30;
 }
 
+/** Two passes agree when no trait differs by more than one point; a third pass then decides. */
+export function needsThirdPass(a: EssayGrade, b: EssayGrade): boolean {
+  return a.traits.some((t, i) => Math.abs(t.score - b.traits[i].score) > 1);
+}
+
+const median3 = (x: number, y: number, z: number) => [x, y, z].sort((p, q) => p - q)[1];
+
+/** Two passes: per-trait mean rounded down (the lower score stands on a tie). Three: per-trait median. */
+export function mergeGrades(passes: EssayGrade[]): EssayGrade {
+  const [a, b, c] = passes;
+  const traits: TraitScore[] = a.traits.map((t, i) => {
+    const score = (c ? median3(t.score, b.traits[i].score, c.traits[i].score) : Math.min(t.score, b.traits[i].score)) as 0 | 1 | 2;
+    const from = [a, b, c].filter(Boolean).map((g) => g.traits[i]).find((x) => x.score === score) ?? t;
+    return { trait: t.trait, score, reason: from.reason };
+  });
+  const summary = (passes.find((g) => g.total === traits.reduce((n, t) => n + t.score, 0)) ?? a).summary;
+  return { traits, total: traits.reduce((n, t) => n + t.score, 0), summary, passes: passes.length === 3 ? 3 : 2 };
+}
+
+async function onePass(llm: ResolvedModel, task: EssayTask, essay: string, signal?: AbortSignal, language?: string | null): Promise<EssayGrade> {
+  for (let i = 0; i < 2; i++) {
+    const r = await generateText({ model: llm.model, prompt: essayGradePrompt(task, essay, language), abortSignal: signal, ...llm.options({ thinking: false, temperature: 0 }) });
+    const g = parseEssayGrade(r.text);
+    if (g) return g;
+  }
+  throw new Error(s.exam.essayScoreFailed);
+}
+
 export async function gradeEssay(llm: ResolvedModel, task: EssayTask, essay: string, signal?: AbortSignal, language?: string | null): Promise<EssayGrade> {
   if (tooShort(essay))
     return {
@@ -149,10 +179,9 @@ export async function gradeEssay(llm: ResolvedModel, task: EssayTask, essay: str
       total: 0,
       summary: s.exam.essayTooShort,
     };
-  for (let i = 0; i < 2; i++) {
-    const r = await generateText({ model: llm.model, prompt: essayGradePrompt(task, essay, language), abortSignal: signal, ...llm.options({ thinking: false }) });
-    const g = parseEssayGrade(r.text);
-    if (g) return g;
-  }
-  throw new Error(s.exam.essayScoreFailed);
+  const first = await onePass(llm, task, essay, signal, language);
+  const second = await onePass(llm, task, essay, signal, language);
+  const passes = [first, second];
+  if (needsThirdPass(first, second)) passes.push(await onePass(llm, task, essay, signal, language));
+  return mergeGrades(passes);
 }

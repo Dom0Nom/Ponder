@@ -11,6 +11,7 @@ import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { ContentCard } from "./ContentCard";
 import { HomeScreen } from "../features/home/HomeScreen";
+import { GoalWizardHost } from "../features/goal/GoalWizard";
 import { SpaceDialogHost } from "../features/home/SpaceDialog";
 import { SpaceScreen } from "../features/space/SpaceScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
@@ -132,6 +133,7 @@ function Shell() {
       <SpaceDialogHost />
       <OnboardingHost />
       <TourHost />
+      <GoalWizardHost />
     </div>
   );
 }

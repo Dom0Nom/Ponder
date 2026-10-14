@@ -24,7 +24,7 @@ export async function loadScheduleContext(spaceId: string): Promise<ScheduleCont
   const level = new Map(levels.map((l) => [l.topicId, l.level]));
   const { lessons, doneIds } = lessonsOf(courses);
   return {
-    topics: (cur?.topics ?? []).map((t) => ({ id: t.id, title: t.title, prereqs: t.prereqs, level: level.get(t.id) ?? "unknown" })),
+    topics: (cur?.topics ?? []).map((t) => ({ id: t.id, title: t.title, prereqs: t.prereqs, group: t.group, level: level.get(t.id) ?? "unknown" })),
     lessons,
     doneTopicIds: doneIds,
     hasCards: (due.find((d) => d.spaceId === spaceId)?.total ?? 0) > 0,

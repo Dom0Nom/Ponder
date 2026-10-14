@@ -84,6 +84,7 @@ export interface DB {
   assessments: Row<T.Assessment>;
   courses: Row<T.Course>;
   plans: Row<T.StudyPlan>;
+  goals?: Row<T.Goal>;
   planTasks: Row<T.PlanTask>;
   watched: Row<T.WatchedFolder>;
   speech: { url: string; body: unknown }[];
@@ -235,6 +236,22 @@ const defaultScript: Script = ({ messages, body }) => {
     const n = Number(lastText.match(/10% of (\d+)/)?.[1] ?? 0);
     return { content: `$0.1 \\cdot ${n} = ${n / 10}$\n{"answer": ${n / 10}}` };
   }
+  if (/Write ONE worked example problem/i.test(lastText)) {
+    const rung = Number(lastText.match(/ladder step (\d)/)?.[1] ?? 0);
+    const n = 20 + rung * 10;
+    return {
+      content: JSON.stringify({
+        question: `What is 10% of ${n * 10}?`,
+        steps: ["Write 10% as 0.1", `Multiply 0.1 by ${n * 10}`, `The result is ${n}`],
+        answer: String(n),
+        level: 2,
+      }),
+    };
+  }
+  if (/Grade a learner's filled-in steps/i.test(lastText)) {
+    const n = [...lastText.matchAll(/^BLANK \d+/gm)].length;
+    return { content: JSON.stringify({ results: Array.from({ length: n }, () => false) }) };
+  }
   if (/Write ONE (practice|new) problem/i.test(lastText)) {
     const level = Number(lastText.match(/difficulty (\d)\/5/)?.[1] ?? 3);
     const n = 10 + level * 5 + (/new problem/.test(lastText) ? 1 : 0);
@@ -305,6 +322,19 @@ const defaultScript: Script = ({ messages, body }) => {
         { claim: "Photosynthesis happens in the chloroplasts", verdict: "supported", passages: [1] },
         { claim: "Plants release oxygen", verdict: "unsupported", passages: [], note: "Not in the passages" },
       ]),
+    };
+  }
+  if (/^A learner wants to learn:/.test(lastText)) {
+    return {
+      content: JSON.stringify({
+        title: "Robot arm",
+        topics: [
+          { id: "t1", title: "Electronics basics", description: "circuits, voltage", group: "Hardware", prereqs: [] },
+          { id: "t2", title: "Motors and servos", description: "dc motors, servo control", group: "Hardware", prereqs: ["t1"] },
+          { id: "t3", title: "Kinematics", description: "joint angles, reach", group: "Software", prereqs: ["t2"] },
+          { id: "t4", title: "Control loops", description: "pid, feedback", group: "Software", prereqs: ["t3"] },
+        ],
+      }),
     };
   }
   if (/^A learner wants study sources/.test(lastText)) {
@@ -1262,6 +1292,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
     for (const w of Object.values(db.watched)) if (w.spaceId === sid) delete db.watched[w.id];
     for (const m of Object.values(db.microSteps)) if (m.spaceId === sid) delete db.microSteps[m.id];
     delete db.plans[sid];
+    delete db.goals?.[sid];
     for (const x of Object.values(db.planTasks)) if (x.spaceId === sid) delete db.planTasks[x.id];
     save();
     return null;
@@ -2486,6 +2517,23 @@ const handlers: Record<string, (a: Args) => unknown> = {
     save();
     return null;
   },
+  goal_get: (a) => db.goals?.[a.spaceId as string] ?? null,
+  goal_save: (a) => {
+    const sid = a.spaceId as string;
+    if (!db.spaces[sid]) err("not_found", "space not found");
+    if (a.kind !== "exam" && a.kind !== "skill") err("invalid", "A goal is either an exam or a skill");
+    if (!String(a.title).trim()) err("invalid", "A goal needs a title");
+    db.goals ??= {};
+    const prev = db.goals[sid];
+    db.goals[sid] = { spaceId: sid, kind: a.kind, title: String(a.title).trim(), graph: a.graph as T.GoalGraph, createdAt: prev?.createdAt ?? now(), updatedAt: now() };
+    save();
+    return db.goals[sid];
+  },
+  goal_delete: (a) => {
+    delete db.goals?.[a.spaceId as string];
+    save();
+    return null;
+  },
   get_study_plan: (a) => planBundle(a.spaceId as string),
   save_study_plan: (a) => {
     const sid = a.spaceId as string;
@@ -2493,11 +2541,11 @@ const handlers: Record<string, (a: Args) => unknown> = {
     const f = a.plan as T.PlanFields;
     const tasks = a.tasks as T.NewPlanTask[];
     if (!f.goal.trim()) err("invalid", "A plan needs a goal");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(f.examDate)) err("invalid", "The exam date must look like 2026-12-31");
+    if (f.examDate && !/^\d{4}-\d{2}-\d{2}$/.test(f.examDate)) err("invalid", "The exam date must look like 2026-12-31");
     if (!(f.weeklyMinutes > 0)) err("invalid", "Weekly study time must be more than zero");
     if (!f.studyDays.length || f.studyDays.some((d) => d < 0 || d > 6)) err("invalid", "Pick at least one study day");
     for (const x of tasks) {
-      if (!["learn", "practice", "review", "mock"].includes(x.kind)) err("invalid", `Unknown task kind: ${x.kind}`);
+      if (!["learn", "practice", "review", "mock", "milestone"].includes(x.kind)) err("invalid", `Unknown task kind: ${x.kind}`);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(x.date) || !(x.minutes > 0) || !x.title.trim()) err("invalid", "Invalid plan task");
     }
     const prev = db.plans[sid];

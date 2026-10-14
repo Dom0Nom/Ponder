@@ -38,6 +38,7 @@ export const qk = {
   assessments: (spaceId: string) => ["assessments", spaceId] as const,
   courses: (spaceId: string) => ["courses", spaceId] as const,
   studyPlan: (spaceId: string) => ["studyPlan", spaceId] as const,
+  goal: (spaceId: string) => ["goal", spaceId] as const,
   planTasks: ["planTasks"] as const,
   focusHistory: (spaceId: string | null) => ["focusHistory", spaceId] as const,
   microSteps: (spaceId: string | null) => ["microSteps", spaceId] as const,
@@ -120,6 +121,7 @@ export const useCurriculum = (spaceId: string) =>
 export const useLevels = (spaceId: string) => useQuery({ queryKey: qk.levels(spaceId), queryFn: () => api.topicLevels(spaceId) });
 export const useMastery = (spaceId: string) => useQuery({ queryKey: qk.mastery(spaceId), queryFn: () => api.masteryList(spaceId) });
 export const useCourses = (spaceId: string) => useQuery({ queryKey: qk.courses(spaceId), queryFn: () => api.coursesList(spaceId) });
+export const useGoal = (spaceId: string) => useQuery({ queryKey: qk.goal(spaceId), queryFn: () => api.goalGet(spaceId) });
 export const useStudyPlan = (spaceId: string) => useQuery({ queryKey: qk.studyPlan(spaceId), queryFn: () => api.getStudyPlan(spaceId) });
 /** Every scheduled task across spaces; the Today view and palette derive from it. */
 export const useAllPlanTasks = () =>

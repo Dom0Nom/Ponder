@@ -23,9 +23,10 @@ export function localDate(ms: number): string {
 /** Total plan weeks, and which one `today` falls in (both 1-based). */
 export function weekInfo(plan: Pick<StudyPlan, "createdAt" | "examDate">, today: string) {
   const start = localDate(plan.createdAt);
+  if (!plan.examDate) return { start, total: 0, current: Math.max(1, Math.floor(daysBetween(start, today) / 7) + 1), daysLeft: null as number | null };
   const total = Math.max(1, Math.ceil((daysBetween(start, plan.examDate) + 1) / 7));
   const current = Math.min(total, Math.max(1, Math.floor(daysBetween(start, today) / 7) + 1));
-  return { start, total, current, daysLeft: daysBetween(today, plan.examDate) };
+  return { start, total, current, daysLeft: daysBetween(today, plan.examDate) as number | null };
 }
 
 export const LEVEL_MINUTES: Record<TopicLevelValue, number> = { unknown: 90, weak: 75, ok: 40, strong: 15 };
@@ -33,12 +34,17 @@ const LEVEL_RANK: Record<TopicLevelValue, number> = { unknown: 0, weak: 0, ok: 1
 const LEARN_SHARE = 0.6;
 const MIN_TASK = 10;
 const MOCK_MINUTES = 90;
+const MILESTONE_MINUTES = 20;
+const MILESTONE_EVERY = 4;
+const MAX_STUDY_DAYS = 7 * 104;
 
 export interface PlanTopic {
   id: string;
   title: string;
   level: TopicLevelValue;
   prereqs?: string[];
+  /** topics of one group end in a milestone when the plan has no date */
+  group?: string;
   /** remaining minutes per kind; replaces the level-based estimate (used when re-planning) */
   need?: { learn: number; practice: number };
 }
@@ -53,7 +59,8 @@ export interface DoneTask {
 export interface ScheduleInput {
   /** YYYY-MM-DD, local */
   today: string;
-  examDate: string;
+  /** empty or missing: no date, the schedule runs on weekly minutes and milestones */
+  examDate?: string | null;
   weeklyMinutes: number;
   /** 0 = Sunday … 6 = Saturday */
   studyDays: number[];
@@ -118,15 +125,31 @@ export function completedTopicIds(topics: PlanTopic[], done: DoneTask[]): string
 
 interface Item {
   topic: PlanTopic;
-  kind: "learn" | "practice";
+  kind: "learn" | "practice" | "milestone";
   minutes: number;
+  label?: string;
+}
+
+/** One milestone after the last topic of each group; ungrouped topics get one every few topics and at the end. */
+export function milestoneAfter(open: PlanTopic[]): Map<string, string> {
+  const out = new Map<string, string>();
+  const grouped = new Set(open.map((t) => t.group ?? "")).size > 1;
+  open.forEach((t, i) => {
+    const next = open[i + 1];
+    if (grouped) {
+      if (!next || (next.group ?? "") !== (t.group ?? "")) out.set(t.id, t.group || t.title);
+    } else if (!next || (i + 1) % MILESTONE_EVERY === 0) out.set(t.id, t.title);
+  });
+  return out;
 }
 
 export function buildSchedule(input: ScheduleInput): ScheduleResult {
-  const { today, examDate, weeklyMinutes } = input;
+  const { today, weeklyMinutes } = input;
+  const examDate = input.examDate || "";
+  const dateless = !examDate;
   const studyDays = [...new Set(input.studyDays)].filter((d) => d >= 0 && d <= 6);
-  if (!isDate(examDate) || !isDate(today)) return { ok: false, error: "badDate" };
-  if (daysBetween(today, examDate) <= 0) return { ok: false, error: "examPast" };
+  if (!isDate(today) || (!dateless && !isDate(examDate))) return { ok: false, error: "badDate" };
+  if (!dateless && daysBetween(today, examDate) <= 0) return { ok: false, error: "examPast" };
   if (studyDays.length === 0) return { ok: false, error: "noStudyDays" };
   if (!(weeklyMinutes > 0)) return { ok: false, error: "noMinutes" };
 
@@ -135,15 +158,7 @@ export function buildSchedule(input: ScheduleInput): ScheduleResult {
     : (input.lessons ?? []).map((l) => ({ id: l.id, title: l.title, level: "unknown" as const }));
   if (base.length === 0) return { ok: false, error: "noTopics" };
 
-  const dates: string[] = [];
-  for (let d = today; d < examDate; d = addDays(d, 1)) if (studyDays.includes(weekdayOf(d))) dates.push(d);
-  if (dates.length === 0) return { ok: false, error: "noDates" };
-
   const budget = Math.max(1, Math.round(weeklyMinutes / studyDays.length));
-  const reserve = dates.length < 4 ? 0 : Math.min(7, Math.max(1, Math.ceil(dates.length * 0.15)));
-  const learnDates = dates.slice(0, dates.length - reserve);
-  const reserveDates = dates.slice(dates.length - reserve);
-
   const done = input.done ?? [];
   const usedOn = (d: string) => done.filter((x) => x.date === d).reduce((n, x) => n + x.minutes, 0);
   const hasDoneReview = (d: string) => done.some((x) => x.date === d && x.kind === "review");
@@ -154,22 +169,47 @@ export function buildSchedule(input: ScheduleInput): ScheduleResult {
 
   const doneIds = new Set(input.doneTopicIds ?? []);
   const open = orderTopics(base.filter((t) => !doneIds.has(t.id)));
+  const marks = dateless ? milestoneAfter(open) : new Map<string, string>();
 
   let items: Item[] = open.flatMap((topic) => {
     const need = topicNeed(topic);
-    return [
+    const list: Item[] = [
       { topic, kind: "learn" as const, minutes: need.learn },
       { topic, kind: "practice" as const, minutes: need.practice },
     ].filter((i) => i.minutes > 0);
+    if (marks.has(topic.id)) list.push({ topic, kind: "milestone", minutes: MILESTONE_MINUTES, label: marks.get(topic.id) });
+    return list;
   });
+
+  const dates: string[] = [];
+  let tightHorizon = false;
+  if (dateless) {
+    const want = items.reduce((n, i) => n + i.minutes, 0) + marks.size * MILESTONE_MINUTES;
+    let got = 0;
+    for (let d = today; got < want; d = addDays(d, 1)) {
+      if (!studyDays.includes(weekdayOf(d))) continue;
+      if (dates.length >= MAX_STUDY_DAYS) {
+        tightHorizon = true;
+        break;
+      }
+      dates.push(d);
+      got += capFor(d);
+    }
+    if (dates.length === 0) dates.push(today);
+  } else for (let d = today; d < examDate; d = addDays(d, 1)) if (studyDays.includes(weekdayOf(d))) dates.push(d);
+  if (dates.length === 0) return { ok: false, error: "noDates" };
+
+  const reserve = dateless || dates.length < 4 ? 0 : Math.min(7, Math.max(1, Math.ceil(dates.length * 0.15)));
+  const learnDates = dates.slice(0, dates.length - reserve);
+  const reserveDates = dates.slice(dates.length - reserve);
 
   const capacity = learnDates.reduce((n, d) => n + capFor(d), 0);
   const needed = items.reduce((n, i) => n + i.minutes, 0);
-  let tight = false;
+  let tight = tightHorizon;
   if (needed > capacity) {
     tight = true;
     const f = capacity / needed;
-    items = items.map((i) => ({ ...i, minutes: Math.min(i.minutes, Math.max(MIN_TASK, Math.floor(i.minutes * f))) }));
+    items = items.map((i) => (i.kind === "milestone" ? i : { ...i, minutes: Math.min(i.minutes, Math.max(MIN_TASK, Math.floor(i.minutes * f))) }));
   }
 
   const byDate = new Map<string, Omit<NewPlanTask, "date" | "ord">[]>(dates.map((d) => [d, []]));
@@ -185,6 +225,10 @@ export function buildSchedule(input: ScheduleInput): ScheduleResult {
       }
       const d = learnDates[di];
       const room = left.get(d)!;
+      if (item.kind === "milestone" && room < remaining) {
+        left.set(d, 0);
+        continue;
+      }
       // a split never leaves a piece under the minimum on either side
       const take = room >= remaining ? remaining : Math.min(room, remaining - MIN_TASK);
       if (take < MIN_TASK && take < remaining) {
@@ -198,7 +242,12 @@ export function buildSchedule(input: ScheduleInput): ScheduleResult {
         list.push({
           kind: item.kind,
           topicId: item.topic.id,
-          title: item.kind === "learn" ? s.plan.schedule.tasks.learn(item.topic.title) : s.plan.schedule.tasks.practice(item.topic.title),
+          title:
+            item.kind === "milestone"
+              ? s.goal.schedule.milestone(item.label ?? item.topic.title)
+              : item.kind === "learn"
+                ? s.plan.schedule.tasks.learn(item.topic.title)
+                : s.plan.schedule.tasks.practice(item.topic.title),
           minutes: take,
         });
       left.set(d, left.get(d)! - take);
@@ -267,13 +316,13 @@ export function replanIfMissed(plan: PlanFields, tasks: PlanTask[], today: strin
   const known = new Map([...ctx.topics, ...(ctx.lessons ?? []).map((l) => ({ id: l.id, title: l.title, level: "unknown" as const }))].map((t) => [t.id, t as PlanTopic]));
   const topics: PlanTopic[] = [...need.entries()].map(([id, n]) => {
     const t = known.get(id);
-    return { id, title: t?.title ?? n.title, level: t?.level ?? "unknown", prereqs: t?.prereqs, need: { learn: n.learn, practice: n.practice } };
+    return { id, title: t?.title ?? n.title, level: t?.level ?? "unknown", prereqs: t?.prereqs, group: t?.group, need: { learn: n.learn, practice: n.practice } };
   });
 
   const allIds = [...ctx.topics.map((x) => x.id), ...(ctx.lessons ?? []).map((l) => l.id)];
   const result = buildSchedule({
     today,
-    examDate: plan.examDate,
+    examDate: plan.examDate || null,
     weeklyMinutes: plan.weeklyMinutes,
     studyDays: plan.studyDays,
     topics: topics.length ? topics : ctx.topics,

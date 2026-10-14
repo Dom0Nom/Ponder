@@ -43,7 +43,7 @@ export function SpaceDialog({
     }
   }, [open, space]);
 
-  const submit = async () => {
+  const submit = async (thenGoal = false) => {
     if (!name.trim()) return;
     setBusy(true);
     try {
@@ -54,6 +54,7 @@ export function SpaceDialog({
       } else {
         const created = await api.createSpace({ name, icon, color: "slate", language });
         navigate({ name: "space", spaceId: created.id });
+        if (thenGoal) useUi.getState().setGoalWizard(created.id);
         const cur = curriculumById(curriculum);
         if (cur) {
           const sc = await api.curriculumSet(created.id, cur.id, cur.title, cur.topics);
@@ -77,7 +78,7 @@ export function SpaceDialog({
   };
 
   const createButton = (
-    <Button variant="primary" className="px-4" disabled={!name.trim() || busy} onClick={submit}>
+    <Button variant="primary" className="px-4" disabled={!name.trim() || busy} onClick={() => submit()}>
       {space ? s.common.save : s.common.create}
     </Button>
   );
@@ -92,6 +93,11 @@ export function SpaceDialog({
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
             {s.common.cancel}
           </Button>
+          {!space && (
+            <Button variant="secondary" disabled={!name.trim() || busy} onClick={() => submit(true)} data-testid="space-goal">
+              {s.goal.createAndSet}
+            </Button>
+          )}
           {createButton}
         </>
       }

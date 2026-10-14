@@ -33,6 +33,7 @@ mod openrouter;
 mod pack;
 pub mod paths;
 mod placement;
+mod goals;
 mod plans;
 mod practice;
 mod proxy;
@@ -218,6 +219,9 @@ pub fn run() {
             placement::course_create,
             placement::course_delete,
             placement::lesson_set_status,
+            goals::goal_get,
+            goals::goal_save,
+            goals::goal_delete,
             plans::get_study_plan,
             plans::save_study_plan,
             plans::set_plan_task_done,

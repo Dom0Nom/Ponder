@@ -7,7 +7,7 @@ use rusqlite::{params, Connection, OptionalExtension, Row};
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-const KINDS: &[&str] = &["learn", "practice", "review", "mock"];
+const KINDS: &[&str] = &["learn", "practice", "review", "mock", "milestone"];
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -152,7 +152,7 @@ pub fn save_plan(
     if goal.is_empty() {
         return Err(invalid("A plan needs a goal"));
     }
-    if !valid_date(&f.exam_date) {
+    if !f.exam_date.is_empty() && !valid_date(&f.exam_date) {
         return Err(invalid("The exam date must look like 2026-12-31"));
     }
     if f.weekly_minutes <= 0 {
@@ -311,6 +311,22 @@ mod tests {
         )
         .unwrap()
         .id
+    }
+
+    #[test]
+    fn plan_without_a_date_and_milestone_tasks_are_stored() {
+        let (db, _d) = test_db();
+        let c = db.conn().unwrap();
+        let sp = space(&c, "Skill");
+        let mut f = fields();
+        f.exam_date = String::new();
+        let mut m = nt("2026-10-14", 0, "Milestone");
+        m.kind = "milestone".into();
+        let b = save_plan(&c, &sp, &f, false, &[m]).unwrap();
+        assert_eq!(b.plan.exam_date, "");
+        assert_eq!(b.tasks[0].kind, "milestone");
+        f.exam_date = "2026-13-45x".into();
+        assert!(save_plan(&c, &sp, &f, false, &[]).is_err());
     }
 
     #[test]

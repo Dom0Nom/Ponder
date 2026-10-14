@@ -30,6 +30,7 @@ import { GeneratingStatus } from "../../components/brand/GeneratingStatus";
 import { toastError } from "../../components/ui/toast";
 import { Markdown } from "../chat/Markdown";
 import { StepCheckerPanel } from "../steps/StepChecker";
+import { LadderSession } from "./LadderSession";
 import { PracticeHub } from "./PracticeHub";
 import { ConfidencePicker } from "./ConfidencePicker";
 import { useLowEnergy } from "../focus/useLowEnergy";
@@ -44,6 +45,7 @@ export function PracticeScreen({ spaceId, topicKey }: { spaceId: string; topicKe
   const curriculum = useCurriculum(spaceId);
   const abilities = useQuery({ queryKey: qkAbilities(spaceId), queryFn: () => api.abilitiesList(spaceId) });
   const navigate = useUi((st) => st.navigate);
+  const [ladder, setLadder] = useState(false);
 
   const topics: TopicSpec[] = useMemo(
     () => (curriculum.data?.topics ?? []).map((t) => ({ key: t.id, title: t.title, description: t.description })),
@@ -80,6 +82,8 @@ export function PracticeScreen({ spaceId, topicKey }: { spaceId: string; topicKe
     return <ErrorState className="pt-24" title={s.practice.loadFailed} error={abilities.error} onRetry={() => abilities.refetch()} />;
   }
 
+  if (selected && ladder)
+    return <LadderSession key={selected.key} space={space.data} topic={selected} language={curriculumById(curriculum.data?.curriculumId ?? "")?.language} onExit={() => setLadder(false)} />;
   if (!selected && !(mixed && all.length > 0)) return <PracticeHub spaceId={spaceId} topics={all} abilityByKey={abilityByKey} onPick={pick} />;
   return (
     <Session
@@ -90,6 +94,7 @@ export function PracticeScreen({ spaceId, topicKey }: { spaceId: string; topicKe
       abilityByKey={abilityByKey}
       language={curriculumById(curriculum.data?.curriculumId ?? "")?.language}
       curriculumKeys={new Set(topics.map((t) => t.key))}
+      onLadder={selected ? () => setLadder(true) : undefined}
     />
   );
 }
@@ -109,6 +114,7 @@ function Session({
   abilityByKey,
   language,
   curriculumKeys,
+  onLadder,
 }: {
   space: Space;
   topics: TopicSpec[];
@@ -116,6 +122,7 @@ function Session({
   abilityByKey: Map<string, Ability>;
   language?: string;
   curriculumKeys: Set<string>;
+  onLadder?: () => void;
 }) {
   const qc = useQueryClient();
   const [item, setItem] = useState<PracticeItem | null>(null);
@@ -314,7 +321,12 @@ function Session({
                 <Sigma size={14} /> {s.gedExam.sheet.title}
               </Button>
             )}
-            <Button variant="ghost" size="sm" className={sheet ? undefined : "ms-auto"} onClick={() => load()} disabled={busy != null}>
+            {onLadder && (
+              <Button variant="ghost" size="sm" className={sheet ? undefined : "ms-auto"} onClick={onLadder} data-testid="open-ladder">
+                {s.ladder.open}
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" className={sheet || onLadder ? undefined : "ms-auto"} onClick={() => load()} disabled={busy != null}>
               {s.practice.skip}
             </Button>
           </div>

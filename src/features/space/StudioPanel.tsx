@@ -141,7 +141,7 @@ function ToolGrid({ space }: { space: Space }) {
       </Tile>
       <Tile icon={MapIcon} name={s.studio.plan} testId="plan-tile" onClick={() => setStudioView("plan")}>
         <Meta loading={cur.isLoading || plan.isLoading} error={!!cur.error || !!plan.error}>
-          {plan.data ? s.studio.planWeek(week.current, week.total) : cur.data ? cur.data.title : s.studio.planPick}
+          {plan.data ? (week.total ? s.studio.planWeek(week.current, week.total) : s.goal.schedule.weekOnly(week.current)) : cur.data ? cur.data.title : s.studio.planPick}
         </Meta>
       </Tile>
       <Tile icon={GraduationCap} name={s.studio.course} testId="course-tile" onClick={() => setStudioView("course")}>
