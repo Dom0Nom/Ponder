@@ -125,8 +125,20 @@ export function Composer({
   const disabled = busy || !!running || pending;
   const off = sources.ready - sources.inChat;
 
-  const box = (
-    <div className={cn("mx-auto rounded-pane border border-control bg-surface transition-colors focus-within:border-fg/40", studioOpen ? "max-w-[654px]" : "max-w-[652px]")}>
+  return (
+    <div className={cn("relative mx-auto rounded-pane border border-control bg-surface transition-colors focus-within:border-fg/40", studioOpen ? "max-w-[654px]" : "max-w-[652px]")}>
+      {running && (
+        <Fx
+          fallback={null}
+          render={() => (
+            <div aria-hidden className="pointer-events-none absolute inset-0">
+              <WorkBeam active size="line" radius={8}>
+                <div style={{ height: "100%", width: "100%" }} />
+              </WorkBeam>
+            </div>
+          )}
+        />
+      )}
       {voiceOn && <VoiceBar />}
       <textarea
         ref={ref}
@@ -234,5 +246,4 @@ export function Composer({
       />
     </div>
   );
-  return <Fx fallback={box} render={() => <WorkBeam active={!!running} size="line" radius={8}>{box}</WorkBeam>} />;
 }
