@@ -14,6 +14,9 @@ const pyBase = () => new URL(`${import.meta.env.BASE_URL}pyodide/`, location.hre
 
 let py: Worker | null = null;
 let pyBooted = false;
+let pyPackagesLoaded = false;
+const PACKAGE_TIMEOUT_MS = 90_000;
+const heavy = (code: string) => /^\s*(import|from)\s+(numpy|matplotlib|sympy)\b/m.test(code);
 let pyQueue: Promise<unknown> = Promise.resolve();
 
 function newWorker(lang: "js" | "python"): Worker {
@@ -33,7 +36,7 @@ export function runCell(lang: CellLang, code: string): Promise<CellResult> {
 
 function runOnce(lang: "js" | "python", code: string): Promise<CellResult> {
   const w = lang === "js" ? newWorker("js") : (py ??= newWorker("python"));
-  const limit = RUN_TIMEOUT_MS[lang] + (lang === "python" && !pyBooted ? BOOT_TIMEOUT_MS : 0);
+  const limit = RUN_TIMEOUT_MS[lang] + (lang === "python" && !pyBooted ? BOOT_TIMEOUT_MS : 0) + (lang === "python" && !pyPackagesLoaded && heavy(code) ? PACKAGE_TIMEOUT_MS : 0);
   return new Promise((resolve, reject) => {
     const done = () => {
       clearTimeout(timer);
@@ -45,6 +48,7 @@ function runOnce(lang: "js" | "python", code: string): Promise<CellResult> {
       if (lang === "python") {
         py = null;
         pyBooted = false;
+        pyPackagesLoaded = false;
       }
     };
     const timer = setTimeout(() => {
@@ -55,7 +59,10 @@ function runOnce(lang: "js" | "python", code: string): Promise<CellResult> {
     w.onmessage = (e: MessageEvent<CellResult & { bootMs?: number; bootFailed?: boolean }>) => {
       done();
       if (e.data.bootFailed) kill();
-      else if (lang === "python") pyBooted = true;
+      else if (lang === "python") {
+        pyBooted = true;
+        if (e.data.ok && heavy(code)) pyPackagesLoaded = true;
+      }
       resolve(e.data);
     };
     w.onerror = (e) => {
@@ -71,4 +78,5 @@ export function resetPython() {
   py?.terminate();
   py = null;
   pyBooted = false;
+  pyPackagesLoaded = false;
 }

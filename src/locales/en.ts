@@ -1135,6 +1135,8 @@ export const en = {
     runShort: "Run",
     running: "Running…",
     booting: "Loading Python (first run only)…",
+    packages: "Loading NumPy, Matplotlib or SymPy (first use only)…",
+    figure: msg<[n: number]>("Figure {0}"),
     outputMs: msg<[ms: number]>("Output · {0} ms"),
     outputSec: msg<[sec: number]>("Output · {0} s"),
     errorTitle: "Error",

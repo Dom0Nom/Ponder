@@ -1182,6 +1182,8 @@
   "codeCell.runShort": "Run",
   "codeCell.running": "Running…",
   "codeCell.booting": "Loading Python (first run only)…",
+  "codeCell.packages": "Loading NumPy, Matplotlib or SymPy (first use only)…",
+  "codeCell.figure": "Figure {0}",
   "codeCell.outputMs": "Output · {0} ms",
   "codeCell.outputSec": "Output · {0} s",
   "codeCell.errorTitle": "Error",

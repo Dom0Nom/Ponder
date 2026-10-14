@@ -19,6 +19,8 @@ export interface CellResult {
   ok: boolean;
   output: string;
   error?: string;
+  /** PNG figures (base64) the code drew with Matplotlib */
+  images?: string[];
   ms: number;
 }
 
