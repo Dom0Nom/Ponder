@@ -41,19 +41,25 @@ export interface DrainResult {
 
 let running: Promise<DrainResult> | null = null;
 
-/** Imports everything pending. Concurrent calls share one run; call again after it ends to pick up late items. */
+/** Imports everything pending, including items queued while it runs. Concurrent calls share one run. */
 export function drainInbox(): Promise<DrainResult> {
   running ??= (async () => {
     const out: DrainResult = { added: [], failed: [] };
+    const seen = new Set<string>();
     try {
-      for (const item of await api.inboxPending()) {
-        try {
-          const r = await importInboxItem(item);
-          await api.inboxFinish(item.id, r.id, null);
-          out.added.push({ spaceId: item.spaceId, title: r.title, note: r.note });
-        } catch (error) {
-          out.failed.push({ item, error });
-          await api.inboxFinish(item.id, null, error instanceof Error ? error.message : String(error)).catch(() => {});
+      for (;;) {
+        const batch = (await api.inboxPending()).filter((i) => !seen.has(i.id));
+        if (batch.length === 0) break;
+        for (const item of batch) {
+          seen.add(item.id);
+          try {
+            const r = await importInboxItem(item);
+            await api.inboxFinish(item.id, r.id, null);
+            out.added.push({ spaceId: item.spaceId, title: r.title, note: r.note });
+          } catch (error) {
+            out.failed.push({ item, error });
+            await api.inboxFinish(item.id, null, error instanceof Error ? error.message : String(error)).catch(() => {});
+          }
         }
       }
       return out;
