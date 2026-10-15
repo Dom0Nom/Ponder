@@ -1208,6 +1208,12 @@ const answerCheckEval: Task = {
           check("ran", !!verdict, err),
           check("verdict", verdict === want, verdict),
           check("ends with JSON", /\{\s*"correct"\s*:\s*\[[^\]]*\]\s*\}\s*$/.test(out)),
+        ],
+      };
+    },
+  })),
+};
+
 const worksheetEval: Task = {
   id: "worksheets",
   purpose: "Worksheets from the learner's own material in several task types (choice with several correct answers, true/false with corrections, gap text with and without word bank, matching, ordering, tables, calculations, open questions with operators and rubric, reading comprehension). German sheets use the German style names, instructions and Operatoren. JSON output, graded by code (answer keys, point sums) and the judge.",
