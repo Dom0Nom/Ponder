@@ -16,3 +16,8 @@ export const effectiveLanguage = (spaceLanguage?: string | null): string => spac
 export function languageInstruction(spaceLanguage?: string | null): string {
   return `Answer in ${languageName(effectiveLanguage(spaceLanguage))}.`;
 }
+
+/** For conversations: the learner's own language wins; the space language is the fallback. */
+export function replyLanguageInstruction(spaceLanguage?: string | null): string {
+  return `Reply in the language the learner writes in; if that's unclear, answer in ${languageName(effectiveLanguage(spaceLanguage))}.`;
+}

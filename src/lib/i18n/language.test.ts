@@ -39,8 +39,8 @@ describe("prompts use the space language", () => {
   const base = { tutorStyle: "direct" as const, passages: [], focus: null, now: 0, sourceCount: 0 };
 
   it("chat and voice tutor", () => {
-    expect(buildSystemPrompt({ ...base, space: space("es") })).toContain("Answer in Spanish.");
-    expect(buildSystemPrompt({ ...base, space: space("es"), voice: true })).toContain("Answer in Spanish.");
+    expect(buildSystemPrompt({ ...base, space: space("es") })).toContain("Reply in the language the learner writes in; if that's unclear, answer in Spanish.");
+    expect(buildSystemPrompt({ ...base, space: space("es"), voice: true })).toContain("answer in Spanish.");
   });
 
   it("studio outputs and the audio hosts", () => {
