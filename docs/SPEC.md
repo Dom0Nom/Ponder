@@ -92,11 +92,11 @@ Must work end-to-end and be verified:
 
 Cut: calendar sync, essay coach (separate from exam-simulator essay grading, which stays), debate mode, role reversal.
 
-### Status (2026-10-12)
+### Status (2026-10-15)
 
-Every roadmap item above is built except the parts listed here (details in `docs/HANDOFF.md` → Known gaps):
+Every roadmap item above is built, plus `docs/ROADMAP.md` 1–14, the context builder (`src/lib/context/`), worksheets, onboarding and 20 UI languages; the exceptions are listed here (details in `docs/HANDOFF.md`):
 - Spoken voice tutor: replies are spoken sentence by sentence while they stream; there is no barge-in by voice (the mic button interrupts).
-- Free local TTS voice: built (Kokoro-82M in the webview, "On this computer"), English voices only, never run on a real machine. The default stays Kokoro via OpenRouter.
+- Free local TTS voice: built (Kokoro-82M in the webview, "On this computer"), English voices only; runs in Chromium and WebKit, not timed on an idle machine. The default stays Kokoro via OpenRouter.
 - Windows and Linux: the Rust code compiles for Windows (GNU target) and CI builds bundles for all three, but no Windows or Linux bundle was built or run here. No web build.
 
 ## Architecture
