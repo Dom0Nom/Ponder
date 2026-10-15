@@ -210,6 +210,7 @@ const USER_DEVIATIONS: (Mask & { screens?: number[] })[] = [
   { x: 940, y: 480, w: 332, h: 100, screens: [23], reason: "Language select at the end of the space settings form (translation groundwork, requested 2026-10-14)" },
   { x: 240, y: 140, w: 1040, h: 660, screens: [1], reason: "Next replaces Start session (user decision): Next card above Today, shifts the space grid down" },
   { x: 880, y: 8, w: 280, h: 32, screens: [2, 6, 20, 23, 27, 38], reason: "Next replaces Start session (user decision): Next button in the space header" },
+  { x: 270, y: 205, w: 675, h: 510, screens: [4], reason: "Mixed practice as the default (user decision 2026-10-14): Mixed practice block above the topic list shifts it down" },
 ];
 const deviationsFor = (n: number) => USER_DEVIATIONS.filter((m) => !m.screens || m.screens.includes(n));
 

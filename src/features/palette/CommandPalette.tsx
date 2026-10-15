@@ -137,14 +137,6 @@ export function CommandPalette() {
                     </Command.Item>
                     <Command.Item
                       className={item}
-                      onSelect={() => run(() => ui.openWorksheetBuilder(spaceId))}
-                      keywords={["worksheet", "arbeitsblatt", "klassenarbeit", "test", "quiz", "print", "pdf", "docx"]}
-                    >
-                      <FileText size={15} />
-                      <span className="flex-1">{s.palette.worksheet}</span>
-                    </Command.Item>
-                    <Command.Item
-                      className={item}
                       onSelect={() =>
                         run(() => {
                           if (!ui.studioOpen) ui.toggleStudio();
@@ -157,13 +149,6 @@ export function CommandPalette() {
                       <span className="flex-1">{s.palette.feynman}</span>
                     </Command.Item>
                   </>
-                )}
-                {nextSpace && (
-                  <Command.Item className={item} onSelect={() => run(() => void startNext(nextSpace))} keywords={["next", "session", "study", "what now", "start"]}>
-                    <ArrowRight size={15} />
-                    <span className="flex-1">{s.session.next}</span>
-                    <span className="text-label text-muted">{s.session.paletteHint}</span>
-                  </Command.Item>
                 )}
                 <Command.Item className={item} onSelect={() => run(() => ui.navigate({ name: "home" }))}>
                   <House size={15} />
@@ -243,6 +228,23 @@ export function CommandPalette() {
                   <Brain size={15} />
                   <span className="flex-1">{s.memory.title}</span>
                 </Command.Item>
+                {nextSpace && (
+                  <Command.Item className={item} onSelect={() => run(() => void startNext(nextSpace))} keywords={["next", "session", "study", "what now", "start"]}>
+                    <ArrowRight size={15} />
+                    <span className="flex-1">{s.session.next}</span>
+                    <span className="text-label text-muted">{s.session.paletteHint}</span>
+                  </Command.Item>
+                )}
+                {spaceId && (
+                  <Command.Item
+                    className={item}
+                    onSelect={() => run(() => ui.openWorksheetBuilder(spaceId))}
+                    keywords={["worksheet", "arbeitsblatt", "klassenarbeit", "test", "quiz", "print", "pdf", "docx"]}
+                  >
+                    <FileText size={15} />
+                    <span className="flex-1">{s.palette.worksheet}</span>
+                  </Command.Item>
+                )}
                 <Command.Item className={item} onSelect={() => run(startTour)} keywords={["help", "guide", "intro", "walkthrough"]}>
                   <Sparkles size={15} />
                   <span className="flex-1">{s.onboarding.tour.open}</span>
