@@ -55,7 +55,7 @@ test("projects: create, log an entry, and a blocked milestone points at the topi
     (window as any).__qc.invalidateQueries();
   });
   await expect(row).toHaveAttribute("data-blocked", "false");
-  await row.getByRole("checkbox").check({ force: true });
+  await row.getByRole("checkbox").click({ force: true });
   await expect(app.getByTestId("project-progress")).toHaveText("1 of 1 milestones done");
 
   await app.getByRole("button", { name: "Back" }).click();

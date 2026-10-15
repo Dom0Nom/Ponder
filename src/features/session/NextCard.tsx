@@ -52,7 +52,7 @@ export function NextButton({ spaceId, size, children }: { spaceId: string; size?
       )}
     </Button>
   );
-  return <Fx needsWebGL2 fallback={btn} render={() => <MetalButton>{btn}</MetalButton>} />;
+  return <Fx needsWebGL2 fallback={btn} render={() => <span data-testid="next-metal" className="contents"><MetalButton>{btn}</MetalButton></span>} />;
 }
 
 export function NextCard({ spaceId }: { spaceId: string }) {

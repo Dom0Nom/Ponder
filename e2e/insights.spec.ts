@@ -61,7 +61,7 @@ test("insights: empty state, then charts, best time, mastery map and readiness f
   await expect(map.locator('[data-topic="n"]')).toHaveAttribute("data-tone", "strong");
   await expect(map.locator('[data-topic="r"]')).toHaveAttribute("data-tone", "weak");
   await expect(map.locator('[data-topic="e"]')).toHaveAttribute("data-tone", "unknown");
-  await expect(map.locator("svg path")).toHaveCount(2);
+  await expect(map.getByTestId("mastery-edges").locator("path")).toHaveCount(2);
   await expect(page.getByTestId("insights-readiness")).toContainText("chance to pass");
   await expect(page.getByTestId("insights-readiness")).toContainText("based on 2 of 3 topics");
 

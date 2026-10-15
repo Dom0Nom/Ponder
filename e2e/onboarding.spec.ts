@@ -13,7 +13,7 @@ const test = base.extend<{ ob: Page }>({
 test.setTimeout(90_000);
 
 const wizard = (p: Page) => p.getByTestId("onboarding");
-const next = (p: Page) => wizard(p).getByRole("button", { name: "Continue", exact: true }).click();
+const next = (p: Page) => wizard(p).getByRole("button", { name: /^(Continue|Weiter)$/ }).click();
 const heading = (p: Page, name: string) => expect(wizard(p).getByRole("heading", { level: 1, name })).toBeVisible({ timeout: 15_000 });
 
 async function toStep(p: Page, n: number) {
@@ -36,7 +36,7 @@ test("welcome settings apply immediately", async ({ ob }) => {
   await expect(ob.locator("html")).toHaveAttribute("data-font", "dyslexic");
   await wizard(ob).getByLabel("Language").selectOption("de");
   await expect(ob.locator("html")).toHaveAttribute("lang", "de");
-  await expect(wizard(ob).getByRole("button", { name: "Back" })).toBeVisible();
+  await expect(wizard(ob).getByRole("button", { name: "Zurück" })).toBeVisible();
 });
 
 test("Back goes to the previous step and keeps choices", async ({ ob }) => {

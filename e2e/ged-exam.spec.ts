@@ -35,7 +35,7 @@ async function script(app: Page, opts: { badKey?: boolean } = {}) {
     let bad = badKey;
     (window as any).__mock.setScript(({ messages }: any) => {
       const p = text(messages[messages.length - 1]);
-      if (p.startsWith("Write multiple-choice questions for a timed")) {
+      if (p.startsWith("Write multiple-choice questions for a timed") || p.startsWith("Write questions of several kinds for a timed")) {
         const ids = [...p.matchAll(/id "([^"]+)": [^\n]*: (\d+)/g)];
         const qs = ids.flatMap(([, id, n]) =>
           Array.from({ length: Number(n) }, (_, i) => {

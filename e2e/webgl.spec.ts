@@ -107,8 +107,10 @@ test("effects on: the new-chat mark creates exactly one context", async ({ app }
   await app.waitForFunction(() => !!(window as unknown as W).__ui);
   await newSpace(app);
   await expect(app.getByTestId("chat-empty").locator("[data-shader='on']")).toHaveCount(1);
-  await expect.poll(() => contexts(app)).toBe(1);
+  // the mark, plus the metal Next button in the space header
+  const others = () => app.getByTestId("next-metal").count();
+  await expect.poll(async () => (await contexts(app)) - (await others())).toBe(1);
   await app.waitForTimeout(800);
-  expect(await contexts(app)).toBe(1);
+  expect((await contexts(app)) - (await others())).toBe(1);
 });
 });

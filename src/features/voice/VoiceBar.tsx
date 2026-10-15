@@ -1,7 +1,6 @@
 import { lazy, useEffect } from "react";
 import { Mic, Pause, Square, Volume2, X } from "lucide-react";
 import { Fx } from "../../components/fx/Fx";
-import { ActivityOrb } from "../../components/motion/ActivityOrb";
 import { PonderMark } from "../../components/brand/PonderMark";
 import { Tooltip } from "../../components/ui/misc";
 import { s } from "../../lib/strings";
@@ -17,7 +16,6 @@ function Indicator({ phase, level }: { phase: VoicePhase; level: number }) {
   if (phase === "transcribing" || phase === "thinking") return <PonderMark size={26} state="generating" />;
   if (phase === "speaking") return <Volume2 size={20} />;
   if (phase === "paused") return <Pause size={20} />;
-  if (phase === "listening") return <ActivityOrb activity="listen" size={32} />;
   const grow = Math.min(1, level * 12);
   return (
     <span aria-hidden className="flex h-6 w-6 items-center justify-center gap-[2px]">

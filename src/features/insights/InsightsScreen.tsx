@@ -292,7 +292,7 @@ function MasteryMap({ spaceId, topics, mastery }: { spaceId: string; topics: Top
   const weak = topics.filter((t) => toneOf(byId.get(t.id)?.p ?? null) === "weak").slice(0, 4);
   return (
     <div ref={box} className="relative flex flex-col gap-4">
-      <svg className="pointer-events-none absolute inset-0 size-full overflow-visible" aria-hidden>
+      <svg className="pointer-events-none absolute inset-0 size-full overflow-visible" aria-hidden data-testid="mastery-edges">
         {edges.map((d, i) => (
           <path key={i} d={d} fill="none" className="stroke-divider" strokeWidth={1.5} />
         ))}

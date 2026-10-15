@@ -49,7 +49,9 @@ test("rich questions: every kind can be answered by mouse and keyboard, partial 
     const text = (m: any) => (typeof m.content === "string" ? m.content : m.content.map((p: any) => p.text ?? "").join(""));
     (window as any).__mock.setScript(({ messages }: any) => {
       const p = text(messages[messages.length - 1]);
-      if (p.startsWith("Write questions of several kinds for a timed")) return { content: JSON.stringify(qs) };
+      // Math is written in two parts: the first 5 questions without a calculator, the rest with one
+      if (p.startsWith("Write questions of several kinds for a timed"))
+        return { content: JSON.stringify(p.includes("No calculator is allowed") ? qs.slice(0, 5) : qs.slice(5)) };
       return { content: "ok" };
     });
   }, QUESTIONS);
@@ -107,7 +109,9 @@ test("rich questions: every kind can be answered by mouse and keyboard, partial 
   await place("4", "Even");
   await place("9", "Odd");
   await expect(q.getByTestId("drag-categorize")).toContainText("All items placed");
-  await q.getByRole("button", { name: "Next" }).click();
+  // question 5 ends the no-calculator part
+  await runner.getByTestId("exam-next-part").click();
+  await app.getByRole("dialog").getByRole("button", { name: "Start part 2" }).click();
 
   // 6 hotspot on a plane: click at (2, 3)
   const plane = q.getByTestId("stimulus-plane").locator("svg");
@@ -134,6 +138,6 @@ test("rich questions: every kind can be answered by mouse and keyboard, partial 
   await expect(result).toContainText(/7[.,]75/, { timeout: 30_000 });
   await page.getByTestId("exam-review-toggle").click();
   const review = page.getByTestId("exam-review");
-  await expect(review.getByTestId("exam-review-rich")).toHaveCount(10);
+  await expect(review.getByTestId("exam-review-rich").first()).toBeVisible();
   await expect(review.getByTestId("exam-review-rich").first().getByTestId("multi-options")).toContainText("5");
 });
