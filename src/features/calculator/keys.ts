@@ -1,4 +1,4 @@
-/** Key table from UI-SPEC §4 (device frame 400×560, CSS px). Legends use a small markup:
+/** Key table (device frame 400×560, CSS px). Legends use a small markup:
  * `{…}` after text is a superscript; `{nd}`, `{Und}`, `{pi}`, `{var}`, `{toggle}`, `{caret}` are drawn specially. */
 
 export type KeyKind = "second" | "fn" | "op" | "num";
@@ -26,7 +26,7 @@ const ROWS: Record<string, [number, number]> = {
   "6": [462.78, 36.5],
   "7": [502.53, 36.5],
 };
-/** Key pitch; each key's hit target is the full cell centred on it (UI-SPEC §4.1). */
+/** Key pitch; each key's hit target is the full cell centred on it. */
 export const PITCH = { x: 50.25, y: 39.77 };
 
 type Spec = [id: string, main: string, second: string | undefined, kind: KeyKind];
@@ -107,7 +107,7 @@ export const KEY_DEFS: KeyDef[] = Object.entries(GRID).flatMap(([row, specs]) =>
   }));
 });
 
-/** Arrow pad (UI-SPEC §5): ellipse box and the outer-edge arrow positions. */
+/** Arrow pad: ellipse box and the outer-edge arrow positions. */
 export const ARROW_PAD = { x: 227.2, y: 184.8, w: 96.3, h: 75.5, hole: { w: 18, h: 12 } };
 
 /** Physical keyboard → key name. */

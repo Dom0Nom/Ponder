@@ -1,6 +1,6 @@
 # Ponder (ai-learning-app)
 
-Local-first AI learning desktop app (Tauri 2 + React + TS). Specs: `docs/SPEC.md` (source of truth), `docs/PLAN.md` (how it's built + deviations), `docs/OAUTH.md`, `docs/HANDOFF.md` (current state).
+Local-first AI learning desktop app (Tauri 2 + React + TS). Specs: `docs/SPEC.md` (source of truth), `docs/PLAN.md` (how it's built + deviations), `docs/OAUTH.md`.
 
 ## Commands
 
@@ -47,15 +47,15 @@ Tauri WebDriver doesn't work on macOS. Run `bun run tauri dev`, then screenshot 
 - RTL (ar, ur, fa): use logical utilities (`ms-/me-/ps-/pe-/start-/end-/text-start/text-end/border-s/rounded-s`, `margin-inline-start`), never `ml-/pl-/left-/text-left`, except centering with `left-1/2` and the calculator. Mirrored icons, slide directions and `--dir-x` live in `src/styles/rtl.css`; code, math, timers, plots and calculators set `dir="ltr"`.
 - Fonts: IBM Plex Sans covers Latin, Greek and Cyrillic; script fallbacks are loaded per language by `src/lib/i18n/fonts.ts` and listed in `--font-fallbacks` (`src/index.css`). Colors via theme tokens (`bg-surface`, `text-muted`, `bg-primary`…), never raw hex in components. There is no accent color.
 - Tokens: names live in `src/index.css` (colors, radii, type scale, shadows, `--motion-*`). `--calc-*` only inside the calculator.
-- Motion: `src/styles/transitions/<slug>.css` are real transitions.dev snippets (keep the attribution header; edit only as documented there), app-specific motion is in `src/styles/app-motion.css`. Durations/easings come from `--motion-*`. Reduce motion and Visual effects are settings that set `data-motion` on `<html>`; reduced motion removes all animation. WebGL effects only behind Visual effects. `docs/redesign/07-motion-prominent.md` is the motion spec and wins over older motion docs.
+- Motion: `src/styles/transitions/<slug>.css` are real transitions.dev snippets (keep the attribution header; edit only as documented there), app-specific motion is in `src/styles/app-motion.css`. Durations/easings come from `--motion-*`. Reduce motion and Visual effects are settings that set `data-motion` on `<html>`; reduced motion removes all animation. WebGL effects only behind Visual effects.
 - `studioView` in `src/stores/ui.ts` says which Studio panel is open (`focus`, `microsteps`, `lowEnergy`, `journal`, `flashcards`, `steps`, `plan`, `course`, `settings`, `calculator`, `create`, `feynman`, or `null`). It is not persisted.
 - Pixel gate: `bun scripts/design-diff.ts [--port N]` renders the app with `?fixture=design` and compares it to the design artboards. No masks. `region` only for artboards whose design backdrop is outdated; user-requested changes go in `USER_DEVIATIONS`. Run it after any UI change.
 - Platform-specific Rust (AppleScript music, NSWorkspace, `screencapture`, file modes) sits behind `cfg` gates with a stub for other OSes; keep the Windows check above green.
 - Pyodide is copied into the bundle by `scripts/vite-pyodide.ts` (imported by `vite.config.ts`); bumping pyodide means checking its file list.
 - Anything that makes sound in tests runs Chromium with `--mute-audio`; never play audio through the speakers.
-- Calculator is clean-room: the builder never reads the reference; `docs/redesign/calculator/` is the only channel.
+- Calculator behaviour is specified in `docs/redesign/calculator/` (`BEHAVIOR.md`, `vectors.json`); the engine tests run every vector.
 - Minimal comments. Commit messages: short list of what changed, no AI trailers.
 
 ## Dev LLM
 
-Use OpenRouter with cheap models for live checks: `OPENROUTER_API_KEY=… bun scripts/e2e-*.ts` (default `deepseek/deepseek-v4.1-flash`; `anthropic/claude-haiku-4.5` for comparisons). The key is never stored in the repo. LM Studio on the LAN PC (`http://192.168.1.20:1234/v1`, `qwen3.5-9b`) is also a gaming PC: only use it when the user says it's free, and `lms unload --all` afterwards. Qwen reasons by default; `reasoning_effort: "none"` (AI SDK `reasoning: "none"`) turns it off. Don't run models on this Mac.
+Use OpenRouter with cheap models for live checks: `OPENROUTER_API_KEY=… bun scripts/e2e-*.ts` (default `deepseek/deepseek-v4.1-flash`; `anthropic/claude-haiku-4.5` for comparisons). The key is never stored in the repo. For a local model, point `LMSTUDIO_URL` at an LM Studio or Ollama server (default `http://localhost:1234/v1`). Qwen reasons by default; `reasoning_effort: "none"` (AI SDK `reasoning: "none"`) turns it off.

@@ -1,12 +1,14 @@
 # Roadmap: learning engine and GED fidelity
 
+Written 2026-10-12 from a review with three Haiku agents (learning science, robotics, learner journey) and two more (GED prep, generic architecture). Scores at the time: generic learning 45/100, "190+ on all four GED tests by December" 35/100.
 
+Goal right now: near-max GED scores (190+/200 on Math, RLA, Science, Social Studies) by December 2026. Constraint: every feature except the GED fixes must work for any subject, with or without an exam (GED, SAT, IHK, robotics, a language, a book).
 
 Outside the app: take the official GED Ready test per subject (ged.com) for a real baseline. The app's score is an estimate; GED Ready is the only official predictor.
 
 ## Status (2026-10-15)
 
-All 14 items are built (see `docs/HANDOFF.md` for gaps per item). Animation picks below are superseded by `docs/redesign/07-motion-prominent.md` where they differ. Open decisions are decided: Next replaces "Start session" as the main session button and carries metal-fx; mixed practice is the default; rarely used Studio formats go behind "More" in Create.
+All 14 items are built. Open decisions are decided: Next replaces "Start session" as the main session button and carries metal-fx; mixed practice is the default; rarely used Studio formats go behind "More" in Create.
 
 ## Order
 
@@ -25,12 +27,13 @@ All 14 items are built (see `docs/HANDOFF.md` for gaps per item). Animation pick
 13. Projects and build log — done
 14. Lab cards — done
 
+Items 1–9 serve the GED by December; 10–14 make the app strong for open-ended subjects.
 
-> Animation lines in this file are the minimum. `docs/redesign/07-motion-prominent.md` supersedes them (orbs for waits over 0.5 s, Libraries.dev effects per section 3, re-picked snippets, one metal CTA per screen).
+> Animation lines in this file are the minimum. The shipped motion (orbs for waits over 0.5 s, re-picked snippets, one metal CTA per screen) lives in `src/styles/`.
 
 ## Animation sources
 
-Same rules as `docs/redesign/04-motion.md`: one pick per spot, durations and easings from `--motion-*`, Reduce motion removes everything.
+One pick per spot, durations and easings from `--motion-*`, Reduce motion removes everything.
 
 | Short | Source | How it's used in code |
 |---|---|---|
@@ -39,13 +42,13 @@ Same rules as `docs/redesign/04-motion.md`: one pick per spot, durations and eas
 | **FX** | Libraries.dev accent effects: border-beam 1.4.1, metal-fx 2.0.11 | `ResearchBeam`, `MetalButton`. Decision 11 allows exactly two spots (deep-research panel, "Start session"), behind Visual effects. No new spots without a decision |
 | own | `src/styles/app-motion.css` | Only where no TD snippet fits; uses `--motion-*` tokens so the global reduce rule covers it |
 
-Not used anywhere new: the 11 rejected TD snippets (§7.1 of `04-motion.md`), including `spinning-counter`, `card-tilt`, `like-button` and `input-clear-dissolve`. Plots and live data never animate: values must be readable at once.
+Not used anywhere new: the 11 rejected TD snippets, including `spinning-counter`, `card-tilt`, `like-button` and `input-clear-dissolve`. Plots and live data never animate: values must be readable at once.
 
 ---
 
 ## 1. GED fixes (GED only)
 
-- **What:** Math gets a no-calculator part (the first 5 questions, own timer split, calculator unlocks after it). Social Studies gets the calculator (the real test allows the reference calculator there). A formula sheet panel in Math and Science exams and in Math practice, matching the official GED formula sheet (area, perimeter, volume, surface area, slope, quadratic formula, Pythagorean theorem, simple interest, distance, total cost).
+- **What:** Math gets a no-calculator part (the first 5 questions, own timer split, calculator unlocks after it). Social Studies gets the calculator (the real test allows the TI-30XS there). A formula sheet panel in Math and Science exams and in Math practice, matching the official GED formula sheet (area, perimeter, volume, surface area, slope, quadratic formula, Pythagorean theorem, simple interest, distance, total cost).
 - **Where:** `src/lib/exam/formats.ts` (`parts` on a section: `[{ questions: 5, calculator: false }, { calculator: true }]`; Social Studies `calculator: true`), `src/features/exam/ExamScreen.tsx`, new `src/features/exam/FormulaSheet.tsx`, strings in `strings.ts`.
 - **Animation:**
   - Formula sheet opens as a side panel: TD `panel-reveal` (`.t-panel-slide`, X axis, like Studio/Sources).
@@ -178,7 +181,7 @@ Not used anywhere new: the 11 rejected TD snippets (§7.1 of `04-motion.md`), in
 - **What:** bundle `numpy`, `matplotlib` and `sympy` wheels with Pyodide (offline). Matplotlib figures render as cell output. SymPy lets the step checker handle derivatives, matrices and simplification.
 - **Where:** `scripts/vite-pyodide.ts` (file list; per CLAUDE.md, check it when bumping), `src/lib/codecell/pyWorker.ts` (`loadPackage` from the bundled files), `src/lib/steps/` (SymPy path).
 - **Animation:** first package load (several seconds): TO `plan` (weaving, as the search model load uses) + TD `text-states-swap` "Loading NumPy…" → "Ready"; figure output TD `skeleton-reveal`.
-- **Tests:** Vitest can't run Pyodide; e2e runs a NumPy cell and a Matplotlib figure. Note bundle size in HANDOFF.
+- **Tests:** Vitest can't run Pyodide; e2e runs a NumPy cell and a Matplotlib figure.
 
 ## 13. Projects and build log (generic: any hands-on skill)
 

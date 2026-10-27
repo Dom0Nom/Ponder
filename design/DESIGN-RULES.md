@@ -8,7 +8,7 @@ Reference screen: `Space Screen v2.dc.html` → 2a (light) and 2b (dark). Every 
 - Minimal: no captions, decorative labels, filler, fake accounts or features the app doesn't have.
 - One clear control instead of several; buttons must match real app behavior. Icon-only buttons need clear meaning or a tooltip.
 - Important info big and readable (e.g. timer 56px). Use empty space well.
-- Simulations of real objects (e.g. reference calculator) must match the real thing closely.
+- Simulations of real objects (e.g. TI-30XS) must match the real thing closely.
 - Back decisions with real desktop apps (Mobbin) when unsure.
 
 # Workflow per page

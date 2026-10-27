@@ -15,7 +15,7 @@ export interface Mask {
   y: number;
   w: number;
   h: number;
-  /** names the decision that allows this mask (DECISIONS #8, #13, 05-brand.md, 06-calculator.md, removed placeholder data) */
+  /** names the decision that allows this mask (a design decision or removed placeholder data) */
   reason: string;
 }
 
@@ -117,7 +117,7 @@ const outside = (box: { x: number; y: number; w: number; h: number }, reason: st
 ];
 const STUDIO_BOX = { x: 931, y: 49, w: 341, h: 743 };
 const STUDIO_IN_CARD =
-  "DECISIONS #2: the app's Studio is the 2a column (328px, outside the chat card); screens 22-26 draw it inside the card at 340px. The recipe re-lays the panel into the design's box; the sidebar and chat around it differ by 2a decisions";
+  "a layout decision: the app's Studio is the 2a column (328px, outside the chat card); screens 22-26 draw it inside the card at 340px. The recipe re-lays the panel into the design's box; the sidebar and chat around it differ by 2a decisions";
 /** Moves the real Studio panel into the 340px slot inside the chat card that screens 22-26 draw. */
 const studioInCard = (p: Page) =>
   p.addStyleTag({
@@ -275,7 +275,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   13: {
     title: "Check my steps",
-    region: { x: 931, y: 49, w: 341, h: 743, reason: "the design draws this panel inside the chat card at 340px; the app's Studio is the 2a column outside the card (DECISIONS #2), so only the panel is compared, re-laid into the design's box" },
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the design draws this panel inside the chat card at 340px; the app's Studio is the 2a column outside the card (a layout decision), so only the panel is compared, re-laid into the design's box" },
     setup: async (p) => {
       await space(p);
       await studio(p, "steps", "Check my steps");
@@ -299,7 +299,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   15: {
     title: "Flashcards",
-    region: { x: 931, y: 49, w: 341, h: 743, reason: "the design draws this panel inside the chat card at 340px; the app's Studio is the 2a column outside the card (DECISIONS #2), so only the panel is compared, re-laid into the design's box" },
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the design draws this panel inside the chat card at 340px; the app's Studio is the 2a column outside the card (a layout decision), so only the panel is compared, re-laid into the design's box" },
     query: "cards=browse",
     native: true,
     setup: async (p) => {
@@ -373,7 +373,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   20: {
     title: "Learning plan",
-    region: { x: 931, y: 49, w: 341, h: 743, reason: "the design draws this panel inside the chat card at 340px; the app's Studio is the 2a column outside the card (DECISIONS #2), so only the panel is compared, re-laid into the design's box" },
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the design draws this panel inside the chat card at 340px; the app's Studio is the 2a column outside the card (a layout decision), so only the panel is compared, re-laid into the design's box" },
     query: "curriculum=plan",
     setup: async (p) => {
       await space(p);
@@ -383,7 +383,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   21: {
     title: "Course",
-    region: { x: 931, y: 49, w: 341, h: 743, reason: "the design draws this panel inside the chat card at 340px; the app's Studio is the 2a column outside the card (DECISIONS #2), so only the panel is compared, re-laid into the design's box" },
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the design draws this panel inside the chat card at 340px; the app's Studio is the 2a column outside the card (a layout decision), so only the panel is compared, re-laid into the design's box" },
     setup: async (p) => {
       await space(p);
       await studio(p, "course", "Course");
@@ -392,7 +392,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   22: {
     title: "Journal",
-    region: { x: 931, y: 49, w: 341, h: 743, reason: "the artboard draws an older space screen with the Studio inside the chat card (340px); DECISIONS #2 keeps the app's Studio at 328px, so the recipe lays the real panel into the artboard's box" },
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the artboard draws an older space screen with the Studio inside the chat card (340px); a layout decision keeps the app's Studio at 328px, so the recipe lays the real panel into the artboard's box" },
     setup: async (p) => {
       await space(p);
       await studio(p, "journal", "Journal");
@@ -401,7 +401,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   23: {
     title: "Space settings",
-    region: { x: 931, y: 49, w: 341, h: 743, reason: "the artboard draws an older space screen with the Studio inside the chat card (340px); DECISIONS #2 keeps the app's Studio at 328px, so the recipe lays the real panel into the artboard's box" },
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the artboard draws an older space screen with the Studio inside the chat card (340px); a layout decision keeps the app's Studio at 328px, so the recipe lays the real panel into the artboard's box" },
     native: true,
     setup: async (p) => {
       await space(p);
@@ -412,7 +412,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   24: {
     title: "Focus session running",
-    region: { x: 931, y: 49, w: 341, h: 743, reason: "the artboard draws an older space screen with the Studio inside the chat card (340px); DECISIONS #2 keeps the app's Studio at 328px, so the recipe lays the real panel into the artboard's box" },
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the artboard draws an older space screen with the Studio inside the chat card (340px); a layout decision keeps the app's Studio at 328px, so the recipe lays the real panel into the artboard's box" },
     query: "focus=work",
     native: true,
     setup: async (p) => {
@@ -423,7 +423,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   25: {
     title: "Where do I start?",
-    region: { x: 931, y: 49, w: 341, h: 743, reason: "the artboard draws an older space screen with the Studio inside the chat card (340px); DECISIONS #2 keeps the app's Studio at 328px, so the recipe lays the real panel into the artboard's box" },
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the artboard draws an older space screen with the Studio inside the chat card (340px); a layout decision keeps the app's Studio at 328px, so the recipe lays the real panel into the artboard's box" },
     setup: async (p) => {
       await space(p);
       await studio(p, "microsteps", "Where do I start");
@@ -432,7 +432,7 @@ export const SCREENS: Record<number, Screen> = {
   },
   26: {
     title: "Low-energy session",
-    region: { x: 931, y: 49, w: 341, h: 743, reason: "the artboard draws an older space screen with the Studio inside the chat card (340px); DECISIONS #2 keeps the app's Studio at 328px, so the recipe lays the real panel into the artboard's box" },
+    region: { x: 931, y: 49, w: 341, h: 743, reason: "the artboard draws an older space screen with the Studio inside the chat card (340px); a layout decision keeps the app's Studio at 328px, so the recipe lays the real panel into the artboard's box" },
     setup: async (p) => {
       await space(p);
       await studio(p, "lowEnergy", "Low-energy");

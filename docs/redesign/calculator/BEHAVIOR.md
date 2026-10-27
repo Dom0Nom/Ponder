@@ -1,6 +1,6 @@
 # Calculator behavior spec (GED test layout)
 
-Source of truth for the builder of `src/features/calculator/`. Written clean-room: from observing the reference emulator as a black box (keys clicked, LCD pixels read) and from TI's public *reference calculator guidebook* (2019 edition, cited as **GB p.N**). No code, artwork or font data from the reference is used or described here.
+Source of truth for the builder of `src/features/calculator/`. Written clean-room: from observing the reference emulator as a black box (keys clicked, LCD pixels read) and from TI's public *TI-30XS MultiView guidebook* (2019 edition, cited as **GB p.N**). No code, artwork or font data from the reference is used or described here.
 
 ## Changes (fourth random check, seed 4)
 
@@ -204,7 +204,7 @@ The Home screen scrolls by dot rows, so the top row can be cut. A row is written
 
 ### 2.4 Special screens
 - **Error / message screens:** `["", "DIVIDE BY 0", "Error"]`, `["", "MEMORY CLEARED"]`. Text centered on the device; the encoding has no alignment.
-- **Mode screen:** four rows exactly as `«DEG» RAD GRAD`, `«NORM» SCI ENG`, `«FLOAT» 0123456789` (with FIX n: `FLOAT 01«2»3456789`), `CLASSIC «MATHPRINT»`.
+- **Mode screen:** four rows exactly as `«DEG» RAD GRAD`, `«NORM» SCI ENG`, `«FLOAT» 0123456789` (with FIX n: `FLOAT 01«2»3456789`), `CLASSIC «MATH»`.
 - **Small-font setup screens** (stat setup, ...): six-dot rows; an empty row is `""`. Example: `["1-VAR STATS", "DATA: «L1» L2 L3", "FRQ: «ONE» L1 L2 L3", "", "CALC"]`.
 - **Data editor:** one row per visible list row, cells joined by `|` (`L1|L2|L3`), empty cell `""`, empty slot placeholder `------`; then the edit line (`L1(5)=`, `«L2(1)=»46.4` when the list has a formula). The column titles are the indicators `L1 L2 L3`. Example: `["55||", "55||", "55||", "«------»||", "L1(5)="]`.
 - **Function table:** header `x|y`, three rows `x|y`, then the edit line: `["x|y", "«15»|315", "18|324", "21|315", "x=15"]`.
@@ -265,7 +265,7 @@ Observed combinations: fresh screen: none; after `enter`: `↑ ↓`; typing a ne
 ## 4. Power, reset and start state [ref]
 
 - `on` turns the unit on; `2nd`,`on` turns it off (GB p.1: history, settings and memory are kept). Not verified on the reference (see Changes).
-- **Reset**: `2nd`,`0` shows `«Reset»` / `«1:»No` / `2:Yes`. `2` resets: DEG, NORM, FLOAT, MATHPRINT, variables 0, lists empty, K off, Ans 0, history empty. The screen shows `["", "MEMORY CLEARED"]`; `clear` returns to an empty Home screen.
+- **Reset**: `2nd`,`0` shows `«Reset»` / `«1:»No` / `2:Yes`. `2` resets: DEG, NORM, FLOAT, MATH, variables 0, lists empty, K off, Ans 0, history empty. The screen shows `["", "MEMORY CLEARED"]`; `clear` returns to an empty Home screen.
 - The reference page itself loads a saved state: RAD mode with `MEMORY CLEARED` on screen. That is why every vector starts with a reset.
 - **Vector start state**: page reload, then `2nd`,`0`,`2`, then `clear`, then the vector's mode prefix (`vectors.json` → `modes`), then `keys`. Expected text is read after the last key.
 

@@ -1,6 +1,6 @@
 # Ideas
 
-★ = from the original brief. Everything else is a proposal; keep, cut, or defer during grilling.
+★ = part of the original brief. Everything else is a proposal.
 
 ## Spaces ("notebooks")
 - ★ Separate spaces per subject (GED, robotics, programming, ...)
@@ -37,10 +37,10 @@
 - Tutor modes: Socratic (asks, hints, doesn't hand over answers), direct explain, ELI5 ladder
 - Feynman mode: you explain a topic (voice or text), AI finds the gaps
 - Highlight any text → "quiz me on this" / "explain" / "make a card"
-- Exam simulator: timed mock exams in the real format (GED: 4 subjects, on-screen reference calculator-style calculator, RLA extended response graded against the official rubric)
+- Exam simulator: timed mock exams in the real format (GED: 4 subjects, on-screen TI-30XS-style calculator, RLA extended response graded against the official rubric)
 - Readiness score: predicted chance of passing, per subject
 - Interleaving: mix topics in practice sessions instead of blocking one topic
-- ★ Simulated calculators: reference calculator-style (GED), TI-84-style graphing, scientific, graphing (behavioral re-implementations, no TI ROMs)
+- ★ Simulated calculators: TI-30XS-style (GED), TI-84-style graphing, scientific, graphing (behavioral re-implementations, no TI ROMs)
 - Math rendering (LaTeX) and step-by-step worked solutions
 - Code cells for programming spaces (run Python/JS in a sandbox)
 - Voice tutor: spoken back-and-forth conversation
@@ -84,6 +84,7 @@
 - Plugin system later
 
 ## Known constraints and unknowns
+- Dev machine is an Intel i7 MacBook (2019), macOS 15.7: no MLX, no Apple Foundation Models (both need Apple Silicon); local LLMs via Ollama run on CPU, small models only.
 - Anthropic does not allow Claude subscription OAuth in third-party apps → Claude via API key only.
 - ChatGPT sign-in (as Codex CLI does) and xAI/Grok OAuth: availability and terms for third-party apps must be verified before building.
 - Google Drive / Dropbox OAuth need registered app client IDs (free, but Google's verification process applies for public release).

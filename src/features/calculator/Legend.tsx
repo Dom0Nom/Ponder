@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-/** Key legends drawn in SVG so baselines land where UI-SPEC §4.4 measures them. */
+/** Key legends drawn in SVG for exact baselines. */
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 

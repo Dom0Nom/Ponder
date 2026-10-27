@@ -130,7 +130,7 @@ function padPath(edges: Pt[][], r = 3): string {
 
 const line = (a: Pt, b: Pt): Pt[] => [loc(a), loc(b)];
 
-// Pad outlines are the outer edge of the 1 px ring (UI-SPEC §5); the black outline is drawn outside it.
+// Pad outlines are the outer edge of the 1 px ring; the black outline is drawn outside it.
 const UW = 28.3;
 const UT = onEllipseX(ECX - UW, true);
 const UTR = onEllipseX(ECX + UW, true);

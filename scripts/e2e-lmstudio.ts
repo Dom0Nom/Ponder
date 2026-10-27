@@ -6,7 +6,7 @@ import { streamText } from "ai";
 import { callOptions, createLanguageModel } from "../src/lib/providers/model";
 import type { Provider } from "../src/lib/types";
 
-const baseUrl = process.argv[2] ?? process.env.LMSTUDIO_URL ?? "http://192.168.1.20:1234/v1";
+const baseUrl = process.argv[2] ?? process.env.LMSTUDIO_URL ?? "http://localhost:1234/v1";
 const modelId = process.argv[3] ?? process.env.LMSTUDIO_MODEL ?? "qwen3.5-9b";
 
 const provider: Provider = {

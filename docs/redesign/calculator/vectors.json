@@ -10937,7 +10937,7 @@
      "«DEG» RAD GRAD",
      "«NORM» SCI ENG",
      "«FLOAT» 0123456789",
-     "CLASSIC «MATHPRINT»"
+     "CLASSIC «MATH»"
     ],
     "indicators": [
      "DEG"
@@ -10961,7 +10961,7 @@
      "DEG «RAD» GRAD",
      "«NORM» SCI ENG",
      "«FLOAT» 0123456789",
-     "CLASSIC «MATHPRINT»"
+     "CLASSIC «MATH»"
     ],
     "indicators": [
      "RAD"
@@ -10986,7 +10986,7 @@
      "«DEG» RAD GRAD",
      "NORM «SCI» ENG",
      "«FLOAT» 0123456789",
-     "CLASSIC «MATHPRINT»"
+     "CLASSIC «MATH»"
     ],
     "indicators": [
      "SCI",
@@ -11015,7 +11015,7 @@
      "«DEG» RAD GRAD",
      "«NORM» SCI ENG",
      "FLOAT 01«2»3456789",
-     "CLASSIC «MATHPRINT»"
+     "CLASSIC «MATH»"
     ],
     "indicators": [
      "FIX",
@@ -11041,7 +11041,7 @@
      "DEG RAD «GRAD»",
      "«NORM» SCI ENG",
      "«FLOAT» 0123456789",
-     "CLASSIC «MATHPRINT»"
+     "CLASSIC «MATH»"
     ],
     "indicators": [
      "GRAD"
@@ -11067,7 +11067,7 @@
      "«DEG» RAD GRAD",
      "NORM SCI «ENG»",
      "«FLOAT» 0123456789",
-     "CLASSIC «MATHPRINT»"
+     "CLASSIC «MATH»"
     ],
     "indicators": [
      "ENG",
@@ -11094,7 +11094,7 @@
      "«DEG» RAD GRAD",
      "«NORM» SCI ENG",
      "«FLOAT» 0123456789",
-     "«CLASSIC» MATHPRINT"
+     "«CLASSIC» MATH"
     ],
     "indicators": [
      "DEG"

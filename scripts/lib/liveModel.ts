@@ -10,7 +10,7 @@ export function liveModel(modelId?: string): ResolvedModel {
   const key = process.env.OPENROUTER_API_KEY;
   const provider: Provider = key
     ? { id: "live-openrouter", type: "openrouter", kind: "apiKey", name: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", config: {}, createdAt: 0 }
-    : { id: "live-lmstudio", type: "lmstudio", kind: "local", name: "LM Studio", baseUrl: process.env.LMSTUDIO_URL ?? "http://192.168.1.20:1234/v1", config: {}, createdAt: 0 };
+    : { id: "live-lmstudio", type: "lmstudio", kind: "local", name: "LM Studio", baseUrl: process.env.LMSTUDIO_URL ?? "http://localhost:1234/v1", config: {}, createdAt: 0 };
   const id = modelId ?? (key ? "deepseek/deepseek-v4.1-flash" : "qwen3.5-9b");
   const fetchWithKey: typeof fetch = (input, init) => {
     const headers = new Headers(init?.headers);

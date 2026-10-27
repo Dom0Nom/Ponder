@@ -17,7 +17,7 @@ Page side-by-side, Panel reveal, Reasoning stream, Skeleton loader and reveal,
 Streaming text, Success check, Tabs sliding, Text states swap, Texts reveal,
 Thinking states, Toast open / close, Tooltip open/close.
 
-Re-picked snippets (07-motion-prominent): Card resize, Avatar group hover, Input clear dissolve, Shimmer text,
+Re-picked snippets: Card resize, Avatar group hover, Input clear dissolve, Shimmer text,
 Card tilt, Plus menu morph, Like button, Spinning counter, Toggle, Matrix loader, Banner stacking. The ones in
 use (Spinning counter, Toggle, Shimmer text, Like button, Card tilt, Avatar group hover) are written to the
 snippets' documented knobs in `src/styles/app-motion.css`, not copied from the originals.

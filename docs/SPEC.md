@@ -1,6 +1,6 @@
 # Spec
 
-Free, MIT-licensed, local-first AI learning platform. Desktop app, macOS first, later Windows, Linux, web. Name: Ponder (repo folder and bundle identifier keep the old codename `ai-learning-app` / `dev.ponder.app`).
+Free, MIT-licensed, local-first AI learning platform. Desktop app, macOS first, later Windows, Linux, web. Name: Ponder (bundle identifier `dev.ponder.app`).
 
 NotebookLM is the baseline, not the ceiling: sources + grounded AI + generated study material, plus focus sessions the AI is part of, study plans, and real learning-science tools.
 
@@ -80,7 +80,7 @@ Must work end-to-end and be verified:
 - Study plans: goal + exam date + weekly hours → schedule, Today view, auto re-plan on missed days
 - Studio: reports, mind map, slide deck (PPTX/PDF export), data tables (CSV/XLSX), infographics, audio overview (interruptible, multiple formats), video overview, cheat sheets, timelines, editable diagrams, printable worksheets, daily audio briefing
 - Insights: retention curves, best study time, review-before-sleep suggestions; automatic local backups; CLI + URL scheme
-- Simulated calculators: reference calculator-style (GED), TI-84-style graphing, scientific, plain graphing. Behavioral re-implementations, no TI ROMs or trademarks.
+- Simulated calculators: TI-30XS-style (GED), TI-84-style graphing, scientific, plain graphing. Behavioral re-implementations, no TI ROMs or trademarks.
 - Mastery map (topic graph colored by mastery) + readiness score
 - Exam simulator: timed mocks in real formats (GED first: 4 subjects, calculator, RLA essay graded against the rubric)
 - Feynman mode + spoken voice tutor
@@ -94,7 +94,7 @@ Cut: calendar sync, essay coach (separate from exam-simulator essay grading, whi
 
 ### Status (2026-10-15)
 
-Every roadmap item above is built, plus `docs/ROADMAP.md` 1–14, the context builder (`src/lib/context/`), worksheets, onboarding and 20 UI languages; the exceptions are listed here (details in `docs/HANDOFF.md`):
+Every roadmap item above is built, plus `docs/ROADMAP.md` 1–14, the context builder (`src/lib/context/`), worksheets, onboarding and 20 UI languages; the exceptions are listed here:
 - Spoken voice tutor: replies are spoken sentence by sentence while they stream; there is no barge-in by voice (the mic button interrupts).
 - Free local TTS voice: built (Kokoro-82M in the webview, "On this computer"), English voices only; runs in Chromium and WebKit, not timed on an idle machine. The default stays Kokoro via OpenRouter.
 - Windows and Linux: the Rust code compiles for Windows (GNU target) and CI builds bundles for all three, but no Windows or Linux bundle was built or run here. No web build.
@@ -109,6 +109,7 @@ Every roadmap item above is built, plus `docs/ROADMAP.md` 1–14, the context bu
 
 ## Constraints
 
-- Dev/test LLM: LM Studio on the LAN PC (Ryzen 5 3600, 32 GB RAM, RX 5700 XT 8 GB, Vulkan runtime) at `http://192.168.1.20:1234/v1` (OpenAI-compatible), model id `qwen3.5-9b` (Qwen3.5-9B Q4_K_M, 16k context, vision-capable); `text-embedding-nomic-embed-text-v1.5` is also on that box. If unreachable: `ssh dom0nom@192.168.1.20` (fish shell, wrap commands in `bash -c`), then `~/.lmstudio/bin/lms server start --bind 0.0.0.0 --port 1234` and `lms load qwen/qwen3.5-9b --gpu max --context-length 16384 --identifier qwen3.5-9b -y`. Qwen3.5 reasons by default (a short answer used 400+ reasoning tokens before any content): handle `reasoning_content` separately (collapsible "thinking"), don't set low `max_tokens`, and offer a thinking on/off toggle. LM Studio is a first-class local provider (base URL configurable, default `http://localhost:1234/v1`).
+- Dev machine: Intel i7 MacBook (2019), macOS 15.7, Rust 1.98, bun 1.3, Node 22, Ollama 0.30 installed but too slow for real use. No Apple Silicon: no MLX, no Apple Foundation Models. Keep CPU work (embeddings, local TTS) light and off the UI thread.
+- Dev/test LLM: any OpenAI-compatible local server works (LM Studio, Ollama). Set `LMSTUDIO_URL` for the live scripts (default `http://localhost:1234/v1`). Qwen3.5 reasons by default (a short answer can use 400+ reasoning tokens before any content): handle `reasoning_content` separately (collapsible "thinking"), don't set low `max_tokens`, and offer a thinking on/off toggle. LM Studio is a first-class local provider (base URL configurable, default `http://localhost:1234/v1`).
 - Tauri WebDriver testing is not supported on macOS (WKWebView). UI is tested in the browser via Vite with mocked Tauri IPC (`@tauri-apps/api/mocks`) + Playwright; Rust logic via `cargo test`; TS logic via Vitest.
 - YouTube transcript fetching is unofficial and can break; isolate it and fail with a clear message.

@@ -577,7 +577,7 @@ const MODE_ROWS = [
   ["DEG", "RAD", "GRAD"],
   ["NORM", "SCI", "ENG"],
   ["FLOAT", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
-  ["CLASSIC", "MATHPRINT"],
+  ["CLASSIC", "MATH"],
 ];
 
 function modeSelected(m: Modes): number[] {

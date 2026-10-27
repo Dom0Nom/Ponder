@@ -451,26 +451,23 @@ input[type="range"].slider { -webkit-appearance: none; appearance: none; height:
 
 /* Calculator (GED test layout): device colors, identical in light and dark (a physical-object simulation). */
 :root {
-  --calc-body: #434e54;
+  --calc-body: #2b2d31;
   --calc-lcd: #ffffff;
   --calc-lcd-ink: #000000;
   --calc-key-border: #000000;
-  --calc-key-fn: #546168;
-  --calc-key-op: #32373d;
-  --calc-key-num: #ffffff;
-  --calc-key-2nd: #aacc7a;
+  --calc-key-fn: #44474e;
+  --calc-key-op: #1c1d20;
+  --calc-key-num: #f4f4f5;
+  --calc-key-2nd: #a9bcf5;
   --calc-legend-light: #ffffff;
-  --calc-legend-dark: #3b3c3d;
-  --calc-legend-2nd-key: #414344;
-  --calc-second-on-dark: #dbf78d;
-  --calc-second-on-light: #64820a;
-  --calc-key-ring: #9da5aa;
-  --calc-key-pressed: #b82e2e;
+  --calc-legend-dark: #26272b;
+  --calc-legend-2nd-key: #1c1d20;
+  --calc-second-on-dark: #b9c8f7;
+  --calc-second-on-light: #3651a8;
+  --calc-key-ring: #7a7f88;
+  --calc-key-pressed: #3651a8;
   --calc-key-pressed-ring: #ffffff;
-  --calc-focus: #ff1229;
-  --calc-solar-frame: #23292d;
-  --calc-solar-cell: #554c51;
-  --calc-solar-divider: #5e555a;
+  --calc-focus: #5b7be0;
 }
 .calc-key {
   transition: transform 80ms ease-out;

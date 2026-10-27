@@ -19,19 +19,6 @@ export const BODY = { x: 66, y: 30, w: 267.9, h: 519.1 };
 const FIT_PAD = 16;
 const FIT_TOP = 36;
 
-/** Solar-cell plate above the display (UI-SPEC §2.1). */
-function SolarCell() {
-  return (
-    <svg className="absolute" style={{ left: 162.45, top: 38.25 }} width={75} height={24} aria-hidden>
-      <rect width={75} height={24} rx={3} style={{ fill: "var(--calc-solar-frame)" }} />
-      <rect x={1.5} y={1.5} width={72} height={21} rx={1.5} style={{ fill: "var(--calc-solar-cell)" }} />
-      {[1, 2, 3, 4, 5].map((i) => (
-        <rect key={i} x={1.5 + 12 * i - 0.375} y={1.5} width={0.75} height={21} style={{ fill: "var(--calc-solar-divider)" }} />
-      ))}
-    </svg>
-  );
-}
-
 function loadEngine(): Engine {
   try {
     return Engine.load(localStorage.getItem(STORAGE_KEY));
@@ -223,7 +210,6 @@ export function Calculator({ scale: fixed = 1, fit = false, popOut = false, glob
         }}
       >
         <div className="absolute" style={{ left: BODY.x, top: BODY.y, width: BODY.w, height: BODY.h, borderRadius: 8.5, background: "var(--calc-body)" }} />
-        <SolarCell />
         <Lcd model={model} text={text} scale={scale} reduced={reduced} />
         <Keypad h={keys} />
       </div>

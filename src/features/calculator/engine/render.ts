@@ -4,7 +4,7 @@ import { isEmpty, markup } from "./editor";
 import { formatFit, formatPlain } from "./format";
 import { menuRows } from "./menus";
 
-/** LCD text area: 96 dots (16 cells) wide, 32 dot rows of text (UI-SPEC §3.2). */
+/** LCD text area: 96 dots (16 cells) wide, 32 dot rows of text. */
 export const LCD_W = 96;
 export const TEXT_H = 32;
 /** An entry and its result share a row when together they take at most this many cells (BEHAVIOR §3.2). */

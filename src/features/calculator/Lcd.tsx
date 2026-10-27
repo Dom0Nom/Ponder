@@ -3,7 +3,7 @@ import type { Model } from "./engine/render";
 import { compose, paint, rasterize } from "./lcd/draw";
 import { s } from "../../lib/strings";
 
-/** White LCD area in the 400×560 frame; the dots fill its top 99.75 px (UI-SPEC §3.1). */
+/** White LCD area in the 400×560 frame; the dots fill its top 99.75 px. */
 const BOX = { x: 78.55, y: 70.49, w: 242.78, h: 103.9, dotsH: 99.75 };
 /** Integer-aligned canvas around it, so the browser never snaps the fractional edges. */
 const CANVAS = { x: 78, y: 70, w: 245, h: 105 };

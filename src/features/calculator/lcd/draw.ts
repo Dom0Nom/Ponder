@@ -2,7 +2,7 @@ import type { Model } from "../engine/render";
 import { FONT_TINY, glyph } from "./font";
 import { type FontId, type Op, layout } from "./layout";
 
-/** The LCD is a 192×75 pixel canvas (UI-SPEC §3.2): an indicator band in rows 0–6 at pixel resolution,
+/** The LCD is a 192×75 pixel canvas: an indicator band in rows 0–6 at pixel resolution,
  * then 96×33 text dots of 2×2 pixels from row 8. */
 export const PX_W = 192;
 export const PX_H = 75;
@@ -134,7 +134,7 @@ export function rasterize(m: Model, blinkOn: boolean): Uint8Array {
   return d.bits;
 }
 
-/** Indicator left edges in canvas pixels (UI-SPEC §3.5). */
+/** Indicator left edges in canvas pixels. */
 const IND_X: Record<string, number> = {
   L1: 0,
   "2ND": 8,
@@ -187,13 +187,13 @@ export interface PaintOpts {
   k: number;
   /** Canvas origin in CSS px. */
   origin: { x: number; y: number };
-  /** White LCD rect and dot-area size in CSS px (UI-SPEC §3.1). */
+  /** White LCD rect and dot-area size in CSS px. */
   lcd: { x: number; y: number; w: number; h: number; dotsH: number };
   ink: string;
   bg: string;
 }
 
-/** Paint the LCD: the white area at its exact fractional edges, canvas pixels nearest-neighbour with separate x and y factors (UI-SPEC §3.2). */
+/** Paint the LCD: the white area at its exact fractional edges, canvas pixels nearest-neighbour with separate x and y factors. */
 export function paint(ctx: CanvasRenderingContext2D, px: Uint8Array, o: PaintOpts) {
   ctx.clearRect(0, 0, o.width, o.height);
   const left = (o.lcd.x - o.origin.x) * o.k;

@@ -74,7 +74,7 @@ spaces, sources, source_texts, chunks, chunks_fts (FTS5, external content), vec_
 1. Project scaffold, CLAUDE.md, Tailwind theme, app shell, data model, IPC layer, mock backend.
 2. In parallel (separate worktrees): ingestion + retrieval (Rust); focus timer (Rust + UI); provider layer, proxy, secrets, OAuth, LAN discovery, settings UI.
 3. Sources UI + importers + source viewer; chat (streaming, markdown, citations, tutor style); study-buddy wiring; deep research.
-4. Playwright flows, real-app build + screenshots, LM Studio end-to-end checks, HANDOFF.md.
+4. Playwright flows, real-app build + screenshots, LM Studio end-to-end checks.
 
 ## Tests
 

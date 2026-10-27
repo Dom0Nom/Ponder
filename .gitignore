@@ -20,3 +20,11 @@ design/compare/
 .native-bin/
 *.tsbuildinfo
 dist-linux/
+prompts/
+scripts/overnight/
+scripts/calc-diff.ts
+docs/HANDOFF.md
+docs/final-audit/
+docs/redesign/*
+!docs/redesign/calculator/
+docs/redesign/calculator/UI-SPEC.md
