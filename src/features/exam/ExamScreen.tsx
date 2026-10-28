@@ -7,19 +7,20 @@ import { api } from "../../lib/ipc";
 import { useCurriculum, useSpace, useSpaces } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import { DATE_NUMERIC, formatDate } from "../../lib/i18n/format";
-import type { ExamAttempt, Space, TopicRef } from "../../lib/types";
+import type { Confidence, ExamAttempt, Space, TopicRef } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
 import { examById, examFor, hasCalculator, resolveParts, sectionTopics, type ExamFormat, type ExamLength, type ExamSection } from "../../lib/exam/formats";
 import { newStats, resolveSolver } from "../../lib/quality/answerCheck";
 import { generateExamQuestions } from "../../lib/exam/generate";
 import { generateEssayTask, gradeEssay } from "../../lib/exam/essay";
-import { answeredAt, clockText, examResult, partClock, remainingMs, weakTopics, type ExamData } from "../../lib/exam/attempt";
+import { answeredAt, calibrationEntries, clockText, examResult, partClock, remainingMs, weakTopics, type ExamData } from "../../lib/exam/attempt";
 import { scoreBand } from "../../lib/exam/band";
 import { examPatterns } from "../../lib/insights/patterns";
 import { ScoreBandView } from "./ScoreBandView";
 import { InsightSection, PatternList } from "../insights/LearningSections";
 import type { Response } from "../../lib/questions/types";
+import { ConfidencePicker } from "../practice/ConfidencePicker";
 import { QuestionView } from "../../components/questions/QuestionView";
 import { useUi } from "../../stores/ui";
 import { Button } from "../../components/ui/button";
@@ -373,6 +374,8 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
     const { data: d } = latest.current;
     const r = examResult(format, d);
     try {
+      const calibration = calibrationEntries(d);
+      latest.current = { ...latest.current, data: { ...d, calibration } };
       await persist({ completedAt: Date.now(), score: r.share, scaled: r.scaled });
       qc.invalidateQueries({ queryKey: qkExams(attempt.spaceId) });
     } catch (e) {
@@ -405,6 +408,7 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
   });
 
   const respond = (r: Response) => setData((d) => ({ ...d, responses: qs.map((_, n) => (n === i ? r : (d.responses?.[n] ?? null))) }));
+  const setConfidence = (c: Confidence) => setData((d) => ({ ...d, confidence: qs.map((_, n) => (n === i ? c : (d.confidence?.[n] ?? null))) }));
   const pick = (k: number) => setData((d) => ({ ...d, answers: d.answers.map((x, n) => (n === i ? k : x)) }));
   const go = (n: number) => setI(Math.max(part.from, Math.min(n, lastIndex)));
 
@@ -510,6 +514,7 @@ function Runner({ attempt, format, section }: { attempt: ExamAttempt; format: Ex
                   </div>
                 </>
               )}
+              {answeredAt(data, i) && <ConfidencePicker value={data.confidence?.[i] ?? null} onChange={setConfidence} />}
               <div className="mt-2 flex gap-2">
                 <Button variant="secondary" size="sm" disabled={i <= part.from} onClick={() => go(i - 1)}>
                   <ChevronLeft size={14} />

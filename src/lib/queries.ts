@@ -1,5 +1,7 @@
-import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./ipc";
+import { retestsDue } from "./insights/mastery";
+import { appNow } from "./plan/clock";
 import { loadOpenRouterModels } from "./providers/openrouter";
 import { toast } from "sonner";
 import { s } from "./strings";
@@ -120,6 +122,15 @@ export const useCurriculum = (spaceId: string) =>
   useQuery({ queryKey: qk.curriculum(spaceId), queryFn: () => api.curriculumGet(spaceId) });
 export const useLevels = (spaceId: string) => useQuery({ queryKey: qk.levels(spaceId), queryFn: () => api.topicLevels(spaceId) });
 export const useMastery = (spaceId: string) => useQuery({ queryKey: qk.mastery(spaceId), queryFn: () => api.masteryList(spaceId) });
+/** Mastery retests that have come due across all spaces. */
+export function useRetestsDue(): number {
+  const spaces = useSpaces().data ?? [];
+  const results = useQueries({
+    queries: spaces.map((sp) => ({ queryKey: qk.mastery(sp.id), queryFn: () => api.masteryList(sp.id), refetchInterval: 60_000 })),
+  });
+  const now = appNow();
+  return results.reduce((n, r) => n + retestsDue(r.data ?? [], now).length, 0);
+}
 export const useCourses = (spaceId: string) => useQuery({ queryKey: qk.courses(spaceId), queryFn: () => api.coursesList(spaceId) });
 export const useGoal = (spaceId: string) => useQuery({ queryKey: qk.goal(spaceId), queryFn: () => api.goalGet(spaceId) });
 export const useStudyPlan = (spaceId: string) => useQuery({ queryKey: qk.studyPlan(spaceId), queryFn: () => api.getStudyPlan(spaceId) });

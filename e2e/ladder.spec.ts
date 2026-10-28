@@ -43,10 +43,15 @@ test("worked-example ladder: up on correct, one step down on a miss, cold rung f
   await ladder.getByTestId("ladder-check").click();
   await expect(ladder.getByTestId("ladder-result")).toContainText("Correct");
   await ladder.getByTestId("ladder-next").click();
+  expect(await app.evaluate(() => (window as any).__mock.db().attempts.length)).toBe(0);
 
   await expect(rung).toHaveAttribute("data-rung", "3");
   await expect(ladder.getByTestId("ladder-steps")).toHaveCount(0);
   await ladder.getByLabel("Your answer").fill("50");
   await ladder.getByTestId("ladder-check").click();
   await expect(ladder.getByTestId("ladder-result")).toContainText("You solved it on your own");
+  const attempts = await app.evaluate(() => (window as any).__mock.db().attempts);
+  expect(attempts).toHaveLength(1);
+  expect(attempts[0].correct).toBe(true);
+  expect(attempts[0].thetaAfter).toBeGreaterThan(attempts[0].thetaBefore);
 });

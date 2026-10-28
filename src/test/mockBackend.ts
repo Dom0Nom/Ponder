@@ -2520,7 +2520,12 @@ const handlers: Record<string, (a: Args) => unknown> = {
         .map((x) => ({ spaceId: x.spaceId, startedAt: x.startedAt, focusMs: x.focusMs })),
       attempts: db.attempts
         .filter((x) => inSpace(x.spaceId) && x.at >= since)
-        .map((x) => ({ spaceId: x.spaceId, topicKey: x.topicKey, correct: x.correct, createdAt: x.at, confidence: x.confidence ?? null })),
+        .map((x) => ({ spaceId: x.spaceId, topicKey: x.topicKey, correct: x.correct, createdAt: x.at, confidence: x.confidence ?? null }))
+        .concat(
+          Object.values(db.exams ?? {})
+            .filter((x) => inSpace(x.spaceId) && x.completedAt != null && x.completedAt >= since)
+            .flatMap((x) => (x.data.calibration ?? []).map((c) => ({ spaceId: x.spaceId, topicKey: c.topicKey, correct: c.correct, createdAt: x.completedAt!, confidence: c.confidence }))),
+        ),
     } satisfies T.InsightsActivity;
   },
   parking_add: (a) => {

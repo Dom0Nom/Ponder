@@ -35,3 +35,6 @@ export const sameStep = (expected: string, given: string) => norm(expected) === 
 export function blankOutcome(results: boolean[]): boolean {
   return results.length > 0 && results.every(Boolean);
 }
+
+/** Only the unaided rung says anything about ability; worked and faded rungs leave the estimate alone. */
+export const countsTowardAbility = (rung: Rung) => rung === 3;

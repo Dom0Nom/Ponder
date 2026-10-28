@@ -89,6 +89,29 @@ pub fn activity(c: &Connection, space_id: Option<&str>, since: i64) -> AppResult
             })
         })?
         .collect::<Result<_, _>>()?;
+    let mut attempts: Vec<AttemptRow> = attempts;
+    let mut st = c.prepare(
+        "SELECT space_id, data, completed_at FROM exam_attempts
+         WHERE (?1 IS NULL OR space_id = ?1) AND completed_at >= ?2",
+    )?;
+    let exams = st.query_map(rusqlite::params![space_id, since], |r| {
+        Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, i64>(2)?))
+    })?;
+    for e in exams {
+        let (space, data, at) = e?;
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(&data) else { continue };
+        for row in v["calibration"].as_array().into_iter().flatten() {
+            let (Some(topic), Some(correct), Some(conf)) = (row["topicKey"].as_str(), row["correct"].as_bool(), row["confidence"].as_i64()) else { continue };
+            attempts.push(AttemptRow {
+                space_id: space.clone(),
+                topic_key: topic.to_string(),
+                correct,
+                created_at: at,
+                confidence: Some(conf),
+            });
+        }
+    }
+    attempts.sort_by_key(|a| a.created_at);
     Ok(Activity {
         reviews,
         focus,
@@ -195,5 +218,24 @@ mod tests {
         assert_eq!(only_a.reviews.len(), 3);
         assert!(only_a.reviews.iter().all(|r| r.space_id == a.id));
         assert!(only_a.attempts.is_empty());
+    }
+
+    #[test]
+    fn finished_exams_add_calibration_rows() {
+        let (db, _d) = test_db();
+        let c = db.conn().unwrap();
+        let a = models::create_space(&c, models::SpacePatch { name: Some("A".into()), ..Default::default() }).unwrap();
+        let data = serde_json::json!({"calibration": [{"topicKey": "alg", "correct": false, "confidence": 2}]}).to_string();
+        c.execute(
+            "INSERT INTO exam_attempts (id, space_id, exam_id, section, length, data, started_at, completed_at, time_used_ms) VALUES ('e1', ?1, 'ged', 'math', 'short', ?2, 1, 500, 0)",
+            rusqlite::params![a.id, data],
+        )
+        .unwrap();
+        let act = activity(&c, Some(&a.id), 0).unwrap();
+        assert_eq!(
+            act.attempts,
+            vec![AttemptRow { space_id: a.id.clone(), topic_key: "alg".into(), correct: false, created_at: 500, confidence: Some(2) }]
+        );
+        assert!(activity(&c, Some(&a.id), 501).unwrap().attempts.is_empty());
     }
 }

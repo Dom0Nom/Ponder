@@ -150,6 +150,7 @@ test("a topic is mastered by a passing retest at least 3 days after it was learn
 
   await goHome(app);
   await slow(app.getByTestId("next-label")).not.toContainText("Retest");
+  await expect(app.locator("button", { hasText: "Review" }).locator(".t-badge")).toHaveAttribute("data-open", "false");
 
   await app.evaluate(() => (window as any).__mock.advance(2 * 86_400_000));
   await refresh(app);
@@ -159,6 +160,8 @@ test("a topic is mastered by a passing retest at least 3 days after it was learn
   await goHome(app);
   await refresh(app);
   await slow(app.getByTestId("next-label")).toContainText("Next: Retest: Percentages");
+  await slow(app.locator("button", { hasText: "Review" }).locator(".t-badge")).toHaveAttribute("data-open", "true");
+  await expect(app.locator("button", { hasText: "Review" }).locator(".t-badge")).toHaveText("1");
   await app.getByTestId("next-start").click();
   await expect.poll(async () => (await route(app)).topicKey).toBe("t1");
 

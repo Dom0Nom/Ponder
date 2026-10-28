@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blankOutcome, blanksFor, nextRung, sameStep } from "./ladder";
+import { blankOutcome, blanksFor, countsTowardAbility, nextRung, sameStep, type Rung } from "./ladder";
 import { parseLadderProblem } from "./problems";
 
 describe("ladder moves", () => {
@@ -62,5 +62,11 @@ describe("ladder problem parsing", () => {
 
   it("rejects problems with fewer than two steps", () => {
     expect(() => parseLadderProblem('{"question":"q","steps":["a"],"answer":"1"}')).toThrow();
+  });
+});
+
+describe("ability evidence", () => {
+  it("counts only the cold rung", () => {
+    expect([0, 1, 2, 3].map((r) => countsTowardAbility(r as Rung))).toEqual([false, false, false, true]);
   });
 });

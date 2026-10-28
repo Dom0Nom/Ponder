@@ -1,6 +1,6 @@
 import { gradeQuestion } from "../questions/grade";
 import type { Response } from "../questions/types";
-import type { QuizQuestion, TopicRef } from "../types";
+import type { Confidence, QuizQuestion, TopicRef } from "../types";
 import type { EssayGrade, EssayTask } from "./essay";
 import { resolveParts, scaledScore, type ExamFormat, type ExamLength, type ExamSection } from "./formats";
 
@@ -10,12 +10,22 @@ export interface ExamData {
   /** raw responses for questions with `rich` set, same order as `questions` */
   responses?: (Response | null)[];
   flags: boolean[];
+  /** how sure the learner was per question, same order as `questions` */
+  confidence?: (Confidence | null)[];
+  /** one row per question answered with a confidence, written when the exam finishes; Insights calibration reads it */
+  calibration?: CalibrationEntry[];
   topics: Pick<TopicRef, "id" | "title">[];
   /** time used (ms) when each part after the first began; its length is the current part index */
   partStarts?: number[];
   /** questions swapped out because the answer-key check disagreed with the key */
   replaced?: number;
   essay?: { task: EssayTask; text: string; grade?: EssayGrade };
+}
+
+export interface CalibrationEntry {
+  topicKey: string;
+  correct: boolean;
+  confidence: Confidence;
 }
 
 export interface TopicResult {
@@ -46,6 +56,14 @@ export function creditAt(d: Pick<ExamData, "questions" | "answers" | "responses"
 export function answeredAt(d: Pick<ExamData, "questions" | "answers" | "responses">, i: number): boolean {
   const q = d.questions[i];
   return q.rich ? gradeQuestion(q.rich, d.responses?.[i]).answered : d.answers[i] != null;
+}
+
+export function calibrationEntries(d: Pick<ExamData, "questions" | "answers" | "responses" | "confidence">): CalibrationEntry[] {
+  return d.questions.flatMap((q, i) => {
+    const confidence = d.confidence?.[i];
+    if (confidence == null || !q.topicId || !answeredAt(d, i)) return [];
+    return [{ topicKey: q.topicId, correct: creditAt(d, i) >= 1, confidence }];
+  });
 }
 
 const quarter = (n: number) => Math.round(n * 4) / 4;

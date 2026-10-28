@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, CircleX } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { api } from "../../lib/ipc";
 import { s } from "../../lib/strings";
+import { targetDifficulty, updateTheta } from "../../lib/practice/irt";
 import type { Space } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { NoModelError, resolveChatModel } from "../../lib/chat/llm";
-import { RUNGS, blankOutcome, blanksFor, nextRung, type LadderProblem, type Rung } from "../../lib/practice/ladder";
+import { RUNGS, blankOutcome, blanksFor, countsTowardAbility, nextRung, type LadderProblem, type Rung } from "../../lib/practice/ladder";
 import { generateLadderProblem, gradeBlanks, gradeResponse, ladderAsItem, type TopicSpec } from "../../lib/practice/problems";
 import { ActivityOrb } from "../../components/motion/ActivityOrb";
 import { Collapse, Reveal } from "../../components/motion/Reveal";
@@ -36,6 +39,8 @@ export function LadderSession({ space, topic, language, onExit }: { space: Space
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [dir, setDir] = useState(1);
   const shake = useShake();
+  const qc = useQueryClient();
+  const recorded = useRef<string | null>(null);
   const last = useRef<LadderProblem | undefined>(undefined);
 
   const load = async (target: Rung, like?: LadderProblem) => {
@@ -67,13 +72,38 @@ export function LadderSession({ space, topic, language, onExit }: { space: Space
   const cold = rung === 3;
   const ready = cold ? answer.trim().length > 0 : blanks.length > 0 && blanks.every((i) => (fills[i] ?? "").trim());
 
+  const recordCold = async (p: LadderProblem, given: string, correct: boolean) => {
+    const ability = await api.abilityGet(space.id, topic.key);
+    const theta = ability?.theta ?? 0;
+    const n = ability?.n ?? 0;
+    const difficulty = targetDifficulty(theta);
+    const item = await api.practiceItemAdd(space.id, { ...ladderAsItem(p, topic.key), difficulty });
+    await api.practiceAttempt(space.id, {
+      itemId: item.id,
+      topicKey: topic.key,
+      topicTitle: topic.title,
+      response: given,
+      correct,
+      thetaBefore: theta,
+      thetaAfter: updateTheta(theta, difficulty, correct, n),
+    });
+    qc.invalidateQueries({ queryKey: ["abilities", space.id] });
+  };
+
   const check = async () => {
     if (!problem || !ready || outcome) return;
     setBusy(true);
     try {
       const llm = await resolveChatModel(space);
       let results: boolean[];
-      if (cold) results = [(await gradeResponse(llm, ladderAsItem(problem, topic.key), answer.trim())).correct];
+      if (cold) {
+        const correct = (await gradeResponse(llm, ladderAsItem(problem, topic.key), answer.trim())).correct;
+        results = [correct];
+        if (countsTowardAbility(rung) && recorded.current !== problem.question) {
+          await recordCold(problem, answer.trim(), correct);
+          recorded.current = problem.question;
+        }
+      }
       else results = await gradeBlanks(llm, problem, blanks.map((index) => ({ index, response: fills[index] ?? "" })));
       const correct = blankOutcome(results);
       setOutcome({ correct, results, from: rung, to: nextRung(rung, correct) });

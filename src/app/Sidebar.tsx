@@ -7,7 +7,7 @@ import wordLight from "../assets/brand/ponder-wordmark-light-tight.png";
 import { NumberPop } from "../components/motion/NumberPop";
 import { Button } from "../components/ui/button";
 import { Kbd, Tooltip } from "../components/ui/misc";
-import { useDueCounts, useSources, useSpaces } from "../lib/queries";
+import { useDueCounts, useRetestsDue, useSources, useSpaces } from "../lib/queries";
 import { s } from "../lib/strings";
 import { cn } from "../lib/utils";
 import { useUi } from "../stores/ui";
@@ -91,7 +91,8 @@ function SidebarBody() {
   const { data: due } = useDueCounts();
   const hasSources = (useSources(route.name === "space" ? route.spaceId : "").data ?? []).length > 0;
   const practiceSpaceId = usePracticeSpaceId();
-  const reviewCount = (due ?? []).reduce((n, c) => n + c.due + c.new, 0);
+  const retests = useRetestsDue();
+  const reviewCount = (due ?? []).reduce((n, c) => n + c.due + c.new, 0) + retests;
 
   if (route.name === "settings") {
     return (

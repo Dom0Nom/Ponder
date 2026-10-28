@@ -87,6 +87,7 @@ test("exam: timed RLA section with flags, essay, scoring and review", async ({ a
   for (let i = 0; i < 8; i++) {
     await runner.getByRole("radio", { name: i === 7 ? "Wrong A" : "Right", exact: true }).click();
     if (i === 1) await runner.getByRole("button", { name: "Flag for review" }).click();
+    if (i === 0 || i === 7) await app.keyboard.press("s");
     await app.keyboard.press("ArrowRight");
   }
   const nav = runner.getByTestId("exam-navigator");
@@ -111,6 +112,8 @@ test("exam: timed RLA section with flags, essay, scoring and review", async ({ a
 
   const result = page.getByTestId("exam-result");
   await expect(result).toContainText("7 of 10 correct");
+  const calibration = await app.evaluate(() => Object.values((window as any).__mock.db().exams).map((e: any) => e.data.calibration));
+  expect(calibration[0].map((c: any) => [c.correct, c.confidence])).toEqual([[true, 2], [false, 2]]);
   await expect(page.getByTestId("exam-essay-result")).toContainText("Paragraph two repeats paragraph one.");
   await expect(result).toContainText("Essay: 10 of 12 points");
   // (7 + 10) / 22 = 77% → above the 62% pass mark

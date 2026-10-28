@@ -3,7 +3,7 @@ import type { TopicRef } from "../types";
 import { GED, SAT, batches, distribute, scaledScore, sectionTopics } from "./formats";
 import { capByQuota, examQuestionPrompt } from "./generate";
 import { parseEssayGrade, parseEssayTask, repeatsIssue, tooShort } from "./essay";
-import { clockText, examResult, weakTopics } from "./attempt";
+import { calibrationEntries, clockText, examResult, weakTopics } from "./attempt";
 
 const t = (id: string, group = "Math", title = id): TopicRef => ({ id, title, description: "", group }) as TopicRef;
 
@@ -112,5 +112,20 @@ describe("exam result", () => {
     expect(clockText(65_000)).toBe("1:05");
     expect(clockText(3_725_000)).toBe("1:02:05");
     expect(clockText(400)).toBe("0:01");
+  });
+});
+
+describe("exam calibration", () => {
+  it("records right or wrong per answered question that has a confidence", () => {
+    const q = (topicId: string | null) => ({ topicId, question: "q", options: ["a", "b"], answer: 0, explanation: "" });
+    const rows = calibrationEntries({
+      questions: [q("a"), q("a"), q("b"), q(null), q("c")],
+      answers: [0, 1, null, 0, 0],
+      confidence: [2, 2, 1, 2, null],
+    });
+    expect(rows).toEqual([
+      { topicKey: "a", correct: true, confidence: 2 },
+      { topicKey: "a", correct: false, confidence: 2 },
+    ]);
   });
 });
