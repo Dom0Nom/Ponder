@@ -165,7 +165,7 @@ pub async fn run(code: &str, stdin: &str) -> AppResult<CRun> {
     cmd.current_dir(dir.path())
         .args(["main.c", "-o"])
         .arg(&exe)
-        .args(["-std=gnu11", "-Wall", "-fno-color-diagnostics"])
+        .args(["-std=gnu11", "-Wall", "-fdiagnostics-color=never"])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

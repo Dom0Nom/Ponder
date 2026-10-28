@@ -92,7 +92,7 @@ pub fn pending(c: &Connection) -> AppResult<Vec<InboxItem>> {
         [now_ms() - KEEP_FINISHED_MS],
     )?;
     let mut st = c.prepare(&format!(
-        "SELECT {COLS} FROM inbox WHERE status = 'pending' ORDER BY created_at, id"
+        "SELECT {COLS} FROM inbox WHERE status = 'pending' ORDER BY created_at, rowid"
     ))?;
     let rows = st.query_map([], row)?.collect::<Result<Vec<_>, _>>()?;
     Ok(rows)
