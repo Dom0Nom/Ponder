@@ -86,6 +86,6 @@ spaces, sources, source_texts, chunks, chunks_fts (FTS5, external content), vec_
 
 - Chat context: no fixed passage count or turn limit; `src/lib/context/` sizes everything from the model's window and a per-message cost cap, compacts long chats into a summary stored on the thread, and gives tool-calling models read tools. Retrieved passages go with the learner's message so the system prompt stays cache-stable.
 - Outlines come from PDF bookmarks (lopdf, read once in the background), chunk headings or numbered heading lines, stored in `source_outlines`; no model call.
-- Local embedding runs one sequence per forward pass on several threads instead of padded batches (same vectors, 3.5–4.6× faster on this Mac).
+- Local embedding runs one sequence per forward pass on several threads instead of padded batches (same vectors, 3.5–4.6× faster on an Intel CPU).
 - UI strings live in `src/locales/en.ts` as templates; 19 languages are machine-translated JSON files checked by `scripts/i18n.ts`.
 - Migrations 017–022: context, space language, questions/worksheets, learning (confidence, mastery), goals, projects.

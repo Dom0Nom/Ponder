@@ -1261,7 +1261,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn live_lmstudio_stream() {
-        let base = "http://192.168.1.20:1234/v1";
+        let base = std::env::var("LMSTUDIO_URL").unwrap_or_else(|_| "http://localhost:1234/v1".into());
+        let base = base.trim_end_matches('/');
         let p = provider("lmstudio", "local", Some(base));
         let body = serde_json::json!({
             "model": "qwen3.5-9b",

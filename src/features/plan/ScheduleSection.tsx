@@ -5,7 +5,7 @@ import { loadScheduleContext } from "../../lib/plan/context";
 import { todayDate } from "../../lib/plan/clock";
 import { invalidatePlans, replanSpaceOnce } from "../../lib/plan/replan";
 import { addDays, buildSchedule, completedTopicIds, topicNeed, weekInfo, withRemainingNeed } from "../../lib/plan/schedule";
-import { useCourses, useCurriculum, useStudyPlan } from "../../lib/queries";
+import { useCourses, useCurriculum, useGoal, useStudyPlan } from "../../lib/queries";
 import { s } from "../../lib/strings";
 import type { PlanTask, Space, StudyPlanBundle } from "../../lib/types";
 import { cn } from "../../lib/utils";
@@ -25,6 +25,7 @@ export function ScheduleSection({ space }: { space: Space }) {
   const plan = useStudyPlan(space.id);
   const cur = useCurriculum(space.id);
   const courses = useCourses(space.id);
+  const goal = useGoal(space.id);
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
@@ -33,7 +34,8 @@ export function ScheduleSection({ space }: { space: Space }) {
       .catch((e) => toastError(s.plan.schedule.saveFailed, e));
   }, [space.id]);
 
-  const loading = plan.isLoading || cur.isLoading || courses.isLoading;
+  const loading = plan.isLoading || cur.isLoading || courses.isLoading || goal.isLoading;
+  const goalTitle = goal.data?.title ?? cur.data?.title ?? null;
   const error = plan.error ?? cur.error ?? courses.error;
   const hasTopics = !!cur.data || (courses.data ?? []).some((c) => c.lessons.length > 0);
 
@@ -43,10 +45,10 @@ export function ScheduleSection({ space }: { space: Space }) {
       {loading && <Skeleton className="h-32 rounded-card" />}
       {error && <ErrorState size="sm" title={s.plan.schedule.loadFailed} error={error} onRetry={() => { plan.refetch(); cur.refetch(); courses.refetch(); }} />}
       {!loading && !error && !plan.data && !hasTopics && <p className="text-muted">{s.plan.schedule.pickFirst}</p>}
-      {!loading && !error && !plan.data && hasTopics && <ScheduleForm space={space} curriculumTitle={cur.data?.title ?? null} />}
+      {!loading && !error && !plan.data && hasTopics && <ScheduleForm space={space} goalTitle={goalTitle} />}
       {!loading && !error && plan.data && !editing && <PlanView space={space} bundle={plan.data} onEdit={() => setEditing(true)} />}
       {!loading && !error && plan.data && editing && (
-        <ScheduleForm space={space} curriculumTitle={cur.data?.title ?? null} existing={plan.data} onDone={() => setEditing(false)} />
+        <ScheduleForm space={space} goalTitle={goalTitle} existing={plan.data} onDone={() => setEditing(false)} />
       )}
     </section>
   );
@@ -54,17 +56,17 @@ export function ScheduleSection({ space }: { space: Space }) {
 
 function ScheduleForm({
   space,
-  curriculumTitle,
+  goalTitle,
   existing,
   onDone,
 }: {
   space: Space;
-  curriculumTitle: string | null;
+  goalTitle: string | null;
   existing?: StudyPlanBundle;
   onDone?: () => void;
 }) {
   const today = todayDate();
-  const [goal, setGoal] = useState(existing?.plan.goal ?? curriculumTitle ?? space.name);
+  const [goal, setGoal] = useState(existing?.plan.goal ?? goalTitle ?? space.name);
   const [examDate, setExamDate] = useState(existing ? existing.plan.examDate : addDays(today, 28));
   const [hours, setHours] = useState(existing ? String(existing.plan.weeklyMinutes / 60) : "5");
   const [days, setDays] = useState<number[]>(existing?.plan.studyDays ?? DEFAULT_DAYS);

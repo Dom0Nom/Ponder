@@ -86,3 +86,18 @@ test("schedule form rejects a past exam date and a plan can be deleted", async (
   await app.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
   await expect(section.getByRole("button", { name: "Make schedule" })).toBeVisible();
 });
+
+test("the schedule form starts from the space's saved goal", async ({ app }) => {
+  await app.getByRole("button", { name: "New space" }).first().click();
+  await app.getByLabel("Name").fill("GED prep");
+  await app.getByLabel("Exam or course (optional)").selectOption("ged");
+  await app.getByRole("button", { name: "Create" }).click();
+  await app.evaluate(() => {
+    const db = (window as unknown as { __mock: { db: () => { spaces: Record<string, unknown>; goals?: Record<string, unknown> } } }).__mock.db();
+    const spaceId = Object.keys(db.spaces)[0];
+    db.goals = { ...db.goals, [spaceId]: { spaceId, kind: "skill", title: "Pass GED Math", graph: { nodes: [] }, createdAt: 0, updatedAt: 0 } };
+  });
+
+  await app.getByRole("button", { name: /^Learning plan/ }).click();
+  await expect(app.getByTestId("schedule-section").getByLabel("Goal")).toHaveValue("Pass GED Math");
+});

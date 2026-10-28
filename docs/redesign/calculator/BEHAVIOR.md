@@ -4,7 +4,7 @@ Source of truth for the builder of `src/features/calculator/`. Written clean-roo
 
 ## Changes (fourth random check, seed 4)
 
-`calc-diff --random 200 --seed 4` found six real differences (four scroll windows, two error precedences). Each was reproduced with nearby variations: 110 new verified vectors (`*-seed4-*`, 815 in total).
+A comparison run (200 random sequences, seed 4) found six real differences (four scroll windows, two error precedences). Each was reproduced with nearby variations: 110 new verified vectors (`*-seed4-*`, 815 in total).
 
 - **Scroll window is computed in dots, every key** (§3.2): the line is shifted by the larger of a content limit (line width + end cell − 96) and a cursor limit. A cursor inside a template slot must start before cell 15; if not, the line shifts so the cursor starts at cell 14. A top-level cursor may sit in cell 15. A line ending in a stacked fraction reserves no end cell. Fractions' half-cell offset lets the left edge fall mid-cell.
 - **Partly scrolled templates** (§2.2): cell 0 under `◂` is never written; a template cut on the left keeps its wrapper and lists only the visible characters; a row whose visible glyphs are all in one superscript is written flat.
@@ -33,7 +33,7 @@ Three more random runs (seeds 1-3, 600 sequences) and targeted probes. 60 new ve
 
 ## Changes (second differential check)
 
-Second run of `scripts/calc-diff.ts` (all 645 vectors, 200 random sequences, seed 1). Vectors all match except the history cut below; these random sequences showed real differences (read from the reference screen; the encoded text in the report is unreliable for empty templates because the LCD reader can't read placeholder dots):
+Second comparison run (all 645 vectors, 200 random sequences, seed 1). Vectors all match except the history cut below; these random sequences showed real differences (read from the reference screen; the encoded text in the report is unreliable for empty templates because the LCD reader can't read placeholder dots):
 
 - **Empty template slots are drawn as dotted placeholder boxes**, not left blank (§3.1, §4). Every empty slot shows a box of dots in the glyph cell grid at the slot's size: a fraction with nothing in it shows two stacked placeholder boxes with the fraction bar between them (`0 lparen 2nd frac 9 recip 0` ends `0(9⁻¹0` then a gap cell and an empty stacked fraction); an empty ×10ⁿ / eˣ / power exponent shows one small raised placeholder box (`5 4 mul x10n` → `54**10` with a raised placeholder; `. 7 2nd ln pow` → `.7e` with a raised placeholder); an empty denominator under a filled numerator shows a placeholder box under the bar (`lparen sub frac 2 var div 5 0 2nd frac 5`; `pi sub frac sto mul div 0 2nd pow 0`). Placeholders stay lit while the cursor blinks; the blinking cursor is drawn over the slot it sits in. The text encoding is unchanged (`\f{}{}`, `^{}`).
 - **Horizontal scroll window keeps whole tokens visible from the left edge after `◂`** (§3.2): after scrolling left, the first visible cell after `◂` is the earliest cell that lets the cursor cell stay on screen, and a multi-cell token like `sin⁻¹(` is shown from its last visible cells (`2nd sin 5 mul recip sub 4 3 sub rparen 1 delete var 0` shows `◂n⁻¹(5*⁻¹-43-)x0`, i.e. the `n` of `sin⁻¹` stays visible); when the window starts exactly at a token boundary nothing extra is kept (`mul 7 tan 9 6 sin lparen 2nd x10n pow 1` shows `◂96sin((▸n/d◂▸Un/d¹`, with no `(` before `96`). A trailing `▸` appears at the right edge whenever content continues to the right of the window (`6 5 sto add lparen tan div recip 5 neg rparen 2nd table 2nd frac 6` shows `◂n(÷⁻¹5⁻)▸F◂▸d6` and then `▸`, because the empty fraction after `6` is off screen).
@@ -47,7 +47,7 @@ Second run of `scripts/calc-diff.ts` (all 645 vectors, 200 random sequences, see
 
 ## Changes (differential check)
 
-The running build was compared with the running reference: all vectors plus 200 random key sequences (`scripts/calc-diff.ts`). New rules found there, each backed by new verified vectors (645 in total):
+The running build was compared with the running reference: all vectors plus 200 random key sequences. New rules found there, each backed by new verified vectors (645 in total):
 
 - **Two vectors were misread in the verification pass and are corrected:** `frac-mpReciprocalFraction` is `\f{3}{5}^{⁻1}\t\f{5}{3}` and `pow-recipRecip` is `(4^{⁻1})^{⁻1}\t4`. There is no separate `⁻` row; drop the special case built for it (QUESTIONS Q13 "raised minus sign").
 - **Scrolling reserves the cursor cell** (§3.2): 15 digits fit (`123456789012345`), 16 scroll to `◂34567890123456`.
@@ -82,7 +82,7 @@ The first version of this file was written without access to the reference. It h
 - **rand** (§14): a reset does not fix the sequence (two runs gave `0.695325634` and `0.881655349`); only a stored seed (`5→rand`) makes it repeatable. Unseeded rand is not in the vectors.
 - **Power keys:** `2nd`,`on` / `on` behaved erratically under automation on the reference; those two vectors were removed and power is not specified beyond §4.
 - **Reference start state** (§4): the reference page loads in RAD with `MEMORY CLEARED` on screen; a reset brings DEG back.
-- **Pressed key** (UI-SPEC §6): the reference fills a pressed key red.
+- **Pressed key**: the reference fills a pressed key red.
 
 ## 0. Status
 
@@ -212,7 +212,7 @@ The Home screen scrolls by dot rows, so the top row can be cut. A row is written
 ## 3. Display layout [ref]
 
 ### 3.1 Dot matrix and fonts
-- LCD canvas: 96 dots wide. Above the text area is an indicator band drawn in a tiny 3×5 font at half-dot resolution (UI-SPEC §3).
+- LCD canvas: 96 dots wide. Above the text area is an indicator band drawn in a tiny 3×5 font at half-dot resolution.
 - Text area: 4 rows × 8 dots = 32 dot rows (plus 1-2 spare rows).
 - **Normal font:** 5×7 glyphs in **monospaced 6×8 cells**, 16 cells per row, starting at dot column 1. Narrow glyphs (`.`, `1`, `'`, `°`, `(`) are drawn inside the same 6-dot cell, so spacing is always by whole cells.
 - **Small font:** 5×5 glyphs at a 6-dot pitch. Used for superscripts (raised so their bottom is 2 dots below the top of the normal cell) and for numerator and denominator of stacked fractions. A superscript inside a small-font group is raised a further 2 dots.

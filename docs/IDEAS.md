@@ -84,7 +84,7 @@
 - Plugin system later
 
 ## Known constraints and unknowns
-- Dev machine is an Intel i7 MacBook (2019), macOS 15.7: no MLX, no Apple Foundation Models (both need Apple Silicon); local LLMs via Ollama run on CPU, small models only.
+- Intel Macs have no MLX or Apple Foundation Models (both need Apple Silicon); local LLMs via Ollama run on CPU there, small models only.
 - Anthropic does not allow Claude subscription OAuth in third-party apps → Claude via API key only.
 - ChatGPT sign-in (as Codex CLI does) and xAI/Grok OAuth: availability and terms for third-party apps must be verified before building.
 - Google Drive / Dropbox OAuth need registered app client IDs (free, but Google's verification process applies for public release).

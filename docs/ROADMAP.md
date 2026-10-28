@@ -1,10 +1,8 @@
 # Roadmap: learning engine and GED fidelity
 
-Written 2026-10-12 from a review with three Haiku agents (learning science, robotics, learner journey) and two more (GED prep, generic architecture). Scores at the time: generic learning 45/100, "190+ on all four GED tests by December" 35/100.
+Goal: strong GED prep (Math, RLA, Science, Social Studies) as the first exam. Constraint: every feature except the GED fixes must work for any subject, with or without an exam (GED, SAT, IHK, robotics, a language, a book).
 
-Goal right now: near-max GED scores (190+/200 on Math, RLA, Science, Social Studies) by December 2026. Constraint: every feature except the GED fixes must work for any subject, with or without an exam (GED, SAT, IHK, robotics, a language, a book).
-
-Outside the app: take the official GED Ready test per subject (ged.com) for a real baseline. The app's score is an estimate; GED Ready is the only official predictor.
+Outside the app, learners should take the official GED Ready test per subject (ged.com) for a real baseline. The app's score is an estimate; GED Ready is the only official predictor.
 
 ## Status (2026-10-15)
 
@@ -27,7 +25,7 @@ All 14 items are built. Open decisions are decided: Next replaces "Start session
 13. Projects and build log — done
 14. Lab cards — done
 
-Items 1–9 serve the GED by December; 10–14 make the app strong for open-ended subjects.
+Items 1–9 serve GED prep; 10–14 make the app strong for open-ended subjects.
 
 > Animation lines in this file are the minimum. The shipped motion (orbs for waits over 0.5 s, re-picked snippets, one metal CTA per screen) lives in `src/styles/`.
 

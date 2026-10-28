@@ -8,13 +8,24 @@ permissions:
   contents: write
 
 jobs:
+  check:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run test
+
   release:
+    needs: check
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-14
-            args: --bundles app,dmg
+            args: --target universal-apple-darwin --bundles app,dmg
+            targets: aarch64-apple-darwin,x86_64-apple-darwin
           - os: ubuntu-22.04
             args: --bundles deb,appimage
           - os: windows-latest
@@ -24,6 +35,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.targets }}
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri

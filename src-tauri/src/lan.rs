@@ -210,13 +210,14 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn live_scan_finds_dev_lmstudio() {
+        let Ok(want) = std::env::var("LMSTUDIO_URL") else {
+            return;
+        };
         let t = std::time::Instant::now();
         let found = scan().await;
         println!("scan took {:?}: {found:#?}", t.elapsed());
         assert!(found
             .iter()
-            .any(|s| s.base_url == "http://192.168.1.20:1234/v1"
-                && s.kind == "lmstudio"
-                && s.models.iter().any(|m| m == "qwen3.5-9b")));
+            .any(|s| s.base_url == want.trim_end_matches('/') && s.kind == "lmstudio"));
     }
 }

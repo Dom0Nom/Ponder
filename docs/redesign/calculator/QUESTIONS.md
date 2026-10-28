@@ -71,7 +71,7 @@ Answer (BEHAVIOR §3.2, window offset): the shift is in dots, and a cursor insid
 
 ### Q17. Fraction in a superscript, nested placeholders (build check)
 
-Observed and written down (BEHAVIOR §3.1), but there is no text vector for the geometry: `2 pow 1 frac 3` draws the fraction at normal fraction size inside the exponent, with the base dropped. To compare when building, run a vector file with that key sequence through `scripts/calc-diff.ts` (`--random 0 --clicks 0`) and look at the PNG it writes.
+Observed and written down (BEHAVIOR §3.1), but there is no text vector for the geometry: `2 pow 1 frac 3` draws the fraction at normal fraction size inside the exponent, with the base dropped.
 
 ### Q18. Scroll window and error rules from the seed 4 check (partly open)
 
@@ -81,4 +81,4 @@ Written into BEHAVIOR §2.2, §3.2, §9 and §21 with 110 `*-seed4-*` vectors. S
 - **x-root index after a power and a number.** `(ans^{2})^{⁻1}404` + `2nd pow` takes only `404` as the index, while §9 says an implied product such as `3x` is taken whole. Which implied products count as one operand is not clear.
 - **`right` from a numerator** moves to the denominator (`frac #12345678901234 right`); not probed with a filled denominator.
 - **Encoding conventions** chosen here, not observed: cell 0 under `◂` is never written; a row whose visible glyphs are all in one superscript is written flat (`◂(9067tan⁻¹(8.5`); a cut template keeps its wrapper. Vectors that depend on them are `confidence: medium`.
-- **LCD reader limits:** `reader.py` drops or misreads several of these screens (raised content under `◂`, `tan⁻¹(` at a superscript size, x-root indices, half-cell shifts): `edit-seed4-o021`, `-o031`, `-o177`, `-a3`, `-m7`, `-h5`, `-h7`, `-h23`, `-o026`, `-b1`…`-b10`, `-e2`, `-e12`, `-k5`. `calc-diff` reports on these can be false mismatches; the vector text was read from the pixels.
+- **LCD reader limits:** The LCD reader used for comparison runs drops or misreads several of these screens (raised content under `◂`, `tan⁻¹(` at a superscript size, x-root indices, half-cell shifts): `edit-seed4-o021`, `-o031`, `-o177`, `-a3`, `-m7`, `-h5`, `-h7`, `-h23`, `-o026`, `-b1`…`-b10`, `-e2`, `-e12`, `-k5`. Comparison reports on these can be false mismatches; the vector text was read from the pixels.
