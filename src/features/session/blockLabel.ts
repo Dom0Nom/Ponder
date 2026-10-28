@@ -9,6 +9,8 @@ export function blockLabel(b: Block): string {
       return s.session.kinds.retest(b.topic?.title ?? "");
     case "check":
       return s.session.kinds.check(b.topic?.title ?? "");
+    case "project":
+      return s.session.kinds.project(b.label ?? "", b.topic?.title ?? "");
     case "new":
       return s.session.kinds.new(b.label ?? b.topic?.title ?? s.session.kinds.newFallback);
     case "practice":

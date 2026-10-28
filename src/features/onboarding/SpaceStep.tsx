@@ -11,6 +11,7 @@ import { s } from "../../lib/strings";
 import { getLocale } from "../../lib/i18n/state";
 import { ImportDialog } from "../sources/ImportDialog";
 import { NativeSelect } from "../settings/NativeSelect";
+import { saveSkillGoal } from "./goalMigration";
 import { Heading } from "./parts";
 import { OB, useOb } from "./state";
 
@@ -21,8 +22,6 @@ const SOURCE_TABS = [
   { tab: "youtube", label: () => s.onboarding.space.youtube },
   { tab: "gdrive", label: () => s.onboarding.space.cloud },
 ] as const;
-
-const GOAL_KEY = (id: string) => `onboardingGoal.${id}`;
 
 export function SpaceStep() {
   const { settings, save } = useOb();
@@ -44,13 +43,18 @@ export function SpaceStep() {
     if (filled.current || !space) return;
     filled.current = true;
     setName(space.name);
-    const g = settings?.[GOAL_KEY(space.id)] as { kind?: Goal; goal?: string; date?: string } | undefined;
-    if (g) {
-      if (g.kind) setKind(g.kind);
-      setGoal(g.goal ?? "");
-      setDate(g.date ?? "");
-    }
-  }, [space, settings]);
+    void (async () => {
+      const [plan, saved] = await Promise.all([api.getStudyPlan(space.id), api.goalGet(space.id)]);
+      if (plan?.plan.goal) {
+        setKind("exam");
+        setGoal(plan.plan.goal);
+        setDate(plan.plan.examDate);
+      } else if (saved?.kind === "skill") {
+        setKind("skill");
+        setGoal(saved.title);
+      }
+    })().catch(() => {});
+  }, [space]);
 
   const submit = async () => {
     if (!name.trim() || busy) return;
@@ -68,8 +72,8 @@ export function SpaceStep() {
       const minutes = Number(settings?.[OB.daily]) || 30;
       if (goal.trim() && kind === "exam" && /^\d{4}-\d{2}-\d{2}$/.test(date))
         await api.saveStudyPlan(id, { goal: goal.trim(), examDate: date, weeklyMinutes: minutes * 7, studyDays: [0, 1, 2, 3, 4, 5, 6] }, false, []);
-      await save(GOAL_KEY(id), { kind, goal: goal.trim(), date });
-      await Promise.all([qc.invalidateQueries({ queryKey: qk.spaces }), qc.invalidateQueries({ queryKey: qk.space(id) })]);
+      if (kind === "skill") await saveSkillGoal(id, goal);
+      await Promise.all([qc.invalidateQueries({ queryKey: qk.spaces }), qc.invalidateQueries({ queryKey: qk.space(id) }), qc.invalidateQueries({ queryKey: qk.goal(id) })]);
     } catch (e) {
       toastError(s.errors.generic, e, () => void submit());
     } finally {

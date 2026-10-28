@@ -3,6 +3,13 @@ export interface TopicLite {
   title: string;
 }
 
+export interface ProjectLite {
+  projectId: string;
+  projectTitle: string;
+  /** first unmastered topic of the project's first blocked milestone */
+  topic: TopicLite;
+}
+
 export interface NextInput {
   /** what the learner works towards; null or empty when none is set */
   goal: string | null;
@@ -14,12 +21,14 @@ export interface NextInput {
   prereqChecks: TopicLite[];
   /** first topic of the skill graph that isn't learned yet */
   frontier: TopicLite | null;
+  /** active projects whose next milestone is blocked on a topic */
+  projects: ProjectLite[];
   /** titles of today's plan tasks, first one first */
   planToday: string[];
   hasTopics: boolean;
 }
 
-export type BlockKind = "review" | "retest" | "check" | "new" | "practice" | "reflect";
+export type BlockKind = "review" | "retest" | "check" | "project" | "new" | "practice" | "reflect";
 
 export interface Block {
   id: string;
@@ -29,12 +38,14 @@ export interface Block {
   /** card count, or the plan task title for "new" */
   count?: number;
   label?: string;
+  projectId?: string;
 }
 
 export const DEFAULT_MINUTES = 25;
 const RETEST_MIN = 3;
 const CHECK_MIN = 2;
 const REFLECT_MIN = 1;
+const PROJECT_MIN = 8;
 
 /** Short list of blocks for "what do I do now". Each block opens a screen that already exists. */
 export function nextSession(input: NextInput): Block[] {
@@ -46,6 +57,8 @@ export function nextSession(input: NextInput): Block[] {
   for (const t of input.prereqChecks.slice(0, 1)) blocks.push({ id: `check:${t.key}`, kind: "check", minutes: CHECK_MIN, topic: t });
 
   if (!input.lowEnergy) {
+    const p = input.projects[0];
+    if (p) blocks.push({ id: `project:${p.projectId}`, kind: "project", minutes: PROJECT_MIN, topic: p.topic, label: p.projectTitle, projectId: p.projectId });
     const task = input.planToday[0];
     if (task) blocks.push({ id: "new", kind: "new", minutes: 10, label: task, topic: input.frontier ?? undefined });
     else if (input.frontier) blocks.push({ id: "new", kind: "new", minutes: 10, topic: input.frontier });
@@ -66,7 +79,7 @@ export function nextSession(input: NextInput): Block[] {
 function fit(blocks: Block[], budget: number): Block[] {
   const total = (list: Block[]) => list.reduce((n, b) => n + b.minutes, 0);
   const out = [...blocks];
-  for (const drop of ["new", "check"] as BlockKind[]) {
+  for (const drop of ["new", "project", "check"] as BlockKind[]) {
     if (total(out) <= budget) break;
     const i = out.findIndex((b) => b.kind === drop);
     if (i >= 0) out.splice(i, 1);

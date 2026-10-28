@@ -7,7 +7,7 @@ use crate::AppState;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock, RwLock};
-use tauri::menu::{Menu, MenuBuilder, PredefinedMenuItem, SubmenuBuilder};
+use tauri::menu::{Menu, MenuBuilder, MenuEvent, MenuItem, PredefinedMenuItem, SubmenuBuilder};
 use tauri::{AppHandle, Emitter, State, Wry};
 
 include!(concat!(env!("OUT_DIR"), "/locales.rs"));
@@ -146,6 +146,27 @@ pub fn init(app: &AppHandle, db: &crate::db::Db) {
     }
 }
 
+const HELP_TOUR: &str = "help.tour";
+const HELP_ISSUE: &str = "help.issue";
+const ISSUES_URL: &str = "https://github.com/Dom0Nom/Ponder/issues";
+
+pub fn on_menu_event(app: &AppHandle, event: MenuEvent) {
+    use tauri_plugin_opener::OpenerExt;
+    match event.id().as_ref() {
+        HELP_TOUR => {
+            if let Err(e) = app.emit("help://tour", ()) {
+                log::warn!("help tour event failed: {e}");
+            }
+        }
+        HELP_ISSUE => {
+            if let Err(e) = app.opener().open_url(ISSUES_URL, None::<&str>) {
+                log::warn!("opening the issue tracker failed: {e}");
+            }
+        }
+        _ => {}
+    }
+}
+
 /// The application menu with every label in the current language.
 pub fn app_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let name = app.package_info().name.clone();
@@ -203,6 +224,23 @@ pub fn app_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         )?)
         .build()?;
 
+    let help = SubmenuBuilder::new(app, t("native.menu.help"))
+        .item(&MenuItem::with_id(
+            app,
+            HELP_TOUR,
+            t("native.menu.welcomeTour"),
+            true,
+            None::<&str>,
+        )?)
+        .item(&MenuItem::with_id(
+            app,
+            HELP_ISSUE,
+            t("native.menu.reportIssue"),
+            true,
+            None::<&str>,
+        )?)
+        .build()?;
+
     #[cfg(target_os = "macos")]
     {
         let about = t_args("native.menu.about", &[n]);
@@ -239,7 +277,7 @@ pub fn app_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
             )?)
             .build()?;
         MenuBuilder::new(app)
-            .items(&[&app_menu, &file, &edit, &view, &window])
+            .items(&[&app_menu, &file, &edit, &view, &window, &help])
             .build()
     }
     #[cfg(not(target_os = "macos"))]
@@ -251,7 +289,7 @@ pub fn app_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
             )?)
             .build()?;
         MenuBuilder::new(app)
-            .items(&[&file, &edit, &view, &window])
+            .items(&[&file, &edit, &view, &window, &help])
             .build()
     }
 }
@@ -333,6 +371,9 @@ mod tests {
         for key in [
             "native.tray.start",
             "native.menu.undo",
+            "native.menu.help",
+            "native.menu.welcomeTour",
+            "native.menu.reportIssue",
             "native.notification.distraction",
             "native.dialog.packFilter",
         ] {

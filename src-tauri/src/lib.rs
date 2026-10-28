@@ -72,6 +72,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(capture::plugin())
+        .on_menu_event(i18n::on_menu_event)
         .on_window_event(focus::on_window_event)
         .manage(music::MusicService::new(music::default_backend()))
         .manage(backup::BackupService::default())

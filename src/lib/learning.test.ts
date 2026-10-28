@@ -70,6 +70,7 @@ const base: NextInput = {
   dueCards: 0,
   retests: [],
   prereqChecks: [],
+  projects: [],
   frontier: { key: "f", title: "Fractions" },
   planToday: [],
   hasTopics: true,
@@ -107,6 +108,21 @@ describe("next session", () => {
     const b = nextSession({ ...base, minutes: 12, dueCards: 40, retests: [{ key: "r", title: "R" }, { key: "q", title: "Q" }] });
     expect(b.some((x) => x.kind === "new")).toBe(false);
     expect(totalMinutes(b)).toBeLessThanOrEqual(24);
+  });
+  it("adds one project block for the first blocked project", () => {
+    const projects = [
+      { projectId: "p1", projectTitle: "Robot", topic: { key: "t1", title: "Gears" } },
+      { projectId: "p2", projectTitle: "Garden", topic: { key: "t2", title: "Soil" } },
+    ];
+    const b = nextSession({ ...base, minutes: 40, dueCards: 3, projects });
+    expect(b.map((x) => x.kind)).toEqual(["review", "project", "new", "practice", "reflect"]);
+    expect(b.find((x) => x.kind === "project")).toMatchObject({ id: "project:p1", projectId: "p1", topic: { key: "t1" }, label: "Robot" });
+  });
+  it("leaves project work out on low energy and when time is short", () => {
+    const projects = [{ projectId: "p1", projectTitle: "Robot", topic: { key: "t1", title: "Gears" } }];
+    expect(nextSession({ ...base, lowEnergy: true, projects }).some((x) => x.kind === "project")).toBe(false);
+    const short = nextSession({ ...base, minutes: 12, dueCards: 40, projects });
+    expect(short.some((x) => x.kind === "project")).toBe(false);
   });
   it("adds one prerequisite check", () => {
     const b = nextSession({ ...base, prereqChecks: [{ key: "p", title: "Division" }, { key: "p2", title: "X" }] });

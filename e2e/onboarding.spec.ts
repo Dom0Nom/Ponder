@@ -157,6 +157,32 @@ test("space step creates the space with a plan and the wizard resumes where it s
   await expect(ob.getByLabel("Name", { exact: true })).toHaveValue("GED Math");
 });
 
+test("a skill goal is saved as a goal, not a setting", async ({ ob }) => {
+  await toStep(ob, 4);
+  await ob.getByLabel("Name", { exact: true }).fill("Guitar");
+  await wizard(ob).getByRole("radio", { name: "A skill" }).click();
+  await ob.getByLabel("What do you want to reach?").fill("Play three songs");
+  await ob.getByRole("button", { name: "Create space" }).click();
+  await expect(ob.getByRole("button", { name: "Save changes" })).toBeVisible();
+  const d = await ob.evaluate(() => {
+    const db = (window as any).__mock.db();
+    return { goals: Object.values(db.goals ?? {}), keys: Object.keys(db.settings).filter((k) => k.startsWith("onboardingGoal.")) };
+  });
+  expect(d.goals).toMatchObject([{ kind: "skill", title: "Play three songs", graph: { nodes: [] } }]);
+  expect(d.keys).toEqual([]);
+  await ob.reload();
+  await heading(ob, "Your first space");
+  await expect(ob.getByLabel("What do you want to reach?")).toHaveValue("Play three songs");
+});
+
+test("the Help menu event starts the welcome tour", async ({ ob }) => {
+  await ob.evaluate(() => (window as any).__TAURI_INTERNALS__.invoke("create_space", { input: { name: "Tour" } }));
+  await ob.reload();
+  await expect(ob.getByTestId("space-card")).toBeVisible();
+  await ob.evaluate(() => (window as any).__mock.emit("help://tour", null));
+  await expect(ob.getByTestId("tour-mark")).toBeVisible();
+});
+
 test("resumes after a reload", async ({ ob }) => {
   await toStep(ob, 3);
   await heading(ob, "Voice");

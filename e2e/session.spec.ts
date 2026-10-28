@@ -88,6 +88,23 @@ test("Next on Home runs through its blocks", async ({ app }) => {
   expect(Object.values(db.journal ?? {}).some((j: any) => j.kind === "reflection" && j.content === "Ratios were hardest")).toBe(true);
 });
 
+test("Next puts a blocked project milestone in the list", async ({ app }) => {
+  const spaceId = await makeSpace(app, "Robotics");
+  await app.evaluate((spaceId) => {
+    const db = (window as any).__mock.db();
+    db.curricula[spaceId] = { spaceId, curriculumId: "r", title: "Robotics", updatedAt: Date.now(), topics: [{ id: "r.pwm", title: "PWM", description: "", group: "E" }] };
+    db.levels[spaceId] = {};
+  }, spaceId);
+  await app.evaluate(async (spaceId) => {
+    const inv = (window as any).__TAURI_INTERNALS__.invoke;
+    const p = await inv("project_save", { project: { spaceId, title: "Line follower", goal: "" } });
+    await inv("milestone_save", { milestone: { projectId: p.id, title: "Motors", topicIds: ["r.pwm"] } });
+  }, spaceId);
+  await goHome(app);
+  await app.getByTestId("next-card").getByTestId("next-start").click();
+  await slow(app.getByTestId("session-bar").getByTestId("session-block")).toHaveText("Line follower: study PWM");
+});
+
 test("Next is in the palette and the space header, and can start a Focus session", async ({ app }) => {
   const spaceId = await makeSpace(app, "Maths");
   await seed(app, spaceId, { cards: 1 });

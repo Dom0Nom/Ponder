@@ -76,6 +76,7 @@ test("low-energy session shows the review-only card and blocks new material", as
   const addItem = app.getByRole("option", { name: /^Add source/ });
   await expect(addItem).toHaveAttribute("aria-disabled", "true");
   await expect(addItem).toContainText("Paused during a low-energy session");
+  await expect(app.getByRole("option", { name: /^Import study pack/ })).toHaveAttribute("aria-disabled", "true");
   await addItem.click({ force: true });
   await expect(app.getByRole("dialog", { name: "Add a source" })).toHaveCount(0);
   await app.keyboard.press("Escape");

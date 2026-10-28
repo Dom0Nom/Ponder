@@ -285,9 +285,10 @@ export function CommandPalette() {
                     <span className="flex-1">{s.pack.export}</span>
                   </Command.Item>
                 )}
-                <Command.Item className={item} onSelect={() => run(importStudyPack)} keywords={["share", "import", "pack", "ponderpack", "open"]}>
+                <Command.Item className={item} disabled={low.active} onSelect={() => run(importStudyPack)} keywords={["share", "import", "pack", "ponderpack", "open"]}>
                   <Upload size={15} />
                   <span className="flex-1">{s.pack.import}</span>
+                  {lowNote}
                 </Command.Item>
               </Command.Group>
             </Command.List>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Segmented, Switch } from "../../components/ui/misc";
 import { toastError } from "../../components/ui/toast";
@@ -7,20 +7,22 @@ import { useFocusPrefs, useSetFocusPref } from "../../lib/focusPrefs";
 import { s } from "../../lib/strings";
 import type { FocusTechnique } from "../../lib/types";
 import { SettingsGroup, SettingsRow } from "../settings/layout";
+import { readPermission, requestPermission, type Perm } from "./notifications";
 import { Heading, sectionTitle } from "./parts";
 import { OB, useOb } from "./state";
 
 const TECHNIQUES: FocusTechnique[] = ["pomodoro", "52-17", "flowtime", "timebox"];
 const MINUTES = [15, 30, 60, 90];
 
-type Perm = "default" | "granted" | "denied" | "unavailable";
-const readPerm = (): Perm => (typeof Notification === "undefined" ? "unavailable" : (Notification.permission as Perm));
-
 export function StudyStep() {
   const { settings, save } = useOb();
   const { prefs } = useFocusPrefs();
   const setPref = useSetFocusPref();
-  const [perm, setPerm] = useState<Perm>(readPerm);
+  const [perm, setPerm] = useState<Perm>("default");
+
+  useEffect(() => {
+    readPermission().then(setPerm, () => setPerm("unavailable"));
+  }, []);
   const ob = s.onboarding.study;
   const technique = (settings?.[OB.technique] as FocusTechnique | undefined) ?? "pomodoro";
   const daily = Number(settings?.[OB.daily]) || 30;
@@ -45,7 +47,7 @@ export function StudyStep() {
 
   const ask = async () => {
     try {
-      setPerm((await Notification.requestPermission()) as Perm);
+      setPerm(await requestPermission());
     } catch {
       setPerm("unavailable");
     }

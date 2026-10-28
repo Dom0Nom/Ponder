@@ -1,5 +1,5 @@
 import { WorksheetScreen } from "../features/worksheets/WorksheetScreen";
-import { useRef, type CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import * as Tip from "@radix-ui/react-tooltip";
 import { Toaster } from "sonner";
@@ -31,6 +31,8 @@ import { QuickCaptureDialog } from "../features/capture/QuickCaptureDialog";
 import { useGlobalShortcuts } from "./useGlobalShortcuts";
 import { useBackgroundSync } from "./useBackgroundSync";
 import { useInbox } from "./useInbox";
+import { useHelpMenu } from "./useHelpMenu";
+import { migrateOnboardingGoals } from "../features/onboarding/goalMigration";
 import { useDeepLinks } from "./useDeepLinks";
 import { useStudyBuddy } from "../features/chat/useStudyBuddy";
 
@@ -115,6 +117,8 @@ function Shell() {
   useBackgroundSync();
   useDeepLinks();
   useInbox();
+  useHelpMenu();
+  useEffect(() => void migrateOnboardingGoals(), []);
   useStudyBuddy();
   return (
     <div className="flex h-full bg-chrome text-fg">

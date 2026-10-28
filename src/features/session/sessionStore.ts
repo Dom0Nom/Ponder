@@ -21,6 +21,7 @@ export function routeFor(block: Block, spaceId: string): Route | null {
       return { name: "review", spaceId, tab: "cards" };
     case "retest":
     case "check":
+    case "project":
       return { name: "practice", spaceId, topicKey: block.topic!.key, topicTitle: block.topic!.title };
     case "practice":
       return { name: "practice", spaceId, topicKey: MIXED_KEY, topicTitle: s.session.mixedTitle };

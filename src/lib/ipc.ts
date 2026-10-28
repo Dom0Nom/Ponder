@@ -368,6 +368,7 @@ export const events = {
   backupUpdated: (cb: () => void) => listen("backup://updated", () => cb()),
   deeplinkPending: (cb: () => void) => listen("deeplink://pending", () => cb()),
   inboxChanged: (cb: () => void) => listen("inbox://changed", () => cb()),
+  helpTour: (cb: () => void) => listen("help://tour", () => cb()),
   localeChanged: (cb: (locale: string) => void) => listen<string>("locale://changed", (e) => cb(e.payload)),
 };
 
