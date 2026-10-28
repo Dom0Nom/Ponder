@@ -173,7 +173,7 @@ pub async fn run(code: &str, stdin: &str) -> AppResult<CRun> {
     if !cfg!(windows) {
         cmd.arg("-lm");
     }
-    limit(&mut cmd, 5);
+    limit(&mut cmd, COMPILE_LIMIT.as_secs() + 2);
     let child = cmd.spawn()?;
     let out = match tokio::time::timeout(COMPILE_LIMIT, child.wait_with_output()).await {
         Ok(o) => o?,
@@ -196,7 +196,8 @@ pub async fn run(code: &str, stdin: &str) -> AppResult<CRun> {
     let t1 = Instant::now();
     let mut cmd = Command::new(&exe);
     cmd.current_dir(dir.path()).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).kill_on_drop(true);
-    limit(&mut cmd, 5);
+    // CPU limit is a backstop above the wall-clock limit, so a busy loop reports as timed out
+    limit(&mut cmd, RUN_LIMIT.as_secs() + 2);
     let mut child = cmd.spawn()?;
     if let Some(mut si) = child.stdin.take() {
         let data = stdin.as_bytes().to_vec();
