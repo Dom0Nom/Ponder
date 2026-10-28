@@ -37,8 +37,8 @@ async function call<R>(cmd: string, args?: Record<string, unknown>): Promise<R> 
   }
 }
 
-type McpTarget = Pick<T.McpServer, "id" | "command" | "args" | "url">;
-const mcpTarget = (s: McpTarget) => ({ id: s.id, command: s.command, args: s.args, url: s.url ?? null });
+type McpTarget = Pick<T.McpServer, "id" | "command" | "args" | "url" | "oauthClientId">;
+const mcpTarget = (s: McpTarget) => ({ id: s.id, command: s.command, args: s.args, url: s.url ?? null, oauthClientId: s.oauthClientId ?? null });
 
 export const api = {
   // spaces

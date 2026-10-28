@@ -13,11 +13,14 @@ import { SettingsGroup, SettingsRow } from "./layout";
 
 const t = s.integrations.client;
 const envAccount = (id: string) => `mcp-env:${id}`;
+const clientSecretAccount = (id: string) => `mcp-oauth-client:${id}`;
 
-function ServerForm({ server, onDone }: { server: McpServer | null; onDone: (saved: McpServer | null, env: string) => void }) {
+function ServerForm({ server, onDone }: { server: McpServer | null; onDone: (saved: McpServer | null, env: string, clientSecret: string) => void }) {
   const [name, setName] = useState(server?.name ?? "");
   const [command, setCommand] = useState(server ? (server.url ?? joinCommand([server.command, ...server.args])) : "");
   const [env, setEnv] = useState("");
+  const [clientId, setClientId] = useState(server?.oauthClientId ?? "");
+  const [clientSecret, setClientSecret] = useState("");
   const [error, setError] = useState<string | null>(null);
   const remote = isUrl(command);
   const submit = () => {
@@ -25,7 +28,8 @@ function ServerForm({ server, onDone }: { server: McpServer | null; onDone: (sav
     const enabled = server?.enabled ?? true;
     if (remote) {
       const url = command.trim();
-      onDone({ id, name: name.trim() || hostOf(url), command: "", args: [], url, enabled }, env);
+      const oauthClientId = clientId.trim() || undefined;
+      onDone({ id, name: name.trim() || hostOf(url), command: "", args: [], url, ...(oauthClientId ? { oauthClientId } : {}), enabled }, env, oauthClientId ? clientSecret : "");
       return;
     }
     const parts = splitCommand(command.trim());
@@ -34,7 +38,7 @@ function ServerForm({ server, onDone }: { server: McpServer | null; onDone: (sav
       return;
     }
     const [cmd, ...args] = parts;
-    onDone({ id, name: name.trim() || cmd, command: cmd, args, enabled }, env);
+    onDone({ id, name: name.trim() || cmd, command: cmd, args, enabled }, env, "");
   };
   return (
     <form
@@ -82,8 +86,28 @@ function ServerForm({ server, onDone }: { server: McpServer | null; onDone: (sav
         />
         <p className="text-caption text-muted">{remote ? (server ? t.headersKept : t.headersHint) : server ? t.envKept : t.envHint}</p>
       </div>
+      {remote && (
+        <>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="mcp-client-id" className={fieldLabel}>
+              {t.oauthClientId}
+            </Label>
+            <Input id="mcp-client-id" value={clientId} spellCheck={false} autoComplete="off" onChange={(e) => setClientId(e.target.value)} />
+            <p className="text-caption text-muted">{t.oauthClientIdHint}</p>
+          </div>
+          {clientId.trim() && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="mcp-client-secret" className={fieldLabel}>
+                {t.oauthClientSecret}
+              </Label>
+              <Input id="mcp-client-secret" type="password" value={clientSecret} spellCheck={false} autoComplete="off" onChange={(e) => setClientSecret(e.target.value)} />
+              <p className="text-caption text-muted">{server?.oauthClientId ? t.oauthClientSecretKept : t.oauthClientSecretHint}</p>
+            </div>
+          )}
+        </>
+      )}
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={() => onDone(null, "")}>
+        <Button type="button" variant="ghost" onClick={() => onDone(null, "", "")}>
           {t.cancel}
         </Button>
         <Button type="submit" variant="primary">
@@ -204,19 +228,21 @@ export function McpClientSection() {
     }
   };
 
-  const done = async (saved: McpServer | null, env: string) => {
+  const done = async (saved: McpServer | null, env: string, clientSecret: string) => {
     if (!saved) {
       setEditing(null);
       return;
     }
     try {
       if (env.trim()) await api.setSecret(envAccount(saved.id), env);
+      if (!saved.oauthClientId) await api.deleteSecret(clientSecretAccount(saved.id)).catch(() => {});
+      else if (clientSecret.trim()) await api.setSecret(clientSecretAccount(saved.id), clientSecret.trim());
       const exists = servers.some((x) => x.id === saved.id);
       await save(exists ? servers.map((x) => (x.id === saved.id ? saved : x)) : [...servers, saved]);
       await api.mcpStop(saved.id).catch(() => {});
       setEditing(null);
     } catch (e) {
-      if (env.trim()) toastError(t.saveFailed, e);
+      if (env.trim() || clientSecret.trim()) toastError(t.saveFailed, e);
     }
   };
 
@@ -225,6 +251,7 @@ export function McpClientSection() {
       await save(servers.filter((x) => x.id !== server.id));
       await api.mcpStop(server.id).catch(() => {});
       await api.deleteSecret(envAccount(server.id)).catch(() => {});
+      await api.deleteSecret(clientSecretAccount(server.id)).catch(() => {});
       if (server.url) await api.mcpSignOut(server.id).catch(() => {});
       toast.success(`${t.remove}: ${server.name}`);
     } catch {

@@ -658,6 +658,7 @@ export interface PackCounts {
   notes: number;
   cards: number;
   outputs: number;
+  worksheets: number;
   files: number;
 }
 
@@ -1105,6 +1106,8 @@ export interface McpServer {
   args: string[];
   /** Streamable HTTP endpoint for a remote server; `command` is empty then */
   url?: string;
+  /** OAuth client ID for servers without dynamic client registration; the secret is in the keychain */
+  oauthClientId?: string;
   enabled: boolean;
 }
 

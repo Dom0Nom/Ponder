@@ -23,6 +23,10 @@ pub fn auth_account(id: &str) -> String {
     format!("mcp-oauth:{id}")
 }
 
+pub fn client_secret_account(id: &str) -> String {
+    format!("mcp-oauth-client:{id}")
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Discovered {
     pub authorize: String,

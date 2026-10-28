@@ -37,6 +37,7 @@ interface MockPack {
   notes: T.Note[];
   cards: T.Card[];
   outputs: T.StudioOutput[];
+  worksheets?: WorksheetDoc[];
 }
 
 export interface DB {
@@ -625,6 +626,7 @@ const packCounts = (p: MockPack): T.PackCounts => ({
   notes: p.notes.length,
   cards: p.cards.length,
   outputs: p.outputs.length,
+  worksheets: p.worksheets?.length ?? 0,
   files: 0,
 });
 
@@ -2045,8 +2047,9 @@ const handlers: Record<string, (a: Args) => unknown> = {
   mcp_client_stop: () => null,
   mcp_client_auth_status: (a) => ({ signedIn: !!db.mcpAuth?.[a.id as string] }),
   mcp_client_sign_in: async (a) => {
-    const srv = a.server as { id: string; url?: string | null };
+    const srv = a.server as { id: string; url?: string | null; oauthClientId?: string | null };
     if (!srv.url) err("invalid", "Only servers added by URL can sign in.");
+    if (srv.url.includes("no-registration") && !srv.oauthClientId) err("other", "This server doesn't let apps register for sign-in. Enter an OAuth client ID from the server's developer settings in this server's settings, or add its access token as a header instead.");
     await new Promise((r) => setTimeout(r, 300));
     (db.mcpAuth ??= {})[srv.id] = true;
     save();
@@ -2458,6 +2461,7 @@ const handlers: Record<string, (a: Args) => unknown> = {
       notes: structuredClone(Object.values(db.notes ?? {}).filter((n) => n.spaceId === space.id)),
       cards: structuredClone(Object.values(db.cards).filter((c) => c.spaceId === space.id)),
       outputs: structuredClone(Object.values(db.outputs ?? {}).filter((o) => o.spaceId === space.id)),
+      worksheets: structuredClone(Object.values(db.worksheets ?? {}).filter((w) => w.spaceId === space.id)),
     };
     const path = `/Users/me/Documents/${space.name}.ponderpack`;
     (db.packs ??= {})[path] = pack;
@@ -2497,6 +2501,10 @@ const handlers: Record<string, (a: Args) => unknown> = {
     for (const o of pack.outputs) {
       const no = id();
       (db.outputs ??= {})[no] = { ...structuredClone(o), id: no, spaceId };
+    }
+    for (const w of pack.worksheets ?? []) {
+      const nw = id();
+      (db.worksheets ??= {})[nw] = { ...structuredClone(w), id: nw, spaceId };
     }
     save();
     return { spaceId, name, counts: packCounts(pack), sourceIds };

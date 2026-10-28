@@ -12,6 +12,7 @@ export function mcpServers(settings: Record<string, unknown> | undefined): McpSe
     .filter((x): x is Record<string, unknown> => !!x && typeof x === "object" && typeof x.id === "string" && (typeof x.command === "string" || typeof x.url === "string"))
     .map((x) => {
       const url = typeof x.url === "string" && x.url.trim() ? x.url.trim() : undefined;
+      const oauthClientId = typeof x.oauthClientId === "string" && x.oauthClientId.trim() ? x.oauthClientId.trim() : undefined;
       const command = typeof x.command === "string" ? x.command : "";
       return {
         id: x.id as string,
@@ -19,6 +20,7 @@ export function mcpServers(settings: Record<string, unknown> | undefined): McpSe
         command,
         args: Array.isArray(x.args) ? x.args.filter((a): a is string => typeof a === "string") : [],
         ...(url ? { url } : {}),
+        ...(url && oauthClientId ? { oauthClientId } : {}),
         enabled: x.enabled !== false,
       };
     });

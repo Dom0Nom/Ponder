@@ -1,5 +1,5 @@
 //! Study packs (`.ponderpack`): one space with its sources, notes, cards and Studio outputs as a zip.
-//! Rows are stored as JSON objects keyed by column name. Import always creates a new space with new ids;
+//! Format 2 adds worksheets; format 1 packs still import. Rows are stored as JSON objects keyed by column name. Import always creates a new space with new ids;
 //! the ingest queue then rebuilds chunks and embeddings from each source's text.
 use crate::db::{models, new_id, now_ms};
 use crate::error::{invalid, invalid_key, AppError, AppResult};
@@ -17,7 +17,7 @@ use tauri::{AppHandle, State, WebviewWindow};
 use tauri_plugin_dialog::DialogExt;
 
 pub const EXTENSION: &str = "ponderpack";
-const FORMAT: i64 = 1;
+const FORMAT: i64 = 2;
 const MANIFEST: &str = "manifest.json";
 const MAX_JSON_BYTES: u64 = 128 * 1024 * 1024;
 const MAX_FILE_BYTES: u64 = 200 * 1024 * 1024;
@@ -33,6 +33,8 @@ pub struct PackCounts {
     pub notes: usize,
     pub cards: usize,
     pub outputs: usize,
+    #[serde(default)]
+    pub worksheets: usize,
     pub files: usize,
 }
 
@@ -209,6 +211,11 @@ pub fn export_pack(
         "SELECT * FROM studio_outputs WHERE space_id=?1 ORDER BY created_at, id",
         space_id,
     )?;
+    let worksheets = dump(
+        c,
+        "SELECT * FROM worksheets WHERE space_id=?1 ORDER BY created_at, id",
+        space_id,
+    )?;
     let schema_version: i64 = c.query_row("PRAGMA user_version", [], |r| r.get(0))?;
 
     let tmp = dest.with_extension(format!("{EXTENSION}.tmp"));
@@ -241,6 +248,7 @@ pub fn export_pack(
             notes: notes.len(),
             cards: cards.len(),
             outputs: outputs.len(),
+            worksheets: worksheets.len(),
             files,
         };
         let manifest = Manifest {
@@ -260,6 +268,7 @@ pub fn export_pack(
         put_json(&mut zip, "data/notes.json", &notes)?;
         put_json(&mut zip, "data/cards.json", &cards)?;
         put_json(&mut zip, "data/studio_outputs.json", &outputs)?;
+        put_json(&mut zip, "data/worksheets.json", &worksheets)?;
         zip.finish().map_err(zip_err)?;
         fs::rename(&tmp, dest)?;
         Ok(counts)
@@ -395,6 +404,11 @@ pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResul
     let notes = read_rows(&mut zip, "data/notes.json")?;
     let cards = read_rows(&mut zip, "data/cards.json")?;
     let outputs = read_rows(&mut zip, "data/studio_outputs.json")?;
+    let worksheets = if manifest.format >= 2 {
+        read_rows(&mut zip, "data/worksheets.json")?
+    } else {
+        vec![]
+    };
 
     let new_space = new_id();
     let now = now_ms();
@@ -416,7 +430,7 @@ pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResul
     let result = (|| -> AppResult<PackCounts> {
         let tx = c.transaction()?;
         let cols = |t: &str| table_columns(&tx, t);
-        let (c_space, c_src, c_txt, c_chunk, c_note, c_card, c_out) = (
+        let (c_space, c_src, c_txt, c_chunk, c_note, c_card, c_out, c_ws) = (
             cols("spaces")?,
             cols("sources")?,
             cols("source_texts")?,
@@ -424,6 +438,7 @@ pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResul
             cols("notes")?,
             cols("cards")?,
             cols("studio_outputs")?,
+            cols("worksheets")?,
         );
         insert_row(&tx, "spaces", &c_space, &space)?;
 
@@ -538,6 +553,13 @@ pub fn import_pack(c: &mut Connection, data_dir: &Path, pack: &Path) -> AppResul
             set(&mut o, "space_id", new_space.clone());
             insert_row(&tx, "studio_outputs", &c_out, &o)?;
             counts.outputs += 1;
+        }
+        for w in &worksheets {
+            let mut w = w.clone();
+            set(&mut w, "id", new_id());
+            set(&mut w, "space_id", new_space.clone());
+            insert_row(&tx, "worksheets", &c_ws, &w)?;
+            counts.worksheets += 1;
         }
         for name in image_names(&cards) {
             let dest = data_dir.join("images").join(&name);
@@ -745,6 +767,9 @@ mod tests {
         )
         .unwrap();
         c.execute("INSERT INTO studio_outputs (id,space_id,kind,title,data,created_at,updated_at) VALUES ('o1',?1,'timeline','Cells','{\"events\":[]}',1,1)", [&id]).unwrap();
+        for (w, t) in [("w1", "Cell worksheet"), ("w2", "Energy worksheet")] {
+            c.execute("INSERT INTO worksheets (id,space_id,title,data,created_at,updated_at) VALUES (?1,?2,?3,?4,?5,?5)", params![w, id, t, r#"{"sheet":{"a":1},"attempt":null}"#, if w == "w1" { 1 } else { 2 }]).unwrap();
+        }
         c.execute("INSERT INTO study_plans (space_id,goal,exam_date,weekly_minutes,study_days,created_at,updated_at) VALUES (?1,'pass','2030-01-01',60,'[1]',1,1)", [&id]).unwrap();
         fs::create_dir_all(data.join("images")).unwrap();
         fs::write(data.join("images/pic.png"), b"png").unwrap();
@@ -771,6 +796,7 @@ mod tests {
                 notes: 1,
                 cards: 2,
                 outputs: 1,
+                worksheets: 2,
                 files: 2
             }
         );
@@ -789,10 +815,27 @@ mod tests {
                 notes: 1,
                 cards: 2,
                 outputs: 1,
+                worksheets: 2,
                 files: 2
             }
         );
         assert_eq!(res.source_ids.len(), 3);
+        let ws: Vec<(String, String)> = {
+            let mut st = c
+                .prepare(&format!(
+                    "SELECT id, data FROM worksheets WHERE space_id='{}' ORDER BY created_at, id",
+                    res.space_id
+                ))
+                .unwrap();
+            st.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+                .unwrap()
+                .map(|r| r.unwrap())
+                .collect()
+        };
+        assert_eq!(ws.len(), 2);
+        assert!(ws.iter().all(|(i, _)| i != "w1" && i != "w2"));
+        assert_eq!(ws[0].1, r#"{"sheet":{"a":1},"attempt":null}"#);
+        assert_eq!(count(&c, "SELECT count(*) FROM worksheets"), 4);
 
         let sp = &res.space_id;
         assert_eq!(
@@ -968,11 +1011,21 @@ mod tests {
                 r#"{{"format":{format},"app":"{app}","appVersion":"1","schemaVersion":1,"createdAt":1,"spaceName":"X","counts":{{"sources":0,"chunks":0,"notes":0,"cards":0,"outputs":0,"files":0}}}}"#
             )
         };
-        let newer = make("newer.ponderpack", &head(2, "ponder"), true, "{}");
+        let newer = make("newer.ponderpack", &head(3, "ponder"), true, "{}");
         assert!(import_pack(&mut c, dir.path(), &newer)
             .unwrap_err()
             .to_string()
             .contains("newer version"));
+        let no_ws = make(
+            "nows.ponderpack",
+            &head(2, "ponder"),
+            true,
+            r#"{"name":"X"}"#,
+        );
+        assert!(import_pack(&mut c, dir.path(), &no_ws)
+            .unwrap_err()
+            .to_string()
+            .contains("worksheets.json is missing"));
         let other = make("other.ponderpack", &head(1, "other"), true, "{}");
         assert!(import_pack(&mut c, dir.path(), &other).is_err());
         let nodata = make("nodata.ponderpack", &head(1, "ponder"), false, "{}");

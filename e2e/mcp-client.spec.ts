@@ -68,3 +68,34 @@ test("MCP client: a remote server by URL, with headers and sign-in", async ({ ap
   await row.getByRole("button", { name: "Sign out" }).click();
   await expect(row.getByRole("button", { name: "Sign in" })).toBeVisible();
 });
+
+test("MCP client: a server without dynamic registration needs an OAuth client ID", async ({ app }) => {
+  await app.getByRole("button", { name: "Settings" }).click();
+  const section = app.getByTestId("mcp-client");
+  await section.scrollIntoViewIfNeeded();
+  await section.getByRole("button", { name: "Add server" }).click();
+  await section.getByLabel("Command or URL").fill("https://no-registration.example.com/mcp");
+  await expect(section.getByLabel("OAuth client secret")).toHaveCount(0);
+  await section.getByLabel("OAuth client ID").fill("my-client");
+  await section.getByLabel("OAuth client secret").fill("shh");
+  await section.getByRole("button", { name: "Save" }).click();
+  const saved = await app.evaluate(() => (window as any).__mock.db());
+  const server = (saved.settings["mcp.servers"] as { id: string; oauthClientId: string }[])[0];
+  expect(server.oauthClientId).toBe("my-client");
+  expect(saved.secrets[`mcp-oauth-client:${server.id}`]).toBe(true);
+  expect(JSON.stringify(saved.settings)).not.toContain("shh");
+  const row = section.locator('[data-testid="mcp-server"]');
+  await row.getByRole("button", { name: "Sign in" }).click();
+  await expect(section.getByTestId("mcp-tool-count")).toHaveText("Signed in · 1 tool");
+});
+
+test("MCP client: sign-in without a client ID points at the field", async ({ app }) => {
+  await app.getByRole("button", { name: "Settings" }).click();
+  const section = app.getByTestId("mcp-client");
+  await section.scrollIntoViewIfNeeded();
+  await section.getByRole("button", { name: "Add server" }).click();
+  await section.getByLabel("Command or URL").fill("https://no-registration.example.com/mcp");
+  await section.getByRole("button", { name: "Save" }).click();
+  await section.locator('[data-testid="mcp-server"]').getByRole("button", { name: "Sign in" }).click();
+  await expect(app.getByText(/Enter an OAuth client ID/)).toBeVisible();
+});

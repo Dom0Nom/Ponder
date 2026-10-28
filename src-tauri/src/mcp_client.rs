@@ -1,4 +1,4 @@
-//! MCP client: connects to the MCP servers the learner added in Settings (stdio or Streamable HTTP) and calls their tools for chat.
+//! MCP client: connects to the MCP servers the learner added in Settings (stdio, Streamable HTTP or legacy HTTP+SSE) and calls their tools for chat.
 
 use std::collections::{HashMap, VecDeque};
 use std::process::Stdio;
@@ -33,6 +33,9 @@ pub struct ServerConfig {
     /// Streamable HTTP endpoint; when set, `command` is ignored.
     #[serde(default)]
     pub url: Option<String>,
+    /// OAuth client ID for servers that don't allow dynamic registration; the secret lives in the keychain.
+    #[serde(default)]
+    pub oauth_client_id: Option<String>,
 }
 
 impl ServerConfig {
@@ -211,6 +214,7 @@ pub struct HttpSession {
     session_id: Option<String>,
     initialized: bool,
     next_id: i64,
+    last_status: Option<u16>,
 }
 
 impl HttpSession {
@@ -234,7 +238,15 @@ impl HttpSession {
             session_id: None,
             initialized: false,
             next_id: 0,
+            last_status: None,
         })
+    }
+
+    /// The first `initialize` got a client error that isn't about credentials, as legacy SSE servers answer it.
+    fn should_fall_back(&self) -> bool {
+        !self.initialized
+            && matches!(self.last_status, Some(400..=499))
+            && !matches!(self.last_status, Some(401 | 403 | 408 | 429))
     }
 
     async fn post(&mut self, msg: &Value) -> AppResult<reqwest::Response> {
@@ -271,6 +283,7 @@ impl HttpSession {
         if status.is_success() {
             return Ok(res);
         }
+        self.last_status = Some(status.as_u16());
         if status == reqwest::StatusCode::NOT_FOUND && self.session_id.is_some() {
             self.session_id = None;
             return Err(other("The MCP server ended the session."));
@@ -363,6 +376,161 @@ impl Rpc for HttpSession {
     }
 }
 
+enum SseItem {
+    Endpoint(String),
+    Message(Value),
+}
+
+/// Legacy HTTP+SSE transport (2024-11-05): one long GET stream carries every reply, requests are POSTed to the `endpoint` it announces.
+pub struct SseSession {
+    client: reqwest::Client,
+    post_url: String,
+    headers: Vec<(String, String)>,
+    rx: tokio::sync::mpsc::UnboundedReceiver<SseItem>,
+    reader: tokio::task::JoinHandle<()>,
+    next_id: i64,
+}
+
+impl Drop for SseSession {
+    fn drop(&mut self) {
+        self.reader.abort();
+    }
+}
+
+impl SseSession {
+    async fn connect(
+        client: reqwest::Client,
+        url: &str,
+        headers: Vec<(String, String)>,
+    ) -> AppResult<Self> {
+        let base = reqwest::Url::parse(url)
+            .map_err(|_| invalid("Enter the server's full URL, starting with https://."))?;
+        let mut req = client
+            .get(url)
+            .header(reqwest::header::ACCEPT, "text/event-stream");
+        for (k, v) in &headers {
+            req = req.header(k.as_str(), v.as_str());
+        }
+        let res = req
+            .send()
+            .await
+            .map_err(|e| other(format!("Couldn't reach the MCP server: {e}")))?;
+        let status = res.status();
+        if status == reqwest::StatusCode::UNAUTHORIZED {
+            return Err(AppError::Auth(
+                "This MCP server needs you to sign in.".into(),
+            ));
+        }
+        if !status.is_success() {
+            return Err(other(format!("The MCP server answered {status}.")));
+        }
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        let reader = tokio::spawn(async move {
+            let mut stream = res.bytes_stream();
+            let mut buf = String::new();
+            while let Some(Ok(chunk)) = futures_util::StreamExt::next(&mut stream).await {
+                buf.push_str(&String::from_utf8_lossy(&chunk));
+                for (name, data) in sse_frames(&mut buf) {
+                    let item = if name == "endpoint" {
+                        match base.join(data.trim()) {
+                            Ok(u) if u.origin() == base.origin() => SseItem::Endpoint(u.into()),
+                            _ => continue,
+                        }
+                    } else if let Ok(msg) = serde_json::from_str::<Value>(&data) {
+                        SseItem::Message(msg)
+                    } else {
+                        continue;
+                    };
+                    if tx.send(item).is_err() {
+                        return;
+                    }
+                }
+            }
+        });
+        let post_url = loop {
+            match rx.recv().await {
+                Some(SseItem::Endpoint(u)) => break u,
+                Some(SseItem::Message(_)) => {}
+                None => {
+                    return Err(other(
+                        "The MCP server closed the stream without sending an endpoint.",
+                    ))
+                }
+            }
+        };
+        Ok(Self {
+            client,
+            post_url,
+            headers,
+            rx,
+            reader,
+            next_id: 0,
+        })
+    }
+
+    async fn post(&self, msg: &Value) -> AppResult<()> {
+        let mut req = self
+            .client
+            .post(&self.post_url)
+            .header(reqwest::header::CONTENT_TYPE, "application/json");
+        for (k, v) in &self.headers {
+            req = req.header(k.as_str(), v.as_str());
+        }
+        let res = req
+            .body(serde_json::to_vec(msg)?)
+            .send()
+            .await
+            .map_err(|e| other(format!("Couldn't reach the MCP server: {e}")))?;
+        let status = res.status();
+        if status.is_success() {
+            return Ok(());
+        }
+        if status == reqwest::StatusCode::UNAUTHORIZED {
+            return Err(AppError::Auth(
+                "This MCP server needs you to sign in.".into(),
+            ));
+        }
+        Err(other(format!("The MCP server answered {status}.")))
+    }
+}
+
+impl Rpc for SseSession {
+    async fn request(&mut self, method: &str, params: Value) -> AppResult<Value> {
+        self.next_id += 1;
+        let id = self.next_id;
+        self.post(&json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params }))
+            .await?;
+        loop {
+            let Some(item) = self.rx.recv().await else {
+                return Err(other("The MCP server stopped."));
+            };
+            let SseItem::Message(msg) = item else {
+                continue;
+            };
+            if let Some(m) = msg.get("method").and_then(Value::as_str) {
+                if let Some(rid) = msg.get("id") {
+                    let reply = if m == "ping" {
+                        json!({ "jsonrpc": "2.0", "id": rid, "result": {} })
+                    } else {
+                        json!({ "jsonrpc": "2.0", "id": rid, "error": { "code": -32601, "message": "Not supported by Ponder" } })
+                    };
+                    self.post(&reply).await?;
+                }
+                continue;
+            }
+            let found = messages(&msg).find_map(|m| response_for(m, id));
+            if let Some(r) = found {
+                return r;
+            }
+        }
+    }
+
+    async fn notify(&mut self, method: &str) -> AppResult<()> {
+        self.post(&json!({ "jsonrpc": "2.0", "method": method }))
+            .await
+    }
+}
+
 fn messages(v: &Value) -> Box<dyn Iterator<Item = &Value> + '_> {
     match v.as_array() {
         Some(a) => Box::new(a.iter()),
@@ -372,6 +540,11 @@ fn messages(v: &Value) -> Box<dyn Iterator<Item = &Value> + '_> {
 
 /// Removes complete events from `buf` and returns their `data` payloads.
 pub fn sse_events(buf: &mut String) -> Vec<String> {
+    sse_frames(buf).into_iter().map(|(_, d)| d).collect()
+}
+
+/// Like `sse_events`, with each event's name (`message` when it has none).
+fn sse_frames(buf: &mut String) -> Vec<(String, String)> {
     let mut out = Vec::new();
     loop {
         let normalized = buf.replace("\r\n", "\n");
@@ -386,7 +559,11 @@ pub fn sse_events(buf: &mut String) -> Vec<String> {
             .map(|d| d.strip_prefix(' ').unwrap_or(d))
             .collect();
         if !data.is_empty() {
-            out.push(data.join("\n"));
+            let name = event
+                .lines()
+                .find_map(|l| l.strip_prefix("event:"))
+                .map_or("message", str::trim);
+            out.push((name.to_string(), data.join("\n")));
         }
     }
     out
@@ -504,6 +681,7 @@ enum Conn {
         session: Session<BufReader<ChildStdout>, ChildStdin>,
     },
     Http(HttpSession),
+    Sse(SseSession),
 }
 
 struct Running {
@@ -519,6 +697,7 @@ impl Running {
         match &mut self.conn {
             Conn::Stdio { session, .. } => session.call_tool(name, arguments).await,
             Conn::Http(session) => session.call_tool(name, arguments).await,
+            Conn::Sse(session) => session.call_tool(name, arguments).await,
         }
     }
 }
@@ -534,21 +713,35 @@ async fn start(
             headers.retain(|(k, _)| !k.eq_ignore_ascii_case("authorization"));
             headers.push(("Authorization".into(), format!("Bearer {token}")));
         }
-        let mut session = HttpSession::new(url, headers)?;
-        let tools = match tokio::time::timeout(START_TIMEOUT, async {
+        let mut session = HttpSession::new(url, headers.clone())?;
+        let attempt = tokio::time::timeout(START_TIMEOUT, async {
             session.initialize().await?;
             session.list_tools().await
         })
-        .await
-        {
-            Ok(r) => r?,
+        .await;
+        let (conn, tools) = match attempt {
+            Ok(Ok(tools)) => (Conn::Http(session), tools),
+            Ok(Err(_)) if session.should_fall_back() => {
+                let legacy = tokio::time::timeout(START_TIMEOUT, async {
+                    let mut s = SseSession::connect(session.client.clone(), url, headers).await?;
+                    s.initialize().await?;
+                    let tools = s.list_tools().await?;
+                    Ok::<_, AppError>((Conn::Sse(s), tools))
+                })
+                .await;
+                match legacy {
+                    Ok(r) => r?,
+                    Err(_) => return Err(other("The MCP server didn't answer within a minute.")),
+                }
+            }
+            Ok(Err(e)) => return Err(e),
             Err(_) => return Err(other("The MCP server didn't answer within a minute.")),
         };
         return Ok(Running {
             config: config.clone(),
             secret: secret.map(str::to_string),
             bearer: bearer.map(str::to_string),
-            conn: Conn::Http(session),
+            conn,
             tools,
         });
     }
@@ -661,6 +854,15 @@ async fn read_auth(svc: &ProviderServices, id: &str) -> AppResult<Option<McpAuth
         .await
         .map_err(|e| other(e.to_string()))??;
     Ok(text.and_then(|t| serde_json::from_str(&t).ok()))
+}
+
+async fn read_client_secret(svc: &ProviderServices, id: &str) -> AppResult<Option<String>> {
+    let store = svc.secrets.clone();
+    let account = mcp_oauth::client_secret_account(id);
+    let text = tokio::task::spawn_blocking(move || store.get(&account))
+        .await
+        .map_err(|e| other(e.to_string()))??;
+    Ok(text.filter(|s| !s.trim().is_empty()))
 }
 
 async fn save_auth(svc: &ProviderServices, id: &str, auth: &McpAuth) -> AppResult<()> {
@@ -799,11 +1001,16 @@ pub async fn mcp_client_sign_in(
     let found = mcp_oauth::discover(&http, &url, challenge.as_deref()).await?;
     let lb = crate::oauth::loopback::Loopback::bind().await?;
     let redirect = lb.redirect_uri();
-    let register = found
-        .register
+    let preset = server
+        .oauth_client_id
         .as_deref()
-        .ok_or_else(|| other("This server doesn't let apps register for sign-in. Add its access token as a header instead."))?;
-    let (client_id, client_secret) = mcp_oauth::register(&http, register, &redirect).await?;
+        .map(str::trim)
+        .filter(|c| !c.is_empty());
+    let (client_id, client_secret) = match (preset, found.register.as_deref()) {
+        (Some(id), _) => (id.to_string(), read_client_secret(&svc, &server.id).await?),
+        (None, Some(register)) => mcp_oauth::register(&http, register, &redirect).await?,
+        (None, None) => return Err(other("This server doesn't let apps register for sign-in. Enter an OAuth client ID from the server's developer settings in this server's settings, or add its access token as a header instead.")),
+    };
     let (verifier, state) = mcp_oauth::new_verifier();
     let auth_url = mcp_oauth::authorize_url(&found, &client_id, &redirect, &state, &verifier)?;
     if let Err(e) = app.opener().open_url(auth_url, None::<&str>) {
@@ -1004,6 +1211,7 @@ mod tests {
             command: String::new(),
             args: vec![],
             url: Some(url.clone()),
+            oauth_client_id: None,
         };
         let mut run = start(
             &cfg,
@@ -1041,11 +1249,143 @@ mod tests {
         assert!(start(&bad, None, None).await.is_err());
     }
 
+    /// Legacy HTTP+SSE server: POST to the SSE URL is 405, replies to POSTs at /messages go out on the GET stream.
+    async fn fake_sse_server(post_status: &'static str) -> String {
+        use tokio::io::AsyncReadExt;
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}/sse", listener.local_addr().unwrap());
+        let (tx, rx) = tokio::sync::broadcast::channel::<String>(16);
+        tokio::spawn(async move {
+            loop {
+                let (mut sock, _) = listener.accept().await.unwrap();
+                let tx = tx.clone();
+                let mut rx = tx.subscribe();
+                tokio::spawn(async move {
+                    let mut buf = Vec::new();
+                    let mut chunk = [0u8; 4096];
+                    let (head, body) = loop {
+                        let n = sock.read(&mut chunk).await.unwrap();
+                        if n == 0 {
+                            return;
+                        }
+                        buf.extend_from_slice(&chunk[..n]);
+                        let text = String::from_utf8_lossy(&buf).to_string();
+                        let Some(end) = text.find("\r\n\r\n") else {
+                            continue;
+                        };
+                        let head = text[..end].to_lowercase();
+                        let len: usize = head
+                            .lines()
+                            .find_map(|l| l.strip_prefix("content-length:"))
+                            .map_or(0, |v| v.trim().parse().unwrap());
+                        if buf.len() >= end + 4 + len {
+                            break (head, text[end + 4..end + 4 + len].to_string());
+                        }
+                    };
+                    let line = head.lines().next().unwrap().to_string();
+                    let authed = head.contains("authorization: bearer secret");
+                    if line.starts_with("get /sse") {
+                        if !authed {
+                            sock.write_all(
+                                b"HTTP/1.1 401 Unauthorized\r\ncontent-length: 0\r\n\r\n",
+                            )
+                            .await
+                            .unwrap();
+                            return;
+                        }
+                        sock.write_all(b"HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\nconnection: close\r\n\r\nevent: endpoint\ndata: /messages?sid=7\n\n").await.unwrap();
+                        while let Ok(msg) = rx.recv().await {
+                            if sock
+                                .write_all(format!("event: message\ndata: {msg}\n\n").as_bytes())
+                                .await
+                                .is_err()
+                            {
+                                return;
+                            }
+                        }
+                        return;
+                    }
+                    let status = if line.starts_with("post /messages?sid=7") && authed {
+                        let msg: Value = serde_json::from_str(&body).unwrap();
+                        if let (Some(id), true) = (msg.get("id"), msg.get("method").is_some()) {
+                            let result = match msg["method"].as_str().unwrap() {
+                                "initialize" => {
+                                    json!({ "protocolVersion": PROTOCOL, "capabilities": {} })
+                                }
+                                "tools/list" => json!({ "tools": [{ "name": "echo" }] }),
+                                _ => {
+                                    json!({ "content": [{ "type": "text", "text": msg["params"]["arguments"]["text"] }] })
+                                }
+                            };
+                            let _ = tx.send(
+                                json!({ "jsonrpc": "2.0", "method": "notifications/progress" })
+                                    .to_string(),
+                            );
+                            let _ = tx.send(
+                                json!({ "jsonrpc": "2.0", "id": 99, "method": "ping" }).to_string(),
+                            );
+                            let _ = tx.send(
+                                json!({ "jsonrpc": "2.0", "id": id, "result": result }).to_string(),
+                            );
+                        }
+                        "202 Accepted"
+                    } else if line.starts_with("post /sse") {
+                        post_status
+                    } else {
+                        "404 Not Found"
+                    };
+                    sock.write_all(
+                        format!(
+                            "HTTP/1.1 {status}\r\ncontent-length: 0\r\nconnection: close\r\n\r\n"
+                        )
+                        .as_bytes(),
+                    )
+                    .await
+                    .unwrap();
+                });
+            }
+        });
+        drop(rx);
+        url
+    }
+
+    #[tokio::test]
+    async fn falls_back_to_legacy_sse() {
+        for status in ["405 Method Not Allowed", "404 Not Found"] {
+            let url = fake_sse_server(status).await;
+            let cfg = ServerConfig {
+                id: "s".into(),
+                command: String::new(),
+                args: vec![],
+                url: Some(url),
+                oauth_client_id: None,
+            };
+            let mut run = start(&cfg, None, Some("secret")).await.unwrap();
+            assert!(matches!(run.conn, Conn::Sse(_)));
+            assert_eq!(run.tools[0].name, "echo");
+            let r = run
+                .call_tool("echo", json!({ "text": "hi" }))
+                .await
+                .unwrap();
+            assert_eq!(r.text, "hi");
+            let e = start(&cfg, None, None).await.err().unwrap();
+            assert!(matches!(e, AppError::Auth(_)), "{e}");
+        }
+    }
+
     #[test]
     fn splits_sse_events() {
         let mut buf = "data: a\ndata: b\n\n: c\r\n\r\ndata:x\n\ndata: par".to_string();
         assert_eq!(sse_events(&mut buf), ["a\nb", "x"]);
         assert_eq!(buf, "data: par");
+        let mut named = "event: endpoint\ndata: /m\n\ndata: y\n\n".to_string();
+        assert_eq!(
+            sse_frames(&mut named),
+            [
+                ("endpoint".into(), "/m".into()),
+                ("message".into(), "y".into())
+            ]
+        );
     }
 
     #[test]
@@ -1092,6 +1432,7 @@ mod tests {
             command: "sh".into(),
             args: vec!["-c".into(), "echo boom >&2; exit 1".into()],
             url: None,
+            oauth_client_id: None,
         };
         let e = start(&cfg, None, None).await.err().unwrap().to_string();
         assert!(e.contains("stopped") && e.contains("boom"), "{e}");
