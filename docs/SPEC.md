@@ -24,7 +24,7 @@ NotebookLM is the baseline, not the ceiling: sources + grounded AI + generated s
 | AI and timer | Full study buddy: knows timer state at all times; session start check-in (energy, time, goal); plans the block; check-ins every N minutes (configurable, body doubling); at T-3 min proposes quick recall; end-of-block mini quiz; post-break recap; end-of-session summary written to the space journal. Never starts a long answer that can't finish before the break without saying so. |
 | TTS | Pluggable. Free local default (bundled CPU voice). Providers: Fish Audio (preferred for quality), OpenAI TTS, Gemini TTS, ElevenLabs. |
 | Cloud imports | Google Drive and Dropbox right after the first build, behind the same importer interface as local files. |
-| Git | Local commits only. No remote until the user names and publishes it. |
+| Git | Public repository at https://github.com/Dom0Nom/Ponder. |
 
 ## First build scope
 
@@ -109,7 +109,7 @@ Every roadmap item above is built, plus `docs/ROADMAP.md` 1–14, the context bu
 
 ## Constraints
 
-- Dev machine: Intel i7 MacBook (2019), macOS 15.7, Rust 1.98, bun 1.3, Node 22, Ollama 0.30 installed but too slow for real use. No Apple Silicon: no MLX, no Apple Foundation Models. Keep CPU work (embeddings, local TTS) light and off the UI thread.
+- Keep CPU work (embeddings, local TTS) light and off the UI thread; the app must stay usable on older Intel Macs without Apple Silicon (no MLX, no Apple Foundation Models).
 - Dev/test LLM: any OpenAI-compatible local server works (LM Studio, Ollama). Set `LMSTUDIO_URL` for the live scripts (default `http://localhost:1234/v1`). Qwen3.5 reasons by default (a short answer can use 400+ reasoning tokens before any content): handle `reasoning_content` separately (collapsible "thinking"), don't set low `max_tokens`, and offer a thinking on/off toggle. LM Studio is a first-class local provider (base URL configurable, default `http://localhost:1234/v1`).
 - Tauri WebDriver testing is not supported on macOS (WKWebView). UI is tested in the browser via Vite with mocked Tauri IPC (`@tauri-apps/api/mocks`) + Playwright; Rust logic via `cargo test`; TS logic via Vitest.
 - YouTube transcript fetching is unofficial and can break; isolate it and fail with a clear message.

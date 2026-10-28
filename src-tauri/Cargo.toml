@@ -2,7 +2,7 @@
 name = "ponder"
 version = "0.1.0"
 description = "Ponder: local-first AI learning app"
-authors = ["Dominic Lechner"]
+authors = ["Dom0Nom"]
 license = "MIT"
 edition = "2021"
 default-run = "ponder"
